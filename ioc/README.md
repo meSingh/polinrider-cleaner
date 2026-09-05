@@ -11,6 +11,9 @@ three local checks at once.
 | `filenames.txt` | Paths that are indicators on their own (extended regex) | `INFECTED` |
 | `weak.txt` | Strings legitimate projects also use | `review` only |
 | `network.txt` | Campaign hosts and IP addresses | `INFECTED` if a live connection matches |
+| `implant-paths.txt` | Second-stage install, persistence and working paths | `INFECTED` if the path exists |
+| `implant-names.txt` | Implant binary and process names | `INFECTED` on an exact process-name match |
+| `hashes.txt` | SHA-256 of known implant binaries | `INFECTED` on a hash match, whatever the file is named |
 
 `network.txt` is used only by the local checks, to compare established
 connections from `node` and Electron processes against known campaign
@@ -21,6 +24,10 @@ Format: one entry per line. Lines starting with `#` and blank lines are ignored.
 `strong.txt`, `bad-packages.txt` and `weak.txt` are matched as fixed strings
 (`grep -F`), so no regex escaping is needed. `filenames.txt` is extended regex
 matched against the full path.
+
+`implant-names.txt` is matched against the **process name only**, never the full
+command line. Matching a command line would report this scanner, and anyone
+grepping for the implant, as the implant itself.
 
 ## Adding an indicator
 

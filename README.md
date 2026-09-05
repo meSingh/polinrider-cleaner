@@ -89,13 +89,51 @@ lives in blockchain transactions, there is no C2 domain to take down and blockin
 one host achieves nothing.
 
 The second stage has been the **DEV#POPPER** remote access trojan and
-**OmniStealer**; earlier waves carried **BeaverTail**. What they take:
+**OmniStealer**; earlier waves carried **BeaverTail**, followed by
+**InvisibleFerret**. What they take:
 
 - browser session cookies and saved passwords
 - GitHub personal access tokens, SSH keys, `gh` CLI credentials
 - npm, cloud (AWS/GCP), database and CI platform tokens
 - every value in every `.env` file it can read
 - cryptocurrency wallets and seed phrases, which it targets specifically
+
+### The second stage now installs itself as a process
+
+Since roughly April 2026 the campaign has shipped a persistent implant rather
+than only stealing on the way past. It matters because it changes where you have
+to look.
+
+The implant is a **Node.js Single Executable Application**: a native binary with
+the V8 engine and the JavaScript payload statically linked into it. It does not
+need Node installed, and it does not appear as a script. It **sets its own
+process title**, presenting in the process list as `MicrosoftSystem64`, and it
+installs and persists on all three operating systems:
+
+| | Installs at | Persists via |
+|---|---|---|
+| macOS | `~/Library/Application Support/MicrosoftSystem64` | LaunchAgent `com.launchkeeper.MicrosoftSystem64` |
+| Linux | `~/.local/share/MicrosoftSystem64` | systemd user unit, or XDG autostart, with `loginctl enable-linger` |
+| Windows | `%LOCALAPPDATA%\MicrosoftSystem64` | scheduled task `\MicrosoftSystem64`, or a Run key |
+
+It writes working state to `~/.pcl-data` and `~/.pcl-state`, talks to its
+controller over a WebSocket, and exfiltrates through **private Hugging Face
+datasets** rather than a server you could block.
+
+It is delivered by a family of npm packages that look like logging utilities —
+`js-logger-pack`, `terminal-logger-utils`, `pretty-logger-utils`, `pinno-loggers`
+and others — and by hijacked versions of legitimate packages.
+
+Two consequences for how you scan:
+
+1. **A repository scan is no longer sufficient.** The repository may be clean
+   while the machine is not. Run [`local-cleanup/`](local-cleanup/) even on a
+   machine whose repositories all come back clean.
+2. **Install-time hooks are not the only trigger.** Some clusters avoid
+   `postinstall` entirely and fire at `require` time or on first use of a
+   function, so a build that only audits install scripts will miss them. This is
+   the part that reaches production: the payload runs when your application
+   runs, not when you installed it.
 
 ### How it spreads to your repositories
 
@@ -122,6 +160,8 @@ reconciliation**, never history reading.
 | Editor tasks | `.vscode/tasks.json` with `"runOn": "folderOpen"` running `curl … \| bash` |
 | Propagation script | `temp_auto_push.bat` |
 | Dependencies | `tailwindcss-style-animate`, `tailwind-mainanimation`, `tailwind-autoanimation`, `tailwindcss-typography-style`, `tailwindcss-style-modify` |
+| Second-stage droppers | `js-logger-pack`, `ts-logger-pack`, `terminal-logger-utils`, `pretty-logger-utils`, `pinno-loggers`, `polymarket-validator`, `changelog-logger-utilities`, `node-env-resolve` |
+| Installed implant | a binary or process named `MicrosoftSystem64`, and the directories `~/.pcl-data` and `~/.pcl-state` |
 
 Two obfuscator variants are in circulation: the original marked `rmcej%otb%`
 with function `_$_1e42`, and a newer one marked `Cot%3t=shtP` with function
@@ -136,6 +176,7 @@ absent — nothing more.
 | 11 Apr 2026 | OpenSourceMalware | 1,951 repositories, 1,047 owners |
 | 2 Jul 2026 | Socket / The Hacker News | 108 packages, 162 artifacts: 61 Go, 19 npm, 10 Composer, 1 Chrome extension |
 | 1 Aug 2026 | Socket tracking page | 121 packages, 196 artifacts |
+| Apr–May 2026 | JFrog, safedep | Second-stage implant documented: `MicrosoftSystem64`, delivered by the logger-package family, exfiltrating via Hugging Face |
 
 Counts differ slightly between sources because they count different things.
 Check the [live tracking page](https://socket.dev/supply-chain-attacks/polinrider)

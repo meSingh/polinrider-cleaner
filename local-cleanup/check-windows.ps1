@@ -65,6 +65,13 @@ $Strong   = Read-IocFile @('strong.txt','bad-packages.txt')
 $Weak     = Read-IocFile @('weak.txt')
 $BadPkgs  = Read-IocFile @('bad-packages.txt')
 $Net      = Read-IocFile @('network.txt')
+$Implants = Read-IocFile @('implant-names.txt')
+$ImplantPaths = Read-IocFile @('implant-paths.txt')
+$KnownHashes = @{}
+foreach ($h in (Get-Content (Join-Path $iocDir 'hashes.txt') | Where-Object { $_ -and $_ -notmatch '^\s*#' })) {
+  $parts = $h -split '\s+', 2
+  if ($parts.Count -eq 2) { $KnownHashes[$parts[0].ToLower()] = $parts[1] }
+}
 if ($Strong.Count -eq 0) { Write-Error "indicator set is empty"; exit 2 }
 
 function Test-Strong ([string]$path) {
@@ -106,6 +113,97 @@ Say ("host: $env:COMPUTERNAME   user: $env:USERNAME")
 Say ("roots: " + ($Roots -join ', '))
 if ($Apply) { Say "mode: APPLY - confirmed artifacts will be moved to quarantine" }
 else        { Say "mode: dry run - nothing will be changed" }
+
+# --- 0. second-stage implant -----------------------------------------------
+# The implant is a Node.js Single Executable Application: a native binary with
+# V8 and the payload linked in, which sets its own process title to look like a
+# system service. It needs no Node installation and it outranks everything else
+# on this machine.
+Hdr "Second-stage implant"
+$implantFound = $false
+
+function Test-KnownHash ([string]$path) {
+  try {
+    $h = (Get-FileHash -LiteralPath $path -Algorithm SHA256 -ErrorAction Stop).Hash.ToLower()
+    if ($KnownHashes.ContainsKey($h)) { return $KnownHashes[$h] }
+  } catch {
+    # Unreadable or locked files are common and not themselves a finding.
+    Write-Verbose "could not hash ${path}: $($_.Exception.Message)"
+  }
+  return $null
+}
+
+foreach ($raw in $ImplantPaths) {
+  $p = $raw
+  if ($p -like '~*') { $p = Join-Path $env:USERPROFILE ($p.Substring(2) -replace '/', '\') }
+  elseif ($p -like '/*') { continue }                       # unix-only path
+  else { $p = [Environment]::ExpandEnvironmentVariables($p) }
+  if (-not (Test-Path -LiteralPath $p)) { continue }
+  $implantFound = $true
+  $label = if (Test-Path -LiteralPath $p -PathType Leaf) { Test-KnownHash $p } else { $null }
+  if ($label) { Bad "implant binary confirmed by hash ($label): $p" }
+  else        { Bad "implant artifact present: $p" }
+  Move-ToQuarantine $p 'second-stage-implant'
+}
+
+# A renamed binary still hashes the same.
+foreach ($root in $Roots) {
+  if (-not (Test-Path $root)) { continue }
+  Get-ChildItem -Path $root -Recurse -File -ErrorAction SilentlyContinue |
+    Where-Object { $_.Length -gt 10MB -and $_.Length -lt 300MB -and
+                   $_.FullName -notlike '*\node_modules\*' -and $_.FullName -notlike '*\.git\*' } |
+    Select-Object -First 200 | ForEach-Object {
+      $label = Test-KnownHash $_.FullName
+      if ($label) {
+        $script:implantFound = $true
+        Bad "file matches a known implant hash ($label): $($_.FullName)"
+        Move-ToQuarantine $_.FullName 'second-stage-implant'
+      }
+    }
+}
+
+# Match the process NAME exactly. Matching the command line would report this
+# scanner, or anyone grepping for the implant, as the implant itself.
+$implantProcs = Get-Process -ErrorAction SilentlyContinue |
+                Where-Object { $Implants -contains $_.ProcessName -or
+                               $Implants -contains ($_.ProcessName + '.exe') }
+if ($implantProcs) {
+  $implantFound = $true
+  foreach ($pr in $implantProcs) {
+    Bad "an implant process is running now: $($pr.ProcessName) (PID $($pr.Id))"
+    Say "           stop it first: Stop-Process -Id $($pr.Id) -Force"
+  }
+}
+
+try {
+  Get-ScheduledTask -TaskName 'MicrosoftSystem64' -ErrorAction Stop | ForEach-Object {
+    $script:implantFound = $true
+    Bad "implant scheduled task registered: $($_.TaskPath)$($_.TaskName)"
+    Say "           remove it: Unregister-ScheduledTask -TaskName '$($_.TaskName)' -TaskPath '$($_.TaskPath)' -Confirm:`$false"
+  }
+} catch {
+  # No such task, or the cmdlet is unavailable before Windows 8. Neither is a finding.
+  Write-Verbose "scheduled task lookup: $($_.Exception.Message)"
+}
+
+foreach ($k in @('HKCU:\Software\Microsoft\Windows\CurrentVersion\Run',
+                 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Run')) {
+  if (-not (Test-Path $k)) { continue }
+  $props = Get-ItemProperty -Path $k -ErrorAction SilentlyContinue
+  foreach ($pp in $props.PSObject.Properties) {
+    if ($pp.Name -like 'PS*') { continue }
+    foreach ($n in $Implants) {
+      if ([string]$pp.Value -like "*$n*") {
+        $implantFound = $true
+        Bad "implant run key entry: $k\$($pp.Name)"
+        Say "           remove it: Remove-ItemProperty -Path '$k' -Name '$($pp.Name)'"
+        break
+      }
+    }
+  }
+}
+
+if (-not $implantFound) { Ok "no second-stage implant found" }
 
 # --- 1. IDE extensions -----------------------------------------------------
 Hdr "IDE extensions"
@@ -158,7 +256,8 @@ foreach ($root in $Roots) {
 # --- 3. build configs ------------------------------------------------------
 Hdr "Build configs with code after the module end"
 $cfgNames = @('postcss.config.*','tailwind.config.*','eslint.config.*','vite.config.*',
-              'next.config.*','rollup.config.*','webpack.config.*','babel.config.*')
+              'next.config.*','rollup.config.*','webpack.config.*','babel.config.*',
+              'gridsome.config.*','vue.config.*','truffle.js')
 foreach ($root in $Roots) {
   if (-not (Test-Path $root)) { continue }
   foreach ($pattern in $cfgNames) {

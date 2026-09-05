@@ -44,6 +44,8 @@ say "host: $(hostname)   user: $(whoami)"
 say "roots: ${ROOTS[*]}"
 say "mode: $([[ $APPLY -eq 1 ]] && echo 'APPLY - confirmed artifacts will be moved to quarantine' || echo 'dry run - nothing will be changed')"
 
+check_implants   "${ROOTS[@]}"
+
 check_extensions "$HOME/.vscode/extensions" "$HOME/.vscode-insiders/extensions" \
                  "$HOME/.cursor/extensions" "$HOME/.windsurf/extensions" \
                  "$HOME/.vscode-oss/extensions" \

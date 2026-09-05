@@ -24,6 +24,7 @@ bash -n <every script you touched>
 shellcheck --severity=warning --external-sources <every script you touched>
 ./ci/selftest.sh            # detection: infected fixture and clean control
 ./ci/selftest-restore.sh    # restore planner: classification and the wave-2 trap
+./ci/selftest-implant.sh    # implant detection, hashing and quarantine
 ```
 
 The tree is clean at `--severity=warning`, which is what CI enforces. Where a

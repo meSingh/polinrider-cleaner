@@ -1,0 +1,34 @@
+# Second-stage implant install locations. Existence of any of these is a
+# confirmed compromise, not a signal to weigh.
+#
+# The implant is a Node.js Single Executable Application: a native binary with
+# the V8 engine and the JavaScript payload statically linked in. It does not
+# need Node installed, and it sets its own process title to look like a system
+# service. Endpoint tooling that expects either a native executable or an
+# interpreted script tends to miss it.
+#
+# Sources: safedep.io MicrosoftSystem64 binary analysis; JFrog Security Research
+# "Hugging Face as a malware CDN" (js-logger-pack), both April-May 2026.
+#
+# "~" is expanded to the user's home directory. Windows paths are checked by
+# check-windows.ps1 only.
+
+# --- install locations
+~/.local/share/MicrosoftSystem64
+~/Library/Application Support/MicrosoftSystem64
+%LOCALAPPDATA%\MicrosoftSystem64
+%LOCALAPPDATA%\MicrosoftSystem64.exe
+
+# --- working directories written by the implant
+~/.pcl-data
+~/.pcl-state
+
+# --- persistence
+~/Library/LaunchAgents/com.launchkeeper.MicrosoftSystem64.plist
+~/.config/systemd/user/MicrosoftSystem64.service
+~/.config/autostart/MicrosoftSystem64.desktop
+~/Library/LaunchAgents/com.bablu.helper.plist
+
+# --- dropped payloads seen on Linux and macOS
+/tmp/0001.dat
+/tmp/tmp7A863DD1.tmp

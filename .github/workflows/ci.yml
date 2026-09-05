@@ -52,6 +52,9 @@ jobs:
       - name: Restore planner self-test
         run: ./ci/selftest-restore.sh
 
+      - name: Implant detection self-test
+        run: ./ci/selftest-implant.sh
+
   powershell:
     name: PowerShell lint
     runs-on: ubuntu-latest

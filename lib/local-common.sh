@@ -4,7 +4,7 @@
 
 PRC_LLIB="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PRC_ROOT="$(cd "$PRC_LLIB/.." && pwd)"
-PRC_IOC="$PRC_ROOT/ioc"
+PRC_IOC="${PRC_IOC_DIR:-$PRC_ROOT/ioc}"
 
 # Obfuscation tells used to qualify a "content after module end" finding.
 # Only these file types can carry the payload. Without this filter a recursive
@@ -45,6 +45,9 @@ prc_local_load_iocs() {
   NET_ARGS=()
   while IFS= read -r line; do NET_ARGS+=(-e "$line"); done \
     < <(sed -e '/^#/d' -e '/^$/d' "$PRC_IOC/network.txt")
+  IMPLANT_ARGS=()
+  while IFS= read -r line; do IMPLANT_ARGS+=(-e "$line"); done \
+    < <(sed -e '/^#/d' -e '/^$/d' "$PRC_IOC/implant-names.txt")
   [[ ${#STRONG_ARGS[@]} -gt 0 ]] || { echo "indicator set is empty" >&2; exit 2; }
 }
 
@@ -92,6 +95,93 @@ RES
 # ---------------------------------------------------------------------------
 
 # shellcheck disable=SC2086  # PRC_CODE_INCLUDES must word-split into separate --include flags
+prc_sha256() {
+  if   command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" 2>/dev/null | awk '{print $1}'
+  elif command -v shasum    >/dev/null 2>&1; then shasum -a 256 "$1" 2>/dev/null | awk '{print $1}'
+  fi
+}
+
+# Match a file against the known second-stage hashes, whatever it is called.
+prc_hash_verdict() {
+  local f="$1" h label
+  h="$(prc_sha256 "$f")"
+  [[ -z "$h" ]] && return 1
+  label="$(awk -v h="$h" '$1==h {$1=""; sub(/^ +/,""); print; exit}' "$PRC_IOC/hashes.txt")"
+  [[ -n "$label" ]] || return 1
+  printf '%s' "$label"
+}
+
+# The second stage is a Node.js Single Executable Application: a native binary
+# with V8 and the payload linked in. It sets its own process title to look like
+# a system service, so the process table is as important as the filesystem here.
+check_implants() {
+  hdr "Second-stage implant"
+  local line path label found=0 uid
+  uid="$(id -u 2>/dev/null || echo 0)"
+
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    case "$line" in '%'*) continue ;; esac   # Windows path, check-windows.ps1 handles it
+    path="${line/#\~/$HOME}"
+    [[ -e "$path" ]] || continue
+    found=1
+    if [[ -f "$path" ]] && label="$(prc_hash_verdict "$path")"; then
+      bad "implant binary confirmed by hash ($label): $path"
+    else
+      bad "implant artifact present: $path"
+    fi
+    case "$path" in
+      *"/LaunchAgents/"*)
+        say "           stop it first: launchctl bootout gui/${uid} '$path' 2>/dev/null || launchctl unload '$path'" ;;
+      *"/systemd/user/"*)
+        say "           stop it first: systemctl --user disable --now '$(basename "$path")'"
+        say "           and: loginctl disable-linger \"$(whoami)\"" ;;
+      *"/autostart/"*)
+        say "           it will not start again once this file is quarantined" ;;
+    esac
+    quarantine "$path" "second-stage-implant"
+  done < <(sed -e '/^#/d' -e '/^$/d' "$PRC_IOC/implant-paths.txt")
+
+  # A renamed binary still hashes the same.
+  local root f
+  for root in "$@"; do
+    [[ -d "$root" ]] || continue
+    while read -r f; do
+      [[ -z "$f" ]] && continue
+      if label="$(prc_hash_verdict "$f")"; then
+        found=1
+        bad "file matches a known implant hash ($label): $f"
+        quarantine "$f" "second-stage-implant"
+      fi
+    done < <(find "$root" -type f -size +10M -size -300M \
+               -not -path '*/node_modules/*' -not -path '*/.git/*' 2>/dev/null | head -200)
+  done
+
+  # The process title is set by the implant, so a match here is a finding even
+  # with nothing on disk.
+  #
+  # Match the process NAME exactly, never the full command line. Anything that
+  # merely mentions the implant - this scanner, an administrator grepping for
+  # it, an editor with the file open - would otherwise be reported as a running
+  # implant. That is the same self-signature collision that makes a grep-based
+  # scanner flag its own detection rules.
+  local procs re
+  re="$(sed -e '/^#/d' -e '/^$/d' "$PRC_IOC/implant-names.txt" \
+        | sed 's/[].[^$*\\]/\\&/g' | paste -sd'|' - )"
+  procs="$(ps ax -o pid=,comm= 2>/dev/null \
+           | awk -v re="^(${re})$" -v self="$$" '{n=$2; sub(/.*\//,"",n); if (n ~ re && $1 != self) print}' \
+           | cut -c1-200 | head -10)"
+  if [[ -n "$procs" ]]; then
+    found=1
+    printf '%s\n' "$procs" | sed 's/^/    /' | tee -a "$REPORT" >/dev/null
+    printf '%s\n' "$procs" | sed 's/^/    /'
+    bad "an implant process is running now. Kill it before anything else:"
+    printf '%s\n' "$procs" | awk '{print "           kill -9 " $1}' | tee -a "$REPORT"
+  fi
+
+  [[ $found -eq 0 ]] && ok "no second-stage implant found"
+}
+
 check_extensions() {   # $@ = extension directories
   hdr "IDE extensions"
   local d f found=0
@@ -176,7 +266,8 @@ check_configs() {      # $@ = code roots
                \( -name 'postcss.config.*' -o -name 'tailwind.config.*' \
                   -o -name 'eslint.config.*' -o -name 'vite.config.*' \
                   -o -name 'next.config.*'  -o -name 'rollup.config.*' \
-                  -o -name 'webpack.config.*' -o -name 'babel.config.*' \) 2>/dev/null | head -500)
+                  -o -name 'webpack.config.*' -o -name 'babel.config.*' \
+                  -o -name 'gridsome.config.*' -o -name 'vue.config.*' -o -name 'truffle.js' \) 2>/dev/null | head -500)
   done
 }
 
@@ -323,7 +414,11 @@ check_processes() {
   if [[ -n "$out" ]]; then
     printf '%s\n' "$out" | sed 's/^/    /' | tee -a "$REPORT" >/dev/null
     printf '%s\n' "$out" | sed 's/^/    /'
-    warn "an interpreter is running code passed on the command line. Read each one."
+    if printf '%s' "$out" | grep -qaF "${IMPLANT_ARGS[@]}"; then
+      bad "an interpreter is running implant code right now"
+    else
+      warn "an interpreter is running code passed on the command line. Read each one."
+    fi
   else
     ok "no interpreter running inline code right now"
   fi
