@@ -119,11 +119,20 @@ reset with global sign-out on your identity provider.
 
 ## Step 2. Capture evidence (blocking)
 
+Every command below writes into the same evidence directory. Set it once:
+
+```bash
+# The default. Your machine clears this on restart, which is intended:
+# infected mirrors should not outlive the incident.
+EV="${TMPDIR:-/tmp}/polinrider-evidence"
+```
+
+
 Nothing gets restored before this finishes. Cleanup is reversible; losing the
 pre-attack SHAs is not.
 
 ```bash
-./scan.sh --org YOUR-ORG --out ~/.polinrider/evidence --mirror-only
+./scan.sh --org YOUR-ORG --out "$EV" --mirror-only
 ```
 
 This mirror-clones every repository, freezes garbage collection on each mirror so
@@ -134,8 +143,8 @@ is API-only and costs nothing; mirroring two hundred repositories costs disk and
 hours. Once you have `sweep.tsv`, clone only what was touched:
 
 ```bash
-./sweep.sh --org YOUR-ORG --since 2026-07-27T03:00:00Z --out ~/.polinrider/evidence   # cheap, API only
-./scan.sh  --org YOUR-ORG --out ~/.polinrider/evidence --mirror-only --from-sweep ~/.polinrider/evidence/sweep.tsv
+./sweep.sh --org YOUR-ORG --since 2026-07-27T03:00:00Z --out "$EV"   # cheap, API only
+./scan.sh  --org YOUR-ORG --out "$EV" --mirror-only --from-sweep "$EV"/sweep.tsv
 ```
 
 The trade-off is real and you should make it deliberately: repositories outside
@@ -146,11 +155,11 @@ On GitHub Enterprise Cloud, export the audit log too:
 
 ```bash
 gh api --paginate "/orgs/YOUR-ORG/audit-log?phrase=action:git.push&include=all" \
-  > ~/.polinrider/evidence/audit-log-git-push.json
+  > "$EV"/audit-log-git-push.json
 ```
 
 > [!TIP]
-> Keep `~/.polinrider/evidence/` until the incident is closed. It is your forensic baseline,
+> Keep the evidence directory until the incident is closed. It is your forensic baseline,
 > and possibly your legal record. It is git-ignored, so it will not end up in a
 > commit.
 
@@ -164,7 +173,7 @@ Two views. Run both.
 push you believe was malicious:
 
 ```bash
-./sweep.sh --org YOUR-ORG --since 2026-07-27T03:00:00Z --out ~/.polinrider/evidence
+./sweep.sh --org YOUR-ORG --since 2026-07-27T03:00:00Z --out "$EV"
 ```
 
 Every `PushEvent` in the output needs a named person who will say "yes, that was
@@ -182,8 +191,8 @@ diff per repository, not one per branch.
 **What the content looks like now:**
 
 ```bash
-./scan.sh --org YOUR-ORG --out ~/.polinrider/evidence --scan-only
-cat ~/.polinrider/evidence/triage.txt
+./scan.sh --org YOUR-ORG --out "$EV" --scan-only
+cat "$EV"/triage.txt
 ```
 
 <sub>`./polinrider.sh --org YOUR-ORG` from the repository root does the scan and
@@ -197,7 +206,7 @@ A grep-based scanner cannot tell a file that *is* the malware from a file that
 *detects* it. Your own scan workflows will be flagged.
 
 ```bash
-./triage-filter.sh ~/.polinrider/evidence/triage.json
+./triage-filter.sh "$EV"/triage.json
 ```
 
 `BENIGN_TOOLING` lines are your own detection code. `REAL_SUSPECT` lines need
@@ -213,7 +222,7 @@ not proof the ref was never touched. That is what step 3 is for.
 Dry run. Changes nothing.
 
 ```bash
-./restore.sh --sweep ~/.polinrider/evidence/sweep.tsv --mirrors ~/.polinrider/evidence \
+./restore.sh --sweep "$EV"/sweep.tsv --mirrors "$EV" \
              --since 2026-07-27T03:00:00Z --actor ATTACKER-LOGIN
 ```
 
@@ -239,7 +248,7 @@ Writes `evidence/restore-plan.tsv`, one row per branch:
 ## Step 6. Preflight
 
 ```bash
-./preflight.sh --org YOUR-ORG --plan ~/.polinrider/evidence/restore-plan.tsv --actor ATTACKER-LOGIN
+./preflight.sh --org YOUR-ORG --plan "$EV"/restore-plan.tsv --actor ATTACKER-LOGIN
 ```
 
 It blocks if the attacker is still an org member, and if any restore target is a
@@ -257,7 +266,7 @@ whose recent commits a restore would orphan.
 Same command as step 5 with `--apply`:
 
 ```bash
-./restore.sh --sweep ~/.polinrider/evidence/sweep.tsv --mirrors ~/.polinrider/evidence \
+./restore.sh --sweep "$EV"/sweep.tsv --mirrors "$EV" \
              --since 2026-07-27T03:00:00Z --actor ATTACKER-LOGIN --apply
 ```
 
@@ -266,7 +275,7 @@ with `force=true`. If a call returns 422, your account is not in the ruleset
 bypass list from step 1.
 
 Legitimate work pushed *after* the attacker's push on a branch becomes orphaned.
-It is still in the mirror under `~/.polinrider/evidence/`. Cherry-pick it forward afterwards,
+It is still in the mirror under `$EV`. Cherry-pick it forward afterwards,
 commit by commit, reading each diff.
 
 Restoring makes the malicious commit unreachable, not deleted. It stays in
@@ -279,16 +288,18 @@ Support ticket, or rebuild the repository from the clean mirror.
 ## Step 8. Verify
 
 ```bash
-rm -rf ~/.polinrider/evidence-post
-./scan.sh --org YOUR-ORG --out ~/.polinrider/evidence-post
-./triage-filter.sh ~/.polinrider/evidence-post/triage.json
+rm -rf "$EV"-post
+./scan.sh --org YOUR-ORG --out "$EV"-post
+./triage-filter.sh "$EV"-post/triage.json
 ```
 
 Expect zero `REAL_SUSPECT`. Then confirm nothing has been pushed since your
 restore:
 
 ```bash
-./sweep.sh --org YOUR-ORG --since <time-of-your-restore> --out ~/.polinrider/evidence-post
+# RESTORED_AT is the time you ran the restore, in the same UTC format.
+RESTORED_AT="2026-07-28T09:00:00Z"
+./sweep.sh --org YOUR-ORG --since "$RESTORED_AT" --out "$EV-post"
 ```
 
 An empty sweep is the evidence that there was no third wave.

@@ -15,8 +15,11 @@
 #
 # Options:
 #   --roots "A B"   code directories for the machine scan
-#   --out DIR       where evidence goes. Default: ~/.polinrider/evidence
-#                   Never inside a git checkout: mirrors hold live malware.
+#   --out DIR       where evidence goes. Default: a directory under $TMPDIR,
+#                   which your machine clears on reboot. Mirrors hold live
+#                   malware, so they are never written inside a git checkout
+#                   and are not meant to outlive the incident.
+#   --purge-evidence  delete the evidence directory and everything in it
 #   --yes           never prompt. For scripts and AI agents
 #   -h, --help      this text
 #
@@ -27,7 +30,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=lib/common.sh
 . "$HERE/lib/common.sh"
 
-MODE=""; ORG=""; USR=""; SCANPATH=""; OUT=""; ROOTS=""; ASSUME_YES=0; DO_ALL=0
+MODE=""; ORG=""; USR=""; SCANPATH=""; OUT=""; ROOTS=""; ASSUME_YES=0; DO_ALL=0; PURGE=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -39,6 +42,7 @@ while [[ $# -gt 0 ]]; do
     --roots)   ROOTS="$2"; shift 2 ;;
     --out)     OUT="$2"; shift 2 ;;
     --yes|-y)  ASSUME_YES=1; shift ;;
+    --purge-evidence) PURGE=1; shift ;;
     -h|--help) sed -n '2,27p' "$0"; exit 0 ;;
     *) printf 'unknown argument: %s\nTry --help\n' "$1" >&2; exit 2 ;;
   esac
@@ -157,17 +161,20 @@ scan_path() {
 # still there, say so once and offer the move, rather than silently re-cloning
 # every repository into the new location.
 legacy_evidence_hint() {
-  local legacy="$PWD/evidence" n
-  [[ -d "$legacy" && "$legacy" != "$OUT" ]] || return 0
-  n=$(find "$legacy" -maxdepth 1 -name '*.git' 2>/dev/null | grep -c . || true)
-  [[ "${n:-0}" -gt 0 ]] || return 0
-  say ""
-  warn "$n mirror(s) are still in ./evidence, inside this checkout."
-  say "  That is where older versions put them. Move them and this run reuses"
-  say "  them instead of cloning everything again:"
-  say ""
-  say "    ${DIM}mv $legacy/* $OUT/ && rmdir $legacy${X}"
-  say ""
+  local legacy n
+  for legacy in "$PWD/evidence" "$HOME/.polinrider/evidence"; do
+    [[ -d "$legacy" && "$legacy" != "$OUT" ]] || continue
+    n=$(find "$legacy" -maxdepth 1 -name '*.git' 2>/dev/null | grep -c . || true)
+    [[ "${n:-0}" -gt 0 ]] || continue
+    say ""
+    warn "$n mirror(s) are still in $legacy"
+    say "  Older versions put them there. They are infected repositories sitting"
+    say "  in a directory nothing clears. Move them here and this run reuses them"
+    say "  instead of cloning everything again:"
+    say ""
+    say "    ${DIM}mv $legacy/* $OUT/ && rmdir $legacy${X}"
+    say ""
+  done
 }
 
 scan_github() {  # scan_github <org|user> <name>
@@ -237,7 +244,8 @@ choose() {
   esac
 }
 
-if [[ -z "$MODE" ]]; then
+# --purge-evidence is not a scan, so it must not fall into the mode menu.
+if [[ -z "$MODE" && $PURGE -eq 0 ]]; then
   choose || { printf '\nNothing selected. Pass a flag instead:\n\n' >&2; sed -n '7,13p' "$0" >&2; exit 2; }
 fi
 
@@ -245,6 +253,26 @@ fi
 head2 "PolinRider cleaner"
 say "${DIM}Everything below is read-only. Nothing is changed.${X}"
 say "${DIM}Independent open source tool. No warranty, no liability. See DISCLAIMER.md.${X}"
+
+if [[ $PURGE -eq 1 ]]; then
+  if [[ ! -d "$OUT" ]]; then
+    good "Nothing to delete. $OUT does not exist."
+    exit 0
+  fi
+  n=$(find "$OUT" -maxdepth 1 -name '*.git' 2>/dev/null | grep -c . || true)
+  say ""
+  warn "About to delete $OUT"
+  say "  ${DIM}$n mirror(s), $(du -sh "$OUT" 2>/dev/null | cut -f1) on disk${X}"
+  say "  This includes triage.json, NEXT-STEPS.md and the push ledger. If a"
+  say "  restore is still outstanding, the pre-attack commits go with them."
+  if ask "Delete it?" "n"; then
+    rm -rf "$OUT" && good "Deleted $OUT"
+  else
+    say "Left alone."
+  fi
+  exit 0
+fi
+prc_evidence_warn_stale "$OUT"
 rule
 
 if [[ $DO_ALL -eq 1 ]]; then
