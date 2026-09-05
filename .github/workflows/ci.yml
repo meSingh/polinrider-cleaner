@@ -32,6 +32,20 @@ jobs:
           find . -name '*.sh' -not -path './.git/*' -print0 \
             | xargs -0 shellcheck --severity=warning --external-sources
 
+      # Dependabot only reads .github/workflows, so the pin in the template that
+      # users vendor into their own repositories drifts silently. Fail here
+      # instead of shipping them a stale action.
+      - name: Vendored workflow template pins the same action revision
+        run: |
+          here=$(grep -o 'actions/checkout@[0-9a-f]\{40\}' .github/workflows/ci.yml | sort -u)
+          tmpl=$(grep -o 'actions/checkout@[0-9a-f]\{40\}' ci/polinrider-scan.yml | sort -u)
+          echo "workflow: $here"
+          echo "template: $tmpl"
+          if [ "$here" != "$tmpl" ]; then
+            echo "Pin drift. Update ci/polinrider-scan.yml to match, then re-run ci/install-workflow.sh on repos that vendored it." >&2
+            exit 1
+          fi
+
       - name: Detection self-test
         run: ./ci/selftest.sh
 
