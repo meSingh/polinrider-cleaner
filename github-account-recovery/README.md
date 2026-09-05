@@ -45,6 +45,7 @@ commit that still exists. History is intact and no work is lost.
 | `triage-filter.sh` | Separates real findings from your own detection tooling | No |
 | `restore.sh` | Builds the restore plan, and with `--apply` performs the restore | Only with `--apply` |
 | `preflight.sh` | Credential and safety gates before `--apply` | No |
+| `preserve-restore-points.sh` | Fetches pre-attack commits into the mirrors before GitHub prunes them | No, fetch only |
 | `clean-repo.sh` | Removes a committed payload from every affected branch of one repo | Only with `--apply` |
 
 ---

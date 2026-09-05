@@ -55,13 +55,14 @@ nothing on GitHub or on the machine.
 | Command | Effect |
 |---|---|
 | `polinrider.sh` in any mode | routes to the tools below; never changes anything |
-| `ci/selftest*.sh` (five of them) | offline, no network, no credentials |
+| `ci/selftest*.sh` (six of them) | offline, no network, no credentials |
 | `ci/scan-workspace.sh --path DIR` | reads files |
 | `machine-cleanup/check-*.sh DIR ...` | reads the machine, writes one report file |
 | `github-org-recovery/scan.sh`, `sweep.sh`, `triage-filter.sh`, `preflight.sh` | reads the GitHub API, clones mirrors |
 | `github-account-recovery/*` (same four) | as above |
 | `restore.sh` **without** `--apply` | prints a plan, changes nothing |
 | `lib/next-steps.sh` | reads a finished triage, writes `NEXT-STEPS.md` and three lists |
+| `preserve-restore-points.sh` | fetches pre-attack commits into the mirrors. Fetch only, never pushes |
 | `clean-repo.sh` **without** `--apply` | bare-clones and prints a plan, pushes nothing |
 
 ### What you must NOT run without explicit human confirmation
@@ -138,12 +139,12 @@ the OS.
 | Path | Contains |
 |---|---|
 | `ioc/` | the indicator set, single source of truth, read at runtime by everything |
-| `lib/` | shared engines: `gh-scan`, `gh-sweep`, `gh-restore`, `gh-clean`, `next-steps`, `triage-filter`, `common.sh`, `local-common.sh` |
+| `lib/` | shared engines: `gh-scan`, `gh-sweep`, `gh-restore`, `gh-clean`, `gh-preserve`, `next-steps`, `triage-filter`, `common.sh`, `local-common.sh` |
 | `github-org-recovery/` | recover a GitHub **organization**: thin wrappers over `lib/` plus its own `preflight.sh` |
 | `github-account-recovery/` | the same for **one personal account** |
 | `machine-cleanup/` | check and clean **one computer**, one script per operating system |
 | `polinrider.sh` | the single entry point at the repository root |
-| `ci/` | the vendorable scanner, its workflow template, installer, and five self-tests |
+| `ci/` | the vendorable scanner, its workflow template, installer, and six self-tests |
 
 `common.sh` and `local-common.sh` are sourced, not executed, and are
 deliberately not marked executable.
@@ -159,6 +160,7 @@ shellcheck --severity=warning --external-sources \
 ./ci/selftest-implant.sh
 ./ci/selftest-entrypoint.sh
 ./ci/selftest-nextsteps.sh
+./ci/selftest-preserve.sh
 ```
 
 CI enforces `shellcheck --severity=warning` and runs all three self-tests, plus
@@ -167,6 +169,15 @@ The tree is clean at those levels; keep it that way. Where a warning is
 suppressed there is a `# shellcheck disable=` with the reason on the line above.
 
 ### Rules that are not negotiable
+
+**A mirror does not contain the commit you want to restore to.** `git clone
+--mirror` fetches only what is reachable from a ref, and after a force-push the
+pre-attack commit is reachable from nothing. `restore.sh` looks for it in the
+mirror and will not find it. `gh-preserve.sh` fetches it by SHA and anchors it
+under `refs/polinrider/pre-attack/`, and that has to happen while GitHub still
+serves the object. Do not write documentation or output that says the old commit
+is "still in the mirror". It is not, until something puts it there.
+
 
 **Evidence never lands inside a git working tree.** Mirror clones hold live
 malware. Inside a checkout an editor indexes them and a stray `git add -A`

@@ -46,6 +46,7 @@ without `--apply`.
 | `triage-filter.sh` | Separates real findings from your own detection tooling matching itself | No |
 | `restore.sh` | Builds the restore plan, and with `--apply` performs the restore | Only with `--apply` |
 | `preflight.sh` | Five gates that must pass before `--apply` | No |
+| `preserve-restore-points.sh` | Fetches pre-attack commits into the mirrors before GitHub prunes them | No, fetch only |
 | `clean-repo.sh` | Removes a committed payload from every affected branch of one repo | Only with `--apply` |
 
 ---
@@ -275,7 +276,7 @@ with `force=true`. If a call returns 422, your account is not in the ruleset
 bypass list from step 1.
 
 Legitimate work pushed *after* the attacker's push on a branch becomes orphaned.
-It is still in the mirror under `$EV`. Cherry-pick it forward afterwards,
+Fetch it into the mirror with `preserve-restore-points.sh`, then cherry-pick it forward afterwards,
 commit by commit, reading each diff.
 
 Restoring makes the malicious commit unreachable, not deleted. It stays in
