@@ -21,6 +21,16 @@ commit that still exists. History is intact and no work is lost.
 
 ---
 
+> [!TIP]
+> **Just want to know whether you were hit?** From the repository root:
+>
+> ```bash
+> ./polinrider.sh --user YOUR-USERNAME
+> ```
+>
+> Read-only, and it stops before anything can change. The rest of this page is
+> the recovery, which you drive yourself on purpose.
+
 ## The scripts
 
 | Script | What it does | Changes anything? |
@@ -37,9 +47,10 @@ commit that still exists. History is intact and no work is lost.
 
 In this order, and finish both before touching a single branch.
 
-**1. The machine.** Run [`../machine-cleanup/`](../machine-cleanup/) on every machine
-you have used for git. If anything comes back as a confirmed hit, that machine is
-out of the process entirely — do the rest from a different one.
+**1. The machine.** Run `./polinrider.sh --machine` on every machine you have
+used for git — see [`../machine-cleanup/`](../machine-cleanup/). If anything comes
+back as a confirmed hit, that machine is out of the process entirely; do the rest
+from a different one.
 
 **2. The credentials.** From a machine you trust:
 

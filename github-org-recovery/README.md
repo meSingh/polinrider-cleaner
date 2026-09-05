@@ -22,6 +22,16 @@ without `--apply`.
 
 ---
 
+> [!TIP]
+> **Just want to know whether you were hit?** From the repository root:
+>
+> ```bash
+> ./polinrider.sh --org YOUR-ORG
+> ```
+>
+> That runs steps 2 to 4 below and stops before anything can change. The rest of
+> this page is the recovery itself, which you drive yourself on purpose.
+
 ## The scripts
 
 | Script | What it does | Changes anything? |
@@ -169,6 +179,9 @@ diff per repository, not one per branch.
 ./scan.sh --org YOUR-ORG --out ./evidence --scan-only
 cat ./evidence/triage.txt
 ```
+
+<sub>`./polinrider.sh --org YOUR-ORG` from the repository root does the scan and
+the filter in one step, if you have not run them already.</sub>
 
 ---
 

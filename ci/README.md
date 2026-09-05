@@ -59,6 +59,7 @@ than in CI:
 ```bash
 cd /path/to/your/repo
 .github/polinrider/scan-workspace.sh --path . --all-refs
+# or, from a checkout of this repository:  ./polinrider.sh --path /path/to/your/repo
 git add .github/polinrider .github/workflows/polinrider-scan.yml
 git commit -m "Add PolinRider scan workflow"
 ```
