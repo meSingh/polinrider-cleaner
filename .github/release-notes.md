@@ -11,6 +11,11 @@ sha256sum -c SHA256SUMS
 # 2. the archive really was built by this repository's CI, at this tag
 gh attestation verify polinrider-cleaner-__TAG__.tar.gz \
   --repo meSingh/polinrider-cleaner
+
+# ...or offline, against the bundle attached here, with no network call
+gh attestation verify polinrider-cleaner-__TAG__.tar.gz \
+  --bundle polinrider-cleaner-__TAG__.tar.gz.intoto.jsonl \
+  --repo meSingh/polinrider-cleaner
 ```
 
 The tag itself is GPG-signed:
