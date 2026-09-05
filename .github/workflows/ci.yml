@@ -58,6 +58,9 @@ jobs:
       - name: Entry point self-test
         run: ./ci/selftest-entrypoint.sh
 
+      - name: Self-test - next steps and evidence location
+        run: ./ci/selftest-nextsteps.sh
+
   powershell:
     name: PowerShell lint
     runs-on: ubuntu-latest

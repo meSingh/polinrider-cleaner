@@ -26,6 +26,12 @@ audit-log-*.json
 polinrider-report-*.txt
 polinrider-quarantine-*/
 manifest.tsv
+NEXT-STEPS.md
+affected-refs.tsv
+affected-paths.tsv
+affected-repos.txt
+# bare clones made by clean-repo.sh
+clean/
 
 # ---------------------------------------------------------------------------
 # Secrets and credential material. Nothing here should ever be committed, and a

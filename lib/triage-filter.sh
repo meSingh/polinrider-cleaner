@@ -19,14 +19,7 @@ REPORT="${1:-}"; STRICT=0
 [[ -f "$REPORT" ]] || prc_die "usage: triage-filter.sh <triage.json> [--strict]"
 prc_need jq
 
-# Paths that contain indicator strings because they are detection tooling, not
-# payload. Extend this list if you keep your scanners somewhere else.
-BENIGN_RE='(^|/)\.github/workflows/[^/]*polinrider[^/]*\.(yml|yaml)$'
-BENIGN_RE="$BENIGN_RE"'|(^|/)\.github/polinrider/'
-BENIGN_RE="$BENIGN_RE"'|(^|/)(polinrider|scan-workspace|gh-scan|gh-sweep|gh-restore|triage-filter|check-macos|check-linux|check-windows|preflight|selftest|install-workflow|local-common|common)[^/]*\.(sh|ps1)$'
-BENIGN_RE="$BENIGN_RE"'|(^|/)ioc/[^/]*\.txt$'
-BENIGN_RE="$BENIGN_RE"'|(^|/)(lib|ci)/'
-BENIGN_RE="$BENIGN_RE"'|\.md$|(^|/)docs/|README'
+BENIGN_RE="$PRC_BENIGN_RE"   # defined in common.sh, shared with next-steps.sh
 
 jq -c '.[] | select(.verdict=="INFECTED")' "$REPORT" | while read -r entry; do
   repo=$(jq -r .repo <<<"$entry")

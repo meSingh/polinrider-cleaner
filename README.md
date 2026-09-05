@@ -152,6 +152,13 @@ non-interactive for scripts and agents; `--help` lists the rest.
 
 # The four steps
 
+> [!NOTE]
+> **Evidence goes to `~/.polinrider/evidence`, never into your working
+> directory.** The scan makes mirror clones, and a mirror clone holds live
+> malware. Inside a checkout your editor would index it and a stray `git add -A`
+> would republish it from your own account, so the tools refuse to write there.
+> Override the location with `--out`, and keep it outside every checkout.
+
 ## Step 1. Check the machines
 
 **Read-only. Changes nothing.** Run this on every machine that has touched the
@@ -275,7 +282,47 @@ anywhere and do not care what you do to the laptop.
 
 ---
 
-## Step 3. Restore the branches
+## Step 3. Get the payload out
+
+There are two ways the payload reaches a branch, and they need opposite fixes.
+The scan works out which one you are looking at and tells you, with the commands
+filled in, in `NEXT-STEPS.md` in your evidence directory.
+
+| What happened | How you can tell | The fix |
+|---|---|---|
+| The branch was **force-pushed** to a rewritten history | `sweep.sh` shows pushes nobody on your team claims | **Restore.** Move the branch pointer back. The good commit is still in the mirror. |
+| The payload was **committed normally** on top | No push events survive, or the pushes are all accounted for | **Remove.** There is no earlier state to go back to, so delete the files and commit that. |
+
+The second case is the common one once some time has passed. GitHub keeps
+roughly 300 events per repository for about 90 days, so on an older compromise
+there is often nothing left to sweep. `restore.sh` has nothing to work from
+there, and running it anyway will not help.
+
+> [!IMPORTANT]
+> **Do not open an affected repository in your editor while you work on this.**
+> The payload ships a `.vscode/tasks.json` carrying `"runOn": "folderOpen"`,
+> which runs a command as soon as VS Code opens the folder. `clean-repo.sh`
+> works in a bare clone and never checks anything out, so the file never
+> exists on your disk in a form anything can run.
+
+### If it was committed: remove it
+
+```bash
+# Dry run. Prints every branch it would touch and every file it would delete.
+./github-account-recovery/clean-repo.sh OWNER/REPO
+
+# Do it.
+./github-account-recovery/clean-repo.sh OWNER/REPO --apply
+```
+
+This adds one ordinary commit per affected branch and pushes it normally. No
+history is rewritten and nothing is force-pushed, so you can revert it like any
+other commit. Use `./github-org-recovery/clean-repo.sh` for an organization.
+
+Protected branches will reject the push. That is correct behaviour: clean an
+unprotected branch and open a pull request from it.
+
+### If it was force-pushed: restore it
 
 History stays intact and no work is lost: the branch pointer moves back to the
 commit that existed before the attack, and the malicious commits become
@@ -297,21 +344,21 @@ The recovery itself:
 
 ```bash
 # 1. Evidence first. Time-critical, see the warning below.
-./github-org-recovery/scan.sh --org YOUR-ORG --out ./evidence --mirror-only
+./github-org-recovery/scan.sh --org YOUR-ORG --out ~/.polinrider/evidence --mirror-only
 
 # 2. Who touched what, and when
-./github-org-recovery/sweep.sh --org YOUR-ORG --since 2026-07-27T03:00:00Z --out ./evidence
+./github-org-recovery/sweep.sh --org YOUR-ORG --since 2026-07-27T03:00:00Z --out ~/.polinrider/evidence
 
 # 3. Content scan, then drop your own detection files from the results
-./github-org-recovery/scan.sh --org YOUR-ORG --out ./evidence --scan-only
-./github-org-recovery/triage-filter.sh ./evidence/triage.json
+./github-org-recovery/scan.sh --org YOUR-ORG --out ~/.polinrider/evidence --scan-only
+./github-org-recovery/triage-filter.sh ~/.polinrider/evidence/triage.json
 
 # 4. Plan the restore. Dry run, changes nothing.
-./github-org-recovery/restore.sh --sweep ./evidence/sweep.tsv --mirrors ./evidence \
+./github-org-recovery/restore.sh --sweep ~/.polinrider/evidence/sweep.tsv --mirrors ~/.polinrider/evidence \
                          --since 2026-07-27T03:00:00Z --actor ATTACKER-LOGIN
 
 # 5. Gates, then apply
-./github-org-recovery/preflight.sh --org YOUR-ORG --plan ./evidence/restore-plan.tsv --actor ATTACKER-LOGIN
+./github-org-recovery/preflight.sh --org YOUR-ORG --plan ~/.polinrider/evidence/restore-plan.tsv --actor ATTACKER-LOGIN
 ./github-org-recovery/restore.sh   ... --apply
 ```
 
@@ -579,7 +626,7 @@ quoting a number.
 ./polinrider.sh --all --org YOUR-ORG
 ```
 
-Read what matched, not the count: `cat ./evidence/triage.txt`.
+Read what matched, not the count: `cat ~/.polinrider/evidence/triage.txt`.
 
 Also check by eye, because no scanner covers these:
 
