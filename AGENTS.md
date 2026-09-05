@@ -15,15 +15,29 @@ real machine. Read this section completely before running anything.
 ### Non-negotiable order
 
 ```
-1. local-cleanup/     on every affected machine
+1. machine-cleanup/     on every affected machine
 2. credential rotation                       (the human does this, not you)
-3. org-cleanup/ or personal-cleanup/         restore the branches
+3. github-org-recovery/ or github-account-recovery/         restore the branches
 4. ci/                                       prevent the next one
 ```
 
 Restoring branches while an infected machine still holds a valid token means the
 attacker re-pushes within minutes. This is documented behaviour of this
 campaign, not a theoretical risk. **Never reorder these.**
+
+### Start here
+
+`./polinrider.sh` is the entry point. It works out what needs scanning, picks the
+right tool for the operating system it is on, and prints the next command. Every
+mode is read-only. Pass `--yes` so it never prompts:
+
+```bash
+./polinrider.sh --machine --yes
+./polinrider.sh --org ACME --yes
+./polinrider.sh --path /some/repo --yes
+```
+
+Exit codes: `0` nothing found, `1` review items only, `2` something confirmed.
 
 ### What you may run without asking
 
@@ -32,11 +46,12 @@ nothing on GitHub or on the machine.
 
 | Command | Effect |
 |---|---|
-| `ci/selftest.sh`, `ci/selftest-restore.sh`, `ci/selftest-implant.sh` | offline, no network, no credentials |
+| `polinrider.sh` in any mode | routes to the tools below; never changes anything |
+| `ci/selftest*.sh` (four of them) | offline, no network, no credentials |
 | `ci/scan-workspace.sh --path DIR` | reads files |
-| `local-cleanup/check-*.sh DIR ...` | reads the machine, writes one report file |
-| `org-cleanup/scan.sh`, `sweep.sh`, `triage-filter.sh`, `preflight.sh` | reads the GitHub API, clones mirrors |
-| `personal-cleanup/*` (same four) | as above |
+| `machine-cleanup/check-*.sh DIR ...` | reads the machine, writes one report file |
+| `github-org-recovery/scan.sh`, `sweep.sh`, `triage-filter.sh`, `preflight.sh` | reads the GitHub API, clones mirrors |
+| `github-account-recovery/*` (same four) | as above |
 | `restore.sh` **without** `--apply` | prints a plan, changes nothing |
 
 ### What you must NOT run without explicit human confirmation
@@ -113,8 +128,10 @@ the OS.
 |---|---|
 | `ioc/` | the indicator set, single source of truth, read at runtime by everything |
 | `lib/` | shared engines: `gh-scan`, `gh-sweep`, `gh-restore`, `triage-filter`, `common.sh`, `local-common.sh` |
-| `org-cleanup/`, `personal-cleanup/` | thin wrappers over `lib/` plus their own `preflight.sh` |
-| `local-cleanup/` | one entry point per operating system |
+| `github-org-recovery/` | recover a GitHub **organization**: thin wrappers over `lib/` plus its own `preflight.sh` |
+| `github-account-recovery/` | the same for **one personal account** |
+| `machine-cleanup/` | check and clean **one computer**, one script per operating system |
+| `polinrider.sh` | the single entry point at the repository root |
 | `ci/` | the vendorable scanner, its workflow template, installer, and three self-tests |
 
 `common.sh` and `local-common.sh` are sourced, not executed, and are

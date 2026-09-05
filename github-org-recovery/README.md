@@ -1,13 +1,28 @@
-# Organization cleanup
+# GitHub organization recovery
 
-Restore every force-pushed branch across a GitHub organization to the commit that
-existed before the attack. History stays intact and no work is lost: the branch
-pointer moves back, and the malicious commits become unreachable.
+<sub>[← back to the main README](../README.md) · this folder is for a **GitHub
+organization**. For one personal account use [`github-account-recovery/`](../github-account-recovery/);
+for a computer use [`machine-cleanup/`](../machine-cleanup/).</sub>
 
-Read [step 0](#step-0--before-anything-else) before running anything. It decides
-whether this method can work for you at all.
+---
 
-**Scripts in this folder**
+**What this does.** Puts every force-pushed branch in your organization back to
+the commit that existed before the attack.
+
+**What "cleanup" means here.** Not deleting. The branch pointer moves back to a
+commit that still exists, and the attacker's commits become unreachable. History
+is intact and no work is lost.
+
+**What it never does.** Rewrite history, delete a branch, or touch anything
+without `--apply`.
+
+> [!IMPORTANT]
+> Read [step 0](#step-0--before-anything-else) before running anything. It takes
+> sixty seconds and it decides whether this method can work for you at all.
+
+---
+
+## The scripts
 
 | Script | What it does | Changes anything? |
 |---|---|---|
@@ -21,10 +36,12 @@ whether this method can work for you at all.
 
 ## Step 0 — before anything else
 
-**Is anyone's machine still infected?** Run [`../local-cleanup/`](../local-cleanup/)
-on every developer machine first. Restoring branches while an implant holds a live
-token means it re-pushes within minutes. This campaign did exactly that in one
-documented case: a second wave landed fifty minutes after the first containment.
+> [!WARNING]
+> **Is anyone's machine still infected?** Run [`../machine-cleanup/`](../machine-cleanup/)
+> on every developer machine first. Restoring branches while an implant holds a
+> live token means it re-pushes within minutes. This campaign did exactly that in
+> one documented case: a second wave landed fifty minutes after the first
+> containment.
 
 **Can the pre-attack SHAs still be recovered?** They come from the per-repository
 Events API, which keeps roughly the last 300 events. Git push events appear in the
@@ -46,7 +63,8 @@ Read the oldest timestamp:
   repository. Restore is no longer possible there; delete the affected branches
   and recreate them from a clean default branch instead.
 
-Every push anyone makes shortens this window. Do step 2 today.
+> [!CAUTION]
+> Every push anyone makes shortens this window. Do step 2 today.
 
 ---
 
@@ -115,7 +133,10 @@ gh api --paginate "/orgs/YOUR-ORG/audit-log?phrase=action:git.push&include=all" 
   > ./evidence/audit-log-git-push.json
 ```
 
-Keep `./evidence/` until the incident is closed. It is your forensic baseline.
+> [!TIP]
+> Keep `./evidence/` until the incident is closed. It is your forensic baseline,
+> and possibly your legal record. It is git-ignored, so it will not end up in a
+> commit.
 
 ---
 
@@ -188,10 +209,11 @@ Writes `evidence/restore-plan.tsv`, one row per branch:
 | `SHA_GONE` | The commit returned 404. It has been garbage collected | no — delete and recreate the branch |
 | `NO_MIRROR` | No local mirror. Re-run step 2 for that repository | no |
 
-**The second-wave trap.** If the attacker pushed twice, the second push's `before`
-value is the first push's malicious commit. Restoring to it would pin your
-branches to malware. `restore.sh` refuses those rows outright, but if you see any,
-your `--since` starts too late. Move it earlier and rebuild the plan.
+> [!CAUTION]
+> **The second-wave trap.** If the attacker pushed twice, the second push's
+> `before` value *is* the first push's malicious commit. Restoring to it would pin
+> your branches to malware. `restore.sh` refuses those rows outright — but if you
+> see any, your `--since` starts too late. Move it earlier and rebuild the plan.
 
 ---
 
@@ -206,7 +228,8 @@ commit from the attack window. It also prints one diff per distinct before→aft
 pair, so you can confirm the payload with your own eyes, and lists the branches
 whose recent commits a restore would orphan.
 
-Exit 1 means blocked. Fix the cause; do not proceed.
+> [!WARNING]
+> Exit 1 means blocked. Fix the cause; do not proceed.
 
 ---
 
@@ -255,9 +278,11 @@ An empty sweep is the evidence that there was no third wave.
 
 ## Step 9 — reopen
 
-Do not lift `IR-FREEZE` until the hardening in the
-[root README, section 5](../README.md#5-hardening) is in place, starting with
-**required commit signing** — the direct counter to the backdated-amend technique.
+> [!IMPORTANT]
+> Do not lift `IR-FREEZE` until the hardening in the
+> [root README](../README.md#step-4--stop-it-happening-again) is in place,
+> starting with **required commit signing** — the direct counter to the
+> backdated-amend technique.
 
 Then, per repository: lift the freeze, re-enable Actions, and tell the team they
 may work on it again **from a fresh clone**. Existing local clones stay untrusted.

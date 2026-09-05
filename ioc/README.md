@@ -1,5 +1,10 @@
 # Indicator set
 
+<sub>[← back to the main README](../README.md) · this folder is **data, not code**.
+Every script reads it at runtime.</sub>
+
+---
+
 One source of truth. Every script in this repository reads these files at runtime,
 so adding an indicator here updates the org scanner, the personal scanner and all
 three local checks at once.
@@ -44,4 +49,4 @@ Current published tracking for this campaign:
 Any file that *detects* PolinRider contains PolinRider strings by definition. Your
 own scanners, this repository, and CI workflows built from it will be flagged by a
 grep-based scan. That is expected. `triage-filter.sh` separates those matches by
-path; see `org-cleanup/README.md`, step 3.
+path; see `github-org-recovery/README.md`, step 3.

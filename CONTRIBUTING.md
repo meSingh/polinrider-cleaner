@@ -25,13 +25,14 @@ shellcheck --severity=warning --external-sources <every script you touched>
 ./ci/selftest.sh            # detection: infected fixture and clean control
 ./ci/selftest-restore.sh    # restore planner: classification and the wave-2 trap
 ./ci/selftest-implant.sh    # implant detection, hashing and quarantine
+./ci/selftest-entrypoint.sh # polinrider.sh routing, exit codes and read-only behaviour
 ```
 
 The tree is clean at `--severity=warning`, which is what CI enforces. Where a
 warning is deliberately suppressed there is a `# shellcheck disable=` with the
 reason on the line above it.
 
-For `local-cleanup/check-windows.ps1`, CI parses it and runs PSScriptAnalyzer.
+For `machine-cleanup/check-windows.ps1`, CI parses it and runs PSScriptAnalyzer.
 Both must be clean.
 
 `selftest.sh` builds a synthetic infected repository and a clean control

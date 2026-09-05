@@ -1,7 +1,15 @@
 # Continuous scanning
 
-Scan every push and pull request for PolinRider artifacts, using code that lives
-inside your own repository.
+<sub>[← back to the main README](../README.md) · this folder is for **preventing
+the next one**. It is not part of cleaning up an active incident.</sub>
+
+---
+
+**What this does.** Scans every push and pull request in **your own**
+repositories, using a copy of the scanner that lives inside them.
+
+**Why a copy.** So the scan does not depend on anything that can change under
+you. See [below](#why-the-scanner-is-vendored-not-installed).
 
 | File | What it is |
 |---|---|
@@ -104,17 +112,21 @@ execute, so scanning it buys nothing. Pass `--scan-docs` if you want it anyway.
 
 ## Tuning
 
-**Your own security tooling gets flagged.** Any file that searches for these
-indicators contains them. Exclude it by path:
+> [!NOTE]
+> **Your own security tooling gets flagged.** Any file that searches for these
+> indicators contains them by definition.
+
+Exclude it by path:
 
 ```bash
 ./scan-workspace.sh --path . --exclude '(^|/)security/scanners/'
 ```
 
-**A finding you believe is wrong.** Do not widen the exclusions until you have
-read the matched line. Then
-[open a false-positive issue](../.github/ISSUE_TEMPLATE/false-positive.md) so the
-fix reaches everyone rather than only your repository.
+> [!WARNING]
+> **A finding you believe is wrong?** Do not widen the exclusions until you have
+> read the matched line. Then
+> [open a false-positive issue](../.github/ISSUE_TEMPLATE/false-positive.md) so
+> the fix reaches everyone rather than only your repository.
 
 **Keeping indicators current.** Signatures rotate. Update [`../ioc/`](../ioc/),
 re-run `install-workflow.sh` on each repository, and re-run `selftest.sh` before
