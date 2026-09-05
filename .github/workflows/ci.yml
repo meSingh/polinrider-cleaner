@@ -61,6 +61,9 @@ jobs:
       - name: Self-test - next steps and evidence location
         run: ./ci/selftest-nextsteps.sh
 
+      - name: Self-test - preserving restore points
+        run: ./ci/selftest-preserve.sh
+
   powershell:
     name: PowerShell lint
     runs-on: ubuntu-latest

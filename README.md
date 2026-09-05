@@ -293,7 +293,7 @@ filled in, in `NEXT-STEPS.md` in your evidence directory.
 
 | What happened | How you can tell | The fix |
 |---|---|---|
-| The branch was **force-pushed** to a rewritten history | `sweep.sh` shows pushes nobody on your team claims | **Restore.** Move the branch pointer back. The good commit is still in the mirror. |
+| The branch was **force-pushed** to a rewritten history | `sweep.sh` shows pushes nobody on your team claims | **Restore.** Move the branch pointer back, once you have fetched the earlier commit. |
 | The payload was **committed normally** on top | No push events survive, or the pushes are all accounted for | **Remove.** There is no earlier state to go back to, so delete the files and commit that. |
 
 The second case is the common one once some time has passed. GitHub keeps
@@ -325,7 +325,24 @@ other commit. Use `./github-org-recovery/clean-repo.sh` for an organization.
 Protected branches will reject the push. That is correct behaviour: clean an
 unprotected branch and open a pull request from it.
 
-### If it was force-pushed: restore it
+### If it was force-pushed: get the old commit first
+
+A mirror clone fetches only what is reachable from a ref. After a force-push the
+commit you want to restore to is reachable from nothing, so **it is not in your
+mirror**, even though that is where `restore.sh` looks for it. GitHub keeps
+serving those objects by SHA until it garbage-collects them, and nothing brings
+them back after that.
+
+```bash
+./github-account-recovery/preserve-restore-points.sh --out "$EV"
+```
+
+It reads from GitHub and pushes nothing. Each commit it finds is anchored under
+`refs/polinrider/pre-attack/` in the mirror, so it survives a re-scan and a
+`git gc`. Anything it reports as `GONE from GitHub` cannot be restored; remove
+the payload from those branches instead.
+
+### Then restore it
 
 Every command below writes into the same evidence directory. Set it once:
 
