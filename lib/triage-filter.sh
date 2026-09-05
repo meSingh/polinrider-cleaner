@@ -23,8 +23,9 @@ prc_need jq
 # payload. Extend this list if you keep your scanners somewhere else.
 BENIGN_RE='(^|/)\.github/workflows/[^/]*polinrider[^/]*\.(yml|yaml)$'
 BENIGN_RE="$BENIGN_RE"'|(^|/)\.github/polinrider/'
-BENIGN_RE="$BENIGN_RE"'|(^|/)(polinrider|scan-workspace|gh-scan|gh-sweep|gh-restore|triage-filter|check-macos|check-linux|preflight)[^/]*\.(sh|ps1)$'
+BENIGN_RE="$BENIGN_RE"'|(^|/)(polinrider|scan-workspace|gh-scan|gh-sweep|gh-restore|triage-filter|check-macos|check-linux|check-windows|preflight|selftest|install-workflow|local-common|common)[^/]*\.(sh|ps1)$'
 BENIGN_RE="$BENIGN_RE"'|(^|/)ioc/[^/]*\.txt$'
+BENIGN_RE="$BENIGN_RE"'|(^|/)(lib|ci)/'
 BENIGN_RE="$BENIGN_RE"'|\.md$|(^|/)docs/|README'
 
 jq -c '.[] | select(.verdict=="INFECTED")' "$REPORT" | while read -r entry; do

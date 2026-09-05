@@ -73,7 +73,7 @@ than one applies, **the order is fixed and it matters**:
 ## Run it
 
 ```bash
-git clone --depth 1 --branch v1.0.5 https://github.com/meSingh/polinrider-cleaner.git
+git clone --depth 1 --branch v1.0.6 https://github.com/meSingh/polinrider-cleaner.git
 cd polinrider-cleaner
 ./polinrider.sh
 ```
@@ -82,12 +82,12 @@ That pins you to a specific published release rather than to whatever `main`
 happens to be at the moment you clone.
 
 Tags in this repository are protected: once published, a tag cannot be moved,
-overwritten or deleted, by anyone, including the maintainer. So `v1.0.5` will
-always be exactly the code that was reviewed and released as `v1.0.5`. If you
+overwritten or deleted, by anyone, including the maintainer. So `v1.0.6` will
+always be exactly the code that was reviewed and released as `v1.0.6`. If you
 want to check that yourself:
 
 ```bash
-git verify-tag v1.0.5
+git verify-tag v1.0.6
 ```
 
 It is signed with GPG key `A743FEC7E4955B92`. Every commit in the repository is

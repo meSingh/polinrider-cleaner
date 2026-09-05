@@ -22,7 +22,9 @@ mkdir -p "$TMP/clean" "$TMP/dirty/.vscode"
 printf 'export default { reactStrictMode: true }\n' > "$TMP/clean/next.config.ts"
 printf 'module.exports = {}\nconst _0x=global["_V"];// rmcej%%otb%%\n' > "$TMP/dirty/tailwind.config.js"
 
-BEFORE="$(find "$TMP" -type f -exec ls -l {} + | awk '{print $5, $NF}' | sort)"
+SCANNED="$TMP/clean $TMP/dirty"
+# shellcheck disable=SC2086  # the two paths are separate arguments on purpose
+BEFORE="$(find $SCANNED -type f -exec ls -l {} + | awk '{print $5, $NF}' | sort)"
 
 echo "assertions:"
 
@@ -60,16 +62,63 @@ if [[ $RC -eq 2 ]]; then pass "menu answers can be piped in"; else fail "piped m
 
 # --- OS routing --------------------------------------------------------------
 case "$(uname -s)" in
-  Darwin) EXPECT="check-macos.sh" ;;
-  *)      EXPECT="check-linux.sh" ;;
+  Darwin) EXPECT="$ROOT/machine-cleanup/check-macos.sh" ;;
+  *)      EXPECT="$ROOT/machine-cleanup/check-linux.sh" ;;
 esac
+if [[ -x "$EXPECT" ]]; then
+  pass "the per-OS tool for this machine exists and is executable"
+else fail "missing per-OS tool: $EXPECT"; fi
+
 OUT="$("$ROOT/polinrider.sh" --path "$TMP/dirty" 2>&1)"
-if printf '%s\n' "$OUT" | grep -q "$EXPECT"; then
-  pass "routes to the right local tool for this OS ($EXPECT)"
-else fail "did not name $EXPECT in its guidance"; fi
+if printf '%s\n' "$OUT" | grep -q -- "--machine"; then
+  pass "a finding points the operator at the machine check"
+else fail "guidance does not mention --machine"; fi
+
+# --- the GitHub verdict must come from counts, never from an exit code -------
+# A previous version returned triage-filter's exit status, which is 0 by design.
+# On an account with 312 infected refs it printed "nothing confirmed". The entry
+# point now parses the counts, so this asserts that contract from both ends.
+cat > "$TMP/triage-real.json" <<'JSON'
+[
+ {"repo":"acme/app","ref":"refs/heads/main","verdict":"INFECTED",
+  "ioc_strings":["refs/heads/main:public/fonts/fake.woff2:1: rmcej%otb%"],
+  "ioc_filenames":[],"font_masquerade":[],"weak_signals":[],"config_tail":[]}
+]
+JSON
+cat > "$TMP/triage-tooling.json" <<'JSON'
+[
+ {"repo":"acme/cleaner","ref":"refs/heads/main","verdict":"INFECTED",
+  "ioc_strings":["refs/heads/main:ioc/strong.txt:1: rmcej%otb%"],
+  "ioc_filenames":[],"font_masquerade":[],"weak_signals":[],"config_tail":[]}
+]
+JSON
+
+# triage-filter still exits 0, which is why it must not be used as the verdict
+"$ROOT/lib/triage-filter.sh" "$TMP/triage-real.json" >/dev/null 2>&1
+if [[ $? -eq 0 ]]; then
+  pass "triage-filter exits 0 even with a real finding, as documented"
+else fail "triage-filter changed its exit contract"; fi
+
+# the entry point's own extraction, applied to the real output
+extract() {
+  "$ROOT/lib/triage-filter.sh" "$1" 2>&1 \
+    | awk -F: '/REAL_SUSPECT refs/ {gsub(/[^0-9]/,"",$2); print $2; exit}'
+}
+if [[ "$(extract "$TMP/triage-real.json")" == "1" ]]; then
+  pass "a genuine finding is counted as one real suspect"
+else fail "real finding not counted: got '$(extract "$TMP/triage-real.json")'"; fi
+
+if [[ "$(extract "$TMP/triage-tooling.json")" == "0" ]]; then
+  pass "a match inside the indicator set is not counted as a real suspect"
+else fail "own tooling counted as a real suspect: got '$(extract "$TMP/triage-tooling.json")'"; fi
+
+if grep -q 'REAL_SUSPECT refs' "$ROOT/lib/triage-filter.sh"; then
+  pass "the label the entry point parses still exists in triage-filter"
+else fail "triage-filter no longer prints the label the entry point parses"; fi
 
 # --- it changed nothing ------------------------------------------------------
-AFTER="$(find "$TMP" -type f -exec ls -l {} + | awk '{print $5, $NF}' | sort)"
+# shellcheck disable=SC2086  # same
+AFTER="$(find $SCANNED -type f -exec ls -l {} + | awk '{print $5, $NF}' | sort)"
 if [[ "$BEFORE" == "$AFTER" ]]; then pass "changed nothing on disk"; else fail "modified the scanned tree"; fi
 
 echo

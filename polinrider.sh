@@ -157,8 +157,22 @@ scan_github() {  # scan_github <org|user> <name>
     "$dir/scan.sh" --user "$name" --out "$OUT" || return 2
   fi
   step "Separating real findings from your own detection tooling"
-  "$dir/triage-filter.sh" "$OUT/triage.json"
-  local rc=$?; note_rc $rc; return $rc
+  # triage-filter exits 0 by design, so its exit code must never be the verdict.
+  # An earlier version returned it directly, which reported "nothing confirmed"
+  # on an account with 312 infected refs. The verdict comes from the counts.
+  local filtered real reviewed
+  filtered="$("$dir/triage-filter.sh" "$OUT/triage.json" 2>&1)"
+  printf '%s\n' "$filtered"
+  real="$(printf '%s\n' "$filtered" | awk -F: '/REAL_SUSPECT refs/ {gsub(/[^0-9]/,"",$2); print $2; exit}')"
+  reviewed="$(jq '[.[]|select(.verdict=="review")]|length' "$OUT/triage.json" 2>/dev/null || echo 0)"
+  [[ "$real"     =~ ^[0-9]+$ ]] || real=0
+  [[ "$reviewed" =~ ^[0-9]+$ ]] || reviewed=0
+  if [[ "$real" -gt 0 ]]; then
+    bad "$real ref(s) carry a confirmed indicator and are not your own detection tooling."
+    note_rc 2; return 2
+  fi
+  if [[ "$reviewed" -gt 0 ]]; then note_rc 1; return 1; fi
+  note_rc 0; return 0
 }
 
 # --- interactive ------------------------------------------------------------
@@ -247,13 +261,18 @@ case "$WORST" in
      ;;
   2) bad "Something confirmed. Do these in order:"
      say  ""
-     say  "  1. Disconnect this machine from the network if the finding was local."
-     say  "  2. Rotate every credential, from a different machine."
-     say  "     ${DIM}README section: Step 2 - Rotate every credential${X}"
-     say  "  3. Restore the affected branches."
-     say  "     ${DIM}github-org-recovery/README.md, or github-account-recovery/README.md${X}"
-     say  "  4. Quarantine the local artifacts once the machine is offline:"
-     say  "     ${DIM}$LOCAL_TOOL --apply${X}"
+     say  "  1. Do not push to any affected repository, and do not pull one into an"
+     say  "     existing clone. A pull into an infected clone re-infects the remote."
+     say  "  2. Check every machine you use for git, if you have not already:"
+     say  "     ${DIM}./polinrider.sh --machine${X}"
+     say  "  3. Rotate every credential, from a machine that came back clean."
+     say  "     ${DIM}README, Step 2. Rotate every credential${X}"
+     say  "  4. Only then restore the branches."
+     say  "     ${DIM}github-account-recovery/README.md for an account${X}"
+     say  "     ${DIM}github-org-recovery/README.md for an organization${X}"
+     say  ""
+     say  "  Read what actually matched before acting on any of it:"
+     say  "     ${DIM}cat $OUT/triage.txt${X}"
      ;;
 esac
 say ""
