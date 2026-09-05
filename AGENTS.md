@@ -231,6 +231,29 @@ the version, bump the pin, merge that, then tag the commit that carries it.
 > including the maintainer. A published tag is permanent. If you tagged the wrong
 > commit, cut the next patch version; do not try to move the tag.
 
+### Maintaining SCORECARD_TOKEN
+
+The Scorecard workflow reads `secrets.SCORECARD_TOKEN`, a **fine-grained**
+personal access token scoped to this repository with **Administration:
+read-only** and nothing else. It exists only so the Branch-Protection check can
+read the protection settings; the default workflow token cannot, and that check
+reports as inconclusive without it. The token cannot change anything.
+
+Two things to know:
+
+1. **It expires.** Fine-grained tokens last at most a year. When it lapses,
+   nothing fails: `repo_token` falls back to the default token and
+   Branch-Protection quietly returns to inconclusive, which is easy to miss.
+   If that check regresses for no apparent reason, check the token first.
+2. **Do not switch it to a classic token.** A classic PAT needs `repo` scope,
+   which grants write access to every repository the owner can reach. The
+   Scorecard documentation calls that strongly discouraged, and it would put a
+   broadly privileged credential in a workflow that runs on a schedule.
+
+To rotate it, create a replacement with the same settings and run
+`gh secret set SCORECARD_TOKEN --repo <owner>/<repo>`, which prompts for the
+value so it never reaches shell history.
+
 ### Signing
 
 Commits and tags in this repository are GPG-signed and show as Verified on

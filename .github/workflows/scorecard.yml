@@ -35,6 +35,17 @@ jobs:
           results_format: sarif
           # Required for the public badge. Publishes the score, not the code.
           publish_results: true
+          repo_token: ${{ secrets.SCORECARD_TOKEN || github.token }}
+          # The default token cannot read branch protection settings, so that
+          # check reports as inconclusive without this. SCORECARD_TOKEN is a
+          # fine-grained PAT scoped to this repository with Administration:
+          # read-only and nothing else. It is read-only and cannot change
+          # anything. Falls back to the default token when the secret is absent,
+          # so a fork or a fresh clone still runs, just without that one check.
+          #
+          # Fine-grained tokens expire after at most one year. When it lapses,
+          # Branch-Protection silently returns to inconclusive rather than
+          # failing the job. See AGENTS.md, "Maintaining SCORECARD_TOKEN".
 
       - name: Upload result as an artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
