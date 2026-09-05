@@ -55,7 +55,7 @@ prc_local_load_iocs() {
   IMPLANT_ARGS=()
   while IFS= read -r line; do IMPLANT_ARGS+=(-e "$line"); done \
     < <(sed -e '/^#/d' -e '/^$/d' "$PRC_IOC/implant-names.txt")
-  [[ ${#STRONG_ARGS[@]} -gt 0 ]] || { echo "indicator set is empty" >&2; exit 2; }
+  [[ ${#STRONG_ARGS[@]} -gt 0 ]] || { echo "indicator set is empty" >&2; exit 3; }
 }
 
 has_strong() { grep -qaF "${STRONG_ARGS[@]}" "$1" 2>/dev/null; }
@@ -83,7 +83,7 @@ quarantine() {
 
 quarantine_init() {
   [[ $APPLY -eq 0 ]] && return 0
-  mkdir -p "$QDIR/files" || { echo "cannot create $QDIR" >&2; exit 2; }
+  mkdir -p "$QDIR/files" || { echo "cannot create $QDIR" >&2; exit 3; }
   printf 'original_path\tquarantined_path\treason\n' > "$QDIR/manifest.tsv"
   cat > "$QDIR/RESTORE.txt" <<'RES'
 Nothing here was deleted. To put a file back:

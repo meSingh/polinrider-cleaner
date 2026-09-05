@@ -170,6 +170,20 @@ suppressed there is a `# shellcheck disable=` with the reason on the line above.
 
 ### Rules that are not negotiable
 
+**An error is not a finding.** Exit code 3 means a scan could not run. It must
+never be reported as a verdict about the code, and it must never be folded into
+`WORST`. `./polinrider.sh --path /nowhere` used to exit 2 and print the full
+compromise playbook for a directory that does not exist. A tool that says
+"confirmed" when it did not look is worse than one that says nothing. Equally,
+an incomplete run is not a clean one: 3 also suppresses the "nothing confirmed"
+result.
+
+**The push ledger cannot tell a colleague from an attacker.** It records who
+pushed, not whether they should have. Name the actors, show the force-push
+evidence, and ask. `--trusted-actor` is how the operator answers, and it is what
+moves the recommendation from `restore.sh` to `clean-repo.sh`.
+
+
 **A mirror does not contain the commit you want to restore to.** `git clone
 --mirror` fetches only what is reachable from a ref, and after a force-push the
 pre-attack commit is reachable from nothing. `restore.sh` looks for it in the

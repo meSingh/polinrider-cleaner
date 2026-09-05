@@ -325,6 +325,17 @@ other commit. Use `./github-org-recovery/clean-repo.sh` for an organization.
 Protected branches will reject the push. That is correct behaviour: clean an
 unprotected branch and open a pull request from it.
 
+> [!TIP]
+> **If the pushes turn out to be a colleague's**, say so and the tool stops
+> sending you down the restore path:
+>
+> ```bash
+> ./polinrider.sh --user YOUR-USERNAME --trusted-actor THEIR-LOGIN
+> ```
+>
+> Repeat the flag for each person. Their pushes stop counting as evidence of a
+> force-push, which usually leaves the committed-payload case and step 4.
+
 ### If it was force-pushed: get the old commit first
 
 A mirror clone fetches only what is reachable from a ref. After a force-push the

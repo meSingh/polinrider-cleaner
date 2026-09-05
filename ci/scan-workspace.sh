@@ -21,7 +21,8 @@
 #                     and markdown does not execute.
 #   --ioc DIR         indicator directory. Default: ioc/ beside or above this script
 #
-# Exit codes: 0 clean, 1 review items only (with --fail-on review), 2 infected.
+# Exit codes: 0 clean, 1 review items only (with --fail-on review), 2 infected,
+#             3 could not scan. 3 is never a verdict about the code you pointed it at.
 
 set -uo pipefail
 
@@ -38,7 +39,7 @@ while [[ $# -gt 0 ]]; do
     --scan-docs) SCAN_DOCS=1; shift ;;
     --ioc)      IOC_DIR="$2"; shift 2 ;;
     -h|--help)  sed -n '2,26p' "$0"; exit 0 ;;
-    *) echo "unknown argument: $1" >&2; exit 2 ;;
+    *) echo "unknown argument: $1" >&2; exit 3 ;;
   esac
 done
 
@@ -50,21 +51,21 @@ EXCLUDES="$EXCLUDES$EXTRA_EXCLUDES"
 if [[ -z "$IOC_DIR" ]]; then
   if   [[ -f "$SDIR/ioc/strong.txt"    ]]; then IOC_DIR="$SDIR/ioc"
   elif [[ -f "$SDIR/../ioc/strong.txt" ]]; then IOC_DIR="$SDIR/../ioc"
-  else echo "cannot find ioc/strong.txt. Pass --ioc DIR" >&2; exit 2; fi
+  else echo "cannot find ioc/strong.txt. Pass --ioc DIR" >&2; exit 3; fi
 fi
-[[ -d "$PATH_ARG" ]] || { echo "no such directory: $PATH_ARG" >&2; exit 2; }
+[[ -d "$PATH_ARG" ]] || { echo "no such directory: $PATH_ARG" >&2; exit 3; }
 
 WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
 strip() { sed -e 's/[[:space:]]*$//' -e '/^#/d' -e '/^$/d' "$@"; }
 strip "$IOC_DIR/strong.txt" "$IOC_DIR/bad-packages.txt" > "$WORK/strong"
 strip "$IOC_DIR/weak.txt"       > "$WORK/weak"
 strip "$IOC_DIR/filenames.txt"  > "$WORK/filenames"
-[[ -s "$WORK/strong" ]] || { echo "indicator set is empty" >&2; exit 2; }
+[[ -s "$WORK/strong" ]] || { echo "indicator set is empty" >&2; exit 3; }
 
 # Obfuscation tells used to qualify a "content after module end" finding.
 TAIL_TELL='eval\(|new Function\(|Buffer\.from\(|child_process|atob\(|fromCharCode|\\x[0-9a-fA-F]{2}\\x[0-9a-fA-F]{2}|require\([^)]*(child_process|https?|net|dns)'
 
-cd "$PATH_ARG" || exit 2
+cd "$PATH_ARG" || exit 3
 HITS=0; REVIEWS=0
 # Findings quote file content and paths, both of which an attacker controls.
 # Strip control characters so a crafted file cannot emit terminal escape
@@ -196,5 +197,5 @@ case "$FAIL_ON" in
   never)    exit 0 ;;
   review)   [[ $HITS -gt 0 ]] && exit 2; [[ $REVIEWS -gt 0 ]] && exit 1; exit 0 ;;
   infected) [[ $HITS -gt 0 ]] && exit 2; exit 0 ;;
-  *) echo "unknown --fail-on value: $FAIL_ON" >&2; exit 2 ;;
+  *) echo "unknown --fail-on value: $FAIL_ON" >&2; exit 3 ;;
 esac
