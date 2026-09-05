@@ -113,6 +113,25 @@ check "T0 also appears on screen"                "grep -q -- '--since 2026-08-10
 check "offers the sweep"                         "grep -q 'sweep.sh --user acme' '$D2'"
 check "offers the user wrapper"                  "grep -q 'github-account-recovery/clean-repo.sh' '$D2'"
 
+echo "== a trusted actor is not evidence =="
+# The push ledger cannot tell a colleague from an attacker. Naming one has to
+# flip the answer from restore to remove, without pretending the events vanished.
+# shellcheck disable=SC2034  # read by check() through eval
+OUT6="$("$ROOT/lib/next-steps.sh" --triage "$E2/triage.json" --out "$E2" \
+        --owner acme --owner-type user --trusted-actor mallory 2>&1)"
+check "trusted pushes stop being restore candidates" "[[ ! -s '$E2/restorable-repos.txt' ]]"
+check "routes to removal instead"                   "grep -q 'Removing the payload is' <<< \"\$OUT6\""
+check "says they were discounted, not absent"       "grep -q 'discounted' <<< \"\$OUT6\""
+check "does not claim no events survive"            "! grep -q 'No push events survive' <<< \"\$OUT6\""
+check "offers no runnable sweep once trusted"       "! grep -q 'sweep.sh --' '$E2/NEXT-STEPS.md'"
+# An unrelated name must change nothing.
+# shellcheck disable=SC2034  # read by check() through eval
+OUT7="$("$ROOT/lib/next-steps.sh" --triage "$E2/triage.json" --out "$E2" \
+        --owner acme --owner-type user --trusted-actor someone-else 2>&1)"
+check "an unrelated trusted name changes nothing"   "grep -q 'mallory' <<< \"\$OUT7\""
+# Restore the untrusted state for the checks that follow.
+"$ROOT/lib/next-steps.sh" --triage "$E2/triage.json" --out "$E2" --owner acme --owner-type user >/dev/null 2>&1
+
 echo "== a push to an unflagged branch is not evidence =="
 E3="$TMP/e3"; mkdir -p "$E3"; mk_triage "$E3/triage.json" acme/app
 { printf 'repo\tref\tbefore\tafter\tactor\tcreated_at\tsize\tforced_hint\n'

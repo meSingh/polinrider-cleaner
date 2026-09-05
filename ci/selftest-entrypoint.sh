@@ -116,6 +116,45 @@ if grep -q 'REAL_SUSPECT refs' "$ROOT/lib/triage-filter.sh"; then
   pass "the label the entry point parses still exists in triage-filter"
 else fail "triage-filter no longer prints the label the entry point parses"; fi
 
+# --- an error is not a verdict -----------------------------------------------
+# This is the bug that made the whole distinction necessary: `--path /nowhere`
+# exited 2, the entry point read anything >= 2 as "confirmed", and it printed
+# the full compromise playbook for a directory that does not exist.
+MISSING="$TMP/definitely-not-here"
+OUT_ERR="$("$ROOT/polinrider.sh" --path "$MISSING" 2>&1)"; RC=$?
+if [[ "$RC" -eq 3 ]]; then pass "a missing directory exits 3, not 2"
+else fail "a missing directory exited $RC"; fi
+
+if grep -q 'Something confirmed' <<<"$OUT_ERR"; then
+  fail "a missing directory was reported as a confirmed infection"
+else pass "a missing directory is not reported as an infection"; fi
+
+if grep -q 'Do not open it in your editor' <<<"$OUT_ERR"; then
+  fail "the compromise playbook printed for a directory that does not exist"
+else pass "no compromise playbook for a directory that does not exist"; fi
+
+if grep -q 'not a clean result' <<<"$OUT_ERR"; then
+  pass "an incomplete scan is not reported as clean either"
+else fail "an incomplete scan did not say it was incomplete"; fi
+
+"$ROOT/ci/scan-workspace.sh" --path "$MISSING" >/dev/null 2>&1; RC=$?
+if [[ "$RC" -eq 3 ]]; then pass "the workspace scanner exits 3 on a bad path"
+else fail "the workspace scanner exited $RC on a bad path"; fi
+
+"$ROOT/ci/scan-workspace.sh" --path "$SCANNED" --nope >/dev/null 2>&1; RC=$?
+if [[ "$RC" -eq 3 ]]; then pass "an unknown argument exits 3"
+else fail "an unknown argument exited $RC"; fi
+
+# And the codes that mean something must still mean it.
+CLEANDIR="$TMP/clean-tree"; mkdir -p "$CLEANDIR"; echo 'console.log(1)' > "$CLEANDIR/a.js"
+"$ROOT/ci/scan-workspace.sh" --path "$CLEANDIR" >/dev/null 2>&1; RC=$?
+if [[ "$RC" -eq 0 ]]; then pass "a clean tree still exits 0"; else fail "a clean tree exited $RC"; fi
+
+DIRTYDIR="$TMP/dirty-tree"; mkdir -p "$DIRTYDIR"
+printf 'module.exports = {}\nconst _0x=global["_V"];// rmcej%%otb%%\n' > "$DIRTYDIR/tailwind.config.js"
+"$ROOT/ci/scan-workspace.sh" --path "$DIRTYDIR" >/dev/null 2>&1; RC=$?
+if [[ "$RC" -eq 2 ]]; then pass "a real payload still exits 2"; else fail "a real payload exited $RC"; fi
+
 # --- it changed nothing ------------------------------------------------------
 # shellcheck disable=SC2086  # same
 AFTER="$(find $SCANNED -type f -exec ls -l {} + | awk '{print $5, $NF}' | sort)"
