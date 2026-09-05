@@ -26,9 +26,9 @@ you. See [below](#why-the-scanner-is-vendored-not-installed).
 
 A scan step that pulls a third-party action on every push is the same shape as the
 attack it is meant to catch: someone else's code, fetched automatically, running
-with your repository's context. If that action's publisher is compromised — the
-exact thing happening across npm, Go, Composer and the VS Code marketplace right
-now — your detection tooling becomes the delivery mechanism.
+with your repository's context. If that action's publisher is compromised, and that
+is exactly what is happening across npm, Go, Composer and the VS Code marketplace
+right now, your detection tooling becomes the delivery mechanism.
 
 So `install-workflow.sh` copies the scanner into `.github/polinrider/` in your
 repository. After that the scan runs entirely from code you control, reviewed in
@@ -41,33 +41,110 @@ commit SHA rather than a moving tag.
 
 ## Install
 
+See exactly what it will do first. Nothing is written:
+
+```bash
+./install-workflow.sh /path/to/your/repo --dry-run
+```
+
+```
+DRY RUN. Nothing will be written.
+
+Target repository: /path/to/your/repo
+
+Files:
+  .github/workflows/polinrider-scan.yml                the workflow itself
+  .github/polinrider/scan-workspace.sh                 the scanner, executable
+  .github/polinrider/ioc/bad-packages.txt              indicator data
+  .github/polinrider/ioc/filenames.txt                 indicator data
+  .github/polinrider/ioc/hashes.txt                    indicator data
+  .github/polinrider/ioc/implant-names.txt             indicator data
+  .github/polinrider/ioc/implant-paths.txt             indicator data
+  .github/polinrider/ioc/network.txt                   indicator data
+  .github/polinrider/ioc/strong.txt                    indicator data
+  .github/polinrider/ioc/weak.txt                      indicator data
+
+Total: 10 files, about 17 KB. No dependencies are added.
+```
+
+Then run it for real:
+
 ```bash
 ./install-workflow.sh /path/to/your/repo
 ```
 
-That writes three things and commits nothing:
+### What lands in your repository
 
 ```
-.github/polinrider/scan-workspace.sh
-.github/polinrider/ioc/*.txt
-.github/workflows/polinrider-scan.yml
+.github/
+├── workflows/
+│   └── polinrider-scan.yml      the workflow. Reads nothing from outside your repo
+└── polinrider/
+    ├── scan-workspace.sh        the scanner, ~200 lines of shell you can read
+    └── ioc/
+        └── *.txt                the indicator set, plain text, one entry per line
 ```
 
-Verify it passes before you commit, so you find any false positive locally rather
-than in CI:
+Ten files, about 17 KB. **No dependency is added to your project.** Nothing is
+downloaded at scan time. No `package.json`, lockfile, submodule or container
+image is touched. If you delete `.github/polinrider/` and the workflow file, the
+installation is completely gone.
+
+### What it does not do
+
+- It does not commit. You review the diff and commit yourself.
+- It does not overwrite an existing `polinrider-scan.yml` unless you pass
+  `--force`. A dry run tells you if one is already there.
+- It does not modify any file you already had.
+- It does not phone home, and neither does the workflow it installs.
+
+### Before you commit
+
+Run the scanner locally, so any false positive shows up on your machine rather
+than as a red X on your next pull request:
 
 ```bash
 cd /path/to/your/repo
 .github/polinrider/scan-workspace.sh --path . --all-refs
-# or, from a checkout of this repository:  ./polinrider.sh --path /path/to/your/repo
+```
+
+Expected on a clean repository:
+
+```
+=========================================
+ PolinRider workspace scan
+   infected findings : 0
+   review findings   : 0
+=========================================
+```
+
+If it reports something, read
+[Tuning](#tuning) before you commit anything.
+
+Then:
+
+```bash
 git add .github/polinrider .github/workflows/polinrider-scan.yml
 git commit -m "Add PolinRider scan workflow"
 ```
 
-Re-run the installer after you update `ioc/*.txt` here, so the vendored copies
-stay current.
+### Keeping it current
 
----
+Signatures rotate. When `ioc/*.txt` changes in this repository, re-run the
+installer against each repo that has the vendored copy:
+
+```bash
+./install-workflow.sh /path/to/your/repo --force
+```
+
+### Removing it
+
+```bash
+rm -rf /path/to/your/repo/.github/polinrider \
+       /path/to/your/repo/.github/workflows/polinrider-scan.yml
+```
+
+That is the whole uninstall.
 
 ## What the workflow does
 
@@ -75,7 +152,7 @@ Runs on every push, every pull request, manually, and weekly on a schedule.
 Reinfection with a rotated signature is documented behaviour for this campaign,
 so scanning only on push is not enough.
 
-It checks out with `fetch-depth: 0` and `persist-credentials: false` — full
+It checks out with `fetch-depth: 0` and `persist-credentials: false`: full
 history so `--all-refs` can see it, and no token left in the runner's git config
 for a payload to find.
 

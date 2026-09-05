@@ -17,7 +17,7 @@ is intact and no work is lost.
 without `--apply`.
 
 > [!IMPORTANT]
-> Read [step 0](#step-0--before-anything-else) before running anything. It takes
+> Read [step 0](#step-0-before-anything-else) before running anything. It takes
 > sixty seconds and it decides whether this method can work for you at all.
 
 ---
@@ -44,7 +44,7 @@ without `--apply`.
 
 ---
 
-## Step 0 — before anything else
+## Step 0. Before anything else
 
 > [!WARNING]
 > **Is anyone's machine still infected?** Run [`../machine-cleanup/`](../machine-cleanup/)
@@ -78,7 +78,7 @@ Read the oldest timestamp:
 
 ---
 
-## Step 1 — freeze
+## Step 1. Freeze
 
 Branch protection on `main` is not a freeze. The malware creates branches too.
 
@@ -111,7 +111,7 @@ reset with global sign-out on your identity provider.
 
 ---
 
-## Step 2 — capture evidence (blocking)
+## Step 2. Capture evidence (blocking)
 
 Nothing gets restored before this finishes. Cleanup is reversible; losing the
 pre-attack SHAs is not.
@@ -150,7 +150,7 @@ gh api --paginate "/orgs/YOUR-ORG/audit-log?phrase=action:git.push&include=all" 
 
 ---
 
-## Step 3 — establish scope
+## Step 3. Establish scope
 
 Two views. Run both.
 
@@ -185,7 +185,7 @@ the filter in one step, if you have not run them already.</sub>
 
 ---
 
-## Step 4 — filter the false positives
+## Step 4. Filter the false positives
 
 A grep-based scanner cannot tell a file that *is* the malware from a file that
 *detects* it. Your own scan workflows will be flagged.
@@ -195,14 +195,14 @@ A grep-based scanner cannot tell a file that *is* the malware from a file that
 ```
 
 `BENIGN_TOOLING` lines are your own detection code. `REAL_SUSPECT` lines need
-your eyes. Read the matched content in `triage.txt` — never act on a count.
+your eyes. Read the matched content in `triage.txt`, and never act on a count.
 
 A `clean` verdict means the current indicator set is absent from that ref. It is
 not proof the ref was never touched. That is what step 3 is for.
 
 ---
 
-## Step 5 — build the restore plan
+## Step 5. Build the restore plan
 
 Dry run. Changes nothing.
 
@@ -216,21 +216,21 @@ Writes `evidence/restore-plan.tsv`, one row per branch:
 | Status | Meaning | Restorable |
 |---|---|---|
 | `ok` | That push rewrote history. Definite force push | yes |
-| `ok_fastforward` | Commits were appended without a rewrite. Read the diff first — a legitimate push in the window looks identical | yes, after review |
+| `ok_fastforward` | Commits were appended without a rewrite. Read the diff first, because a legitimate push in the window looks identical | yes, after review |
 | `ok_orphaned` | The target commit is unreachable from any ref, so the mirror never fetched it, but GitHub still holds it and confirmed so. **This is the normal state for a branch the attacker moved. It does not mean work was lost** | yes |
-| `MALICIOUS_TARGET` | The target is itself a commit pushed during the attack. This is the second-wave trap | no — widen `--since` and rebuild the plan |
-| `SHA_GONE` | The commit returned 404. It has been garbage collected | no — delete and recreate the branch |
+| `MALICIOUS_TARGET` | The target is itself a commit pushed during the attack. This is the second-wave trap | no, widen `--since` and rebuild the plan |
+| `SHA_GONE` | The commit returned 404. It has been garbage collected | no, delete and recreate the branch |
 | `NO_MIRROR` | No local mirror. Re-run step 2 for that repository | no |
 
 > [!CAUTION]
 > **The second-wave trap.** If the attacker pushed twice, the second push's
 > `before` value *is* the first push's malicious commit. Restoring to it would pin
-> your branches to malware. `restore.sh` refuses those rows outright — but if you
-> see any, your `--since` starts too late. Move it earlier and rebuild the plan.
+> your branches to malware. `restore.sh` refuses those rows outright. If you see
+> any, your `--since` starts too late: move it earlier and rebuild the plan.
 
 ---
 
-## Step 6 — preflight
+## Step 6. Preflight
 
 ```bash
 ./preflight.sh --org YOUR-ORG --plan ./evidence/restore-plan.tsv --actor ATTACKER-LOGIN
@@ -246,7 +246,7 @@ whose recent commits a restore would orphan.
 
 ---
 
-## Step 7 — restore
+## Step 7. Restore
 
 Same command as step 5 with `--apply`:
 
@@ -265,12 +265,12 @@ commit by commit, reading each diff.
 
 Restoring makes the malicious commit unreachable, not deleted. It stays in
 GitHub's object store until garbage collection. That is fine operationally. If
-you need it provably gone — audit, insurance, customer contract — open a GitHub
+you need it provably gone, for an audit, an insurer or a customer contract, open a GitHub
 Support ticket, or rebuild the repository from the clean mirror.
 
 ---
 
-## Step 8 — verify
+## Step 8. Verify
 
 ```bash
 rm -rf ./evidence-post
@@ -289,12 +289,12 @@ An empty sweep is the evidence that there was no third wave.
 
 ---
 
-## Step 9 — reopen
+## Step 9. Reopen
 
 > [!IMPORTANT]
 > Do not lift `IR-FREEZE` until the hardening in the
-> [root README](../README.md#step-4--stop-it-happening-again) is in place,
-> starting with **required commit signing** — the direct counter to the
+> [root README](../README.md#step-4-stop-it-happening-again) is in place,
+> starting with **required commit signing**, the direct counter to the
 > backdated-amend technique.
 
 Then, per repository: lift the freeze, re-enable Actions, and tell the team they

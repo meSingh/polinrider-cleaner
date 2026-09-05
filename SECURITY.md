@@ -20,7 +20,7 @@ Include the script, the exact command, and what an attacker gains.
 
 ## What is not in scope
 
-- False positives and missed detections. Those are normal issues — use the
+- False positives and missed detections. Those are normal issues, so use the
   [issue templates](.github/ISSUE_TEMPLATE).
 - The PolinRider campaign itself. Report campaign findings to
   [Socket](https://socket.dev/supply-chain-attacks/polinrider) or the

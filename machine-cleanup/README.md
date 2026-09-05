@@ -6,9 +6,9 @@ computer**. For GitHub repositories use [`github-org-recovery/`](../github-org-r
 
 ---
 
-**What this does.** Checks one workstation for PolinRider artifacts — files,
-editor extensions, persistence entries and an installed implant — and quarantines
-what it finds.
+**What this does.** Checks one workstation for PolinRider artifacts: files, editor
+extensions, persistence entries and an installed implant. Then it quarantines what
+it finds.
 
 **What "cleanup" means here.** Not deleting. Confirmed artifacts are *moved* into
 a timestamped quarantine folder with a manifest and a restore command. Nothing is
@@ -65,7 +65,7 @@ powershell -ExecutionPolicy Bypass -File .\machine-cleanup\check-windows.ps1 -Ro
 > good as the roots you give it.** With no roots the scripts use common defaults,
 > which will miss code kept anywhere else.
 
-A first run takes 1–5 minutes, mostly spent reading IDE extension directories.
+A first run takes 1 to 5 minutes, mostly spent reading IDE extension directories.
 
 ### Then, if you want it to act
 
@@ -102,7 +102,7 @@ Usable in a script: `./check-linux.sh ~/src || echo "needs attention"`.
 | 4 | `.woff` / `.woff2` files | the first four bytes are not `wOFF` or `wOF2` |
 | 5 | `temp_auto_push.bat` | the file exists anywhere under your home directory |
 | 6 | `package.json` and lockfiles | a known malicious package is referenced |
-| 7 | Persistence — launch agents, systemd units, autostart, cron, Run keys, scheduled tasks, Startup folder | the entry contains an indicator |
+| 7 | Persistence: launch agents, systemd units, autostart, cron, Run keys, scheduled tasks, Startup folder | the entry contains an indicator |
 | 8 | Shell and PowerShell startup files | an indicator, or a download piped into an interpreter |
 | 9 | Git config and hooks | a hook contains an indicator |
 | 10 | npm configuration | a non-default registry is configured |
@@ -148,7 +148,7 @@ them back.
 ~/polinrider-quarantine-20260824T101500Z/
 ├── manifest.tsv        original_path, quarantined_path, reason
 ├── RESTORE.txt
-└── files/…             the moved files, original paths preserved
+└── files/...           the moved files, original paths preserved
 ```
 
 Keep it until the incident is closed. It is evidence.
@@ -167,23 +167,23 @@ its file is moved. The script prints the `launchctl bootout` or
 
 ## After the scan
 
-**Exit 2 — confirmed hit.** Disconnect from the network.**Exit 2 — confirmed hit.** Disconnect from the network. Rotate every credential
-in the report's credential section, from a different machine. Then decide whether
+**Exit 2, confirmed hit.** Disconnect from the network. Rotate every credential in
+the report's credential section, from a different machine. Then decide whether
 to rebuild, using the rule in
-[root README, section 4](../README.md#should-the-machine-be-rebuilt): if any
+[the main README, under "Should the machine be rebuilt?"](../README.md#step-2-rotate-every-credential): if any
 persistence artifact was found, rebuild. Do not restore a backup taken after the
 infection date. Delete every local clone.
 
-**Exit 1 — review items only.** Read each one. A clean scan proves the current
+**Exit 1, review items only.** Read each one. A clean scan proves the current
 indicator set is absent; signatures for this campaign rotate. Rotate your GitHub
 tokens, SSH keys and cloud keys anyway.
 
-**Exit 0 — clean.** Rotate anyway. Your tokens may have been taken from a
+**Exit 0, clean.** Rotate anyway. Your tokens may have been taken from a
 different machine or from a shared secret store.
 
 In all three cases, apply the machine hardening from
-[root README, section 5](../README.md#developer-machine). The single most
-valuable line is `"task.allowAutomaticTasks": "off"` — it removes the
+[the main README, under "Developer machine"](../README.md#developer-machine). The single most
+valuable line is `"task.allowAutomaticTasks": "off"`, which removes the
 open-a-folder execution path outright.
 
 ---
@@ -206,5 +206,5 @@ dependency, and reinstall with `npm ci --ignore-scripts`.
 
 Every run writes a full transcript to `~/polinrider-report-<timestamp>.txt`
 (`-Report` / `--report` to change the path). Send that file, not a screenshot,
-when you ask someone for help — and read it before you send it: it lists paths
+when you ask someone for help, and read it before you send it: it lists paths
 from your machine.

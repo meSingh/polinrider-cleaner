@@ -47,7 +47,7 @@ here.** It makes no network calls, so it is safe to run anywhere.
 ## Adding an indicator
 
 See [`ioc/README.md`](ioc/README.md). Link a public source. Do not commit live
-payload code, obfuscated or not — an indicator string, a hash, a package name or
+payload code, obfuscated or not. An indicator string, a hash, a package name or
 a hostname is enough.
 
 ## Compatibility
@@ -64,7 +64,7 @@ here mid-incident. Answer the question they asked.
 ## Signing
 
 Commits and tags here are GPG-signed. If you are opening a pull request, signing
-yours is appreciated but not required — the maintainer's signature on the merge
+yours is appreciated but not required. The maintainer's signature on the merge
 is what the release provenance chains to.
 
 ```bash
