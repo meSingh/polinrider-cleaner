@@ -79,7 +79,7 @@ than one applies, **the order is fixed and it matters**:
 ## Run it
 
 ```bash
-git clone --depth 1 --branch v1.0.7 https://github.com/meSingh/polinrider-cleaner.git
+git clone --depth 1 --branch v1.0.8 https://github.com/meSingh/polinrider-cleaner.git
 cd polinrider-cleaner
 ./polinrider.sh
 ```
@@ -88,12 +88,12 @@ That pins you to a specific published release rather than to whatever `main`
 happens to be at the moment you clone.
 
 Tags in this repository are protected: once published, a tag cannot be moved,
-overwritten or deleted, by anyone, including the maintainer. So `v1.0.7` will
-always be exactly the code that was reviewed and released as `v1.0.7`. If you
+overwritten or deleted, by anyone, including the maintainer. So `v1.0.8` will
+always be exactly the code that was reviewed and released as `v1.0.8`. If you
 want to check that yourself:
 
 ```bash
-git verify-tag v1.0.7
+git verify-tag v1.0.8
 ```
 
 It is signed with GPG key `A743FEC7E4955B92`. Every commit in the repository is
@@ -160,7 +160,16 @@ non-interactive for scripts and agents; `--help` lists the rest.
 > account, so the tools refuse to write there at all. And infected mirrors
 > should not outlive the incident, so the default location is one that empties
 > itself rather than one you have to remember. Override with `--out` if you
-> need the evidence to survive a reboot, and delete it yourself when done.
+> need the evidence to survive a reboot.
+>
+> To remove it deliberately rather than waiting for a restart:
+>
+> ```bash
+> ./polinrider.sh --purge-evidence
+> ```
+>
+> It shows what is there and warns you if a restore is still outstanding before
+> it deletes anything.
 
 ## Step 1. Check the machines
 
