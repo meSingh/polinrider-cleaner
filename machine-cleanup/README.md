@@ -17,8 +17,14 @@ ever removed.
 **One script per operating system.** Same checks, same output, same exit codes.
 
 > [!TIP]
-> You do not have to pick. `./polinrider.sh --machine` from the repository root
-> detects the operating system and runs the right one.
+> **You do not have to pick.** From the repository root:
+>
+> ```bash
+> ./polinrider.sh --machine
+> ```
+>
+> It detects the operating system, runs the right script below, and prints what
+> to do next. The rest of this page is for driving them yourself.
 
 | Machine | Script | Needs |
 |---|---|---|
@@ -33,6 +39,13 @@ ever removed.
 ---
 
 ## Run it
+
+```bash
+# from the repository root - picks the right one for this machine
+./polinrider.sh --machine --roots "$HOME/Sites $HOME/Projects"
+```
+
+Or directly, from this folder:
 
 ```bash
 # macOS - dry run, list your real code directories

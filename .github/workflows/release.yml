@@ -59,8 +59,12 @@ jobs:
           NAME="polinrider-cleaner-${TAG}"
           mkdir -p dist
           git archive --format=tar.gz --prefix="${NAME}/" -o "dist/${NAME}.tar.gz" HEAD
+          # A second copy under a fixed name, so
+          # releases/latest/download/polinrider-cleaner.tar.gz is a URL that
+          # keeps working without anyone having to look up a version first.
+          cp "dist/${NAME}.tar.gz" dist/polinrider-cleaner.tar.gz
           cd dist
-          sha256sum "${NAME}.tar.gz" > SHA256SUMS
+          sha256sum "${NAME}.tar.gz" polinrider-cleaner.tar.gz > SHA256SUMS
           cat SHA256SUMS
           echo "name=${NAME}" >> "$GITHUB_OUTPUT"
           echo "tag=${TAG}"   >> "$GITHUB_OUTPUT"
@@ -70,6 +74,7 @@ jobs:
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: dist/${{ steps.build.outputs.name }}.tar.gz
+          # The fixed-name copy is byte-identical, so one attestation covers both.
 
       # `gh attestation verify` reads the attestation from GitHub's API, which
       # means it needs network access and it means anything scanning the release
@@ -82,8 +87,9 @@ jobs:
           NAME: ${{ steps.build.outputs.name }}
         run: |
           cp "$BUNDLE" "dist/${NAME}.tar.gz.intoto.jsonl"
+          cp "$BUNDLE" dist/polinrider-cleaner.tar.gz.intoto.jsonl
           cd dist
-          sha256sum "${NAME}.tar.gz.intoto.jsonl" >> SHA256SUMS
+          sha256sum "${NAME}.tar.gz.intoto.jsonl" polinrider-cleaner.tar.gz.intoto.jsonl >> SHA256SUMS
           cat SHA256SUMS
 
       - name: Publish the release
@@ -96,6 +102,8 @@ jobs:
           gh release create "$TAG" \
             "dist/${NAME}.tar.gz" \
             "dist/${NAME}.tar.gz.intoto.jsonl" \
+            dist/polinrider-cleaner.tar.gz \
+            dist/polinrider-cleaner.tar.gz.intoto.jsonl \
             dist/SHA256SUMS \
             --title "$TAG" \
             --notes-file notes.md \

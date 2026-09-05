@@ -70,12 +70,46 @@ than one applies, **the order is fixed and it matters**:
 
 ---
 
-## Install
+## Run it
+
+Two ways. Neither needs an installer, and neither asks you to trust a pipe.
+
+### Download the signed release and run it
+
+Nothing to clone. The checksum step is the point: verify, then run.
 
 ```bash
-git clone https://github.com/meSingh/polinrider-cleaner.git
-cd polinrider-cleaner
+curl -fsSL -O https://github.com/meSingh/polinrider-cleaner/releases/latest/download/polinrider-cleaner.tar.gz \
+     -O https://github.com/meSingh/polinrider-cleaner/releases/latest/download/SHA256SUMS
+
+sha256sum --ignore-missing -c SHA256SUMS 2>/dev/null \
+  || shasum -a 256 --ignore-missing -c SHA256SUMS
+
+tar xzf polinrider-cleaner.tar.gz && cd polinrider-cleaner-*/ && ./polinrider.sh
 ```
+
+Every release also carries a build-provenance attestation. If you have the
+GitHub CLI, this proves the archive came from this repository's CI and was not
+altered afterwards:
+
+```bash
+gh attestation verify polinrider-cleaner.tar.gz --repo meSingh/polinrider-cleaner
+```
+
+### Or clone it
+
+```bash
+git clone https://github.com/meSingh/polinrider-cleaner.git && cd polinrider-cleaner && ./polinrider.sh
+```
+
+> [!NOTE]
+> **There is deliberately no `curl … | sh` one-liner.**
+> Piping a downloaded script straight into a shell is precisely how this malware
+> gets onto machines — a `.vscode/tasks.json` that runs `curl … | bash` the
+> moment you open a folder. A tool for cleaning that up should not ask you to do
+> the same thing. The extra line above is the checksum, and it is worth typing.
+
+### What you need
 
 | Tool | Needed by | Install |
 |---|---|---|
@@ -85,12 +119,15 @@ cd polinrider-cleaner
 | `bash` 3.2+ | macOS, Linux | already installed |
 | PowerShell 5.1 | Windows local check | ships with Windows 10 and 11 |
 
-The local checks and the CI scanner need only `git` and standard shell tools.
+Checking a computer needs nothing but the shell it already has. `gh` and `jq`
+are only for the two GitHub workflows.
 
 ```bash
-./polinrider.sh            # ask, then scan the right thing
-./polinrider.sh --machine  # just this computer
-./polinrider.sh --org ACME # just a GitHub organization
+./polinrider.sh                    # ask, then scan the right thing
+./polinrider.sh --machine          # just this computer
+./polinrider.sh --org ACME         # just a GitHub organization
+./polinrider.sh --user LOGIN       # just a personal account
+./polinrider.sh --path ./some-repo # just one folder
 ./polinrider.sh --all --org ACME   # everything, in the order above
 ```
 
@@ -111,6 +148,18 @@ non-interactive for scripts and agents; `--help` lists the rest.
 affected repositories, before you touch GitHub at all.
 
 ```bash
+./polinrider.sh --machine --roots "$HOME/Sites $HOME/Projects"
+```
+
+It detects the operating system and runs the right check. Exit `0` clean ·
+`1` review items only · `2` a confirmed indicator.
+
+<details>
+<summary>Running the per-OS script directly instead</summary>
+
+<br>
+
+```bash
 ./machine-cleanup/check-macos.sh ~/Sites ~/Projects      # macOS
 ./machine-cleanup/check-linux.sh ~/src ~/code            # Linux
 ```
@@ -119,7 +168,10 @@ affected repositories, before you touch GitHub at all.
 powershell -ExecutionPolicy Bypass -File .\machine-cleanup\check-windows.ps1 -Roots C:\work
 ```
 
-Exit `0` clean · `1` review items only · `2` a confirmed indicator.
+Windows is the one case `polinrider.sh` cannot run for you, because it is a
+PowerShell script; it prints this command instead.
+
+</details>
 
 <details>
 <summary><strong>What it checks, and what <code>--apply</code> does</strong></summary>
@@ -218,6 +270,14 @@ anywhere and do not care what you do to the laptop.
 History stays intact and no work is lost: the branch pointer moves back to the
 commit that existed before the attack, and the malicious commits become
 unreachable.
+
+Start with the entry point, which scans and filters in one go:
+
+```bash
+./polinrider.sh --org YOUR-ORG
+```
+
+Then work through the recovery itself:
 
 ```bash
 # 1. Evidence first. Time-critical — see the warning below.
@@ -482,20 +542,25 @@ quoting a number.
 **On your machine, ~2 minutes, changes nothing:**
 
 ```bash
-./machine-cleanup/check-macos.sh ~/Sites ~/Projects      # or check-linux.sh
+./polinrider.sh --machine
 ```
 
 **On one repository, ~30 seconds, changes nothing:**
 
 ```bash
-./ci/scan-workspace.sh --path /path/to/repo --all-refs
+./polinrider.sh --path /path/to/repo
 ```
 
 **On GitHub, ~10 minutes, changes nothing:**
 
 ```bash
-./github-org-recovery/scan.sh --org YOUR-ORG --out ./evidence
-./github-org-recovery/triage-filter.sh ./evidence/triage.json
+./polinrider.sh --org YOUR-ORG
+```
+
+**Or all three, in the order that works:**
+
+```bash
+./polinrider.sh --all --org YOUR-ORG
 ```
 
 Read what matched, not the count: `cat ./evidence/triage.txt`.
