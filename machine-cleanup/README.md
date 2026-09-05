@@ -1,7 +1,24 @@
-# Local system cleanup
+# Machine cleanup
 
-Check a workstation for PolinRider artifacts and quarantine what it finds. One
-script per operating system, same checks, same output, same exit codes.
+<sub>[← back to the main README](../README.md) · this folder is for **one
+computer**. For GitHub repositories use [`github-org-recovery/`](../github-org-recovery/) or
+[`github-account-recovery/`](../github-account-recovery/).</sub>
+
+---
+
+**What this does.** Checks one workstation for PolinRider artifacts — files,
+editor extensions, persistence entries and an installed implant — and quarantines
+what it finds.
+
+**What "cleanup" means here.** Not deleting. Confirmed artifacts are *moved* into
+a timestamped quarantine folder with a manifest and a restore command. Nothing is
+ever removed.
+
+**One script per operating system.** Same checks, same output, same exit codes.
+
+> [!TIP]
+> You do not have to pick. `./polinrider.sh --machine` from the repository root
+> detects the operating system and runs the right one.
 
 | Machine | Script | Needs |
 |---|---|---|
@@ -9,9 +26,9 @@ script per operating system, same checks, same output, same exit codes.
 | Linux | `check-linux.sh` | bash 4+, already installed |
 | Windows | `check-windows.ps1` | Windows PowerShell 5.1, ships with Windows 10 and 11 |
 
-**Every script is a dry run by default. Nothing is changed until you pass
-`--apply` (`-Apply` on Windows), and even then nothing is deleted — confirmed
-artifacts are moved into a quarantine directory with a manifest.**
+> [!NOTE]
+> Every script is a **dry run by default**. Nothing changes until you pass
+> `--apply` (`-Apply` on Windows), and even then nothing is deleted.
 
 ---
 
@@ -27,12 +44,13 @@ artifacts are moved into a quarantine directory with a manifest.**
 
 ```powershell
 # Windows - run from the repository root
-powershell -ExecutionPolicy Bypass -File .\local-cleanup\check-windows.ps1 -Roots C:\work,C:\src
+powershell -ExecutionPolicy Bypass -File .\machine-cleanup\check-windows.ps1 -Roots C:\work,C:\src
 ```
 
-The roots are the directories holding your git clones. The scan is only as good as
-the roots you give it. With no roots the scripts use common defaults, which will
-miss code kept elsewhere.
+> [!IMPORTANT]
+> The roots are the directories holding your git clones. **The scan is only as
+> good as the roots you give it.** With no roots the scripts use common defaults,
+> which will miss code kept anywhere else.
 
 A first run takes 1–5 minutes, mostly spent reading IDE extension directories.
 
@@ -43,7 +61,7 @@ A first run takes 1–5 minutes, mostly spent reading IDE extension directories.
 ```
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\local-cleanup\check-windows.ps1 -Roots C:\work -Apply
+powershell -ExecutionPolicy Bypass -File .\machine-cleanup\check-windows.ps1 -Roots C:\work -Apply
 ```
 
 ---
@@ -126,16 +144,17 @@ A launch agent or systemd unit that has already been loaded stays running after
 its file is moved. The script prints the `launchctl bootout` or
 `systemctl --user disable --now` command; run it, or reboot.
 
-**If the implant section reports anything, stop and read it first.** A running
-implant re-establishes its own persistence, so quarantining the files while the
-process is alive achieves nothing. Kill the process with the command the script
-prints, then re-run with `--apply`.
+> [!CAUTION]
+> **If the implant section reports anything, stop and read it first.** A running
+> implant re-establishes its own persistence, so quarantining the files while the
+> process is alive achieves nothing. Kill the process with the command the script
+> prints, then re-run with `--apply`.
 
 ---
 
 ## After the scan
 
-**Exit 2 — confirmed hit.** Disconnect from the network. Rotate every credential
+**Exit 2 — confirmed hit.** Disconnect from the network.**Exit 2 — confirmed hit.** Disconnect from the network. Rotate every credential
 in the report's credential section, from a different machine. Then decide whether
 to rebuild, using the rule in
 [root README, section 4](../README.md#should-the-machine-be-rebuilt): if any
@@ -161,8 +180,8 @@ open-a-folder execution path outright.
 **They do not read git history.** The propagation script backdates its commits, so
 `git log` shows nothing wrong. Content scanning is the only reliable local signal.
 To check a repository's history, use `../ci/scan-workspace.sh --all-refs`, and to
-check the remote use [`../org-cleanup/`](../org-cleanup/) or
-[`../personal-cleanup/`](../personal-cleanup/).
+check the remote use [`../github-org-recovery/`](../github-org-recovery/) or
+[`../github-account-recovery/`](../github-account-recovery/).
 
 **They do not clean `node_modules`.** It is excluded from every scan. If a
 lockfile references a malicious package, delete `node_modules`, remove the

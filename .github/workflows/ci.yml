@@ -55,6 +55,9 @@ jobs:
       - name: Implant detection self-test
         run: ./ci/selftest-implant.sh
 
+      - name: Entry point self-test
+        run: ./ci/selftest-entrypoint.sh
+
   powershell:
     name: PowerShell lint
     runs-on: ubuntu-latest
@@ -69,12 +72,12 @@ jobs:
         run: |
           $errors = $null
           [void][System.Management.Automation.Language.Parser]::ParseFile(
-            (Resolve-Path ./local-cleanup/check-windows.ps1), [ref]$null, [ref]$errors)
+            (Resolve-Path ./machine-cleanup/check-windows.ps1), [ref]$null, [ref]$errors)
           if ($errors.Count -gt 0) { $errors | ForEach-Object { $_.Message }; exit 1 }
           if (-not (Get-Module -ListAvailable -Name PSScriptAnalyzer)) {
             Install-Module PSScriptAnalyzer -Force -Scope CurrentUser -ErrorAction Stop
           }
-          $r = Invoke-ScriptAnalyzer -Path ./local-cleanup/check-windows.ps1 -Severity Error,Warning
+          $r = Invoke-ScriptAnalyzer -Path ./machine-cleanup/check-windows.ps1 -Severity Error,Warning
           if ($r) { $r | Format-Table -AutoSize | Out-String | Write-Host; exit 1 }
           Write-Host "PowerShell clean"
 
@@ -95,4 +98,4 @@ jobs:
       - name: Scan with detection tooling excluded
         run: |
           ./ci/scan-workspace.sh --path . --all-refs --fail-on infected \
-            --exclude '(^|/)(lib|ci|org-cleanup|personal-cleanup|local-cleanup)/'
+            --exclude '(^|/)(lib|ci|github-org-recovery|github-account-recovery|machine-cleanup)/'

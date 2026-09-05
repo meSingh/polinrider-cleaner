@@ -19,8 +19,8 @@ pass() { printf '  ok    %s\n' "$*"; }
 fail() { printf '  FAIL  %s\n' "$*"; FAILED=1; }
 
 case "$(uname -s)" in
-  Darwin) CHECK="$ROOT/local-cleanup/check-macos.sh" ;;
-  *)      CHECK="$ROOT/local-cleanup/check-linux.sh" ;;
+  Darwin) CHECK="$ROOT/machine-cleanup/check-macos.sh" ;;
+  *)      CHECK="$ROOT/machine-cleanup/check-linux.sh" ;;
 esac
 
 sha256() {

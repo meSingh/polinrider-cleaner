@@ -30,38 +30,38 @@
 ---
 
 > [!CAUTION]
-> **Mid-incident and reading this on a phone?** Three commands, in this order.
-> Everything else on this page can wait.
+> **Mid-incident?** Two commands. It asks what you need, works out which scanner
+> to run for the machine you are on, and tells you what to do next.
 >
 > ```bash
 > git clone https://github.com/meSingh/polinrider-cleaner.git && cd polinrider-cleaner
-> ./local-cleanup/check-macos.sh ~/Sites ~/Projects     # or check-linux.sh
-> ./org-cleanup/scan.sh --org YOUR-ORG --out ./evidence
+> ./polinrider.sh
 > ```
 >
-> Then stop and read [step 2](#step-2--rotate-every-credential) before you restore anything.
+> Read-only. It changes nothing. Everything else on this page can wait.
 
 ---
 
 ## Which part do you need?
 
-| Your situation | Go to |
-|---|---|
-| Branches across an organization's repos were force-pushed | **[`org-cleanup/`](org-cleanup/)** |
-| Your own GitHub repositories were force-pushed | **[`personal-cleanup/`](personal-cleanup/)** |
-| Your laptop opened an infected repo, or installed a flagged package | **[`local-cleanup/`](local-cleanup/)** |
-| You want every future push and PR scanned automatically | **[`ci/`](ci/)** |
+| Your situation | Folder | What it does |
+|---|---|---|
+| Branches across an organization's repos were force-pushed | [**`github-org-recovery/`**](github-org-recovery/) | Scans every repo in a GitHub **organization**, then puts each branch back where it was |
+| Your own GitHub repositories were force-pushed | [**`github-account-recovery/`**](github-account-recovery/) | The same for **one personal account**, where the attacker pushed using your own login |
+| Your laptop opened an infected repo, or installed a flagged package | [**`machine-cleanup/`**](machine-cleanup/) | Checks and cleans **one computer** — files, editor extensions, persistence, an installed implant. macOS, Linux, Windows |
+| You want every future push and PR scanned automatically | [**`ci/`**](ci/) | A scanner you **copy into your own repo**, so every push is checked with no third-party action |
 
-If more than one applies, **the order is fixed and it matters**:
+<sub>The two GitHub folders say <strong>recovery</strong> because that is what they do: they put
+your branches back. Nothing is deleted and no history is rewritten. The machine folder says
+<strong>cleanup</strong> because that one genuinely removes malware from a computer — by moving it
+to quarantine, never by deleting it.</sub>
 
-```mermaid
-flowchart LR
-    L["1 · local-cleanup<br/><sub>every affected machine</sub>"]
-    R["2 · rotate credentials<br/><sub>from a machine you trust</sub>"]
-    G["3 · org-cleanup / personal-cleanup<br/><sub>restore the branches</sub>"]
-    C["4 · ci<br/><sub>catch the next attempt</sub>"]
-    L --> R --> G --> C
-```
+`./polinrider.sh` picks for you. If you would rather drive it yourself, or more
+than one applies, **the order is fixed and it matters**:
+
+<p align="center">
+  <img src="docs/img/steps.jpg" alt="1 check the machines, 2 rotate credentials, 3 restore branches, 4 scan every push" width="100%">
+</p>
 
 > [!WARNING]
 > Cleaning the remote while an infected machine still holds a valid token puts
@@ -87,6 +87,16 @@ cd polinrider-cleaner
 
 The local checks and the CI scanner need only `git` and standard shell tools.
 
+```bash
+./polinrider.sh            # ask, then scan the right thing
+./polinrider.sh --machine  # just this computer
+./polinrider.sh --org ACME # just a GitHub organization
+./polinrider.sh --all --org ACME   # everything, in the order above
+```
+
+Every mode is read-only and prints the exact next command. `--yes` makes it
+non-interactive for scripts and agents; `--help` lists the rest.
+
 > [!TIP]
 > Use a fresh, short-lived, fine-grained token created on a machine you trust,
 > and revoke it when you are done.
@@ -101,12 +111,12 @@ The local checks and the CI scanner need only `git` and standard shell tools.
 affected repositories, before you touch GitHub at all.
 
 ```bash
-./local-cleanup/check-macos.sh ~/Sites ~/Projects      # macOS
-./local-cleanup/check-linux.sh ~/src ~/code            # Linux
+./machine-cleanup/check-macos.sh ~/Sites ~/Projects      # macOS
+./machine-cleanup/check-linux.sh ~/src ~/code            # Linux
 ```
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\local-cleanup\check-windows.ps1 -Roots C:\work
+powershell -ExecutionPolicy Bypass -File .\machine-cleanup\check-windows.ps1 -Roots C:\work
 ```
 
 Exit `0` clean · `1` review items only · `2` a confirmed indicator.
@@ -126,7 +136,7 @@ a manifest and restore instructions. **Nothing is ever deleted.** Build config
 files and shell startup files are never touched automatically — the payload is
 appended to real files, so the script reports them and you re-clone.
 
-Full detail: **[`local-cleanup/README.md`](local-cleanup/README.md)**
+Full detail: **[`machine-cleanup/README.md`](machine-cleanup/README.md)**
 
 </details>
 
@@ -211,22 +221,22 @@ unreachable.
 
 ```bash
 # 1. Evidence first. Time-critical — see the warning below.
-./org-cleanup/scan.sh --org YOUR-ORG --out ./evidence --mirror-only
+./github-org-recovery/scan.sh --org YOUR-ORG --out ./evidence --mirror-only
 
 # 2. Who touched what, and when
-./org-cleanup/sweep.sh --org YOUR-ORG --since 2026-07-27T03:00:00Z --out ./evidence
+./github-org-recovery/sweep.sh --org YOUR-ORG --since 2026-07-27T03:00:00Z --out ./evidence
 
 # 3. Content scan, then drop your own detection files from the results
-./org-cleanup/scan.sh --org YOUR-ORG --out ./evidence --scan-only
-./org-cleanup/triage-filter.sh ./evidence/triage.json
+./github-org-recovery/scan.sh --org YOUR-ORG --out ./evidence --scan-only
+./github-org-recovery/triage-filter.sh ./evidence/triage.json
 
 # 4. Plan the restore. Dry run — changes nothing.
-./org-cleanup/restore.sh --sweep ./evidence/sweep.tsv --mirrors ./evidence \
+./github-org-recovery/restore.sh --sweep ./evidence/sweep.tsv --mirrors ./evidence \
                          --since 2026-07-27T03:00:00Z --actor ATTACKER-LOGIN
 
 # 5. Gates, then apply
-./org-cleanup/preflight.sh --org YOUR-ORG --plan ./evidence/restore-plan.tsv --actor ATTACKER-LOGIN
-./org-cleanup/restore.sh   ... --apply
+./github-org-recovery/preflight.sh --org YOUR-ORG --plan ./evidence/restore-plan.tsv --actor ATTACKER-LOGIN
+./github-org-recovery/restore.sh   ... --apply
 ```
 
 > [!WARNING]
@@ -238,7 +248,7 @@ unreachable.
 
 For a personal account the flow is the same but the threat model is not — the
 hostile pushes carry *your* login, so actor filtering proves nothing. Use
-**[`personal-cleanup/`](personal-cleanup/)**.
+**[`github-account-recovery/`](github-account-recovery/)**.
 
 <details>
 <summary><strong>Reading the restore plan, and the second-wave trap</strong></summary>
@@ -259,7 +269,7 @@ hostile pushes carry *your* login, so actor filtering proves nothing. Use
 your branches to malware. `restore.sh` refuses those rows outright — if you see
 any, your `--since` starts too late.
 
-Full walkthrough: **[`org-cleanup/README.md`](org-cleanup/README.md)**
+Full walkthrough: **[`github-org-recovery/README.md`](github-org-recovery/README.md)**
 
 </details>
 
@@ -396,7 +406,7 @@ and others — and by hijacked versions of legitimate packages.
 Two consequences:
 
 1. **A repository scan is no longer sufficient.** Run
-   [`local-cleanup/`](local-cleanup/) even when every repository comes back clean.
+   [`machine-cleanup/`](machine-cleanup/) even when every repository comes back clean.
 2. **Install-time hooks are not the only trigger.** Some clusters skip
    `postinstall` entirely and fire at `require` time or on first use of a
    function. This is the part that reaches production: the payload runs when your
@@ -472,7 +482,7 @@ quoting a number.
 **On your machine, ~2 minutes, changes nothing:**
 
 ```bash
-./local-cleanup/check-macos.sh ~/Sites ~/Projects      # or check-linux.sh
+./machine-cleanup/check-macos.sh ~/Sites ~/Projects      # or check-linux.sh
 ```
 
 **On one repository, ~30 seconds, changes nothing:**
@@ -484,8 +494,8 @@ quoting a number.
 **On GitHub, ~10 minutes, changes nothing:**
 
 ```bash
-./org-cleanup/scan.sh --org YOUR-ORG --out ./evidence
-./org-cleanup/triage-filter.sh ./evidence/triage.json
+./github-org-recovery/scan.sh --org YOUR-ORG --out ./evidence
+./github-org-recovery/triage-filter.sh ./evidence/triage.json
 ```
 
 Read what matched, not the count: `cat ./evidence/triage.txt`.

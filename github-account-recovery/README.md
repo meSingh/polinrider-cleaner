@@ -1,17 +1,27 @@
-# Personal profile cleanup
+# GitHub account recovery
 
-Restore the branches on your own GitHub account after your credentials were used
-to force-push. History stays intact and no work is lost: the branch pointer moves
-back to the commit that existed before the attack, and the malicious commits
-become unreachable.
+<sub>[← back to the main README](../README.md) · this folder is for **one personal
+GitHub account**. For an organization use [`github-org-recovery/`](../github-org-recovery/); for a
+computer use [`machine-cleanup/`](../machine-cleanup/).</sub>
 
-**This is not the org workflow with a different flag.** On a personal account the
-hostile pushes carry *your* login, because they were made with your stolen token.
-Filtering by actor proves nothing. Your evidence is the time window and the
-signature of the pushes, and your first job is to make your own credentials
-useless to whoever took them.
+---
 
-**Scripts in this folder**
+**What this does.** Puts the branches on your own account back to the commit that
+existed before your credentials were used to force-push.
+
+**What "cleanup" means here.** Not deleting. The branch pointer moves back to a
+commit that still exists. History is intact and no work is lost.
+
+> [!IMPORTANT]
+> **This is not the org workflow with a different flag.** On a personal account
+> the hostile pushes carry *your* login, because they were made with your stolen
+> token. Filtering by actor proves nothing here. Your evidence is the time window
+> and the shape of the pushes — and your first job is to make your own
+> credentials useless to whoever took them.
+
+---
+
+## The scripts
 
 | Script | What it does | Changes anything? |
 |---|---|---|
@@ -27,7 +37,7 @@ useless to whoever took them.
 
 In this order, and finish both before touching a single branch.
 
-**1. The machine.** Run [`../local-cleanup/`](../local-cleanup/) on every machine
+**1. The machine.** Run [`../machine-cleanup/`](../machine-cleanup/) on every machine
 you have used for git. If anything comes back as a confirmed hit, that machine is
 out of the process entirely — do the rest from a different one.
 
@@ -53,16 +63,20 @@ Then authenticate again with a fresh token: `gh auth login`.
 
 Anything else that was on the machine — npm tokens, cloud keys, `.env` values,
 browser passwords, crypto wallets — see
-[root README, section 4](../README.md#4-credential-rotation). If a wallet or seed
-phrase was on that machine, move the funds now.
+[the rotation list in the main README](../README.md#step-2--rotate-every-credential).
+
+> [!CAUTION]
+> If a crypto wallet or seed phrase was on that machine, move the funds now. This
+> malware targets them specifically.
 
 ---
 
 ## Step 2 — capture evidence
 
-Time-critical. The pre-attack commit SHAs come from the Events API, which keeps
-roughly the last 300 events per repository. Every push you make brings the
-attacker's push closer to falling off the end.
+> [!CAUTION]
+> Time-critical. The pre-attack commit SHAs come from the Events API, which keeps
+> roughly the last 300 events per repository. Every push you make brings the
+> attacker's push closer to falling off the end.
 
 ```bash
 ./scan.sh --user YOUR-USERNAME --out ./evidence --mirror-only
@@ -120,7 +134,7 @@ everything.
 ```
 
 Writes `evidence/restore-plan.tsv`. The statuses are explained in the
-[org-cleanup README, step 5](../org-cleanup/README.md#step-5--build-the-restore-plan).
+[github-org-recovery README, step 5](../github-org-recovery/README.md#step-5--build-the-restore-plan).
 Two of them matter most here:
 
 - `ok_orphaned` is **normal and good**. The commit is unreachable from any ref,
@@ -130,10 +144,11 @@ Two of them matter most here:
   `restore.sh` refuses those rows. If you see any, your `--since` starts too late:
   move it earlier and rebuild the plan.
 
-**Read every row before applying.** This is the step where your own work can be
-lost: any commit you pushed *after* the hostile push on that branch is orphaned by
-the restore. Restrict the plan to one repository with `--repo YOU/REPO` while you
-work through them if that is easier.
+> [!WARNING]
+> **Read every row before applying.** This is the step where your own work can be
+> lost: any commit you pushed *after* the hostile push on that branch is orphaned
+> by the restore. Restrict the plan to one repository with `--repo YOU/REPO` while
+> you work through them if that is easier.
 
 ---
 
@@ -179,8 +194,9 @@ rm -rf ./evidence-post
 
 Expect zero `REAL_SUSPECT`.
 
-Then delete every local clone and clone fresh. A `git pull` into an infected clone
-pushes the payload straight back to the remote you just cleaned.
+> [!WARNING]
+> Then delete every local clone and clone fresh. A `git pull` into an infected
+> clone pushes the payload straight back to the remote you just cleaned.
 
 Finally, turn on the protections that stop the next one — required signed commits
 and blocked force pushes on your repositories, and the scan workflow in
