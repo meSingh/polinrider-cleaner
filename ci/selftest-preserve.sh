@@ -67,6 +67,59 @@ grep -q '0000000000' <<<"$OUT" && no "skips the all-zero before-SHA" || ok "skip
 OUT2="$("$ROOT/lib/gh-preserve.sh" --out "$EV" 2>&1)"
 grep -q 'already in mirror    : 1' <<<"$OUT2" && ok "second run is idempotent" || no "second run is idempotent"
 
+# --- two waves: the commit before the last push is not necessarily clean -----
+# The trap this exists to catch. Wave one lands the payload, wave two amends
+# over it. The "before" of wave two is wave one, which is already infected, and
+# restoring to it puts the payload straight back.
+W="$TMP/waves"; git init -q "$W" && git -C "$W" checkout -q -b master
+echo clean > "$W/app.js"; git -C "$W" add app.js; git -C "$W" commit -qm one
+CLEAN_SHA=$(git -C "$W" rev-parse HEAD)
+WO="$TMP/waves-origin"; git init -q --bare "$WO"
+git -C "$WO" config uploadpack.allowAnySHA1InWant true
+git -C "$W" remote add origin "$WO"; git -C "$W" push -q origin master
+printf 'module.exports={}\nconst _0=global["_V"];// rmcej%%otb%%\n' > "$W/tailwind.config.js"
+git -C "$W" add -A; git -C "$W" commit -q --amend -m one --date="2019-01-01T00:00:00"
+WAVE1=$(git -C "$W" rev-parse HEAD); git -C "$W" push -q --force origin master
+echo more >> "$W/app.js"; git -C "$W" add -A
+git -C "$W" commit -q --amend -m one --date="2019-01-01T00:00:00"
+WAVE2=$(git -C "$W" rev-parse HEAD); git -C "$W" push -q --force origin master
+
+EVW="$TMP/evw"; mkdir -p "$EVW"
+git clone -q --mirror "file://$WO" "$EVW/waves.git"
+{ printf 'x/waves	refs/heads/master	%s	%s	mallory	2026-08-10T21:00:00Z	0	
+' "$CLEAN_SHA" "$WAVE1"
+  printf 'x/waves	refs/heads/master	%s	%s	mallory	2026-08-10T22:00:00Z	0	
+' "$WAVE1" "$WAVE2"
+} > "$EVW/pushes-on-infected-refs.tsv"
+OUTW="$("$ROOT/lib/gh-preserve.sh" --out "$EVW" 2>&1)"
+
+grep -q "$(cut -c1-10 <<<"$CLEAN_SHA").*CLEAN" <<<"$OUTW" \
+  && ok "the first-wave predecessor is judged CLEAN" || no "the first-wave predecessor is judged CLEAN"
+grep -q "$(cut -c1-10 <<<"$WAVE1").*INFECTED" <<<"$OUTW" \
+  && ok "the second-wave predecessor is judged INFECTED" || no "the second-wave predecessor is judged INFECTED"
+awk -F'	' -v s="$CLEAN_SHA" '$3=="CLEAN" && $2==s{f=1} END{exit !f}' "$EVW/restore-targets.tsv" \
+  && ok "restore-targets.tsv records the clean one" || no "restore-targets.tsv records the clean one"
+grep -q "$(cut -c1-10 <<<"$CLEAN_SHA")  restore to this one" <<<"$OUTW" \
+  && ok "it recommends the earliest clean commit" || no "it recommends the earliest clean commit"
+grep -q "$(cut -c1-10 <<<"$WAVE1")  restore to this one" <<<"$OUTW" \
+  && no "it never recommends an infected commit" || ok "it never recommends an infected commit"
+grep -q 'already carry the payload' <<<"$OUTW" \
+  && ok "it explains what a second wave looks like" || no "it explains what a second wave looks like"
+
+# A fake font is caught even when no marker string is present.
+FF="$TMP/ff"; git init -q "$FF" && git -C "$FF" checkout -q -b master
+mkdir -p "$FF/public/fonts"; printf '        var x=1;' > "$FF/public/fonts/a.woff2"
+git -C "$FF" add -A; git -C "$FF" commit -qm f
+FFO="$TMP/ffo"; git init -q --bare "$FFO"; git -C "$FF" remote add origin "$FFO"
+git -C "$FF" push -q origin master
+EVF="$TMP/evf"; mkdir -p "$EVF"; git clone -q --mirror "file://$FFO" "$EVF/ffo.git"
+printf 'x/ffo	refs/heads/master	%s	zzz	mallory	2026-08-10T21:00:00Z	0	
+' \
+  "$(git -C "$FF" rev-parse HEAD)" > "$EVF/pushes-on-infected-refs.tsv"
+OUTF="$("$ROOT/lib/gh-preserve.sh" --out "$EVF" 2>&1)"
+grep -q 'INFECTED' <<<"$OUTF" \
+  && ok "a .woff2 without the wOF2 magic is INFECTED" || no "a .woff2 without the wOF2 magic is INFECTED"
+
 # --- a commit GitHub has already collected ----------------------------------
 EV2="$TMP/ev2"; mkdir -p "$EV2"
 git clone -q --mirror "file://$ORIGIN" "$EV2/origin.git"

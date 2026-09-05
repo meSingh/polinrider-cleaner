@@ -178,10 +178,18 @@ compromise playbook for a directory that does not exist. A tool that says
 an incomplete run is not a clean one: 3 also suppresses the "nothing confirmed"
 result.
 
-**The push ledger cannot tell a colleague from an attacker.** It records who
-pushed, not whether they should have. Name the actors, show the force-push
-evidence, and ask. `--trusted-actor` is how the operator answers, and it is what
-moves the recommendation from `restore.sh` to `clean-repo.sh`.
+**A familiar actor is the expected case, not an exculpatory one.** This campaign
+amends and force-pushes as whoever is logged in, so the push ledger shows
+colleagues. Never add a code path that discounts a push because of who made it:
+that discards precisely the evidence that matters, and an earlier version of
+`--trusted-actor` did exactly that. Naming an actor escalates, it does not
+dismiss: their machine needs checking and their credentials rotating.
+
+**A restore target must be read before it is recommended.** The commit before
+the last hostile push is often the previous wave. `gh-preserve.sh` scans each
+candidate and writes `CLEAN` or `INFECTED` to `restore-targets.tsv`; only the
+earliest `CLEAN` one may be offered. Two of ten were already infected on the
+account this was built against.
 
 
 **A mirror does not contain the commit you want to restore to.** `git clone

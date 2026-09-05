@@ -113,24 +113,25 @@ check "T0 also appears on screen"                "grep -q -- '--since 2026-08-10
 check "offers the sweep"                         "grep -q 'sweep.sh --user acme' '$D2'"
 check "offers the user wrapper"                  "grep -q 'github-account-recovery/clean-repo.sh' '$D2'"
 
-echo "== a trusted actor is not evidence =="
-# The push ledger cannot tell a colleague from an attacker. Naming one has to
-# flip the answer from restore to remove, without pretending the events vanished.
+echo "== naming an actor escalates, it does not dismiss =="
+# The reason this matters: the campaign amends and force-pushes as whoever is
+# logged in, so the actor field shows a colleague while the push is the malware
+# spreading from their machine. A flag that discounted pushes by identity would
+# discard exactly the evidence that matters. It used to.
 # shellcheck disable=SC2034  # read by check() through eval
 OUT6="$("$ROOT/lib/next-steps.sh" --triage "$E2/triage.json" --out "$E2" \
-        --owner acme --owner-type user --trusted-actor mallory 2>&1)"
-check "trusted pushes stop being restore candidates" "[[ ! -s '$E2/restorable-repos.txt' ]]"
-check "routes to removal instead"                   "grep -q 'Removing the payload is' <<< \"\$OUT6\""
-check "says they were discounted, not absent"       "grep -q 'discounted' <<< \"\$OUT6\""
-check "does not claim no events survive"            "! grep -q 'No push events survive' <<< \"\$OUT6\""
-check "offers no runnable sweep once trusted"       "! grep -q 'sweep.sh --' '$E2/NEXT-STEPS.md'"
-# An unrelated name must change nothing.
-# shellcheck disable=SC2034  # read by check() through eval
-OUT7="$("$ROOT/lib/next-steps.sh" --triage "$E2/triage.json" --out "$E2" \
-        --owner acme --owner-type user --trusted-actor someone-else 2>&1)"
-check "an unrelated trusted name changes nothing"   "grep -q 'mallory' <<< \"\$OUT7\""
-# Restore the untrusted state for the checks that follow.
+        --owner acme --owner-type user --known-actor mallory 2>&1)"
+check "a known actor stays a restore candidate"  "grep -q '^acme/app$' '$E2/restorable-repos.txt'"
+check "their pushes still count"                 "grep -q 'mallory' '$E2/pushes-on-infected-refs.tsv'"
+check "the sweep is still offered"               "grep -q 'sweep.sh --user acme' '$E2/NEXT-STEPS.md'"
+check "nothing is described as discounted"       "! grep -qi 'discount' '$E2/NEXT-STEPS.md'"
+check "it lists them as a machine to check"      "grep -q 'People whose machines need checking' '$E2/NEXT-STEPS.md'"
+check "and names them there"                     "grep -q '\*\*mallory\*\*' '$E2/NEXT-STEPS.md'"
+check "explains why a familiar name is expected" "grep -q 'as whoever is logged in' '$E2/NEXT-STEPS.md'"
+check "--trusted-actor is still accepted"        "'$ROOT/lib/next-steps.sh' --triage '$E2/triage.json' --out '$E2' --owner acme --owner-type user --trusted-actor mallory"
+# Without the flag there is no machine-check section to write.
 "$ROOT/lib/next-steps.sh" --triage "$E2/triage.json" --out "$E2" --owner acme --owner-type user >/dev/null 2>&1
+check "no machine section when nobody is named"  "! grep -q 'People whose machines need checking' '$E2/NEXT-STEPS.md'"
 
 echo "== a push to an unflagged branch is not evidence =="
 E3="$TMP/e3"; mkdir -p "$E3"; mk_triage "$E3/triage.json" acme/app
