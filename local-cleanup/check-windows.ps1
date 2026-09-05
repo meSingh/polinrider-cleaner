@@ -126,7 +126,10 @@ function Test-KnownHash ([string]$path) {
   try {
     $h = (Get-FileHash -LiteralPath $path -Algorithm SHA256 -ErrorAction Stop).Hash.ToLower()
     if ($KnownHashes.ContainsKey($h)) { return $KnownHashes[$h] }
-  } catch { }
+  } catch {
+    # Unreadable or locked files are common and not themselves a finding.
+    Write-Verbose "could not hash ${path}: $($_.Exception.Message)"
+  }
   return $null
 }
 
@@ -178,7 +181,10 @@ try {
     Bad "implant scheduled task registered: $($_.TaskPath)$($_.TaskName)"
     Say "           remove it: Unregister-ScheduledTask -TaskName '$($_.TaskName)' -TaskPath '$($_.TaskPath)' -Confirm:`$false"
   }
-} catch { }
+} catch {
+  # No such task, or the cmdlet is unavailable before Windows 8. Neither is a finding.
+  Write-Verbose "scheduled task lookup: $($_.Exception.Message)"
+}
 
 foreach ($k in @('HKCU:\Software\Microsoft\Windows\CurrentVersion\Run',
                  'HKLM:\Software\Microsoft\Windows\CurrentVersion\Run')) {
