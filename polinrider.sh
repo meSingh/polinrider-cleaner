@@ -15,7 +15,8 @@
 #
 # Options:
 #   --roots "A B"   code directories for the machine scan
-#   --out DIR       where evidence goes. Default: ./evidence
+#   --out DIR       where evidence goes. Default: ~/.polinrider/evidence
+#                   Never inside a git checkout: mirrors hold live malware.
 #   --yes           never prompt. For scripts and AI agents
 #   -h, --help      this text
 #
@@ -23,8 +24,10 @@
 
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=lib/common.sh
+. "$HERE/lib/common.sh"
 
-MODE=""; ORG=""; USR=""; SCANPATH=""; OUT="./evidence"; ROOTS=""; ASSUME_YES=0; DO_ALL=0
+MODE=""; ORG=""; USR=""; SCANPATH=""; OUT=""; ROOTS=""; ASSUME_YES=0; DO_ALL=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -40,6 +43,9 @@ while [[ $# -gt 0 ]]; do
     *) printf 'unknown argument: %s\nTry --help\n' "$1" >&2; exit 2 ;;
   esac
 done
+
+# Evidence never lands in the working directory. See prc_assert_safe_out.
+OUT="${OUT:-$(prc_default_evidence_dir)}"
 
 # --- presentation -----------------------------------------------------------
 if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
@@ -147,12 +153,34 @@ scan_path() {
   local rc=$?; [[ $rc -ge 2 ]] && FOUND_IN="path"; note_rc $rc; return $rc
 }
 
+# Earlier versions wrote mirrors to ./evidence, inside the checkout. If that is
+# still there, say so once and offer the move, rather than silently re-cloning
+# every repository into the new location.
+legacy_evidence_hint() {
+  local legacy="$PWD/evidence" n
+  [[ -d "$legacy" && "$legacy" != "$OUT" ]] || return 0
+  n=$(find "$legacy" -maxdepth 1 -name '*.git' 2>/dev/null | grep -c . || true)
+  [[ "${n:-0}" -gt 0 ]] || return 0
+  say ""
+  warn "$n mirror(s) are still in ./evidence, inside this checkout."
+  say "  That is where older versions put them. Move them and this run reuses"
+  say "  them instead of cloning everything again:"
+  say ""
+  say "    ${DIM}mv $legacy/* $OUT/ && rmdir $legacy${X}"
+  say ""
+}
+
 scan_github() {  # scan_github <org|user> <name>
   local kind="$1" name="$2" dir
   if [[ "$kind" == "org" ]]; then dir="$HERE/github-org-recovery"; else dir="$HERE/github-account-recovery"; fi
   step "Scanning the $([[ "$kind" == org ]] && echo "organization" || echo "account") $name"
   check_deps 1 || return 2
-  say "${DIM}mirror-cloning every repository into $OUT - this can take a while${X}"
+  OUT="$(prc_prepare_out "$OUT")" || return 2
+  say "${DIM}mirror-cloning every repository into${X}"
+  say "  ${B}$OUT${X}"
+  say "${DIM}this can take a while. Evidence is kept outside your working directory${X}"
+  say "${DIM}on purpose: the mirrors hold live malware.${X}"
+  legacy_evidence_hint
   if [[ "$kind" == "org" ]]; then
     "$dir/scan.sh" --org "$name" --out "$OUT" || return 2
   else
@@ -249,50 +277,35 @@ fi
 
 # --- what to actually do -----------------------------------------------------
 github_playbook() {
-  local dir tool
+  local dir
   if [[ "$GH_KIND" == "org" ]]; then
-    dir="github-org-recovery"; tool="--org $GH_NAME"
+    dir="github-org-recovery"
   else
-    dir="github-account-recovery"; tool="--user $GH_NAME"
+    dir="github-account-recovery"
   fi
-  say "  ${B}$REAL_REFS ref(s) carry a real indicator.${X} Work through this in order."
+  say "  ${B}$REAL_REFS ref(s) carry a real indicator.${X}"
   say ""
-  say "  ${B}1. Stop moving code around.${X}"
-  say "     Do not push to an affected repository. Do not run git pull in an"
-  say "     existing clone of one: pulling an infected clone re-infects the remote."
+  say "  ${B}Do not open an affected repository in your editor.${X}"
+  say "  The payload includes a .vscode/tasks.json with \"runOn\": \"folderOpen\","
+  say "  which runs as soon as VS Code opens the folder. Do not git pull in an"
+  say "  existing clone either: pulling an infected clone re-infects the remote."
   say ""
-  say "  ${B}2. Read what actually matched.${X} Do this before anything else."
-  say "     ${DIM}cat $OUT/triage.txt${X}"
-  say "     ${DIM}less $OUT/triage.txt${X}   (it is long)"
+
+  # Everything below is generated from the scan, with real repository names,
+  # real paths and a real timestamp. An earlier version printed <T0> and
+  # <two hours before the first bad push> as literal text, which is a command
+  # that fails the moment you paste it.
+  "$HERE/lib/next-steps.sh" --triage "$OUT/triage.json" --out "$OUT" \
+      --owner "$GH_NAME" --owner-type "$GH_KIND" || {
+    say "  Could not generate the plan. Read $OUT/triage.txt by hand."
+    return 0
+  }
+
   say ""
-  say "  ${B}3. Check every machine you use for git.${X}"
-  say "     ${DIM}./polinrider.sh --machine${X}"
-  say "     If one of them is a confirmed hit, do the rest from a different machine."
+  say "  ${B}Everything, in order, with each command written out:${X}"
+  say "    ${DIM}$OUT/NEXT-STEPS.md${X}"
   say ""
-  say "  ${B}4. Rotate your credentials, from a machine that came back clean.${X}"
-  say "     Tokens, SSH and signing keys, OAuth grants, then a password change"
-  say "     with sign-out of all sessions. The full list is in the README."
-  say "     ${DIM}README, Step 2. Rotate every credential${X}"
-  say ""
-  say "  ${B}5. Work out how it got there.${X} The fix depends on the answer."
-  say "     ${DIM}./$dir/sweep.sh $tool --since <two hours before the first bad push> --out $OUT${X}"
-  say ""
-  say "     ${B}If the sweep shows pushes nobody claims${X}, the branches were"
-  say "     force-pushed and the fix is to move them back:"
-  say "     ${DIM}./$dir/restore.sh --sweep $OUT/sweep.tsv --mirrors $OUT --since <T0>${X}"
-  say "     ${DIM}./$dir/preflight.sh --plan $OUT/restore-plan.tsv${X}"
-  say "     ${DIM}./$dir/restore.sh ... --apply${X}"
-  say ""
-  say "     ${B}If the sweep shows nothing${X}, the payload was committed rather than"
-  say "     force-pushed, and there is no earlier state to restore to. Remove the"
-  say "     flagged files, commit, and push. The paths are listed in triage.txt."
-  say "     Common ones are a fake font under public/fonts and a .vscode/tasks.json."
-  say ""
-  say "  ${B}6. Re-scan, then re-clone.${X}"
-  say "     ${DIM}./polinrider.sh $tool --out ./evidence-post${X}"
-  say "     Delete every local clone of an affected repository and clone fresh."
-  say ""
-  say "  Full walkthrough: ${DIM}$dir/README.md${X}"
+  say "  Background: ${DIM}$dir/README.md${X}"
 }
 
 path_playbook() {

@@ -55,18 +55,21 @@ nothing on GitHub or on the machine.
 | Command | Effect |
 |---|---|
 | `polinrider.sh` in any mode | routes to the tools below; never changes anything |
-| `ci/selftest*.sh` (four of them) | offline, no network, no credentials |
+| `ci/selftest*.sh` (five of them) | offline, no network, no credentials |
 | `ci/scan-workspace.sh --path DIR` | reads files |
 | `machine-cleanup/check-*.sh DIR ...` | reads the machine, writes one report file |
 | `github-org-recovery/scan.sh`, `sweep.sh`, `triage-filter.sh`, `preflight.sh` | reads the GitHub API, clones mirrors |
 | `github-account-recovery/*` (same four) | as above |
 | `restore.sh` **without** `--apply` | prints a plan, changes nothing |
+| `lib/next-steps.sh` | reads a finished triage, writes `NEXT-STEPS.md` and three lists |
+| `clean-repo.sh` **without** `--apply` | bare-clones and prints a plan, pushes nothing |
 
 ### What you must NOT run without explicit human confirmation
 
 | Command | Why |
 |---|---|
 | `restore.sh --apply` | force-updates branch refs on GitHub. Irreversible from the tool's side |
+| `clean-repo.sh --apply` | commits and pushes a deletion to every affected branch. Reversible, but it is still a push |
 | `check-*.sh --apply` / `-Apply` | moves files on the human's machine |
 | Any `gh api -X DELETE` or `-X PATCH` printed by these tools | the tools print commands deliberately so a human runs them |
 
@@ -135,12 +138,12 @@ the OS.
 | Path | Contains |
 |---|---|
 | `ioc/` | the indicator set, single source of truth, read at runtime by everything |
-| `lib/` | shared engines: `gh-scan`, `gh-sweep`, `gh-restore`, `triage-filter`, `common.sh`, `local-common.sh` |
+| `lib/` | shared engines: `gh-scan`, `gh-sweep`, `gh-restore`, `gh-clean`, `next-steps`, `triage-filter`, `common.sh`, `local-common.sh` |
 | `github-org-recovery/` | recover a GitHub **organization**: thin wrappers over `lib/` plus its own `preflight.sh` |
 | `github-account-recovery/` | the same for **one personal account** |
 | `machine-cleanup/` | check and clean **one computer**, one script per operating system |
 | `polinrider.sh` | the single entry point at the repository root |
-| `ci/` | the vendorable scanner, its workflow template, installer, and three self-tests |
+| `ci/` | the vendorable scanner, its workflow template, installer, and five self-tests |
 
 `common.sh` and `local-common.sh` are sourced, not executed, and are
 deliberately not marked executable.
@@ -161,6 +164,20 @@ The tree is clean at those levels; keep it that way. Where a warning is
 suppressed there is a `# shellcheck disable=` with the reason on the line above.
 
 ### Rules that are not negotiable
+
+**Evidence never lands inside a git working tree.** Mirror clones hold live
+malware. Inside a checkout an editor indexes them and a stray `git add -A`
+republishes the payload from the operator's own account. `prc_prepare_out`
+enforces this and the default is `~/.polinrider/evidence`. Do not add a code
+path that writes mirrors somewhere else, and do not weaken the guard. The
+override exists for people who know why they want it, not for convenience.
+
+**Never print a placeholder inside a command.** A line like
+`--since <T0>` is a command that fails the moment anyone pastes it, and zsh
+rejects it outright. If a value is not known, either compute it, or say plainly
+that the step does not apply and print nothing runnable. `ci/selftest-nextsteps.sh`
+asserts this by parsing every fenced bash block in the generated document.
+
 
 1. **Nothing is deleted, ever.** Quarantine moves files and writes a manifest.
    Restore moves a branch pointer to a commit that still exists.

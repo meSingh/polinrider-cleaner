@@ -5,7 +5,7 @@
 # READ-ONLY. Changes nothing.
 #
 # Usage:
-#   gh-sweep.sh --owner ACME --owner-type org|user --since 2026-07-27T03:00:00Z --out ./evidence
+#   gh-sweep.sh --owner ACME --owner-type org|user --since 2026-07-27T03:00:00Z --out ~/.polinrider/evidence
 #
 # Options:
 #   --actor LOGIN   restrict to one GitHub login
@@ -20,7 +20,7 @@ set -uo pipefail
 # shellcheck source=lib/common.sh
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
 
-OWNER=""; KIND=""; SINCE=""; OUT="./evidence"; ACTOR=""; NOFORK=0
+OWNER=""; KIND=""; SINCE=""; OUT=""; ACTOR=""; NOFORK=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -38,6 +38,8 @@ done
 [[ -n "$OWNER" && -n "$KIND" && -n "$SINCE" ]] || prc_die "need --owner, --owner-type and --since"
 prc_need gh jq
 
+OUT="${OUT:-$(prc_default_evidence_dir)}"
+OUT="$(prc_prepare_out "$OUT")"
 mkdir -p "$OUT/events" || prc_die "cannot create $OUT"
 SWEEP="$OUT/sweep.tsv"
 printf 'time\trepo\tevent\tactor\tref\tbefore\tafter\tsize\n' > "$SWEEP"

@@ -12,8 +12,110 @@ PRC_IOC="${PRC_IOC_DIR:-$PRC_ROOT/ioc}"
 # Obfuscation tells used to qualify a "content after module end" finding.
 PRC_TAIL_TELL='eval\(|new Function\(|Buffer\.from\(|child_process|atob\(|fromCharCode|\\x[0-9a-fA-F]{2}\\x[0-9a-fA-F]{2}|require\([^)]*(child_process|https?|net|dns)'
 
+# shellcheck disable=SC2034  # PRC_BENIGN_RE is read by the scripts that source this file
+# Paths that contain indicator strings because they are detection tooling, not
+# payload. Extend this list if you keep your scanners somewhere else.
+PRC_BENIGN_RE='(^|/)\.github/workflows/[^/]*polinrider[^/]*\.(yml|yaml)$'
+PRC_BENIGN_RE="$PRC_BENIGN_RE"'|(^|/)\.github/polinrider/'
+PRC_BENIGN_RE="$PRC_BENIGN_RE"'|(^|/)(polinrider|scan-workspace|gh-scan|gh-sweep|gh-restore|triage-filter|check-macos|check-linux|check-windows|preflight|selftest|install-workflow|local-common|common)[^/]*\.(sh|ps1)$'
+PRC_BENIGN_RE="$PRC_BENIGN_RE"'|(^|/)ioc/[^/]*\.txt$'
+PRC_BENIGN_RE="$PRC_BENIGN_RE"'|(^|/)(lib|ci)/'
+PRC_BENIGN_RE="$PRC_BENIGN_RE"'|\.md$|(^|/)docs/|README'
+
+# prc_shift_back_2h <iso8601Z> - two hours earlier, same format. Fails loudly.
+# T0 for a sweep is conventionally a couple of hours before the first suspect
+# push, to catch anything staged just ahead of it.
+prc_shift_back_2h() {
+  local t="${1:-}" out=""
+  # Validate the input, not just the output. GNU date reads " - 2 hours" as a
+  # relative offset from now, so an empty or malformed argument comes back as a
+  # perfectly well-formed timestamp that is simply wrong, and the output check
+  # below cannot tell. BSD date rejects the same input outright, which is how
+  # this stayed hidden on macOS.
+  case "$t" in
+    [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]Z) ;;
+    *) return 1 ;;
+  esac
+  if date --version >/dev/null 2>&1; then
+    out=$(date -u -d "$t - 2 hours" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || true)
+  else
+    # BSD date: -v must come before -f. The other order silently ignores both
+    # the adjustment and the output format and returns the unchanged date in
+    # ctime format, which then gets pasted into a --since and fails.
+    out=$(date -u -j -v-2H -f "%Y-%m-%dT%H:%M:%SZ" "$t" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || true)
+  fi
+  case "$out" in
+    [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]Z) printf '%s\n' "$out" ;;
+    *) return 1 ;;
+  esac
+}
+
 prc_log() { printf '[%s] %s\n' "$(date -u +%H:%M:%S)" "$*" >&2; }
 prc_die() { printf 'error: %s\n' "$*" >&2; exit 2; }
+
+# --- where evidence goes ----------------------------------------------------
+# Mirrors hold attacker-controlled content. They must never land inside a
+# directory a developer opens in an editor. Two reasons, and only the second is
+# hypothetical: cloning a working tree out of a mirror gives you a live
+# .vscode/tasks.json with "runOn": "folderOpen", and one careless `git add -A`
+# publishes the payload again from your own account. The default is a dotted
+# directory in $HOME: outside every checkout, ignored by editors and indexers,
+# and it survives a reboot, which $TMPDIR does not. Mirrors are forensic
+# evidence and sometimes the only copy of a pre-attack commit.
+prc_default_evidence_dir() {
+  local home="${POLINRIDER_HOME:-$HOME/.polinrider}"
+  # Some people keep their dotfiles as a git repo checked out at $HOME. There,
+  # ~/.polinrider would sit inside a working tree, which is the thing this all
+  # exists to prevent. Fall back to the per-user temp directory.
+  if [[ -z "${POLINRIDER_HOME:-}" ]] && git -C "$HOME" rev-parse --show-toplevel >/dev/null 2>&1; then
+    printf '%s\n' "${TMPDIR:-/tmp}/polinrider-evidence"
+    return 0
+  fi
+  printf '%s\n' "$home/evidence"
+}
+
+# prc_assert_safe_out <dir> - refuse an evidence directory inside a git checkout.
+# Set POLINRIDER_ALLOW_UNSAFE_OUT=1 to override, if you know why you want to.
+prc_assert_safe_out() {
+  local out="$1" probe top
+  [[ "${POLINRIDER_ALLOW_UNSAFE_OUT:-0}" == "1" ]] && return 0
+
+  # Walk up to the nearest directory that exists, then ask git about it.
+  probe="$out"
+  while [[ ! -d "$probe" && "$probe" != "/" && "$probe" != "." ]]; do
+    probe="$(dirname "$probe")"
+  done
+  top="$(git -C "$probe" rev-parse --show-toplevel 2>/dev/null || true)"
+  [[ -z "$top" ]] && return 0
+
+  cat >&2 <<EOF
+error: refusing to write evidence into a git working tree.
+
+  requested : $out
+  inside    : $top
+
+Mirror clones hold live malware. Inside a checkout your editor indexes them,
+and one 'git add -A' republishes the payload from your own account.
+
+Use the default, which is outside every checkout:
+  --out $(prc_default_evidence_dir)
+
+Or name somewhere else yourself:
+  --out "\$HOME/polinrider-evidence"
+
+Override only if you know why: POLINRIDER_ALLOW_UNSAFE_OUT=1
+EOF
+  exit 2
+}
+
+# prc_prepare_out <dir> - validate, create mode 700, echo the absolute path.
+prc_prepare_out() {
+  local out="$1"
+  prc_assert_safe_out "$out"
+  mkdir -p "$out" || prc_die "cannot create evidence directory: $out"
+  chmod 700 "$out" 2>/dev/null || true
+  (cd "$out" && pwd)
+}
 
 prc_need() {
   local missing=0 bin
