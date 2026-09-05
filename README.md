@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/img/hero-graph.jpg" alt="polinrider-cleaner" width="100%">
+  <img src="docs/img/hero-lattice.jpg" alt="polinrider-cleaner" width="100%">
 </p>
 
 <h1 align="center">polinrider-cleaner</h1>
