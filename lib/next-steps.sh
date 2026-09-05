@@ -75,13 +75,23 @@ fi
 # A force-push can be undone: the old commit is still in the mirror. A payload
 # that was committed normally has no earlier state to go back to, so the fix is
 # to remove it and commit that. The push ledger decides which case this is.
-T0=""; N_WITH_EVENTS=0
+T0=""; N_WITH_EVENTS=0; ACTORS=""; N_FORCED=0
+RESTORABLE="$OUT/restorable-repos.txt"; HOSTILE="$OUT/pushes-on-infected-refs.tsv"
+rm -f "$RESTORABLE" "$HOSTILE"
 if [[ -f "$PUSHES" ]]; then
-  N_WITH_EVENTS=$(awk -F'\t' 'NR==FNR{a[$1];next} FNR>1 && ($1 in a){print $1}' \
-                  "$REPOS" "$PUSHES" 2>/dev/null | sort -u | awk 'END{print NR}')
+  # Only pushes that landed on a ref this scan actually flagged. A push to some
+  # other branch of an affected repository says nothing about how it got there.
+  awk -F'\t' 'NR==FNR{k[$1"|"$2];next} FNR>1 && (($1"|"$2) in k)' \
+      "$REFS" "$PUSHES" 2>/dev/null > "$HOSTILE"
+  N_WITH_EVENTS=$(cut -f1 "$HOSTILE" 2>/dev/null | sort -u | awk 'END{print NR}')
   if [[ "${N_WITH_EVENTS:-0}" -gt 0 ]]; then
-    first=$(awk -F'\t' 'NR==FNR{a[$1];next} FNR>1 && ($1 in a){print $6}' \
-            "$REPOS" "$PUSHES" 2>/dev/null | sort | head -1)
+    cut -f1 "$HOSTILE" | sort -u > "$RESTORABLE"
+    ACTORS=$(cut -f5 "$HOSTILE" | sort -u | grep -v '^$' | paste -sd', ' -)
+    # A PushEvent carrying zero commits moved the ref without adding history.
+    # That is a force-push, so the commit that was there before it is still in
+    # the mirror and can be restored.
+    N_FORCED=$(awk -F'\t' '$7=="0"' "$HOSTILE" | awk 'END{print NR}')
+    first=$(cut -f6 "$HOSTILE" | sort | head -1)
     if [[ -n "${first:-}" ]]; then
       # Two hours before the earliest push we have on an affected repository.
       T0=$(prc_shift_back_2h "$first" || true)
@@ -117,11 +127,24 @@ CLEAN="./$RECOVERY_DIR/clean-repo.sh"
 
   printf '## 3. How it got there\n\n'
   if [[ -n "$T0" ]]; then
-    printf 'The push ledger has events for %s of the %s affected repositories, so a\n' "$N_WITH_EVENTS" "$N_REPOS"
-    printf 'force-push is possible. Check that first, because if the branches were\n'
-    printf 'force-pushed you can move them back instead of editing files.\n\n'
-    printf 'T0 below is two hours before the earliest push recorded on an affected\n'
-    printf 'repository. It is already filled in.\n\n'
+    printf '%s of the %s affected repositories have recorded pushes **that landed on\n' "$N_WITH_EVENTS" "$N_REPOS"
+    printf 'a branch this scan flagged**. For those, the commit that was there before\n'
+    printf 'may still be in the mirror, so you can move the branch back instead of\n'
+    printf 'editing files.\n\n'
+    printf 'Pushed by: **%s**\n\n' "$ACTORS"
+    if [[ "${N_FORCED:-0}" -gt 0 ]]; then
+      printf '%s of those pushes carried **zero commits**. A push that moves a ref\n' "$N_FORCED"
+      printf 'without adding any history is a force-push, which is what makes those\n'
+      printf 'branches restorable.\n\n'
+    fi
+    printf '> Confirm every name above before you restore anything. If they are all\n'
+    printf '> people on your team who can account for these pushes, treat this as the\n'
+    printf '> committed-payload case and go to step 4 instead.\n\n'
+    printf 'Restore candidates, also in `%s`:\n\n' "$RESTORABLE"
+    printf '```\n%s\n```\n\n' "$(cat "$RESTORABLE")"
+    printf 'Every push that touched a flagged branch, with actor and timestamp:\n'
+    printf '`%s`\n\n' "$HOSTILE"
+    printf 'T0 below is two hours before the earliest of them, already filled in.\n\n'
     printf '```bash\n'
     printf './%s/sweep.sh --%s %s --since %s --out %s\n' "$RECOVERY_DIR" "$KIND" "$OWNER" "$T0" "$OUT"
     printf '```\n\n'
@@ -152,6 +175,10 @@ CLEAN="./$RECOVERY_DIR/clean-repo.sh"
   printf 'paths from every affected branch, commits, and pushes. It is a normal\n'
   printf 'commit on top, not a force-push, so nothing is rewritten and you can\n'
   printf 'revert it. **It is a dry run unless you pass `--apply`.**\n\n'
+  if [[ -n "$T0" ]]; then
+    printf 'This is the fix for the %s repositories with no recorded push on a flagged\n' "$((N_REPOS - N_WITH_EVENTS))"
+    printf 'branch, and for any of the other %s where the sweep turns up nothing.\n\n' "$N_WITH_EVENTS"
+  fi
   printf 'Start with one repository and read what it says:\n\n'
   printf '```bash\n%s %s\n```\n\n' "$CLEAN" "$(head -1 "$REPOS")"
   printf 'Then, when the plan looks right:\n\n'
@@ -183,7 +210,11 @@ printf '\n'
 printf '  %s repositories, %s branches. Written to:\n' "$N_REPOS" "$N_REFS"
 printf '    %s\n\n' "$DOC"
 if [[ -n "$T0" ]]; then
-  printf '  Push events survive for %s repo(s), so check for a force-push first:\n' "$N_WITH_EVENTS"
+  printf '  %s of %s repo(s) have pushes that landed on a flagged branch.\n' "$N_WITH_EVENTS" "$N_REPOS"
+  printf '  Pushed by: %s\n' "$ACTORS"
+  [[ "${N_FORCED:-0}" -gt 0 ]] && \
+    printf '  %s of those carried zero commits, which is a force-push, so an earlier\n  commit is still in the mirror for those branches.\n' "$N_FORCED"
+  printf '  Confirm you recognise every name above, then:\n'
   printf '    ./%s/sweep.sh --%s %s --since %s --out %s\n\n' "$RECOVERY_DIR" "$KIND" "$OWNER" "$T0" "$OUT"
 else
   printf '  No push events survive for any affected repository, so there is no\n'
