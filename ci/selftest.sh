@@ -28,6 +28,9 @@ cat > "$TMP/infected/.vscode/tasks.json" <<'EOF'
   "runOptions": { "runOn": "folderOpen" } } ] }
 EOF
 printf 'MZ\220\000 not a font' > "$TMP/infected/public/fonts/fa-solid-900.woff2"
+# A font whose leading bytes are a terminal escape sequence. The scanner must
+# never echo these to the operator's console.
+printf '\033[2J\033[31mPWNED'        > "$TMP/infected/public/fonts/escape.woff2"
 printf '@echo off\ngit commit --amend --no-verify\n' > "$TMP/infected/temp_auto_push.bat"
 printf '{"dependencies":{"tailwindcss-style-animate":"^1.0.0"}}\n' > "$TMP/infected/package.json"
 { printf 'export default { plugins: {} }\n'
@@ -55,9 +58,25 @@ echo
 echo "assertions:"
 if [[ $RC -eq 2 ]]; then pass "exits 2"; else fail "expected exit 2, got $RC"; fi
 for want in "tailwind.config.js" "package.json" "temp_auto_push.bat" \
-            "fa-solid-900.woff2" "task runs on folder open" "postcss.config.mjs"; do
+            "fa-solid-900.woff2" "task runs on folder open" "postcss.config.mjs" \
+            "escape.woff2"; do
   if printf '%s\n' "$OUT" | grep -q "$want"; then pass "detected: $want"; else fail "missed: $want"; fi
 done
+
+# Output must be free of control characters: a crafted file must not be able to
+# drive the terminal of whoever runs this during an incident.
+# grep does not interpret octal escapes inside a bracket expression, so strip
+# the legitimate whitespace with tr and then look for any remaining control char.
+if printf '%s' "$OUT" | LC_ALL=C tr -d '\n\t' | LC_ALL=C grep -q '[[:cntrl:]]'; then
+  fail "output contains control characters from a scanned file"
+else
+  pass "no control characters leak into the output"
+fi
+if printf '%s\n' "$OUT" | grep -q "first bytes: 1b 5b 32 4a"; then
+  pass "escape-sequence font reported as inert hex"
+else
+  fail "escape-sequence font not reported as hex"
+fi
 
 echo
 echo "== clean control =="

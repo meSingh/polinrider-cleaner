@@ -66,11 +66,17 @@ TAIL_TELL='eval\(|new Function\(|Buffer\.from\(|child_process|atob\(|fromCharCod
 
 cd "$PATH_ARG" || exit 2
 HITS=0; REVIEWS=0
+# Findings quote file content and paths, both of which an attacker controls.
+# Strip control characters so a crafted file cannot emit terminal escape
+# sequences into the operator's console or into a CI log.
+clean() { LC_ALL=C tr -d '\000-\010\013\014\016-\037\177'; }
 note()  { printf '%s\n' "$*"; }
-hit()   { HITS=$((HITS+1));       printf 'INFECTED  %s\n' "$*"
-          [[ "${GITHUB_ACTIONS:-}" == "true" ]] && printf '::error title=PolinRider::%s\n' "$*"; }
-review(){ REVIEWS=$((REVIEWS+1)); printf 'review    %s\n' "$*"
-          [[ "${GITHUB_ACTIONS:-}" == "true" ]] && printf '::warning title=PolinRider review::%s\n' "$*"; }
+hit()   { local m; m="$(printf '%s' "$*" | clean)"; HITS=$((HITS+1))
+          printf 'INFECTED  %s\n' "$m"
+          [[ "${GITHUB_ACTIONS:-}" == "true" ]] && printf '::error title=PolinRider::%s\n' "$m"; }
+review(){ local m; m="$(printf '%s' "$*" | clean)"; REVIEWS=$((REVIEWS+1))
+          printf 'review    %s\n' "$m"
+          [[ "${GITHUB_ACTIONS:-}" == "true" ]] && printf '::warning title=PolinRider review::%s\n' "$m"; }
 
 # ---------------------------------------------------------------------------
 # Working tree
@@ -123,7 +129,7 @@ while IFS= read -r f; do
   MAGIC="$(head -c 4 "$f" 2>/dev/null)"
   case "$MAGIC" in
     wOFF|wOF2|vers) ;;
-    *) hit "$f: font file is not a font (magic='$MAGIC')" ;;
+    *) hit "$f: font file is not a font (first bytes: $(head -c 4 "$f" 2>/dev/null | od -An -tx1 | tr -s ' ' | sed 's/^ *//;s/ *$//'))" ;;
   esac
 done < <(grep -Ei '\.woff2?$' "$FILES" 2>/dev/null)
 

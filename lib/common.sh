@@ -161,7 +161,10 @@ prc_scan_ref() {
     magic="${head40:0:4}"
     case "$magic" in
       wOFF|wOF2) ;;
-      *) woff="${woff}${p} (magic='${magic}')"$'\n' ;;
+      *) local hex
+         hex="$(git -C "$dest" cat-file blob "${ref}:${p}" 2>/dev/null | head -c 4 \
+                | od -An -tx1 | tr -s ' ' | sed 's/^ *//;s/ *$//')"
+         woff="${woff}${p} (first bytes: ${hex})"$'\n' ;;
     esac
   done < <(git -C "$dest" ls-tree -r --name-only "$ref" 2>/dev/null \
            | grep -Ei '\.woff2?$' | head -40)
@@ -193,6 +196,11 @@ prc_scan_ref() {
   verdict="clean"
   [[ -n "$hits" || -n "$names" || -n "$woff" ]] && verdict="INFECTED"
   [[ "$verdict" == "clean" && ( -n "$weak" || -n "$tail_suspect" ) ]] && verdict="review"
+
+  # Matched content comes from files an attacker controls. Strip control
+  # characters before they reach a terminal or the report.
+  hits="$(printf '%s' "$hits" | LC_ALL=C tr -d '\000-\010\013\014\016-\037\177')"
+  weak="$(printf '%s' "$weak" | LC_ALL=C tr -d '\000-\010\013\014\016-\037\177')"
 
   if [[ "$verdict" != "clean" ]]; then
     { echo "### ${repo}  ${ref}  -> ${verdict}"
