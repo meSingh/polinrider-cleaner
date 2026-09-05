@@ -158,6 +158,13 @@ Scripts must run on bash 3.2, which is what macOS ships. No `mapfile`, no
 associative arrays, no `${var,,}`. Guard array expansion under `set -u` with
 `${arr[@]+"${arr[@]}"}`.
 
+### Signing
+
+Commits and tags in this repository are GPG-signed and show as Verified on
+GitHub. If you are committing on the maintainer's behalf, do not disable
+signing, and do not add `--no-gpg-sign`. A repository about backdated,
+force-pushed commits that does not sign its own is not credible.
+
 ### Commits and pull requests
 
 Explain why the change is needed before what it does. Templates are in

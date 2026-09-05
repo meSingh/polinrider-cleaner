@@ -1,0 +1,51 @@
+# Semgrep static analysis.
+#
+# Semgrep has no shell ruleset - p/bash and p/shell do not exist - so this does
+# not replace shellcheck, which is the shell linter and runs in the CI workflow.
+# What Semgrep adds here is the ground shellcheck cannot cover:
+#
+#   p/github-actions    injection through workflow expression interpolation,
+#                       over-broad permissions, untrusted checkout patterns.
+#                       This repository has four workflows that interpolate
+#                       inputs into run steps, which is exactly where that goes
+#                       wrong.
+#   p/secrets           credentials that should never have been committed.
+#   p/command-injection generic injection patterns.
+#
+# No account or token is used. `semgrep scan` reads public rulesets directly;
+# `semgrep ci` would require SEMGREP_APP_TOKEN and send results to a third party.
+name: Semgrep
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: '23 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  semgrep:
+    name: Static analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    container:
+      image: semgrep/semgrep
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Scan
+        run: |
+          semgrep scan \
+            --config p/github-actions \
+            --config p/secrets \
+            --config p/command-injection \
+            --error \
+            --metrics=off \
+            --exclude=ioc \
+            --exclude='*.md'
