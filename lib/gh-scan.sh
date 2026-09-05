@@ -5,7 +5,7 @@
 # READ-ONLY against GitHub. Never pushes, deletes or rewrites anything.
 #
 # Usage:
-#   gh-scan.sh --owner ACME --owner-type org|user --out ~/.polinrider/evidence [options]
+#   gh-scan.sh --owner ACME --owner-type org|user --out "$EV" [options]
 #
 # Options:
 #   --repo OWNER/NAME   scan a single repository instead of the whole account

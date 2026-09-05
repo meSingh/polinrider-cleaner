@@ -153,11 +153,14 @@ non-interactive for scripts and agents; `--help` lists the rest.
 # The four steps
 
 > [!NOTE]
-> **Evidence goes to `~/.polinrider/evidence`, never into your working
-> directory.** The scan makes mirror clones, and a mirror clone holds live
-> malware. Inside a checkout your editor would index it and a stray `git add -A`
-> would republish it from your own account, so the tools refuse to write there.
-> Override the location with `--out`, and keep it outside every checkout.
+> **Evidence goes to a temporary directory your machine clears on restart,
+> never into your working directory.** The scan makes mirror clones, and a
+> mirror clone holds live malware. Two things follow. Inside a checkout your
+> editor indexes it and a stray `git add -A` republishes it from your own
+> account, so the tools refuse to write there at all. And infected mirrors
+> should not outlive the incident, so the default location is one that empties
+> itself rather than one you have to remember. Override with `--out` if you
+> need the evidence to survive a reboot, and delete it yourself when done.
 
 ## Step 1. Check the machines
 
@@ -324,6 +327,15 @@ unprotected branch and open a pull request from it.
 
 ### If it was force-pushed: restore it
 
+Every command below writes into the same evidence directory. Set it once:
+
+```bash
+# The default. Your machine clears this on restart, which is intended:
+# infected mirrors should not outlive the incident.
+EV="${TMPDIR:-/tmp}/polinrider-evidence"
+```
+
+
 History stays intact and no work is lost: the branch pointer moves back to the
 commit that existed before the attack, and the malicious commits become
 unreachable.
@@ -344,21 +356,21 @@ The recovery itself:
 
 ```bash
 # 1. Evidence first. Time-critical, see the warning below.
-./github-org-recovery/scan.sh --org YOUR-ORG --out ~/.polinrider/evidence --mirror-only
+./github-org-recovery/scan.sh --org YOUR-ORG --out "$EV" --mirror-only
 
 # 2. Who touched what, and when
-./github-org-recovery/sweep.sh --org YOUR-ORG --since 2026-07-27T03:00:00Z --out ~/.polinrider/evidence
+./github-org-recovery/sweep.sh --org YOUR-ORG --since 2026-07-27T03:00:00Z --out "$EV"
 
 # 3. Content scan, then drop your own detection files from the results
-./github-org-recovery/scan.sh --org YOUR-ORG --out ~/.polinrider/evidence --scan-only
-./github-org-recovery/triage-filter.sh ~/.polinrider/evidence/triage.json
+./github-org-recovery/scan.sh --org YOUR-ORG --out "$EV" --scan-only
+./github-org-recovery/triage-filter.sh "$EV"/triage.json
 
 # 4. Plan the restore. Dry run, changes nothing.
-./github-org-recovery/restore.sh --sweep ~/.polinrider/evidence/sweep.tsv --mirrors ~/.polinrider/evidence \
+./github-org-recovery/restore.sh --sweep "$EV"/sweep.tsv --mirrors "$EV" \
                          --since 2026-07-27T03:00:00Z --actor ATTACKER-LOGIN
 
 # 5. Gates, then apply
-./github-org-recovery/preflight.sh --org YOUR-ORG --plan ~/.polinrider/evidence/restore-plan.tsv --actor ATTACKER-LOGIN
+./github-org-recovery/preflight.sh --org YOUR-ORG --plan "$EV"/restore-plan.tsv --actor ATTACKER-LOGIN
 ./github-org-recovery/restore.sh   ... --apply
 ```
 
@@ -626,7 +638,7 @@ quoting a number.
 ./polinrider.sh --all --org YOUR-ORG
 ```
 
-Read what matched, not the count: `cat ~/.polinrider/evidence/triage.txt`.
+Read what matched, not the count: `cat "$EV/triage.txt"`.
 
 Also check by eye, because no scanner covers these:
 
