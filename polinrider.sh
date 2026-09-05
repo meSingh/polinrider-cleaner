@@ -20,9 +20,11 @@
 #                   malware, so they are never written inside a git checkout
 #                   and are not meant to outlive the incident.
 #   --purge-evidence  delete the evidence directory and everything in it
-#   --trusted-actor LOGIN
-#                   someone whose pushes are accounted for. Their pushes stop
-#                   counting as evidence of a force-push. Repeatable.
+#   --known-actor LOGIN
+#                   someone you recognise among the accounts that pushed. It does
+#                   NOT discount their pushes: this campaign force-pushes as
+#                   whoever is logged in, so a familiar name is expected. It adds
+#                   them to the list of machines that need checking. Repeatable.
 #   --yes           never prompt. For scripts and AI agents
 #   -h, --help      this text
 #
@@ -35,7 +37,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 . "$HERE/lib/common.sh"
 
 MODE=""; ORG=""; USR=""; SCANPATH=""; OUT=""; ROOTS=""; ASSUME_YES=0; DO_ALL=0; PURGE=0
-TRUSTED_ARGS=()     # colleagues whose pushes are accounted for
+TRUSTED_ARGS=()     # colleagues to name, so their machines get checked too
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -48,7 +50,7 @@ while [[ $# -gt 0 ]]; do
     --out)     OUT="$2"; shift 2 ;;
     --yes|-y)  ASSUME_YES=1; shift ;;
     --purge-evidence) PURGE=1; shift ;;
-    --trusted-actor)  TRUSTED_ARGS+=(--trusted-actor "$2"); shift 2 ;;
+    --known-actor|--trusted-actor) TRUSTED_ARGS+=(--known-actor "$2"); shift 2 ;;
     -h|--help) sed -n '2,27p' "$0"; exit 0 ;;
     *) printf 'unknown argument: %s\nTry --help\n' "$1" >&2; exit 2 ;;
   esac

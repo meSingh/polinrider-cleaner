@@ -11,24 +11,28 @@
 #
 # Usage:
 #   next-steps.sh --triage DIR/triage.json --out DIR --owner NAME --owner-type user|org
-#                 [--trusted-actor LOGIN]...
+#                 [--known-actor LOGIN]...
 #
-# --trusted-actor names someone whose pushes are accounted for. Their pushes stop
-# counting as evidence of a force-push, which is usually the difference between
-# being sent to restore.sh and being sent to clean-repo.sh. Repeatable.
+# --known-actor names someone you recognise. It does NOT discount their pushes.
+# This campaign propagates through the machines of people you trust: the implant
+# amends and force-pushes as them, so the actor field shows a colleague and the
+# push is still the malware spreading. What the flag changes is the advice. That
+# person's machine needs checking and their credentials rotating, and the tool
+# says so instead of leaving them out of the incident. Repeatable.
+# --trusted-actor is accepted as an alias and behaves identically.
 
 set -uo pipefail
 # shellcheck source=lib/common.sh
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
 
-TRIAGE=""; OUT=""; OWNER=""; KIND=""; TRUSTED=""
+TRIAGE=""; OUT=""; OWNER=""; KIND=""; KNOWN=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --triage)     TRIAGE="$2"; shift 2 ;;
     --out)        OUT="$2"; shift 2 ;;
     --owner)      OWNER="$2"; shift 2 ;;
     --owner-type) KIND="$2"; shift 2 ;;
-    --trusted-actor) TRUSTED="$TRUSTED $2"; shift 2 ;;
+    --known-actor|--trusted-actor) KNOWN="$KNOWN $2"; shift 2 ;;
     -h|--help)    sed -n '2,13p' "$0"; exit 0 ;;
     *) prc_die "unknown argument: $1" ;;
   esac
@@ -82,30 +86,21 @@ fi
 # A force-push can be undone if the old commit is still retrievable. A payload
 # that was committed normally has no earlier state to go back to, so the fix is
 # to remove it and commit that. The push ledger decides which case this is.
-T0=""; N_WITH_EVENTS=0; ACTORS=""; N_FORCED=0; N_TRUSTED_ROWS=0
+T0=""; N_WITH_EVENTS=0; ACTORS=""; N_FORCED=0
 RESTORABLE="$OUT/restorable-repos.txt"; HOSTILE="$OUT/pushes-on-infected-refs.tsv"
 rm -f "$RESTORABLE" "$HOSTILE"
 if [[ -f "$PUSHES" ]]; then
   # Only pushes that landed on a ref this scan actually flagged. A push to some
   # other branch of an affected repository says nothing about how it got there.
+  # Every push that landed on a flagged branch, whoever made it. Naming an actor
+  # as known never removes a row here: the implant force-pushes as whoever is
+  # logged in, so a familiar name is how this campaign is designed to look.
   awk -F'\t' 'NR==FNR{k[$1"|"$2];next} FNR>1 && (($1"|"$2) in k)' \
-      "$REFS" "$PUSHES" 2>/dev/null > "$HOSTILE.all"
-  if [[ -n "${TRUSTED// /}" ]]; then
-    # A push by someone who can account for it is not evidence of anything.
-    awk -F'\t' -v trusted="$TRUSTED" '
-      BEGIN{ n=split(trusted,a," "); for(i=1;i<=n;i++) t[a[i]] }
-      !($5 in t)' "$HOSTILE.all" > "$HOSTILE"
-    N_TRUSTED_ROWS=$(( $(awk 'END{print NR}' "$HOSTILE.all") - $(awk 'END{print NR}' "$HOSTILE") ))
-  else
-    cp "$HOSTILE.all" "$HOSTILE"
-    N_TRUSTED_ROWS=0
-  fi
-  rm -f "$HOSTILE.all"
+      "$REFS" "$PUSHES" 2>/dev/null > "$HOSTILE"
   N_WITH_EVENTS=$(cut -f1 "$HOSTILE" 2>/dev/null | sort -u | awk 'END{print NR}')
   if [[ "${N_WITH_EVENTS:-0}" -gt 0 ]]; then
     cut -f1 "$HOSTILE" | sort -u > "$RESTORABLE"
     ACTORS=$(cut -f5 "$HOSTILE" | sort -u | grep -v '^$' | paste -sd', ' -)
-    ACTORS_RAW=$(cut -f5 "$HOSTILE" | sort -u | grep -v '^$' | paste -sd' ' -)
     # A PushEvent carrying zero commits moved the ref without adding history.
     # That is a force-push, so the commit that was there before it is still in
     # the mirror and can be restored.
@@ -176,14 +171,22 @@ CLEAN="./$RECOVERY_DIR/clean-repo.sh"
     printf 'back instead of editing files, provided the earlier commit is still\n'
     printf 'retrievable.\n\n'
     printf 'Pushed by: **%s**\n\n' "$ACTORS"
-    if [[ "${N_TRUSTED_ROWS:-0}" -gt 0 ]]; then
-      printf '%s further push(es) were discounted because you named the actor as\n' "$N_TRUSTED_ROWS"
-      printf 'trusted.\n\n'
+    printf '> A familiar name here does not make the push benign, and it is not an\n'
+    printf '> accusation either. This campaign propagates by amending and\n'
+    printf '> force-pushing as whoever is logged in, so the actor field shows a\n'
+    printf '> colleague while the push is the malware spreading from their machine.\n'
+    printf '> If you recognise someone above, their machine needs checking and their\n'
+    printf '> credentials rotating. Tell them, and add `--known-actor NAME` so this\n'
+    printf '> plan lists them.\n\n'
+    if [[ -n "${KNOWN// /}" ]]; then
+      printf '### People whose machines need checking\n\n'
+      for a in $KNOWN; do printf -- '- **%s**\n' "$a"; done
+      printf '\nEach of them should run the machine check on every computer they use for\n'
+      printf 'git, and rotate their tokens and keys from one that comes back clean:\n\n'
+      printf '```bash\n./polinrider.sh --machine\n```\n\n'
+      printf 'Until that happens, cleaning these repositories does not hold: the next\n'
+      printf 'push from an infected machine puts the payload straight back.\n\n'
     fi
-    printf 'If these are colleagues who can account for the pushes, say so and this\n'
-    printf 'stops being a restore problem:\n\n'
-    printf '```bash\n./%s/../lib/next-steps.sh --triage %s --out %s \\\n' "$RECOVERY_DIR" "$TRIAGE" "$OUT"
-    printf '  --owner %s --owner-type %s%s\n```\n\n' "$OWNER" "$KIND" "$(for a in $ACTORS_RAW; do printf ' \\\n  --trusted-actor %s' "$a"; done)"
     if [[ "${N_FORCED:-0}" -gt 0 ]]; then
       printf '%s of those pushes carried **zero commits**. A push that moves a ref\n' "$N_FORCED"
       printf 'without adding any history is a force-push, so an earlier commit exists\n'
@@ -196,6 +199,22 @@ CLEAN="./$RECOVERY_DIR/clean-repo.sh"
     printf '```\n%s\n```\n\n' "$(cat "$RESTORABLE")"
     printf 'Every push that touched a flagged branch, with actor and timestamp:\n'
     printf '`%s`\n\n' "$HOSTILE"
+    if [[ -s "$OUT/restore-targets.tsv" ]]; then
+      printf '### Where to restore each one to\n\n'
+      printf 'Verified by reading the commit, not inferred. The earliest clean commit\n'
+      printf 'is the target: the one immediately before the last hostile push is often\n'
+      printf 'the previous wave, and restoring to it puts the payload back.\n\n'
+      printf '| Repository | Restore to | Rejected as already infected |\n|---|---|---|\n'
+      awk -F'\t' '
+        $3=="CLEAN"    && !c[$1]++ { good[$1]=substr($2,1,10) }
+        $3=="INFECTED"             { bad[$1]=bad[$1] (bad[$1]?", ":"") substr($2,1,10) }
+        $3=="GONE"                 { gone[$1]=gone[$1] (gone[$1]?", ":"") substr($2,1,10) }
+        END{ for (r in good) printf "| `%s` | `%s` | %s |\n", r, good[r], (bad[r]?bad[r]:"none")
+             for (r in bad) if (!(r in good)) printf "| `%s` | **no clean target, remove instead** | %s |\n", r, bad[r]
+             for (r in gone) if (!(r in good) && !(r in bad)) printf "| `%s` | **gone from GitHub, remove instead** | |\n", r }
+      ' "$OUT/restore-targets.tsv" | sort
+      printf '\nFull list with timestamps: `%s/restore-targets.tsv`\n\n' "$OUT"
+    fi
     printf 'T0 below is two hours before the earliest of them, already filled in.\n\n'
     printf '```bash\n'
     printf './%s/sweep.sh --%s %s --since %s --out %s\n' "$RECOVERY_DIR" "$KIND" "$OWNER" "$T0" "$OUT"
@@ -210,22 +229,12 @@ CLEAN="./$RECOVERY_DIR/clean-repo.sh"
     printf 'If the sweep shows nothing unexpected, the payload was committed normally.\n'
     printf 'Use step 4.\n\n'
   else
-    if [[ "${N_TRUSTED_ROWS:-0}" -gt 0 ]]; then
-      printf 'Every recorded push onto a flagged branch was made by someone you named\n'
-      printf 'as trusted (%s push(es)). Nothing is left unexplained.\n\n' "$N_TRUSTED_ROWS"
-    else
-      printf 'No push events survive for any of the %s affected repositories.\n\n' "$N_REPOS"
-    fi
-    if [[ "${N_TRUSTED_ROWS:-0}" -eq 0 ]]; then
-      printf 'The GitHub events API keeps roughly 300 events per repository for about\n'
-      printf '90 days. Nothing is left for these, which means one of two things, and\n'
-      printf 'both lead to the same fix:\n\n'
-      printf '%s\n' '- the payload was committed normally rather than force-pushed, or'
-      printf '%s\n\n' '- it was force-pushed longer ago than the API remembers.'
-    else
-      printf 'So the payload was not force-pushed onto these branches by anyone\n'
-      printf 'unaccounted for. It was committed.\n\n'
-    fi
+    printf 'No push events survive for any of the %s affected repositories.\n\n' "$N_REPOS"
+    printf 'The GitHub events API keeps roughly 300 events per repository for about\n'
+    printf '90 days. Nothing is left for these, which means one of two things, and\n'
+    printf 'both lead to the same fix:\n\n'
+    printf '%s\n' '- the payload was committed normally rather than force-pushed, or'
+    printf '%s\n\n' '- it was force-pushed longer ago than the API remembers.'
     printf 'Either way there is **no earlier state to restore to**, so `restore.sh`\n'
     printf 'has nothing to work from. Do not run it. Remove the files and commit\n'
     printf 'that removal: step 4.\n\n'
@@ -276,19 +285,15 @@ if [[ -n "$T0" ]]; then
   printf '  Pushed by: %s\n' "$ACTORS"
   [[ "${N_FORCED:-0}" -gt 0 ]] && \
     printf '  %s of those carried zero commits, which is a force-push, so an earlier\n  commit exists to restore to.\n' "$N_FORCED"
-  printf '  Confirm you recognise every name above, then:\n'
+  printf '  A name you recognise does not make the push benign: this campaign\n'
+  printf '  force-pushes as whoever is logged in. If you know them, their machine\n'
+  printf '  needs checking too. Pass --known-actor NAME to list them here.\n'
+  printf '  Then:\n'
   printf '    ./%s/sweep.sh --%s %s --since %s --out %s\n\n' "$RECOVERY_DIR" "$KIND" "$OWNER" "$T0" "$OUT"
 else
-  if [[ "${N_TRUSTED_ROWS:-0}" -gt 0 ]]; then
-    printf '  Every recorded push onto a flagged branch was by a trusted actor\n'
-    printf '  (%s push(es) discounted). Nothing unexplained, so there is nothing to\n' "$N_TRUSTED_ROWS"
-    printf '  restore. Do not run sweep.sh or restore.sh. Removing the payload is\n'
-    printf '  the fix.\n\n'
-  else
-    printf '  No push events survive for any affected repository, so there is no\n'
-    printf '  earlier state to restore to. Do not run sweep.sh or restore.sh.\n'
-    printf '  The payload was committed, so removing it is the fix.\n\n'
-  fi
+  printf '  No push events survive for any affected repository, so there is no\n'
+  printf '  earlier state to restore to. Do not run sweep.sh or restore.sh.\n'
+  printf '  The payload was committed, so removing it is the fix.\n\n'
 fi
 if [[ -s "$RESTORABLE" ]] && prc_evidence_is_volatile "$OUT"; then
   printf '  %s repo(s) are restore candidates. The commit you would restore to is\n' "$(awk 'END{print NR}' "$RESTORABLE")"

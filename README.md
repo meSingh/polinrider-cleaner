@@ -325,16 +325,29 @@ other commit. Use `./github-org-recovery/clean-repo.sh` for an organization.
 Protected branches will reject the push. That is correct behaviour: clean an
 unprotected branch and open a pull request from it.
 
-> [!TIP]
-> **If the pushes turn out to be a colleague's**, say so and the tool stops
-> sending you down the restore path:
+> [!WARNING]
+> **A name you recognise does not make the push benign.** This campaign spreads
+> by amending and force-pushing as whoever is logged in, so the actor field shows
+> a colleague while the push is the malware propagating from their machine. That
+> is the normal case, not the exception.
+>
+> Naming someone does not discount their pushes. It adds them to the list of
+> machines that need checking:
 >
 > ```bash
-> ./polinrider.sh --user YOUR-USERNAME --trusted-actor THEIR-LOGIN
+> ./polinrider.sh --user YOUR-USERNAME --known-actor THEIR-LOGIN
 > ```
 >
-> Repeat the flag for each person. Their pushes stop counting as evidence of a
-> force-push, which usually leaves the committed-payload case and step 4.
+> Until every named machine is checked and their credentials rotated, cleaning
+> these repositories does not hold: the next push from an infected machine puts
+> the payload straight back.
+
+> [!CAUTION]
+> **The commit before the last hostile push is not necessarily clean.** The
+> campaign arrives in waves, and the predecessor of the second wave is the first
+> wave. `preserve-restore-points.sh` reads each candidate and reports `CLEAN` or
+> `INFECTED`; restore only to the earliest `CLEAN` one. On the account this was
+> developed against, 2 of 10 candidates were already infected.
 
 ### If it was force-pushed: get the old commit first
 
