@@ -12,6 +12,14 @@ audiences, and the second one is unusual, so read both headings before acting.
 You are operating an incident-response tool on someone's real repositories and
 real machine. Read this section completely before running anything.
 
+### Before anything
+
+This tool is provided with no warranty and no liability, and the operator is
+responsible for being authorised to run it against the target. If you are acting
+on someone's behalf against an **organization** account rather than their own,
+confirm with them that they are permitted to do it before you scan, and again
+before anything is applied. See [DISCLAIMER.md](DISCLAIMER.md).
+
 ### Non-negotiable order
 
 ```

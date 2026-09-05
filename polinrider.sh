@@ -108,6 +108,8 @@ check_deps() {  # check_deps <need-gh 0|1>
 }
 
 WORST=0
+FOUND_IN=""        # machine | github | path, for the advice at the end
+GH_KIND=""; GH_NAME=""
 note_rc() { [[ "$1" -gt "$WORST" ]] && WORST="$1"; return 0; }
 
 # --- the scans --------------------------------------------------------------
@@ -132,7 +134,7 @@ scan_machine() {
   say "${DIM}this reads only; the first run takes a few minutes${X}"
   # shellcheck disable=SC2086  # roots are separate arguments on purpose
   "$LOCAL_TOOL" $r
-  local rc=$?; note_rc $rc; return $rc
+  local rc=$?; [[ $rc -ge 2 ]] && FOUND_IN="machine"; note_rc $rc; return $rc
 }
 
 scan_path() {
@@ -142,7 +144,7 @@ scan_path() {
   [[ -d "$SCANPATH/.git" ]] && extra="--all-refs"
   # shellcheck disable=SC2086  # extra is one optional flag
   "$HERE/ci/scan-workspace.sh" --path "$SCANPATH" $extra
-  local rc=$?; note_rc $rc; return $rc
+  local rc=$?; [[ $rc -ge 2 ]] && FOUND_IN="path"; note_rc $rc; return $rc
 }
 
 scan_github() {  # scan_github <org|user> <name>
@@ -169,6 +171,7 @@ scan_github() {  # scan_github <org|user> <name>
   [[ "$reviewed" =~ ^[0-9]+$ ]] || reviewed=0
   if [[ "$real" -gt 0 ]]; then
     bad "$real ref(s) carry a confirmed indicator and are not your own detection tooling."
+    FOUND_IN="github"; GH_KIND="$kind"; GH_NAME="$name"; REAL_REFS="$real"
     note_rc 2; return 2
   fi
   if [[ "$reviewed" -gt 0 ]]; then note_rc 1; return 1; fi
@@ -213,6 +216,7 @@ fi
 # --- run --------------------------------------------------------------------
 head2 "PolinRider cleaner"
 say "${DIM}Everything below is read-only. Nothing is changed.${X}"
+say "${DIM}Independent open source tool. No warranty, no liability. See DISCLAIMER.md.${X}"
 rule
 
 if [[ $DO_ALL -eq 1 ]]; then
@@ -243,6 +247,107 @@ if [[ $DO_ALL -eq 1 ]]; then
   [[ -n "$USR" ]] && scan_github user "$USR"
 fi
 
+# --- what to actually do -----------------------------------------------------
+github_playbook() {
+  local dir tool
+  if [[ "$GH_KIND" == "org" ]]; then
+    dir="github-org-recovery"; tool="--org $GH_NAME"
+  else
+    dir="github-account-recovery"; tool="--user $GH_NAME"
+  fi
+  say "  ${B}$REAL_REFS ref(s) carry a real indicator.${X} Work through this in order."
+  say ""
+  say "  ${B}1. Stop moving code around.${X}"
+  say "     Do not push to an affected repository. Do not run git pull in an"
+  say "     existing clone of one: pulling an infected clone re-infects the remote."
+  say ""
+  say "  ${B}2. Read what actually matched.${X} Do this before anything else."
+  say "     ${DIM}cat $OUT/triage.txt${X}"
+  say "     ${DIM}less $OUT/triage.txt${X}   (it is long)"
+  say ""
+  say "  ${B}3. Check every machine you use for git.${X}"
+  say "     ${DIM}./polinrider.sh --machine${X}"
+  say "     If one of them is a confirmed hit, do the rest from a different machine."
+  say ""
+  say "  ${B}4. Rotate your credentials, from a machine that came back clean.${X}"
+  say "     Tokens, SSH and signing keys, OAuth grants, then a password change"
+  say "     with sign-out of all sessions. The full list is in the README."
+  say "     ${DIM}README, Step 2. Rotate every credential${X}"
+  say ""
+  say "  ${B}5. Work out how it got there.${X} The fix depends on the answer."
+  say "     ${DIM}./$dir/sweep.sh $tool --since <two hours before the first bad push> --out $OUT${X}"
+  say ""
+  say "     ${B}If the sweep shows pushes nobody claims${X}, the branches were"
+  say "     force-pushed and the fix is to move them back:"
+  say "     ${DIM}./$dir/restore.sh --sweep $OUT/sweep.tsv --mirrors $OUT --since <T0>${X}"
+  say "     ${DIM}./$dir/preflight.sh --plan $OUT/restore-plan.tsv${X}"
+  say "     ${DIM}./$dir/restore.sh ... --apply${X}"
+  say ""
+  say "     ${B}If the sweep shows nothing${X}, the payload was committed rather than"
+  say "     force-pushed, and there is no earlier state to restore to. Remove the"
+  say "     flagged files, commit, and push. The paths are listed in triage.txt."
+  say "     Common ones are a fake font under public/fonts and a .vscode/tasks.json."
+  say ""
+  say "  ${B}6. Re-scan, then re-clone.${X}"
+  say "     ${DIM}./polinrider.sh $tool --out ./evidence-post${X}"
+  say "     Delete every local clone of an affected repository and clone fresh."
+  say ""
+  say "  Full walkthrough: ${DIM}$dir/README.md${X}"
+}
+
+path_playbook() {
+  say "  ${B}This folder contains a confirmed indicator.${X} In order:"
+  say ""
+  say "  ${B}1. Do not open it in your editor${X} until it is dealt with. The usual"
+  say "     trigger is a .vscode/tasks.json that runs on folder open."
+  say ""
+  say "  ${B}2. Read the finding lines above.${X} They name the file and what matched."
+  say "     A fake font under public/fonts and a payload appended to a build config"
+  say "     are the two common shapes."
+  say ""
+  say "  ${B}3. Check the machine${X}, because whatever put it there had access:"
+  say "     ${DIM}./polinrider.sh --machine${X}"
+  say "     If the payload ran here, assume it read what this account could reach."
+  say "     Rotate every credential once you know which machines are clean."
+  say "     ${DIM}README, Step 2. Rotate every credential${X}"
+  say ""
+  say "  ${B}4. Check the remote.${X} If this folder is a clone, the same payload is"
+  say "     almost certainly pushed:"
+  say "     ${DIM}./polinrider.sh --user YOUR-USERNAME${X}"
+  say ""
+  say "  ${B}5. Do not fix it in this clone and push.${X} Clean the remote first, then"
+  say "     delete this clone and clone again. A push from an infected clone puts"
+  say "     the payload straight back."
+}
+
+machine_playbook() {
+  say "  ${B}This machine has a confirmed indicator.${X} In order:"
+  say ""
+  say "  ${B}1. Disconnect it from the network.${X}"
+  say ""
+  say "  ${B}2. Rotate every credential, from a different machine.${X}"
+  say "     ${DIM}README, Step 2. Rotate every credential${X}"
+  say "     If a crypto wallet or seed phrase was on this machine, move the funds."
+  say ""
+  say "  ${B}3. Read the report before changing anything.${X}"
+  say "     It lists what matched and where."
+  say ""
+  say "  ${B}4. Quarantine the artifacts.${X} Nothing is deleted; everything is moved"
+  say "     to a timestamped folder with a manifest."
+  say "     ${DIM}$LOCAL_TOOL --apply${X}"
+  say "     If a persistence entry was found, stop it first with the command the"
+  say "     report prints. Moving the file does not stop what it already started."
+  say ""
+  say "  ${B}5. Decide whether to rebuild.${X} If any persistence artifact was found,"
+  say "     rebuild from a clean install. Do not restore a backup from after the"
+  say "     infection date."
+  say "     ${DIM}README, \"Should the machine be rebuilt?\"${X}"
+  say ""
+  say "  ${B}6. Then check your GitHub repositories${X}, because the credentials on"
+  say "     this machine were reachable."
+  say "     ${DIM}./polinrider.sh --user YOUR-USERNAME${X}"
+}
+
 # --- what next --------------------------------------------------------------
 rule
 head2 "Where that leaves you"
@@ -259,22 +364,26 @@ case "$WORST" in
      say  "The usual benign matches are listed under \"False positives you will"
      say  "see\" in the README."
      ;;
-  2) bad "Something confirmed. Do these in order:"
+  2) bad "Something confirmed."
      say  ""
-     say  "  1. Do not push to any affected repository, and do not pull one into an"
-     say  "     existing clone. A pull into an infected clone re-infects the remote."
-     say  "  2. Check every machine you use for git, if you have not already:"
-     say  "     ${DIM}./polinrider.sh --machine${X}"
-     say  "  3. Rotate every credential, from a machine that came back clean."
-     say  "     ${DIM}README, Step 2. Rotate every credential${X}"
-     say  "  4. Only then restore the branches."
-     say  "     ${DIM}github-account-recovery/README.md for an account${X}"
-     say  "     ${DIM}github-org-recovery/README.md for an organization${X}"
-     say  ""
-     say  "  Read what actually matched before acting on any of it:"
-     say  "     ${DIM}cat $OUT/triage.txt${X}"
+     case "$FOUND_IN" in
+       github) github_playbook ;;
+       machine) machine_playbook ;;
+       path)   path_playbook ;;
+       *)      say  "  Read what matched, then follow the recovery steps in the README."
+               say  "     ${DIM}README, Step 2 onwards${X}" ;;
+     esac
      ;;
 esac
 say ""
 say "${DIM}Full guide: README.md    Handing this to an AI agent: AGENTS.md${X}"
+if [[ "$WORST" -ge 2 ]]; then
+  say ""
+  rule
+  say "${DIM}Before you change anything: this tool is provided as is, with no warranty${X}"
+  say "${DIM}and no liability. Restoring branches and quarantining files are your${X}"
+  say "${DIM}decisions, taken with your credentials and your authorisation. If this is${X}"
+  say "${DIM}an organization account, make sure you are the one who is allowed to do it.${X}"
+  say "${DIM}See DISCLAIMER.md.${X}"
+fi
 exit "$WORST"

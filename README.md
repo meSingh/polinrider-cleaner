@@ -68,12 +68,18 @@ than one applies, **the order is fixed and it matters**:
 > you back where you started within minutes. That is not theoretical. It is the
 > documented reinfection behaviour of this campaign.
 
+> [!IMPORTANT]
+> Independent open source tool, provided as is, with no warranty and no
+> liability. You are responsible for being authorised to run it against whatever
+> you point it at, and for any change you choose to apply.
+> See [DISCLAIMER.md](DISCLAIMER.md).
+
 ---
 
 ## Run it
 
 ```bash
-git clone --depth 1 --branch v1.0.6 https://github.com/meSingh/polinrider-cleaner.git
+git clone --depth 1 --branch v1.0.7 https://github.com/meSingh/polinrider-cleaner.git
 cd polinrider-cleaner
 ./polinrider.sh
 ```
@@ -82,12 +88,12 @@ That pins you to a specific published release rather than to whatever `main`
 happens to be at the moment you clone.
 
 Tags in this repository are protected: once published, a tag cannot be moved,
-overwritten or deleted, by anyone, including the maintainer. So `v1.0.6` will
-always be exactly the code that was reviewed and released as `v1.0.6`. If you
+overwritten or deleted, by anyone, including the maintainer. So `v1.0.7` will
+always be exactly the code that was reviewed and released as `v1.0.7`. If you
 want to check that yourself:
 
 ```bash
-git verify-tag v1.0.6
+git verify-tag v1.0.7
 ```
 
 It is signed with GPG key `A743FEC7E4955B92`. Every commit in the repository is
@@ -708,7 +714,20 @@ public issue.
 
 ## Disclaimer
 
-These scripts read your repositories and your machine, and `restore.sh --apply`
-moves branch pointers on GitHub. Read a script before you run it, run every step
-as a dry run first, and keep the evidence directory until the incident is
-closed. No warranty. See [LICENSE](LICENSE).
+This is an **independent open source tool written by one person**. It is not a
+product, and it is not affiliated with or endorsed by GitHub, Socket, OpenSSF,
+any security vendor, or any employer. The researchers cited above are the public
+source of the indicators; that is a citation, not a partnership.
+
+It is provided **as is, with no warranty and no liability**. You are responsible
+for establishing that you are authorised to scan or modify whatever you point it
+at, which matters most if that is an organization account rather than your own.
+`restore.sh --apply` force-updates branch references on GitHub and the local
+checks with `--apply` move files on your machine; both run with your credentials,
+at your instruction, and the dry run exists so you can read the plan first.
+
+A clean result means the current indicators were not found. It is not a
+certificate. Nothing here is legal or compliance advice.
+
+**Read [DISCLAIMER.md](DISCLAIMER.md) before running this against anything you
+cannot afford to break.**

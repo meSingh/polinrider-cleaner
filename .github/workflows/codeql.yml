@@ -1,0 +1,45 @@
+# CodeQL for GitHub Actions workflows.
+#
+# CodeQL has no shell analyser, so it says nothing about the scripts; shellcheck
+# is the linter for those and runs in the CI workflow. What CodeQL does cover is
+# the workflow files themselves: expression injection into run steps,
+# over-permissive tokens, untrusted checkout. That is worth having here, because
+# exactly that class of bug reached this repository once already and was caught
+# by Semgrep rather than by review.
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '19 6 * * 2'
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyse workflows
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      security-events: write
+      contents: read
+      actions: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Initialise CodeQL
+        uses: github/codeql-action/init@486fec2a3ea2626afcd8c7e9208b4f515078dd7e # v2.26.4
+        with:
+          languages: actions
+          queries: security-extended
+
+      - name: Analyse
+        uses: github/codeql-action/analyze@486fec2a3ea2626afcd8c7e9208b4f515078dd7e # v2.26.4
+        with:
+          category: /language:actions
