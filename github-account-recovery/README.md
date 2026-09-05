@@ -45,6 +45,7 @@ commit that still exists. History is intact and no work is lost.
 | `triage-filter.sh` | Separates real findings from your own detection tooling | No |
 | `restore.sh` | Builds the restore plan, and with `--apply` performs the restore | Only with `--apply` |
 | `preflight.sh` | Credential and safety gates before `--apply` | No |
+| `clean-repo.sh` | Removes a committed payload from every affected branch of one repo | Only with `--apply` |
 
 ---
 
@@ -95,17 +96,17 @@ values, browser passwords and crypto wallets: see
 > attacker's push closer to falling off the end.
 
 ```bash
-./scan.sh --user YOUR-USERNAME --out ./evidence --mirror-only
+./scan.sh --user YOUR-USERNAME --out ~/.polinrider/evidence --mirror-only
 ```
 
-Add `--no-forks` to skip forks. Keep `./evidence/` until you are done.
+Add `--no-forks` to skip forks. Keep `~/.polinrider/evidence/` until you are done.
 
 If you own a lot of repositories, run the sweep in step 3 first and then narrow
 the mirroring to what it found:
 
 ```bash
-./scan.sh --user YOUR-USERNAME --out ./evidence --mirror-only \
-          --from-sweep ./evidence/sweep.tsv
+./scan.sh --user YOUR-USERNAME --out ~/.polinrider/evidence --mirror-only \
+          --from-sweep ~/.polinrider/evidence/sweep.tsv
 ```
 
 ---
@@ -113,7 +114,7 @@ the mirroring to what it found:
 ## Step 3. Find the hostile pushes
 
 ```bash
-./sweep.sh --user YOUR-USERNAME --since 2026-07-27T03:00:00Z --out ./evidence
+./sweep.sh --user YOUR-USERNAME --since 2026-07-27T03:00:00Z --out ~/.polinrider/evidence
 ```
 
 Set `--since` about two hours before the earliest push you know you did not make.
@@ -130,9 +131,9 @@ attacker. Three signatures make this easy:
 Then look at the content:
 
 ```bash
-./scan.sh --user YOUR-USERNAME --out ./evidence --scan-only
-./triage-filter.sh ./evidence/triage.json
-cat ./evidence/triage.txt
+./scan.sh --user YOUR-USERNAME --out ~/.polinrider/evidence --scan-only
+./triage-filter.sh ~/.polinrider/evidence/triage.json
+cat ~/.polinrider/evidence/triage.txt
 ```
 
 Read the matched lines. A count is not evidence.
@@ -145,7 +146,7 @@ Dry run. Changes nothing. No `--actor`: on a personal account it would match
 everything.
 
 ```bash
-./restore.sh --sweep ./evidence/sweep.tsv --mirrors ./evidence \
+./restore.sh --sweep ~/.polinrider/evidence/sweep.tsv --mirrors ~/.polinrider/evidence \
              --since 2026-07-27T03:00:00Z
 ```
 
@@ -171,7 +172,7 @@ Two of them matter most here:
 ## Step 5. Preflight
 
 ```bash
-./preflight.sh --plan ./evidence/restore-plan.tsv
+./preflight.sh --plan ~/.polinrider/evidence/restore-plan.tsv
 ```
 
 It lists the SSH and signing keys currently on your account, so you can delete any
@@ -184,7 +185,7 @@ what the restore would orphan.
 ## Step 6. Restore
 
 ```bash
-./restore.sh --sweep ./evidence/sweep.tsv --mirrors ./evidence \
+./restore.sh --sweep ~/.polinrider/evidence/sweep.tsv --mirrors ~/.polinrider/evidence \
              --since 2026-07-27T03:00:00Z --apply
 ```
 
@@ -192,10 +193,10 @@ If a restore returns 422, a ruleset or branch protection on that repository is
 blocking it. Disable it, restore, re-enable it.
 
 Recover any of your own work that the restore orphaned by cherry-picking from the
-mirror in `./evidence/`:
+mirror in `~/.polinrider/evidence/`:
 
 ```bash
-git -C ./evidence/REPO.git log --oneline <orphaned-sha> -20
+git -C ~/.polinrider/evidence/REPO.git log --oneline <orphaned-sha> -20
 ```
 
 ---
@@ -203,9 +204,9 @@ git -C ./evidence/REPO.git log --oneline <orphaned-sha> -20
 ## Step 7. Verify, then re-clone
 
 ```bash
-rm -rf ./evidence-post
-./scan.sh --user YOUR-USERNAME --out ./evidence-post
-./triage-filter.sh ./evidence-post/triage.json
+rm -rf ~/.polinrider/evidence-post
+./scan.sh --user YOUR-USERNAME --out ~/.polinrider/evidence-post
+./triage-filter.sh ~/.polinrider/evidence-post/triage.json
 ```
 
 Expect zero `REAL_SUSPECT`.
@@ -218,3 +219,35 @@ Finally, turn on the protections that stop the next one: required signed commits
 and blocked force pushes on your repositories, and the scan workflow in
 [`../ci/`](../ci/). Re-scan weekly for a month: reinfection with a rotated
 signature is documented behaviour for this campaign.
+
+---
+
+## If there is nothing to restore to
+
+`restore.sh` moves a branch pointer back to a commit that still exists in the
+mirror. That only works when the branch was force-pushed. When the payload was
+committed normally, or when the force-push is older than the roughly 90 days of
+events GitHub keeps, there is no earlier state and `restore.sh` has nothing to
+do.
+
+The fix there is to remove the files and commit that removal:
+
+```bash
+# Dry run. Lists every branch and every file it would touch.
+./clean-repo.sh OWNER/REPO
+
+# Do it.
+./clean-repo.sh OWNER/REPO --apply
+```
+
+It reads `affected-paths.tsv` and `affected-refs.tsv`, both written into your
+evidence directory by the scan. It works in a bare clone using git plumbing, so
+nothing is ever checked out and the payload never lands on your disk as a live
+file. It adds one ordinary commit per branch and pushes normally. Nothing is
+rewritten, nothing is force-pushed, and you can revert it.
+
+A protected branch will reject the push. Clean an unprotected branch and open a
+pull request from it.
+
+`NEXT-STEPS.md`, written into your evidence directory after every scan, already
+contains these commands with your repository names filled in.
