@@ -132,14 +132,17 @@ mk_triage "$E4/triage.json" acme/app
 } > "$E4/pushes.tsv"
 # shellcheck disable=SC2034  # read by check() through eval
 OUT4="$("$ROOT/lib/next-steps.sh" --triage "$E4/triage.json" --out "$E4" --owner acme --owner-type user 2>&1)"
-check "warns on screen about the restart"  "grep -q 'clears it on' <<< \"\$OUT4\""
-check "warns in the document"              "grep -q 'Read this before you reboot' '$E4/NEXT-STEPS.md'"
-check "explains what is lost"              "grep -q 'stop being recoverable' '$E4/NEXT-STEPS.md'"
+check "screen says the commit is not in the mirror" "grep -q 'NOT in your mirror' <<< \"\$OUT4\""
+check "screen gives the command to fetch it"       "grep -q 'preserve-restore-points.sh' <<< \"\$OUT4\""
+check "document leads with it"                     "grep -q 'Do this first, before anything else' '$E4/NEXT-STEPS.md'"
+check "document explains why a mirror lacks it"    "grep -q 'only what is reachable from a ref' '$E4/NEXT-STEPS.md'"
+check "document warns about garbage collection"    "grep -q 'garbage-collects' '$E4/NEXT-STEPS.md'"
+check "no claim that it is already in the mirror"  "! grep -q 'still in the mirror' '$E4/NEXT-STEPS.md'"
 # The same scan written somewhere durable must not carry that warning.
 E5="$DURABLE/evidence"; mkdir -p "$E5"; cp "$E4/triage.json" "$E4/pushes.tsv" "$E5/"
 "$ROOT/lib/next-steps.sh" --triage "$E5/triage.json" --out "$E5" --owner acme --owner-type user >/dev/null 2>&1
 check "the durable fixture is not volatile"        "! prc_evidence_is_volatile '$E5'"
-check "no reboot warning when evidence is durable" "! grep -q 'Read this before you reboot' '$E5/NEXT-STEPS.md'"
+check "no volatility section when evidence is durable" "! grep -q 'Do this first, before anything else' '$E5/NEXT-STEPS.md'"
 rm -rf "$E4"
 
 echo "== the repository's own docs =="
