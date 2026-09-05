@@ -181,7 +181,7 @@ The README tells people to clone a **specific tag**, not `main` and not `latest`
 That pin has to be updated by hand when a new release goes out, or the front page
 keeps pointing at an old version. This is the checklist.
 
-**1. The version appears in exactly one file.** `README.md`, in the "Run it"
+**1. Decide the version and bump the pin first.** It appears in exactly one file. `README.md`, in the "Run it"
 section: the `git clone --branch vX.Y.Z` line, the two sentences below it that
 name the tag, and the `git verify-tag vX.Y.Z` line. Four occurrences, one block.
 Check with:
@@ -194,7 +194,9 @@ grep -rn 'v[0-9]\+\.[0-9]\+\.[0-9]\+' README.md
 required checks, and the rule applies to admins. Every change goes through a
 pull request.
 
-**3. Tag from `main`, signed.**
+**3. Tag the merged commit, signed.** The commit you tag must already contain
+its own version in the README.
+
 
 ```bash
 git checkout main && git pull
@@ -210,8 +212,11 @@ git push origin vX.Y.Z
 tag, builds the archive, records SHA-256, attaches a sigstore provenance bundle,
 and publishes. If the tests fail, no release is created, which is intentional.
 
-**5. Update the pin in the README** and open a pull request for it. The pin
-cannot be updated before the tag exists, so this is always a follow-up commit.
+**Order matters, and it is the opposite of what feels natural.** Bump the pin
+*before* tagging, in the commit you are about to tag. If you tag first and update
+the pin afterwards, the released tag contains a README telling people to clone
+the previous version. So step 1 above is not optional and not a follow-up: decide
+the version, bump the pin, merge that, then tag the commit that carries it.
 
 > Tags matching `refs/tags/v*` are protected by a repository ruleset with no
 > bypass actors: they cannot be updated, force-pushed or deleted by anyone,
