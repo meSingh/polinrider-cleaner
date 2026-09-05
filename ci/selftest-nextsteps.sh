@@ -33,6 +33,7 @@ echo "== evidence location =="
 REPO="$TMP/a-checkout"; mkdir -p "$REPO"; git -C "$REPO" init -q 2>/dev/null
 ( POLINRIDER_ALLOW_UNSAFE_OUT=0; prc_assert_safe_out "$REPO/evidence" ) >/dev/null 2>&1 \
   && no "refuses evidence inside a git checkout" || ok "refuses evidence inside a git checkout"
+# shellcheck disable=SC2034  # read by prc_assert_safe_out inside the subshell
 ( POLINRIDER_ALLOW_UNSAFE_OUT=1; prc_assert_safe_out "$REPO/evidence" ) >/dev/null 2>&1 \
   && ok "override lets it through" || no "override lets it through"
 ( prc_assert_safe_out "$TMP/loose/evidence" ) >/dev/null 2>&1 \
@@ -91,14 +92,28 @@ E2="$TMP/e2"; mkdir -p "$E2"; mk_triage "$E2/triage.json" acme/app
 OUT2="$("$ROOT/lib/next-steps.sh" --triage "$E2/triage.json" --out "$E2" --owner acme --owner-type user 2>&1)"
 D2="$E2/NEXT-STEPS.md"
 check "T0 is the earliest event minus two hours" "grep -q -- '--since 2026-08-10T19:14:20Z' '$D2'"
+check "names the actor"                          "grep -q 'mallory' '$D2'"
+check "counts the zero-commit pushes"            "grep -q 'carried \*\*zero commits\*\*' '$D2'"
+check "lists the restore candidate"              "grep -q '^acme/app$' '$E2/restorable-repos.txt'"
 check "T0 also appears on screen"                "grep -q -- '--since 2026-08-10T19:14:20Z' <<< \"\$OUT2\""
 check "offers the sweep"                         "grep -q 'sweep.sh --user acme' '$D2'"
 check "offers the user wrapper"                  "grep -q 'github-account-recovery/clean-repo.sh' '$D2'"
 
+echo "== a push to an unflagged branch is not evidence =="
+E3="$TMP/e3"; mkdir -p "$E3"; mk_triage "$E3/triage.json" acme/app
+{ printf 'repo\tref\tbefore\tafter\tactor\tcreated_at\tsize\tforced_hint\n'
+  printf 'acme/app\trefs/heads/unrelated\taaa\tbbb\tdana\t2026-08-10T21:14:20Z\t3\t\n'
+} > "$E3/pushes.tsv"
+# shellcheck disable=SC2034  # read by check() through eval
+OUT3="$("$ROOT/lib/next-steps.sh" --triage "$E3/triage.json" --out "$E3" --owner acme --owner-type user 2>&1)"
+check "unflagged-branch push is not a restore candidate" "[[ ! -s '$E3/restorable-repos.txt' ]]"
+check "falls back to the removal path"                   "grep -q 'no earlier state to restore to' '$E3/NEXT-STEPS.md'"
+check "offers no runnable sweep"                         "! grep -q 'sweep.sh --' '$E3/NEXT-STEPS.md'"
+
 echo "== every printed command is runnable =="
 # The whole point. No angle-bracket placeholders anywhere in either document,
 # and every fenced bash line must survive the shell parser.
-for d in "$D1" "$D2"; do
+for d in "$D1" "$D2" "$E3/NEXT-STEPS.md"; do
   grep -qE '<[A-Za-z0-9_ .-]+>' "$d" \
     && no "no placeholders left in $(basename "$(dirname "$d")")/NEXT-STEPS.md" \
     || ok "no placeholders left in $(basename "$(dirname "$d")")/NEXT-STEPS.md"
