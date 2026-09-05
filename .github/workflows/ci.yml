@@ -64,6 +64,9 @@ jobs:
       - name: Self-test - preserving restore points
         run: ./ci/selftest-preserve.sh
 
+      - name: Self-test - history rewrite
+        run: ./ci/selftest-rewrite.sh
+
   powershell:
     name: PowerShell lint
     runs-on: ubuntu-latest

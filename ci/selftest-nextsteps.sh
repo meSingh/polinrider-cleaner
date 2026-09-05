@@ -201,7 +201,18 @@ done
 echo "== the cleaner refuses to work inside a checkout =="
 "$ROOT/lib/gh-clean.sh" acme/app --out "$REPO/evidence" >/dev/null 2>&1 \
   && no "gh-clean refuses an unsafe --out" || ok "gh-clean refuses an unsafe --out"
-check "gh-clean never force-pushes" "! grep -qE 'push .*(--force|-f )' '$ROOT/lib/gh-clean.sh'"
+# --rewrite force-pushes by design and selftest-rewrite.sh covers that. What
+# must stay true is that the default, additive mode never does.
+check "the additive push carries no --force" "grep -q 'push --quiet origin \"\$ref:\$ref\"' '$ROOT/lib/gh-clean.sh'"
+# Every force-push must sit after the rewrite block opens, never in the
+# additive path above it.
+RW_START=$(grep -n '^# --- rewrite mode' "$ROOT/lib/gh-clean.sh" | cut -d: -f1)
+FIRST_FORCE=$(grep -n 'push --force' "$ROOT/lib/gh-clean.sh" | head -1 | cut -d: -f1)
+if [[ -n "$RW_START" && -n "$FIRST_FORCE" && "$FIRST_FORCE" -gt "$RW_START" ]]; then
+  ok "force-push appears only under --rewrite"
+else
+  no "force-push appears only under --rewrite (rewrite block at ${RW_START:-?}, first force-push at ${FIRST_FORCE:-none})"
+fi
 
 printf '\n  passed %s, failed %s\n' "$PASS" "$FAIL"
 [[ "$FAIL" -eq 0 ]] || exit 1

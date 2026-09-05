@@ -55,7 +55,7 @@ nothing on GitHub or on the machine.
 | Command | Effect |
 |---|---|
 | `polinrider.sh` in any mode | routes to the tools below; never changes anything |
-| `ci/selftest*.sh` (six of them) | offline, no network, no credentials |
+| `ci/selftest*.sh` (seven of them) | offline, no network, no credentials |
 | `ci/scan-workspace.sh --path DIR` | reads files |
 | `machine-cleanup/check-*.sh DIR ...` | reads the machine, writes one report file |
 | `github-org-recovery/scan.sh`, `sweep.sh`, `triage-filter.sh`, `preflight.sh` | reads the GitHub API, clones mirrors |
@@ -63,7 +63,7 @@ nothing on GitHub or on the machine.
 | `restore.sh` **without** `--apply` | prints a plan, changes nothing |
 | `lib/next-steps.sh` | reads a finished triage, writes `NEXT-STEPS.md` and three lists |
 | `preserve-restore-points.sh` | fetches pre-attack commits into the mirrors. Fetch only, never pushes |
-| `clean-repo.sh` **without** `--apply` | bare-clones and prints a plan, pushes nothing |
+| `clean-repo.sh` **without** `--apply` | bare-clones and prints a plan, pushes nothing, with or without `--rewrite` |
 
 ### What you must NOT run without explicit human confirmation
 
@@ -71,6 +71,7 @@ nothing on GitHub or on the machine.
 |---|---|
 | `restore.sh --apply` | force-updates branch refs on GitHub. Irreversible from the tool's side |
 | `clean-repo.sh --apply` | commits and pushes a deletion to every affected branch. Reversible, but it is still a push |
+| `clean-repo.sh --rewrite --apply` | rewrites every commit and force-pushes every ref. Every SHA changes. Not reversible from the remote's side |
 | `check-*.sh --apply` / `-Apply` | moves files on the human's machine |
 | Any `gh api -X DELETE` or `-X PATCH` printed by these tools | the tools print commands deliberately so a human runs them |
 
@@ -144,7 +145,7 @@ the OS.
 | `github-account-recovery/` | the same for **one personal account** |
 | `machine-cleanup/` | check and clean **one computer**, one script per operating system |
 | `polinrider.sh` | the single entry point at the repository root |
-| `ci/` | the vendorable scanner, its workflow template, installer, and six self-tests |
+| `ci/` | the vendorable scanner, its workflow template, installer, and seven self-tests |
 
 `common.sh` and `local-common.sh` are sourced, not executed, and are
 deliberately not marked executable.
@@ -161,6 +162,7 @@ shellcheck --severity=warning --external-sources \
 ./ci/selftest-entrypoint.sh
 ./ci/selftest-nextsteps.sh
 ./ci/selftest-preserve.sh
+./ci/selftest-rewrite.sh
 ```
 
 CI enforces `shellcheck --severity=warning` and runs all three self-tests, plus
