@@ -1,0 +1,13 @@
+# The workflows here pin actions/checkout to a commit SHA, which is correct but
+# means the pin never updates on its own. This opens a pull request when a new
+# release exists, so the pin stays current without anyone tracking it by hand.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: ci
+    labels:
+      - dependencies

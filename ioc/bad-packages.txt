@@ -1,0 +1,6 @@
+# Malicious package names published by the campaign. Treated as strong indicators.
+tailwindcss-style-animate
+tailwind-mainanimation
+tailwind-autoanimation
+tailwindcss-typography-style
+tailwindcss-style-modify

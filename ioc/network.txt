@@ -1,0 +1,22 @@
+# Campaign network infrastructure. Used to check live connections and to build
+# egress blocklists. Hostnames first, then IPv4 addresses reported by
+# opensourcemalware.com. IP addresses rotate: block them, do not rely on them.
+default-configuration.vercel.app
+vscode-settings-bootstrap.vercel.app
+vscode-settings-config.vercel.app
+vscode-bootstrapper.vercel.app
+vscode-load-config.vercel.app
+260120.vercel.app
+api.trongrid.io
+fullnode.mainnet.aptoslabs.com
+166.88.54.158
+198.105.127.210
+23.27.202.27
+154.91.0.103
+136.0.9.8
+166.88.4.2
+23.27.120.142
+202.155.8.173
+166.88.134.82
+188.43.33.249
+23.27.13.43

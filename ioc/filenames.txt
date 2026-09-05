@@ -1,0 +1,4 @@
+# Filenames that are indicators on their own, as extended regex, matched against
+# the full path. .vscode/tasks.json is deliberately NOT here: it is legitimate in
+# most repos and is only a finding when it carries "runOn": "folderOpen".
+(^|/)temp_auto_push\.bat$

@@ -1,0 +1,28 @@
+# PolinRider strong indicators. A match here means infected.
+# Matched as FIXED strings (grep -F). One per line. '#' comments and blank lines ignored.
+#
+# Obfuscator markers
+rmcej%otb%
+Cot%3t=shtP
+_$_1e42
+function MDy
+global['!']
+global['_V']
+global["_V"]
+2[gWfGj;<:-93Z^C
+m6:tTh^D)cBz?NM]
+#
+# Stage-2 fetch addresses (TRON / BNB Smart Chain)
+TMfKQEd7TJJa5xNZJZ2Lep838vrzrs7mAP
+TXfxHUet9pJVU1BgVkBAbrES4YUc1nGzcG
+0xbe037400670fbf1c32364f762975908dc43eeb38759263e7dfcdabc76380811e
+0x3f0e5781d0855fb460661ac63257376db1941b2bb522499e4757ecb3ebd5dce3
+#
+# Campaign identifiers and C2 hosts
+e9b53a7c-2342-4b15-b02d-bd8b8f6a03f9
+default-configuration.vercel.app
+vscode-settings-bootstrap.vercel.app
+vscode-settings-config.vercel.app
+vscode-bootstrapper.vercel.app
+vscode-load-config.vercel.app
+260120.vercel.app

@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: I am being attacked right now
+    url: https://github.com/meSingh/polinrider-cleaner#3-if-you-are-infected
+    about: Do not wait for an issue reply. Follow the sequence in the README, starting with the freeze and credential rotation.
+  - name: Current campaign indicators
+    url: https://socket.dev/supply-chain-attacks/polinrider
+    about: Live tracking of affected packages. Check here before reporting a new indicator.

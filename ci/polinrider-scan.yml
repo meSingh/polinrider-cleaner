@@ -1,0 +1,48 @@
+# PolinRider scan for your own repository.
+#
+# Copy this file to .github/workflows/polinrider-scan.yml and copy
+# ci/scan-workspace.sh plus the ioc/ directory to .github/polinrider/.
+# ci/install-workflow.sh does both for you.
+#
+# There is no third-party action here on purpose. The only action used is
+# actions/checkout, pinned to a commit SHA, published by GitHub itself. A scanner
+# that pulls a mutable third-party tag on every push is the same supply-chain
+# shape as the attack it is meant to catch.
+
+name: PolinRider Scan
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    # Reinfection of previously cleaned hosts is documented for this campaign,
+    # so a scan on push alone is not enough. Weekly, Mondays 03:17 UTC.
+    - cron: '17 3 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: polinrider-scan-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    name: Scan working tree and history
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Scan
+        run: |
+          chmod +x .github/polinrider/scan-workspace.sh
+          .github/polinrider/scan-workspace.sh \
+            --path . \
+            --all-refs \
+            --fail-on infected

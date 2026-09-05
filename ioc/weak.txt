@@ -1,0 +1,7 @@
+# Weak signals. Legitimate projects contain these. Review tier only, never a verdict.
+api.trongrid.io
+fullnode.mainnet.aptoslabs.com
+bsc-dataseed
+folderOpen
+windowsHide
+stdio: 'ignore'

@@ -1,0 +1,13 @@
+# Shell scripts must keep LF endings. With core.autocrlf=true on Windows, CRLF in
+# a .sh file produces "bad interpreter: /usr/bin/env bash^M".
+*.sh   text eol=lf
+*.bash text eol=lf
+
+# PowerShell is happier with CRLF on Windows and handles either.
+*.ps1  text eol=crlf
+
+# Indicator files are matched byte for byte. Normalise them.
+ioc/*.txt text eol=lf
+
+*.md   text
+*.yml  text eol=lf

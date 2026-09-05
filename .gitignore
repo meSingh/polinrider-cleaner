@@ -1,0 +1,80 @@
+# ---------------------------------------------------------------------------
+# Local-only notes. Never publish: these carry incident specifics, internal
+# names and machine paths.
+# ---------------------------------------------------------------------------
+NOTES.local.md
+*.local.md
+*.local
+notes.local/
+
+# ---------------------------------------------------------------------------
+# Output produced by running these tools. All of it is evidence and most of it
+# names your repositories, branches, hosts and file paths. It belongs on your
+# disk, not in the repository.
+# ---------------------------------------------------------------------------
+evidence/
+evidence-*/
+# bare mirrors created by scan.sh, named <repo>.git
+*.git/
+triage.json
+triage.txt
+pushes.tsv
+sweep.tsv
+restore-plan.tsv
+.sha-liveness.cache
+audit-log-*.json
+polinrider-report-*.txt
+polinrider-quarantine-*/
+manifest.tsv
+
+# ---------------------------------------------------------------------------
+# Secrets and credential material. Nothing here should ever be committed, and a
+# scan run can leave copies of these under the roots you point it at.
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+.netrc
+_netrc
+.npmrc
+**/gh/hosts.yml
+
+# ---------------------------------------------------------------------------
+# Operating system
+# ---------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# ---------------------------------------------------------------------------
+# Editors and IDEs
+# ---------------------------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.\#*
+\#*\#
+
+# ---------------------------------------------------------------------------
+# Temporary and build artifacts
+# ---------------------------------------------------------------------------
+tmp/
+temp/
+*.tmp
+*.bak
+*.orig
+*.rej
+*.log
+node_modules/
