@@ -311,6 +311,7 @@ check_fonts() {        # $@ = code roots
            quarantine "$f" "font-masquerade" ;;
       esac
     done < <(find "$root" -not -path '*/node_modules/*' -not -path '*/.git/*' \
+               -not -path '*/__MACOSX/*' -not -name '._*' \
                \( -name '*.woff' -o -name '*.woff2' \) 2>/dev/null | head -600)
   done
   [[ $flagged -eq 0 ]] && ok "$seen font files checked, all are real fonts"

@@ -167,7 +167,8 @@ prc_scan_ref() {
          woff="${woff}${p} (first bytes: ${hex})"$'\n' ;;
     esac
   done < <(git -C "$dest" ls-tree -r --name-only "$ref" 2>/dev/null \
-           | grep -Ei '\.woff2?$' | head -40)
+           | grep -Ei '\.woff2?$' \
+           | grep -Ev '(^|/)__MACOSX/|(^|/)\._' | head -40)
 
   # Build config with content after the apparent module end.
   tail_suspect=""

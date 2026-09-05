@@ -131,7 +131,7 @@ while IFS= read -r f; do
     wOFF|wOF2|vers) ;;
     *) hit "$f: font file is not a font (first bytes: $(head -c 4 "$f" 2>/dev/null | od -An -tx1 | tr -s ' ' | sed 's/^ *//;s/ *$//'))" ;;
   esac
-done < <(grep -Ei '\.woff2?$' "$FILES" 2>/dev/null)
+done < <(grep -Ei '\.woff2?$' "$FILES" 2>/dev/null | grep -Ev '(^|/)__MACOSX/|(^|/)\._')
 
 # 6. build config with code after the module end
 while IFS= read -r f; do
