@@ -31,6 +31,11 @@ commit that still exists. History is intact and no work is lost.
 > Read-only, and it stops before anything can change. The rest of this page is
 > the recovery, which you drive yourself on purpose.
 
+> [!IMPORTANT]
+> The steps on this page change state on GitHub. This tool comes with no
+> warranty and no liability, and it assumes you are working on your own account.
+> See [DISCLAIMER.md](../DISCLAIMER.md).
+
 ## The scripts
 
 | Script | What it does | Changes anything? |
