@@ -90,23 +90,32 @@ values, browser passwords and crypto wallets: see
 
 ## Step 2. Capture evidence
 
+Every command below writes into the same evidence directory. Set it once:
+
+```bash
+# The default. Your machine clears this on restart, which is intended:
+# infected mirrors should not outlive the incident.
+EV="${TMPDIR:-/tmp}/polinrider-evidence"
+```
+
+
 > [!CAUTION]
 > Time-critical. The pre-attack commit SHAs come from the Events API, which keeps
 > roughly the last 300 events per repository. Every push you make brings the
 > attacker's push closer to falling off the end.
 
 ```bash
-./scan.sh --user YOUR-USERNAME --out ~/.polinrider/evidence --mirror-only
+./scan.sh --user YOUR-USERNAME --out "$EV" --mirror-only
 ```
 
-Add `--no-forks` to skip forks. Keep `~/.polinrider/evidence/` until you are done.
+Add `--no-forks` to skip forks. Keep the evidence directory until you are done.
 
 If you own a lot of repositories, run the sweep in step 3 first and then narrow
 the mirroring to what it found:
 
 ```bash
-./scan.sh --user YOUR-USERNAME --out ~/.polinrider/evidence --mirror-only \
-          --from-sweep ~/.polinrider/evidence/sweep.tsv
+./scan.sh --user YOUR-USERNAME --out "$EV" --mirror-only \
+          --from-sweep "$EV"/sweep.tsv
 ```
 
 ---
@@ -114,7 +123,7 @@ the mirroring to what it found:
 ## Step 3. Find the hostile pushes
 
 ```bash
-./sweep.sh --user YOUR-USERNAME --since 2026-07-27T03:00:00Z --out ~/.polinrider/evidence
+./sweep.sh --user YOUR-USERNAME --since 2026-07-27T03:00:00Z --out "$EV"
 ```
 
 Set `--since` about two hours before the earliest push you know you did not make.
@@ -131,9 +140,9 @@ attacker. Three signatures make this easy:
 Then look at the content:
 
 ```bash
-./scan.sh --user YOUR-USERNAME --out ~/.polinrider/evidence --scan-only
-./triage-filter.sh ~/.polinrider/evidence/triage.json
-cat ~/.polinrider/evidence/triage.txt
+./scan.sh --user YOUR-USERNAME --out "$EV" --scan-only
+./triage-filter.sh "$EV"/triage.json
+cat "$EV"/triage.txt
 ```
 
 Read the matched lines. A count is not evidence.
@@ -146,7 +155,7 @@ Dry run. Changes nothing. No `--actor`: on a personal account it would match
 everything.
 
 ```bash
-./restore.sh --sweep ~/.polinrider/evidence/sweep.tsv --mirrors ~/.polinrider/evidence \
+./restore.sh --sweep "$EV"/sweep.tsv --mirrors "$EV" \
              --since 2026-07-27T03:00:00Z
 ```
 
@@ -172,7 +181,7 @@ Two of them matter most here:
 ## Step 5. Preflight
 
 ```bash
-./preflight.sh --plan ~/.polinrider/evidence/restore-plan.tsv
+./preflight.sh --plan "$EV"/restore-plan.tsv
 ```
 
 It lists the SSH and signing keys currently on your account, so you can delete any
@@ -185,7 +194,7 @@ what the restore would orphan.
 ## Step 6. Restore
 
 ```bash
-./restore.sh --sweep ~/.polinrider/evidence/sweep.tsv --mirrors ~/.polinrider/evidence \
+./restore.sh --sweep "$EV"/sweep.tsv --mirrors "$EV" \
              --since 2026-07-27T03:00:00Z --apply
 ```
 
@@ -193,10 +202,13 @@ If a restore returns 422, a ruleset or branch protection on that repository is
 blocking it. Disable it, restore, re-enable it.
 
 Recover any of your own work that the restore orphaned by cherry-picking from the
-mirror in `~/.polinrider/evidence/`:
+mirror in `$EV`:
 
 ```bash
-git -C ~/.polinrider/evidence/REPO.git log --oneline <orphaned-sha> -20
+# SHA is the "before" column from your restore plan, the commit the attacker
+# pushed away from.
+SHA=$(awk -F'\t' 'NR==2{print $3}' "$EV/restore-plan.tsv")
+git -C "$EV/REPO.git" log --oneline "$SHA" -20
 ```
 
 ---
@@ -204,9 +216,9 @@ git -C ~/.polinrider/evidence/REPO.git log --oneline <orphaned-sha> -20
 ## Step 7. Verify, then re-clone
 
 ```bash
-rm -rf ~/.polinrider/evidence-post
-./scan.sh --user YOUR-USERNAME --out ~/.polinrider/evidence-post
-./triage-filter.sh ~/.polinrider/evidence-post/triage.json
+rm -rf "$EV"-post
+./scan.sh --user YOUR-USERNAME --out "$EV"-post
+./triage-filter.sh "$EV"-post/triage.json
 ```
 
 Expect zero `REAL_SUSPECT`.

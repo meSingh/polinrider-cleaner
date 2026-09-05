@@ -12,7 +12,10 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 . "$ROOT/lib/common.sh"
 
 TMP="$(mktemp -d "${TMPDIR:-/tmp}/prc-nextsteps.XXXXXX")"
-trap 'rm -rf "$TMP"' EXIT
+# A second fixture that is NOT under $TMPDIR, to prove the volatility check
+# discriminates rather than always firing.
+DURABLE="$HOME/.prc-selftest-$$"
+trap 'rm -rf "$TMP" "$DURABLE"' EXIT
 PASS=0; FAIL=0
 ok()   { PASS=$((PASS+1)); printf '  ok   %s\n' "$*"; }
 no()   { FAIL=$((FAIL+1)); printf '  FAIL %s\n' "$*"; }
@@ -30,6 +33,17 @@ prc_shift_back_2h "2026-08-10" >/dev/null 2>&1 && no "date-only rejected" || ok 
 prc_shift_back_2h "; rm -rf /" >/dev/null 2>&1 && no "shell metacharacters rejected" || ok "shell metacharacters rejected"
 
 echo "== evidence location =="
+DEF="$(prc_default_evidence_dir)"
+prc_evidence_is_volatile "$DEF" \
+  && ok "the default location is cleared on restart" || no "the default location is cleared on restart: $DEF"
+[[ "$DEF" != "$HOME"/* ]] \
+  && ok "the default is not a forgotten dotdir under \$HOME" || no "the default is not a forgotten dotdir under \$HOME"
+[[ "$DEF" != *//* ]] && ok "no doubled slash from \$TMPDIR" || no "no doubled slash from \$TMPDIR: $DEF"
+prc_evidence_is_volatile "$HOME/keep-this" \
+  && no "a path under \$HOME is not treated as volatile" || ok "a path under \$HOME is not treated as volatile"
+POLINRIDER_EVIDENCE_DIR="$TMP/override" \
+  bash -c '. "'"$ROOT"'/lib/common.sh"; [[ "$(prc_default_evidence_dir)" == "'"$TMP"'/override" ]]' \
+  && ok "POLINRIDER_EVIDENCE_DIR overrides the default" || no "POLINRIDER_EVIDENCE_DIR overrides the default"
 REPO="$TMP/a-checkout"; mkdir -p "$REPO"; git -C "$REPO" init -q 2>/dev/null
 ( POLINRIDER_ALLOW_UNSAFE_OUT=0; prc_assert_safe_out "$REPO/evidence" ) >/dev/null 2>&1 \
   && no "refuses evidence inside a git checkout" || ok "refuses evidence inside a git checkout"
@@ -110,18 +124,53 @@ check "unflagged-branch push is not a restore candidate" "[[ ! -s '$E3/restorabl
 check "falls back to the removal path"                   "grep -q 'no earlier state to restore to' '$E3/NEXT-STEPS.md'"
 check "offers no runnable sweep"                         "! grep -q 'sweep.sh --' '$E3/NEXT-STEPS.md'"
 
+echo "== volatile evidence that holds restore points warns =="
+E4="${TMPDIR:-/tmp}/prc-vol.$$"; mkdir -p "$E4"
+mk_triage "$E4/triage.json" acme/app
+{ printf 'repo\tref\tbefore\tafter\tactor\tcreated_at\tsize\tforced_hint\n'
+  printf 'acme/app\trefs/heads/main\taaa\tbbb\tmallory\t2026-08-10T21:14:20Z\t0\t\n'
+} > "$E4/pushes.tsv"
+# shellcheck disable=SC2034  # read by check() through eval
+OUT4="$("$ROOT/lib/next-steps.sh" --triage "$E4/triage.json" --out "$E4" --owner acme --owner-type user 2>&1)"
+check "warns on screen about the restart"  "grep -q 'clears it on' <<< \"\$OUT4\""
+check "warns in the document"              "grep -q 'Read this before you reboot' '$E4/NEXT-STEPS.md'"
+check "explains what is lost"              "grep -q 'stop being recoverable' '$E4/NEXT-STEPS.md'"
+# The same scan written somewhere durable must not carry that warning.
+E5="$DURABLE/evidence"; mkdir -p "$E5"; cp "$E4/triage.json" "$E4/pushes.tsv" "$E5/"
+"$ROOT/lib/next-steps.sh" --triage "$E5/triage.json" --out "$E5" --owner acme --owner-type user >/dev/null 2>&1
+check "the durable fixture is not volatile"        "! prc_evidence_is_volatile '$E5'"
+check "no reboot warning when evidence is durable" "! grep -q 'Read this before you reboot' '$E5/NEXT-STEPS.md'"
+rm -rf "$E4"
+
+echo "== the repository's own docs =="
+# The complaint that started all this was a printed command nobody could run.
+# Hold the checked-in documentation to the same rule.
+docbad=0
+for md in "$ROOT/README.md" "$ROOT/AGENTS.md" "$ROOT"/github-*/README.md; do
+  while IFS= read -r hit; do
+    docbad=1; printf '       placeholder in %s: %s\n' "$(basename "$md")" "$hit"
+  done < <(awk '/^```bash$/{f=1;next} /^```$/{f=0} f' "$md" | grep -oE '<[A-Za-z][A-Za-z0-9_ .-]*>' || true)
+done
+[[ $docbad -eq 0 ]] && ok "no <placeholder> inside any documented bash command" \
+                    || no "no <placeholder> inside any documented bash command"
+
 echo "== every printed command is runnable =="
 # The whole point. No angle-bracket placeholders anywhere in either document,
 # and every fenced bash line must survive the shell parser.
-for d in "$D1" "$D2" "$E3/NEXT-STEPS.md"; do
+for d in "$D1" "$D2" "$E3/NEXT-STEPS.md" "$E5/NEXT-STEPS.md"; do
   grep -qE '<[A-Za-z0-9_ .-]+>' "$d" \
     && no "no placeholders left in $(basename "$(dirname "$d")")/NEXT-STEPS.md" \
     || ok "no placeholders left in $(basename "$(dirname "$d")")/NEXT-STEPS.md"
   bad=0
+  awk '/^```bash$/{f=1;next} /^```$/{if(f)print "###BLOCK###";f=0} f' "$d" > "$TMP/blocks"
+  block=""
   while IFS= read -r line; do
-    [[ -z "$line" || "$line" == \#* ]] && continue
-    bash -n <<< "$line" 2>/dev/null || { bad=1; printf '       unparseable: %s\n' "$line"; }
-  done < <(awk '/^```bash$/{f=1;next} /^```$/{f=0} f' "$d")
+    if [[ "$line" == "###BLOCK###" ]]; then
+      [[ -n "$block" ]] && { bash -n <<< "$block" 2>/dev/null || { bad=1; printf '       unparseable block: %s\n' "${block%%$'\n'*}"; }; }
+      block=""; continue
+    fi
+    block="${block}${line}"$'\n'
+  done < "$TMP/blocks"
   [[ $bad -eq 0 ]] && ok "every bash block parses in $(basename "$(dirname "$d")")" \
                    || no "every bash block parses in $(basename "$(dirname "$d")")"
 done

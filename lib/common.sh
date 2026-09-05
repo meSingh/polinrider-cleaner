@@ -54,24 +54,34 @@ prc_log() { printf '[%s] %s\n' "$(date -u +%H:%M:%S)" "$*" >&2; }
 prc_die() { printf 'error: %s\n' "$*" >&2; exit 2; }
 
 # --- where evidence goes ----------------------------------------------------
-# Mirrors hold attacker-controlled content. They must never land inside a
-# directory a developer opens in an editor. Two reasons, and only the second is
-# hypothetical: cloning a working tree out of a mirror gives you a live
-# .vscode/tasks.json with "runOn": "folderOpen", and one careless `git add -A`
-# publishes the payload again from your own account. The default is a dotted
-# directory in $HOME: outside every checkout, ignored by editors and indexers,
-# and it survives a reboot, which $TMPDIR does not. Mirrors are forensic
-# evidence and sometimes the only copy of a pre-attack commit.
+# Mirrors hold attacker-controlled content, so where they live is a security
+# decision, not a convenience one. Three requirements, in order:
+#
+#   1. Outside every git checkout. Inside one, an editor indexes the payload and
+#      a stray `git add -A` republishes it from the operator's own account.
+#      Cloning a working tree back out of a mirror gives you a live
+#      .vscode/tasks.json with "runOn": "folderOpen".
+#   2. Gone on its own. A hidden directory under $HOME is a directory nobody
+#      looks at again: infected mirrors sit there for months and are still there
+#      the next time something walks the filesystem. Temp is cleared on reboot,
+#      so forgetting about it is the safe outcome rather than the dangerous one.
+#   3. Private. Mode 700, and on macOS $TMPDIR is already per-user.
+#
+# The cost is real and the tools say so out loud: gh-restore.sh reads the
+# pre-attack commit out of the mirror, so once temp is cleared those recovery
+# points are gone unless GitHub still serves the unreachable object. Anyone who
+# needs the evidence to outlive a reboot passes --out and keeps it deliberately.
 prc_default_evidence_dir() {
-  local home="${POLINRIDER_HOME:-$HOME/.polinrider}"
-  # Some people keep their dotfiles as a git repo checked out at $HOME. There,
-  # ~/.polinrider would sit inside a working tree, which is the thing this all
-  # exists to prevent. Fall back to the per-user temp directory.
-  if [[ -z "${POLINRIDER_HOME:-}" ]] && git -C "$HOME" rev-parse --show-toplevel >/dev/null 2>&1; then
-    printf '%s\n' "${TMPDIR:-/tmp}/polinrider-evidence"
-    return 0
-  fi
-  printf '%s\n' "$home/evidence"
+  local base="${TMPDIR:-/tmp}"
+  printf '%s\n' "${POLINRIDER_EVIDENCE_DIR:-${base%/}/polinrider-evidence}"
+}
+
+# prc_evidence_is_volatile <dir> - true if this will not survive a reboot.
+prc_evidence_is_volatile() {
+  case "${1:-}" in
+    /tmp/*|/var/tmp/*|/private/tmp/*|/var/folders/*|/private/var/folders/*) return 0 ;;
+    *) [[ -n "${TMPDIR:-}" && "${1:-}" == "${TMPDIR%/}"/* ]] ;;
+  esac
 }
 
 # prc_assert_safe_out <dir> - refuse an evidence directory inside a git checkout.
@@ -106,6 +116,33 @@ Or name somewhere else yourself:
 Override only if you know why: POLINRIDER_ALLOW_UNSAFE_OUT=1
 EOF
   exit 2
+}
+
+# prc_evidence_age_days <dir> - whole days since the directory was last written.
+prc_evidence_age_days() {
+  local d="${1:-}" mtime now
+  [[ -d "$d" ]] || return 1
+  mtime=$(stat -c %Y "$d" 2>/dev/null || stat -f %m "$d" 2>/dev/null) || return 1
+  now=$(date +%s)
+  printf '%s\n' $(( (now - mtime) / 86400 ))
+}
+
+# prc_evidence_warn_stale <dir> - infected mirrors that outlive the incident are
+# a liability: they are still malware, and nobody remembers they are there. Say
+# so rather than letting them accumulate quietly.
+prc_evidence_warn_stale() {
+  local d="${1:-}" age n
+  [[ -d "$d" ]] || return 0
+  n=$(find "$d" -maxdepth 1 -name '*.git' 2>/dev/null | grep -c . || true)
+  [[ "${n:-0}" -gt 0 ]] || return 0
+  age=$(prc_evidence_age_days "$d" 2>/dev/null) || return 0
+  [[ "${age:-0}" -ge 7 ]] || return 0
+  cat >&2 <<EOF
+
+warning: $n infected mirror(s) in $d have not been touched for $age days.
+         They are still malware. When the incident is closed, delete them:
+           polinrider.sh --purge-evidence
+EOF
 }
 
 # prc_prepare_out <dir> - validate, create mode 700, echo the absolute path.
