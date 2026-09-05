@@ -240,8 +240,10 @@ case "$WORST" in
      ;;
   1) warn "Nothing confirmed, but some items need a human look."
      say  ""
-     say  "Read each [review] line in the output above. Most are benign - the four"
-     say  "usual ones are listed under \"False positives you will see\" in the README."
+     say  "Read the [review] lines above. The [info] lines are inventory and"
+     say  "hardening advice, not findings, and need nothing from you."
+     say  "The usual benign matches are listed under \"False positives you will"
+     say  "see\" in the README."
      ;;
   2) bad "Something confirmed. Do these in order:"
      say  ""

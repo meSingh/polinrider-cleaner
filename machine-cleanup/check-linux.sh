@@ -69,8 +69,8 @@ for d in "$HOME/.config/systemd/user" "/etc/systemd/system" "/usr/lib/systemd/sy
       warn "systemd unit runs a network or interpreter command: $f"
     fi
   done < <(find "$d" -maxdepth 1 -name '*.service' -o -maxdepth 1 -name '*.timer' 2>/dev/null)
-  say "  units in $d modified in the last 90 days:"
-  find "$d" -maxdepth 1 \( -name '*.service' -o -name '*.timer' \) -mtime -90 2>/dev/null | sed 's|^|    |' | tee -a "$REPORT"
+  info "$(find "$d" -maxdepth 1 \( -name '*.service' -o -name '*.timer' \) -mtime -90 2>/dev/null | grep -c .) units in $d changed in the last 90 days, none containing an indicator. Listed in the report."
+  find "$d" -maxdepth 1 \( -name '*.service' -o -name '*.timer' \) -mtime -90 2>/dev/null | sed 's|^|    |' >> "$REPORT"
 done
 
 if [[ -d "$HOME/.config/autostart" ]]; then
