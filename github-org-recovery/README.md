@@ -46,6 +46,7 @@ without `--apply`.
 | `triage-filter.sh` | Separates real findings from your own detection tooling matching itself | No |
 | `restore.sh` | Builds the restore plan, and with `--apply` performs the restore | Only with `--apply` |
 | `preflight.sh` | Five gates that must pass before `--apply` | No |
+| `clean-repo.sh` | Removes a committed payload from every affected branch of one repo | Only with `--apply` |
 
 ---
 
@@ -122,7 +123,7 @@ Nothing gets restored before this finishes. Cleanup is reversible; losing the
 pre-attack SHAs is not.
 
 ```bash
-./scan.sh --org YOUR-ORG --out ./evidence --mirror-only
+./scan.sh --org YOUR-ORG --out ~/.polinrider/evidence --mirror-only
 ```
 
 This mirror-clones every repository, freezes garbage collection on each mirror so
@@ -133,8 +134,8 @@ is API-only and costs nothing; mirroring two hundred repositories costs disk and
 hours. Once you have `sweep.tsv`, clone only what was touched:
 
 ```bash
-./sweep.sh --org YOUR-ORG --since <T0> --out ./evidence      # cheap, API only
-./scan.sh  --org YOUR-ORG --out ./evidence --mirror-only --from-sweep ./evidence/sweep.tsv
+./sweep.sh --org YOUR-ORG --since 2026-07-27T03:00:00Z --out ~/.polinrider/evidence   # cheap, API only
+./scan.sh  --org YOUR-ORG --out ~/.polinrider/evidence --mirror-only --from-sweep ~/.polinrider/evidence/sweep.tsv
 ```
 
 The trade-off is real and you should make it deliberately: repositories outside
@@ -145,11 +146,11 @@ On GitHub Enterprise Cloud, export the audit log too:
 
 ```bash
 gh api --paginate "/orgs/YOUR-ORG/audit-log?phrase=action:git.push&include=all" \
-  > ./evidence/audit-log-git-push.json
+  > ~/.polinrider/evidence/audit-log-git-push.json
 ```
 
 > [!TIP]
-> Keep `./evidence/` until the incident is closed. It is your forensic baseline,
+> Keep `~/.polinrider/evidence/` until the incident is closed. It is your forensic baseline,
 > and possibly your legal record. It is git-ignored, so it will not end up in a
 > commit.
 
@@ -163,7 +164,7 @@ Two views. Run both.
 push you believe was malicious:
 
 ```bash
-./sweep.sh --org YOUR-ORG --since 2026-07-27T03:00:00Z --out ./evidence
+./sweep.sh --org YOUR-ORG --since 2026-07-27T03:00:00Z --out ~/.polinrider/evidence
 ```
 
 Every `PushEvent` in the output needs a named person who will say "yes, that was
@@ -181,8 +182,8 @@ diff per repository, not one per branch.
 **What the content looks like now:**
 
 ```bash
-./scan.sh --org YOUR-ORG --out ./evidence --scan-only
-cat ./evidence/triage.txt
+./scan.sh --org YOUR-ORG --out ~/.polinrider/evidence --scan-only
+cat ~/.polinrider/evidence/triage.txt
 ```
 
 <sub>`./polinrider.sh --org YOUR-ORG` from the repository root does the scan and
@@ -196,7 +197,7 @@ A grep-based scanner cannot tell a file that *is* the malware from a file that
 *detects* it. Your own scan workflows will be flagged.
 
 ```bash
-./triage-filter.sh ./evidence/triage.json
+./triage-filter.sh ~/.polinrider/evidence/triage.json
 ```
 
 `BENIGN_TOOLING` lines are your own detection code. `REAL_SUSPECT` lines need
@@ -212,7 +213,7 @@ not proof the ref was never touched. That is what step 3 is for.
 Dry run. Changes nothing.
 
 ```bash
-./restore.sh --sweep ./evidence/sweep.tsv --mirrors ./evidence \
+./restore.sh --sweep ~/.polinrider/evidence/sweep.tsv --mirrors ~/.polinrider/evidence \
              --since 2026-07-27T03:00:00Z --actor ATTACKER-LOGIN
 ```
 
@@ -238,7 +239,7 @@ Writes `evidence/restore-plan.tsv`, one row per branch:
 ## Step 6. Preflight
 
 ```bash
-./preflight.sh --org YOUR-ORG --plan ./evidence/restore-plan.tsv --actor ATTACKER-LOGIN
+./preflight.sh --org YOUR-ORG --plan ~/.polinrider/evidence/restore-plan.tsv --actor ATTACKER-LOGIN
 ```
 
 It blocks if the attacker is still an org member, and if any restore target is a
@@ -256,7 +257,7 @@ whose recent commits a restore would orphan.
 Same command as step 5 with `--apply`:
 
 ```bash
-./restore.sh --sweep ./evidence/sweep.tsv --mirrors ./evidence \
+./restore.sh --sweep ~/.polinrider/evidence/sweep.tsv --mirrors ~/.polinrider/evidence \
              --since 2026-07-27T03:00:00Z --actor ATTACKER-LOGIN --apply
 ```
 
@@ -265,7 +266,7 @@ with `force=true`. If a call returns 422, your account is not in the ruleset
 bypass list from step 1.
 
 Legitimate work pushed *after* the attacker's push on a branch becomes orphaned.
-It is still in the mirror under `./evidence/`. Cherry-pick it forward afterwards,
+It is still in the mirror under `~/.polinrider/evidence/`. Cherry-pick it forward afterwards,
 commit by commit, reading each diff.
 
 Restoring makes the malicious commit unreachable, not deleted. It stays in
@@ -278,16 +279,16 @@ Support ticket, or rebuild the repository from the clean mirror.
 ## Step 8. Verify
 
 ```bash
-rm -rf ./evidence-post
-./scan.sh --org YOUR-ORG --out ./evidence-post
-./triage-filter.sh ./evidence-post/triage.json
+rm -rf ~/.polinrider/evidence-post
+./scan.sh --org YOUR-ORG --out ~/.polinrider/evidence-post
+./triage-filter.sh ~/.polinrider/evidence-post/triage.json
 ```
 
 Expect zero `REAL_SUSPECT`. Then confirm nothing has been pushed since your
 restore:
 
 ```bash
-./sweep.sh --org YOUR-ORG --since <time-of-your-restore> --out ./evidence-post
+./sweep.sh --org YOUR-ORG --since <time-of-your-restore> --out ~/.polinrider/evidence-post
 ```
 
 An empty sweep is the evidence that there was no third wave.
@@ -307,3 +308,35 @@ may work on it again **from a fresh clone**. Existing local clones stay untruste
 
 Finally, add the scan to CI so the next attempt is caught on the push that makes
 it: [`../ci/`](../ci/).
+
+---
+
+## If there is nothing to restore to
+
+`restore.sh` moves a branch pointer back to a commit that still exists in the
+mirror. That only works when the branch was force-pushed. When the payload was
+committed normally, or when the force-push is older than the roughly 90 days of
+events GitHub keeps, there is no earlier state and `restore.sh` has nothing to
+do.
+
+The fix there is to remove the files and commit that removal:
+
+```bash
+# Dry run. Lists every branch and every file it would touch.
+./clean-repo.sh OWNER/REPO
+
+# Do it.
+./clean-repo.sh OWNER/REPO --apply
+```
+
+It reads `affected-paths.tsv` and `affected-refs.tsv`, both written into your
+evidence directory by the scan. It works in a bare clone using git plumbing, so
+nothing is ever checked out and the payload never lands on your disk as a live
+file. It adds one ordinary commit per branch and pushes normally. Nothing is
+rewritten, nothing is force-pushed, and you can revert it.
+
+A protected branch will reject the push. Clean an unprotected branch and open a
+pull request from it.
+
+`NEXT-STEPS.md`, written into your evidence directory after every scan, already
+contains these commands with your repository names filled in.

@@ -5,7 +5,7 @@
 # READ-ONLY against GitHub. Never pushes, deletes or rewrites anything.
 #
 # Usage:
-#   gh-scan.sh --owner ACME --owner-type org|user --out ./evidence [options]
+#   gh-scan.sh --owner ACME --owner-type org|user --out ~/.polinrider/evidence [options]
 #
 # Options:
 #   --repo OWNER/NAME   scan a single repository instead of the whole account
@@ -27,7 +27,7 @@ set -uo pipefail
 # shellcheck source=lib/common.sh
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
 
-OWNER=""; KIND=""; OUT="./evidence"; SINGLE=""; MIRROR_ONLY=0; SCAN_ONLY=0; NOFORK=0; FROM_SWEEP=
+OWNER=""; KIND=""; OUT=""; SINGLE=""; MIRROR_ONLY=0; SCAN_ONLY=0; NOFORK=0; FROM_SWEEP=
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -48,7 +48,9 @@ done
 [[ -n "$SINGLE" || -n "$KIND"  ]] || prc_die "need --owner-type org|user"
 prc_need git gh jq
 
-mkdir -p "$OUT" "$OUT/events" || prc_die "cannot create $OUT"
+OUT="${OUT:-$(prc_default_evidence_dir)}"
+OUT="$(prc_prepare_out "$OUT")"
+mkdir -p "$OUT/events" || prc_die "cannot create $OUT"
 OUT="$(cd "$OUT" && pwd)"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
