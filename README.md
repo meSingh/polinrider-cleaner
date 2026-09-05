@@ -11,11 +11,16 @@
 
 <p align="center">
   <a href="https://github.com/meSingh/polinrider-cleaner/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/meSingh/polinrider-cleaner/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://scorecard.dev/viewer/?uri=github.com/meSingh/polinrider-cleaner"><img alt="OpenSSF Scorecard" src="https://api.scorecard.dev/projects/github.com/meSingh/polinrider-cleaner/badge"></a>
+  <a href="https://github.com/meSingh/polinrider-cleaner/actions/workflows/semgrep.yml"><img alt="Semgrep" src="https://github.com/meSingh/polinrider-cleaner/actions/workflows/semgrep.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
   <img alt="Shell and PowerShell" src="https://img.shields.io/badge/built%20with-shell%20%2B%20powershell-89e051.svg">
   <img alt="Zero runtime dependencies" src="https://img.shields.io/badge/runtime%20deps-0-brightgreen.svg">
   <img alt="macOS, Linux, Windows" src="https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey.svg">
   <a href="AGENTS.md"><img alt="AGENTS.md" src="https://img.shields.io/badge/AGENTS.md-supported-6f42c1.svg"></a>
+  <br>
+  <a href="https://github.com/meSingh/polinrider-cleaner/commits/main"><img alt="Commits are signed" src="https://img.shields.io/badge/commits-GPG%20signed-success.svg"></a>
+  <a href="https://github.com/meSingh/polinrider-cleaner/releases/latest"><img alt="Releases carry build provenance" src="https://img.shields.io/badge/releases-attested%20provenance-success.svg"></a>
 </p>
 
 <p align="center">
@@ -562,6 +567,35 @@ Indicators live in [`ioc/`](ioc/) and trace to these sources. Keeping them
 current: [`ioc/README.md`](ioc/README.md).
 
 </details>
+
+---
+
+## Verifying this repository
+
+Do not take a security tool's word for its own integrity. Check it.
+
+```bash
+# every commit is GPG-signed; GitHub shows "Verified" on each one
+git log --show-signature -1
+
+# a release archive matches its checksum and its provenance attestation
+sha256sum -c SHA256SUMS
+gh attestation verify polinrider-cleaner-vX.Y.Z.tar.gz --repo meSingh/polinrider-cleaner
+```
+
+| Signal | What it actually proves |
+|---|---|
+| [OpenSSF Scorecard](https://scorecard.dev/viewer/?uri=github.com/meSingh/polinrider-cleaner) | 18 automated checks: branch protection, pinned dependencies, token permissions, dangerous workflow patterns, release signing |
+| GPG-signed commits | Every commit was made by the key holder. This is the direct counter to the campaign's backdated-amend technique |
+| Build provenance on releases | The archive came from this repository's CI at that tag, unmodified |
+| Protected `main` | No force pushes, no deletions, even by the owner |
+| Pinned action SHAs | No workflow here can change under you when a third party moves a tag |
+| Zero runtime dependencies | Nothing is fetched at scan time. Read the scripts; that is all there is |
+
+> [!NOTE]
+> The scanner deliberately uses no third-party GitHub Action. A scan step that
+> pulls someone else's mutable tag on every push is the same supply-chain shape
+> as the attack it is meant to catch.
 
 ---
 

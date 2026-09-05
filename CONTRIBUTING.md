@@ -60,6 +60,17 @@ associative arrays, no `${var,,}`. Guard array expansion under `set -u`:
 See [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). The short version: people arrive
 here mid-incident. Answer the question they asked.
 
+## Signing
+
+Commits and tags here are GPG-signed. If you are opening a pull request, signing
+yours is appreciated but not required — the maintainer's signature on the merge
+is what the release provenance chains to.
+
+```bash
+git config commit.gpgsign true
+git config tag.gpgsign true
+```
+
 ## Reporting
 
 Use the issue templates. False positives and missed detections are the two most
