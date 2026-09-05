@@ -151,11 +151,14 @@ deliberately not marked executable.
 ### Before you open a pull request
 
 ```bash
-bash -n <every script you touched>
-shellcheck --severity=warning --external-sources <every script you touched>
+bash -n polinrider.sh lib/*.sh ci/*.sh github-*/*.sh machine-cleanup/*.sh
+shellcheck --severity=warning --external-sources \
+  polinrider.sh lib/*.sh ci/*.sh github-*/*.sh machine-cleanup/*.sh
 ./ci/selftest.sh
 ./ci/selftest-restore.sh
 ./ci/selftest-implant.sh
+./ci/selftest-entrypoint.sh
+./ci/selftest-nextsteps.sh
 ```
 
 CI enforces `shellcheck --severity=warning` and runs all three self-tests, plus
@@ -168,7 +171,8 @@ suppressed there is a `# shellcheck disable=` with the reason on the line above.
 **Evidence never lands inside a git working tree.** Mirror clones hold live
 malware. Inside a checkout an editor indexes them and a stray `git add -A`
 republishes the payload from the operator's own account. `prc_prepare_out`
-enforces this and the default is `~/.polinrider/evidence`. Do not add a code
+enforces this, and the default is a directory under `$TMPDIR` that the machine
+clears on restart, so infected mirrors do not outlive the incident. Do not add a code
 path that writes mirrors somewhere else, and do not weaken the guard. The
 override exists for people who know why they want it, not for convenience.
 
@@ -225,10 +229,11 @@ its own version in the README.
 
 ```bash
 git checkout main && git pull
-git tag -s vX.Y.Z -m "polinrider-cleaner vX.Y.Z
+VERSION=v1.0.8   # the release you are cutting
+git tag -s "$VERSION" -m "polinrider-cleaner $VERSION
 
-<what changed and why it matters to someone running this>"
-git push origin vX.Y.Z
+Summarise what changed and why it matters to someone running this."
+git push origin "$VERSION"
 ```
 
 `tag.gpgsign` is enabled, so `-s` is the default; keep it explicit anyway.

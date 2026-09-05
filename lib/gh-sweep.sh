@@ -5,7 +5,7 @@
 # READ-ONLY. Changes nothing.
 #
 # Usage:
-#   gh-sweep.sh --owner ACME --owner-type org|user --since 2026-07-27T03:00:00Z --out ~/.polinrider/evidence
+#   gh-sweep.sh --owner ACME --owner-type org|user --since 2026-07-27T03:00:00Z --out "$EV"
 #
 # Options:
 #   --actor LOGIN   restrict to one GitHub login
