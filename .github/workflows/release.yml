@@ -41,10 +41,21 @@ jobs:
           ./ci/selftest-restore.sh
           ./ci/selftest-implant.sh
 
+      # The tag reaches the shell through the environment, never through
+      # expression interpolation. `run: TAG="${{ inputs.tag }}"` would let anyone
+      # who can dispatch this workflow execute arbitrary commands in a job that
+      # holds contents:write and attestation signing rights.
       - name: Build the archive
         id: build
+        env:
+          INPUT_TAG: ${{ github.event.inputs.tag }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
-          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          TAG="${INPUT_TAG:-$REF_NAME}"
+          case "$TAG" in
+            v[0-9]*) ;;
+            *) echo "refusing to release from a tag that is not vN...: $TAG" >&2; exit 1 ;;
+          esac
           NAME="polinrider-cleaner-${TAG}"
           mkdir -p dist
           git archive --format=tar.gz --prefix="${NAME}/" -o "dist/${NAME}.tar.gz" HEAD
