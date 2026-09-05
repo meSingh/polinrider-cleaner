@@ -5,8 +5,8 @@
 <h1 align="center">polinrider-cleaner</h1>
 
 <p align="center">
-  Detect and clean up after the <strong>PolinRider</strong> supply-chain campaign —
-  on a GitHub organization, on a personal account, and on a developer machine.
+  Detect and clean up after the <strong>PolinRider</strong> supply-chain campaign,
+  on a GitHub organization, on a personal account, or on a developer machine.
 </p>
 
 <p align="center">
@@ -48,13 +48,13 @@
 |---|---|---|
 | Branches across an organization's repos were force-pushed | [**`github-org-recovery/`**](github-org-recovery/) | Scans every repo in a GitHub **organization**, then puts each branch back where it was |
 | Your own GitHub repositories were force-pushed | [**`github-account-recovery/`**](github-account-recovery/) | The same for **one personal account**, where the attacker pushed using your own login |
-| Your laptop opened an infected repo, or installed a flagged package | [**`machine-cleanup/`**](machine-cleanup/) | Checks and cleans **one computer** — files, editor extensions, persistence, an installed implant. macOS, Linux, Windows |
+| Your laptop opened an infected repo, or installed a flagged package | [**`machine-cleanup/`**](machine-cleanup/) | Checks and cleans **one computer**: files, editor extensions, persistence, an installed implant. macOS, Linux, Windows |
 | You want every future push and PR scanned automatically | [**`ci/`**](ci/) | A scanner you **copy into your own repo**, so every push is checked with no third-party action |
 
 <sub>The two GitHub folders say <strong>recovery</strong> because that is what they do: they put
 your branches back. Nothing is deleted and no history is rewritten. The machine folder says
-<strong>cleanup</strong> because that one genuinely removes malware from a computer — by moving it
-to quarantine, never by deleting it.</sub>
+<strong>cleanup</strong> because that one genuinely removes malware from a computer, by moving it
+to quarantine rather than deleting it.</sub>
 
 `./polinrider.sh` picks for you. If you would rather drive it yourself, or more
 than one applies, **the order is fixed and it matters**:
@@ -65,49 +65,53 @@ than one applies, **the order is fixed and it matters**:
 
 > [!WARNING]
 > Cleaning the remote while an infected machine still holds a valid token puts
-> you back where you started within minutes. That is not theoretical — it is the
+> you back where you started within minutes. That is not theoretical. It is the
 > documented reinfection behaviour of this campaign.
 
 ---
 
 ## Run it
 
-Two ways. Neither needs an installer, and neither asks you to trust a pipe.
-
-### Download the signed release and run it
-
-Nothing to clone. The checksum step is the point: verify, then run.
-
 ```bash
-curl -fsSL -O https://github.com/meSingh/polinrider-cleaner/releases/latest/download/polinrider-cleaner.tar.gz \
-     -O https://github.com/meSingh/polinrider-cleaner/releases/latest/download/SHA256SUMS
-
-sha256sum --ignore-missing -c SHA256SUMS 2>/dev/null \
-  || shasum -a 256 --ignore-missing -c SHA256SUMS
-
-tar xzf polinrider-cleaner.tar.gz && cd polinrider-cleaner-*/ && ./polinrider.sh
+git clone --depth 1 --branch v1.0.2 https://github.com/meSingh/polinrider-cleaner.git
+cd polinrider-cleaner
+./polinrider.sh
 ```
 
-Every release also carries a build-provenance attestation. If you have the
-GitHub CLI, this proves the archive came from this repository's CI and was not
-altered afterwards:
+That pins you to a specific published release rather than to whatever `main`
+happens to be at the moment you clone.
+
+Tags in this repository are protected: once published, a tag cannot be moved,
+overwritten or deleted, by anyone, including the maintainer. So `v1.0.2` will
+always be exactly the code that was reviewed and released as `v1.0.2`. If you
+want to check that yourself:
 
 ```bash
-gh attestation verify polinrider-cleaner.tar.gz --repo meSingh/polinrider-cleaner
+git verify-tag v1.0.2
 ```
 
-### Or clone it
-
-```bash
-git clone https://github.com/meSingh/polinrider-cleaner.git && cd polinrider-cleaner && ./polinrider.sh
-```
+It is signed with GPG key `A743FEC7E4955B92`. Every commit in the repository is
+signed too, and GitHub marks them Verified.
 
 > [!NOTE]
-> **There is deliberately no `curl … | sh` one-liner.**
-> Piping a downloaded script straight into a shell is precisely how this malware
-> gets onto machines — a `.vscode/tasks.json` that runs `curl … | bash` the
-> moment you open a folder. A tool for cleaning that up should not ask you to do
-> the same thing. The extra line above is the checksum, and it is worth typing.
+> **There is deliberately no `curl ... | sh` one-liner.**
+> Piping a downloaded script straight into a shell is exactly how this malware
+> reaches machines, through a `.vscode/tasks.json` that runs `curl ... | bash`
+> the moment you open a folder. A tool for cleaning that up should not ask you
+> to do the same thing.
+
+<details>
+<summary>Prefer a release archive to a git clone?</summary>
+
+<br>
+
+Every release also ships a tarball with a checksum file and a build-provenance
+attestation, on the
+[releases page](https://github.com/meSingh/polinrider-cleaner/releases). The
+clone above is simpler and gets you the signed tag, so it is what this page
+recommends.
+
+</details>
 
 ### What you need
 
@@ -142,7 +146,7 @@ non-interactive for scripts and agents; `--help` lists the rest.
 
 # The four steps
 
-## Step 1 — Check the machines
+## Step 1. Check the machines
 
 **Read-only. Changes nothing.** Run this on every machine that has touched the
 affected repositories, before you touch GitHub at all.
@@ -185,7 +189,7 @@ configuration, live connections and your credential surface.
 
 `--apply` **quarantines** confirmed artifacts into a timestamped directory with
 a manifest and restore instructions. **Nothing is ever deleted.** Build config
-files and shell startup files are never touched automatically — the payload is
+files and shell startup files are never touched automatically. The payload is
 appended to real files, so the script reports them and you re-clone.
 
 Full detail: **[`machine-cleanup/README.md`](machine-cleanup/README.md)**
@@ -194,7 +198,7 @@ Full detail: **[`machine-cleanup/README.md`](machine-cleanup/README.md)**
 
 ---
 
-## Step 2 — Rotate every credential
+## Step 2. Rotate every credential
 
 Assume everything reachable from the affected user account is in someone else's
 hands. Do this from a machine you trust, **before** restoring any branch.
@@ -203,11 +207,11 @@ hands. Do this from a machine you trust, **before** restoring any branch.
 > If a crypto wallet or seed phrase was on that machine, move the funds now.
 > This malware targets them specifically.
 
-**First — these grant repository write:**
+**First, the ones that grant repository write:**
 
 - Every GitHub personal access token, classic and fine-grained
 - Every SSH key **and signing key**
-- **Deploy keys on every repository** — routinely missed: `gh api /repos/OWNER/REPO/keys`
+- **Deploy keys on every repository.** Routinely missed: `gh api /repos/OWNER/REPO/keys`
 - Authorised OAuth apps and GitHub Apps
 - Actions secrets and variables, at org, repo and environment level
 - Self-hosted runner registration tokens; rebuild self-hosted runners from image
@@ -217,12 +221,12 @@ hands. Do this from a machine you trust, **before** restoring any branch.
 
 <br>
 
-**Second — publish rights:**
+**Second, publish rights:**
 
 - npm tokens plus 2FA reset. Check `npm token list` for tokens you did not create
 - Packagist, PyPI, Go proxy, Docker Hub / GHCR, Chrome Web Store credentials
 
-**Third — everything else the stealer could read:**
+**Third, everything else the stealer could read:**
 
 - Cloud keys: `~/.aws/credentials`, `~/.config/gcloud`, service account keys
 - Every value in every `.env` on the affected machine
@@ -251,9 +255,9 @@ gh auth logout && rm -f ~/.config/gh/hosts.yml
 
 Sources disagree, so here is the rule this repository uses.
 
-- **Persistence artifact found** — launch agent, systemd unit, Run key, scheduled
-  task, git hook, shell profile, an infected editor extension, or anything in the
-  implant section: **rebuild**. Something is configured to run again.
+- **Persistence artifact found**, meaning a launch agent, systemd unit, Run key,
+  scheduled task, git hook, shell profile, an infected editor extension, or
+  anything in the implant section: **rebuild**. Something is configured to run again.
 - **Repository artifacts only, no persistence, and you can account for what ran**:
   quarantine, delete every local clone, rotate everything, keep scanning weekly.
   A rebuild is still safer if the machine holds production or financial access.
@@ -265,22 +269,28 @@ anywhere and do not care what you do to the laptop.
 
 ---
 
-## Step 3 — Restore the branches
+## Step 3. Restore the branches
 
 History stays intact and no work is lost: the branch pointer moves back to the
 commit that existed before the attack, and the malicious commits become
 unreachable.
 
-Start with the entry point, which scans and filters in one go:
+Start with the entry point. It scans and filters in one go, and stops there:
 
 ```bash
 ./polinrider.sh --org YOUR-ORG
 ```
 
-Then work through the recovery itself:
+> [!NOTE]
+> **This is where `polinrider.sh` hands over, on purpose.** Everything it does is
+> read-only. The commands below force-update branch refs on GitHub, which is the
+> one genuinely destructive thing in this repository, so they stay explicit,
+> behind their own preflight gates, and typed by a person who has read the plan.
+
+The recovery itself:
 
 ```bash
-# 1. Evidence first. Time-critical — see the warning below.
+# 1. Evidence first. Time-critical, see the warning below.
 ./github-org-recovery/scan.sh --org YOUR-ORG --out ./evidence --mirror-only
 
 # 2. Who touched what, and when
@@ -290,7 +300,7 @@ Then work through the recovery itself:
 ./github-org-recovery/scan.sh --org YOUR-ORG --out ./evidence --scan-only
 ./github-org-recovery/triage-filter.sh ./evidence/triage.json
 
-# 4. Plan the restore. Dry run — changes nothing.
+# 4. Plan the restore. Dry run, changes nothing.
 ./github-org-recovery/restore.sh --sweep ./evidence/sweep.tsv --mirrors ./evidence \
                          --since 2026-07-27T03:00:00Z --actor ATTACKER-LOGIN
 
@@ -306,8 +316,8 @@ Then work through the recovery itself:
 > end. Once it is gone, non-destructive restore is no longer possible for that
 > branch.
 
-For a personal account the flow is the same but the threat model is not — the
-hostile pushes carry *your* login, so actor filtering proves nothing. Use
+For a personal account the flow is the same but the threat model is not. The
+hostile pushes carry *your* login, so actor filtering proves nothing there. Use
 **[`github-account-recovery/`](github-account-recovery/)**.
 
 <details>
@@ -320,13 +330,13 @@ hostile pushes carry *your* login, so actor filtering proves nothing. Use
 | `ok` | that push rewrote history. Definite force push | yes |
 | `ok_fastforward` | commits appended without a rewrite. Read the diff first | yes, after review |
 | `ok_orphaned` | the commit is unreachable from any ref, so the mirror never fetched it, but GitHub still holds it and confirmed so. **Normal. Not data loss** | yes |
-| `MALICIOUS_TARGET` | the target is itself a commit pushed during the attack | no — widen `--since` |
-| `SHA_GONE` | the commit returned 404. Garbage collected | no — delete and recreate |
+| `MALICIOUS_TARGET` | the target is itself a commit pushed during the attack | no, widen `--since` |
+| `SHA_GONE` | the commit returned 404. Garbage collected | no, delete and recreate |
 | `NO_MIRROR` | no local mirror. Re-run the scan for that repo | no |
 
 **The second-wave trap.** If the attacker pushed twice, the second push's
 `before` value *is* the first push's malicious commit. Restoring to it would pin
-your branches to malware. `restore.sh` refuses those rows outright — if you see
+your branches to malware. `restore.sh` refuses those rows outright. If you see
 any, your `--since` starts too late.
 
 Full walkthrough: **[`github-org-recovery/README.md`](github-org-recovery/README.md)**
@@ -335,15 +345,15 @@ Full walkthrough: **[`github-org-recovery/README.md`](github-org-recovery/README
 
 ---
 
-## Step 4 — Stop it happening again
+## Step 4. Stop it happening again
 
 ```bash
 ./ci/install-workflow.sh /path/to/your/repo
 ```
 
 That vendors the scanner and its indicator set into `.github/polinrider/` in
-your repository, so the scan runs from code you control — no marketplace action
-fetched on every push. It commits nothing; review, then commit.
+your repository, so the scan runs from code you control, with no marketplace
+action fetched on every push. It commits nothing; review, then commit.
 
 <details>
 <summary><strong>Organization and machine hardening</strong></summary>
@@ -394,7 +404,7 @@ documented behaviour, so a one-off scan is not enough.
 # Understand the threat
 
 <details>
-<summary><strong>What PolinRider is</strong> — a supply-chain campaign attributed to DPRK-linked actors, active since December 2025</summary>
+<summary><strong>What PolinRider is.</strong> A supply-chain campaign attributed to DPRK-linked actors, active since December 2025</summary>
 
 <br>
 
@@ -437,7 +447,7 @@ The second stage has been the **DEV#POPPER** remote access trojan and
 </details>
 
 <details>
-<summary><strong>The second stage now installs itself as a process</strong> — and a repository scan cannot see it</summary>
+<summary><strong>The second stage now installs itself as a process,</strong> and a repository scan cannot see it</summary>
 
 <br>
 
@@ -459,9 +469,9 @@ It writes working state to `~/.pcl-data` and `~/.pcl-state`, talks to its
 controller over a WebSocket, and exfiltrates through **private Hugging Face
 datasets** rather than a server you could block.
 
-It is delivered by a family of npm packages that look like logging utilities —
+It is delivered by a family of npm packages that look like logging utilities:
 `js-logger-pack`, `terminal-logger-utils`, `pretty-logger-utils`, `pinno-loggers`
-and others — and by hijacked versions of legitimate packages.
+and others, plus hijacked versions of legitimate packages.
 
 Two consequences:
 
@@ -498,7 +508,7 @@ show you anything wrong. Socket observed May 2026 compromises carrying January
 |---|---|
 | Build config files | appended after the real `export default` / `module.exports`, behind roughly 280 spaces of padding: `postcss.config.mjs`, `tailwind.config.js`, `eslint.config.mjs`, `next.config.mjs`, `babel.config.js`, `vite.config.js`, `gridsome.config.js`, `vue.config.js`, `truffle.js`, `app.js` |
 | Fake fonts | `.woff2` files under `public/`, `static/`, `assets/` whose bytes are JavaScript, not a font |
-| Editor tasks | `.vscode/tasks.json` with `"runOn": "folderOpen"` running `curl … \| bash` |
+| Editor tasks | `.vscode/tasks.json` with `"runOn": "folderOpen"` running `curl ... \| bash` |
 | Propagation script | `temp_auto_push.bat` |
 | Dependencies | `tailwindcss-style-animate`, `tailwind-mainanimation`, `tailwind-autoanimation`, `tailwindcss-typography-style`, `tailwindcss-style-modify` |
 | Second-stage droppers | `js-logger-pack`, `ts-logger-pack`, `terminal-logger-utils`, `pretty-logger-utils`, `pinno-loggers`, `polymarket-validator`, `changelog-logger-utilities`, `node-env-resolve` |
@@ -507,12 +517,12 @@ show you anything wrong. Socket observed May 2026 compromises carrying January
 Two obfuscator variants are in circulation: the original marked `rmcej%otb%`
 with function `_$_1e42`, and a newer one marked `Cot%3t=shtP` with function
 `MDy` and a `global['_V']='8-XXX'` version tag. Signatures rotate, so a clean
-scan proves the *current* indicator set is absent — nothing more.
+scan proves the *current* indicator set is absent, nothing more.
 
 </details>
 
 <details>
-<summary><strong>Scale</strong> — the numbers, with dates, because they move</summary>
+<summary><strong>Scale.</strong> The numbers, with dates, because they move</summary>
 
 <br>
 
@@ -520,7 +530,7 @@ scan proves the *current* indicator set is absent — nothing more.
 |---|---|---|
 | 8 Mar 2026 | OpenSourceMalware | 675 repositories, 352 owners |
 | 11 Apr 2026 | OpenSourceMalware | 1,951 repositories, 1,047 owners |
-| Apr–May 2026 | JFrog, safedep | Second-stage implant documented: `MicrosoftSystem64`, delivered by the logger-package family, exfiltrating via Hugging Face |
+| Apr to May 2026 | JFrog, safedep | Second-stage implant documented: `MicrosoftSystem64`, delivered by the logger-package family, exfiltrating via Hugging Face |
 | 2 Jul 2026 | Socket / The Hacker News | 108 packages, 162 artifacts: 61 Go, 19 npm, 10 Composer, 1 Chrome extension |
 | 1 Aug 2026 | Socket tracking page | 121 packages, 196 artifacts |
 
@@ -597,7 +607,7 @@ amend appears nowhere else.
 </details>
 
 <details>
-<summary><strong>False positives you will see</strong> — all four confirmed harmless during a real cleanup</summary>
+<summary><strong>False positives you will see.</strong> All confirmed harmless during a real cleanup</summary>
 
 <br>
 
@@ -622,21 +632,21 @@ an incident costs everyone real time.
 
 Primary, load-bearing:
 
-- [PolinRider technical dossier — OpenSourceMalware](https://github.com/OpenSourceMalware/PolinRider) — indicators, YARA rule, scale figures
-- [Socket live tracking page](https://socket.dev/supply-chain-attacks/polinrider) — current package counts
-- [PolinRider: campaign expands across open source ecosystems — Socket](https://socket.dev/blog/polinrider-north-korea-linked-supply-chain-campaign-expands)
-- [North Korean hackers publish 108 malicious packages — The Hacker News](https://thehackernews.com/2026/07/north-korean-hackers-publish-108.html)
-- [Getting over PolinRider: a developer's guide — OpenSourceMalware](https://opensourcemalware.com/blog/developer-guide-getting-over-polinrider)
-- [Inside MicrosoftSystem64: a supply chain RAT exfiltrating to Hugging Face — safedep](https://safedep.io/microsoftsystem64-binary-payload-analysis/)
-- [Hugging Face as a malware CDN and exfiltration backend — JFrog Security Research](https://research.jfrog.com/post/hugging-face-exfil/)
+- **OpenSourceMalware.** [PolinRider technical dossier](https://github.com/OpenSourceMalware/PolinRider). Indicators, YARA rule, scale figures.
+- **Socket.** [Live tracking page](https://socket.dev/supply-chain-attacks/polinrider). Current package counts.
+- **Socket.** [The campaign expands across open source ecosystems](https://socket.dev/blog/polinrider-north-korea-linked-supply-chain-campaign-expands).
+- **The Hacker News.** [North Korean hackers publish 108 malicious packages](https://thehackernews.com/2026/07/north-korean-hackers-publish-108.html).
+- **OpenSourceMalware.** [Getting over PolinRider: a developer's guide](https://opensourcemalware.com/blog/developer-guide-getting-over-polinrider). Rotation checklist, C2 addresses, reinfection analysis.
+- **safedep.** [Inside MicrosoftSystem64: a supply chain RAT exfiltrating to Hugging Face](https://safedep.io/microsoftsystem64-binary-payload-analysis/). The second-stage binary, in detail.
+- **JFrog Security Research.** [Hugging Face as a malware CDN and exfiltration backend](https://research.jfrog.com/post/hugging-face-exfil/). Independent corroboration, plus hashes.
 
 Additional reading:
 
-- [PolinRider expands to the Packagist ecosystem — Developer Tech](https://www.developer-tech.com/news/polinrider-supply-chain-attack-expands-packagist-ecosystem/)
-- [Hijacked npm package nearly delivers PolinRider RAT — Sonatype](https://www.sonatype.com/blog/hijacked-npm-package-attempts-to-deliver-polinrider-linked-rat)
-- [Inside DPRK's npm malware factory — Panther](https://panther.com/blog/inside-dprk%E2%80%99s-npm-malware-factory-108-packages-261-versions-and-a-31-day-campaign-wave)
-- [Surviving PolinRider: recovering GitHub repositories after a mass force-push — Karo Edaware](https://medium.com/@edawarekaro/surviving-polinrider-how-to-recover-your-github-repositories-after-a-mass-force-push-attack-ebe8175124a0)
-- [North Korean hackers target open source developers — SecurityWeek](https://www.securityweek.com/north-korean-hackers-target-open-source-developers-in-supply-chain-attacks/)
+- **Developer Tech.** [PolinRider expands to the Packagist ecosystem](https://www.developer-tech.com/news/polinrider-supply-chain-attack-expands-packagist-ecosystem/).
+- **Sonatype.** [Hijacked npm package nearly delivers PolinRider RAT](https://www.sonatype.com/blog/hijacked-npm-package-attempts-to-deliver-polinrider-linked-rat).
+- **Panther.** [Inside DPRK's npm malware factory](https://panther.com/blog/inside-dprk%E2%80%99s-npm-malware-factory-108-packages-261-versions-and-a-31-day-campaign-wave).
+- **Karo Edaware.** [Surviving PolinRider: recovering GitHub repositories after a mass force-push](https://medium.com/@edawarekaro/surviving-polinrider-how-to-recover-your-github-repositories-after-a-mass-force-push-attack-ebe8175124a0).
+- **SecurityWeek.** [North Korean hackers target open source developers](https://www.securityweek.com/north-korean-hackers-target-open-source-developers-in-supply-chain-attacks/).
 
 Indicators live in [`ioc/`](ioc/) and trace to these sources. Keeping them
 current: [`ioc/README.md`](ioc/README.md).
