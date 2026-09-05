@@ -98,10 +98,50 @@ if [[ -f "$Q/RESTORE.txt" ]]; then pass "restore instructions written"; else fai
 # --- 3. clean control --------------------------------------------------------
 echo
 echo "assertions, clean control:"
-CH="$TMP/clean-home"; mkdir -p "$CH/code"
+CH="$TMP/clean-home"; mkdir -p "$CH/code" "$CH/.ssh"
+# An ordinary developer machine: a keypair and a config file. None of this is a
+# finding, and it must not be counted as one.
+printf 'PRIVATE\n' > "$CH/.ssh/id_ed25519"
+printf 'ssh-ed25519 AAAA fake\n' > "$CH/.ssh/id_ed25519.pub"
 OUT="$(HOME="$CH" PRC_IOC_DIR="$ROOT/ioc" "$CHECK" "$CH/code" 2>&1)"
+RC=$?
+
 if printf '%s\n' "$OUT" | grep -q "no second-stage implant found"; then
   pass "clean home reports no implant"; else fail "clean home reported an implant"; fi
+
+if printf '%s\n' "$OUT" | grep -q "id_ed25519.pub"; then
+  fail "listed a .pub file as credential material"
+else pass "public keys are not treated as credentials"; fi
+
+if printf '%s\n' "$OUT" | grep -E '^\s+\[review\]' | grep -qi 'credential'; then
+  fail "credential inventory counted as a review item"
+else pass "credential inventory is [info], not [review]"; fi
+
+# The review count must come only from genuinely ambiguous evidence. Inventory
+# and hardening advice must never appear as [review]. The host's own process
+# table is shared with this test, so a [review] from a running interpreter is
+# legitimate and not asserted against.
+NOISE=0
+for phrase in "credential material" "extensions installed" "ignore-scripts" \
+              "launch items" "established connections" ".env files"; do
+  if printf '%s\n' "$OUT" | grep -E '^\s+\[review\]' | grep -qF "$phrase"; then
+    fail "inventory counted as a review item: $phrase"; NOISE=1
+  fi
+done
+[[ $NOISE -eq 0 ]] && pass "no inventory or advice is counted as a review item"
+
+if [[ $RC -eq 0 || $RC -eq 1 ]]; then
+  pass "clean machine exits 0 or 1, never 2"
+else fail "clean machine exited $RC"; fi
+
+# every section must say something, so silence is never mistaken for "did not run"
+for section in "Workspace tasks that run on folder open" "Build configs with code after the module end" "Font files that are not fonts"; do
+  if printf '%s\n' "$OUT" | grep -A1 "$section" | grep -qE '\[(ok|info|review|HIT)\]'; then
+    pass "section reports a result: $section"
+  else
+    fail "section printed nothing: $section"
+  fi
+done
 
 echo
 if [[ $FAILED -eq 0 ]]; then echo "IMPLANT SELFTEST PASSED"; exit 0; fi

@@ -79,6 +79,25 @@ powershell -ExecutionPolicy Bypass -File .\machine-cleanup\check-windows.ps1 -Ro
 
 ---
 
+## Reading the output
+
+Every line is one of three kinds, and only one of them asks anything of you.
+
+| Marker | Meaning | Does it need you? |
+|---|---|---|
+| `[HIT]` | A confirmed indicator. This is a finding | Yes, immediately |
+| `[review]` | Ambiguous evidence a human has to judge: an editor task that runs on folder open, an active git hook, an interpreter running inline code | Yes, read it |
+| `[info]` | Inventory and hardening advice: which credential files exist, how many extensions changed recently, whether `npm ignore-scripts` is on | No. It is context, not evidence |
+| `[ok]` | Checked, nothing found. It says how many files it examined | No |
+
+`[info]` deliberately does **not** count towards the review total. Owning an SSH
+key is not a finding, and a scan that says "8 items need a human look" when six
+of them are "you have credentials on your computer" trains people to ignore it.
+
+Long lists, such as every launch agent and every established connection, go to
+the report file rather than the terminal. The console gives you the count and
+the verdict; the report has the evidence.
+
 ## Exit codes
 
 | Code | Meaning |

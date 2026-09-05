@@ -68,8 +68,8 @@ for d in "$HOME/Library/LaunchAgents" "/Library/LaunchAgents" "/Library/LaunchDa
       warn "launch item runs a network or interpreter command: $f"
     fi
   done < <(find "$d" -maxdepth 1 -name '*.plist' 2>/dev/null)
-  say "  items in $d modified in the last 90 days:"
-  find "$d" -maxdepth 1 -name '*.plist' -mtime -90 2>/dev/null | sed 's|^|    |' | tee -a "$REPORT"
+  info "$(find "$d" -maxdepth 1 -name '*.plist' -mtime -90 2>/dev/null | grep -c .) launch items in $d changed in the last 90 days, none containing an indicator. Listed in the report."
+  find "$d" -maxdepth 1 -name '*.plist' -mtime -90 2>/dev/null | sed 's|^|    |' >> "$REPORT"
 done
 CRON="$(crontab -l 2>/dev/null)"
 if [[ -n "$CRON" ]]; then
