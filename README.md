@@ -331,6 +331,35 @@ This adds one ordinary commit per affected branch and pushes it normally. No
 history is rewritten and nothing is force-pushed, so you can revert it like any
 other commit. Use `./github-org-recovery/clean-repo.sh` for an organization.
 
+#### If leaving it in the history is not acceptable
+
+The commit above deletes the files from the tip. The payload is still in the
+history, so anyone who checks out an older commit gets a live
+`.vscode/tasks.json` that runs on folder open. `--rewrite` removes the paths
+from every commit instead:
+
+```bash
+./github-account-recovery/clean-repo.sh OWNER/REPO --rewrite
+./github-account-recovery/clean-repo.sh OWNER/REPO --rewrite --apply
+```
+
+It uses `git filter-repo` when that is installed and `git filter-branch` when it
+is not, so nothing needs installing. Every ref is force-pushed and the
+pre-rewrite state is kept locally under `refs/polinrider/pre-rewrite/`.
+
+> [!CAUTION]
+> **This does not remove anything from GitHub.** GitHub keeps unreachable
+> objects and still serves them by SHA, so anyone holding an old commit id can
+> fetch it after the rewrite. That is exactly how `preserve-restore-points.sh`
+> recovers pre-attack commits. To have them actually removed you have to ask
+> GitHub Support to run `gc` on the repository, and forks keep their own copies
+> regardless.
+>
+> Every commit id also changes, so existing clones diverge and links to commits
+> stop resolving. What the rewrite does achieve is that the payload leaves the
+> reachable history: gone from `git log`, from `git blame`, and from every clone
+> made afterwards.
+
 Protected branches will reject the push. That is correct behaviour: clean an
 unprotected branch and open a pull request from it.
 
