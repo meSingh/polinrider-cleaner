@@ -19,7 +19,12 @@ APPLY=0
 QDIR=""
 REPORT=""
 
-say()  { printf '%s\n' "$*" | tee -a "$REPORT" >/dev/null; printf '%s\n' "$*"; }
+# Everything printed can contain bytes from a file an attacker controls: a path,
+# a matched line, a font's magic bytes. Control characters are stripped so a
+# crafted filename cannot drive the operator's terminal with escape sequences,
+# and so the report file stays greppable.
+prc_clean() { LC_ALL=C tr -d '\000-\010\013\014\016-\037\177'; }
+say()  { local t; t="$(printf '%s' "$*" | prc_clean)"; printf '%s\n' "$t" | tee -a "$REPORT" >/dev/null; printf '%s\n' "$t"; }
 hdr()  { say ""; say "== $* =="; }
 bad()  { HITS=$((HITS+1));     say "  [HIT]    $*"; }
 warn() { REVIEW=$((REVIEW+1)); say "  [review] $*"; }
@@ -104,10 +109,17 @@ check_extensions() {   # $@ = extension directories
       bad "extension contains an indicator: $extdir"
       quarantine "$extdir" "ide-extension"
     done < <(grep -RlaF $PRC_CODE_INCLUDES "${STRONG_ARGS[@]}" "$d" 2>/dev/null | head -40)
+    # The generic weak list is useless here. A bundled extension legitimately
+    # contains "folderOpen" (it is a codicon name) and "windowsHide" (a standard
+    # child_process option), so matching those produces pages of noise. Only
+    # actual campaign infrastructure is worth a human's attention in an
+    # extension bundle, and the message names what matched.
     while read -r f; do
       [[ -z "$f" ]] && continue
-      warn "extension references a blockchain RPC endpoint: $f"
-    done < <(grep -RlaF $PRC_CODE_INCLUDES "${WEAK_ARGS[@]}" "$d" 2>/dev/null | head -20)
+      local term
+      term="$(grep -haoF "${NET_ARGS[@]}" "$f" 2>/dev/null | sort -u | tr '\n' ' ' | cut -c1-60)"
+      warn "extension references campaign infrastructure (${term%% }): $f"
+    done < <(grep -RlaF $PRC_CODE_INCLUDES "${NET_ARGS[@]}" "$d" 2>/dev/null | head -20)
   done
   [[ $found -eq 0 ]] && ok "no IDE extension directories found"
   say ""
@@ -180,7 +192,9 @@ check_fonts() {        # $@ = code roots
       case "$magic" in
         wOFF|wOF2) ;;
         vers) ;;                          # git-lfs pointer, not the font itself
-        *) bad "font file is not a font (magic='$magic'): $f"
+        *) local hex
+           hex="$(head -c 4 "$f" 2>/dev/null | od -An -tx1 | tr -s ' ' | sed 's/^ *//;s/ *$//')"
+           bad "font file is not a font (first bytes: $hex): $f"
            quarantine "$f" "font-masquerade" ;;
       esac
     done < <(find "$root" -not -path '*/node_modules/*' -not -path '*/.git/*' \

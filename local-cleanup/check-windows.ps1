@@ -22,6 +22,8 @@
 .NOTES
   Exit codes: 0 clean, 1 review items only, 2 confirmed indicator hit.
 #>
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', '',
+  Justification = 'This script prints an incident report to a human at a terminal. The machine-readable transcript is written separately to the report file.')]
 [CmdletBinding()]
 param(
   [string[]]$Roots,
@@ -50,7 +52,7 @@ function Ok   ($m) { Say "  [ok]     $m" }
 
 # --- indicators ------------------------------------------------------------
 $iocDir = Join-Path (Split-Path -Parent $PSScriptRoot) 'ioc'
-function Read-Iocs ([string[]]$files) {
+function Read-IocFile ([string[]]$files) {
   $out = @()
   foreach ($f in $files) {
     $p = Join-Path $iocDir $f
@@ -59,10 +61,10 @@ function Read-Iocs ([string[]]$files) {
   }
   return $out
 }
-$Strong   = Read-Iocs @('strong.txt','bad-packages.txt')
-$Weak     = Read-Iocs @('weak.txt')
-$BadPkgs  = Read-Iocs @('bad-packages.txt')
-$Net      = Read-Iocs @('network.txt')
+$Strong   = Read-IocFile @('strong.txt','bad-packages.txt')
+$Weak     = Read-IocFile @('weak.txt')
+$BadPkgs  = Read-IocFile @('bad-packages.txt')
+$Net      = Read-IocFile @('network.txt')
 if ($Strong.Count -eq 0) { Write-Error "indicator set is empty"; exit 2 }
 
 function Test-Strong ([string]$path) {
@@ -214,35 +216,33 @@ Hdr "Propagation artifact temp_auto_push.bat"
 # Searching the whole user profile walks AppData and takes minutes. The script
 # only ever lands in a working copy, so search the code roots plus the folders
 # people actually clone into.
-$found = $false
 $searchRoots = @($Roots) + @('Desktop','Downloads','Documents' | ForEach-Object { Join-Path $env:USERPROFILE $_ })
+$propHits = @()
 foreach ($r in ($searchRoots | Select-Object -Unique)) {
   if (-not (Test-Path $r)) { continue }
-  Get-ChildItem -Path $r -Recurse -Filter 'temp_auto_push.bat' -File -ErrorAction SilentlyContinue |
-    Select-Object -First 20 | ForEach-Object {
-      $found = $true
-      Bad "propagation script present: $($_.FullName)"
-      Move-ToQuarantine $_.FullName 'propagation-script'
-    }
+  $propHits += @(Get-ChildItem -Path $r -Recurse -Filter 'temp_auto_push.bat' -File -ErrorAction SilentlyContinue |
+                 Select-Object -First 20)
 }
-if (-not $found) { Ok "temp_auto_push.bat not found under the scanned roots" }
+foreach ($f in $propHits) {
+  Bad "propagation script present: $($f.FullName)"
+  Move-ToQuarantine $f.FullName 'propagation-script'
+}
+if ($propHits.Count -eq 0) { Ok "temp_auto_push.bat not found under the scanned roots" }
 
 # --- 6. known-bad packages -------------------------------------------------
 Hdr "Known-bad packages"
-$pkgFound = $false
+$pkgHits = @()
 foreach ($root in $Roots) {
   if (-not (Test-Path $root)) { continue }
-  Get-ChildItem -Path $root -Recurse -File -Include 'package.json','package-lock.json','pnpm-lock.yaml','yarn.lock' -ErrorAction SilentlyContinue |
-    Where-Object { $_.FullName -notlike '*\node_modules\*' } |
-    ForEach-Object {
-      if (Select-String -Path $_.FullName -SimpleMatch -Pattern $BadPkgs -List -ErrorAction SilentlyContinue) {
-        $pkgFound = $true
-        Bad "known-bad package referenced: $($_.FullName)"
-        Say "           remove the dependency, delete node_modules and the lockfile entry, reinstall."
-      }
-    }
+  $pkgHits += @(Get-ChildItem -Path $root -Recurse -File -Include 'package.json','package-lock.json','pnpm-lock.yaml','yarn.lock' -ErrorAction SilentlyContinue |
+                Where-Object { $_.FullName -notlike '*\node_modules\*' } |
+                Where-Object { [bool](Select-String -Path $_.FullName -SimpleMatch -Pattern $BadPkgs -List -ErrorAction SilentlyContinue) })
 }
-if (-not $pkgFound) { Ok "no known-bad package names in manifests or lockfiles" }
+foreach ($f in $pkgHits) {
+  Bad "known-bad package referenced: $($f.FullName)"
+  Say "           remove the dependency, delete node_modules and the lockfile entry, reinstall."
+}
+if ($pkgHits.Count -eq 0) { Ok "no known-bad package names in manifests or lockfiles" }
 
 # --- 7. persistence --------------------------------------------------------
 Hdr "Persistence: Run keys, Startup folder, scheduled tasks"
