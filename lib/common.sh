@@ -26,7 +26,16 @@ PRC_BENIGN_RE="$PRC_BENIGN_RE"'|\.md$|(^|/)docs/|README'
 # T0 for a sweep is conventionally a couple of hours before the first suspect
 # push, to catch anything staged just ahead of it.
 prc_shift_back_2h() {
-  local t="$1" out=""
+  local t="${1:-}" out=""
+  # Validate the input, not just the output. GNU date reads " - 2 hours" as a
+  # relative offset from now, so an empty or malformed argument comes back as a
+  # perfectly well-formed timestamp that is simply wrong, and the output check
+  # below cannot tell. BSD date rejects the same input outright, which is how
+  # this stayed hidden on macOS.
+  case "$t" in
+    [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]Z) ;;
+    *) return 1 ;;
+  esac
   if date --version >/dev/null 2>&1; then
     out=$(date -u -d "$t - 2 hours" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || true)
   else

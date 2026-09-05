@@ -26,6 +26,8 @@ T=$(prc_shift_back_2h 2026-08-10T21:14:20Z || true)
 prc_shift_back_2h "Mon Aug 10 21:14:20 UTC 2026" >/dev/null 2>&1 \
   && no "ctime input rejected" || ok "ctime input rejected"
 prc_shift_back_2h "" >/dev/null 2>&1 && no "empty input rejected" || ok "empty input rejected"
+prc_shift_back_2h "2026-08-10" >/dev/null 2>&1 && no "date-only rejected" || ok "date-only rejected"
+prc_shift_back_2h "; rm -rf /" >/dev/null 2>&1 && no "shell metacharacters rejected" || ok "shell metacharacters rejected"
 
 echo "== evidence location =="
 REPO="$TMP/a-checkout"; mkdir -p "$REPO"; git -C "$REPO" init -q 2>/dev/null
@@ -38,7 +40,8 @@ REPO="$TMP/a-checkout"; mkdir -p "$REPO"; git -C "$REPO" init -q 2>/dev/null
 D="$(prc_prepare_out "$TMP/made")"
 [[ -d "$TMP/made" && "$D" == /* && "$D" -ef "$TMP/made" ]] \
   && ok "creates and echoes an absolute path" || no "creates and echoes an absolute path: got '$D'"
-[[ "$(stat -f '%Lp' "$TMP/made" 2>/dev/null || stat -c '%a' "$TMP/made" 2>/dev/null)" == "700" ]] \
+if stat --version >/dev/null 2>&1; then MODE=$(stat -c '%a' "$TMP/made"); else MODE=$(stat -f '%Lp' "$TMP/made"); fi
+[[ "$MODE" == "700" ]] \
   && ok "evidence directory is mode 700" || no "evidence directory is mode 700"
 
 # --- fixtures ---------------------------------------------------------------
