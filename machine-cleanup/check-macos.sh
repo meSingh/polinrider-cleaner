@@ -10,7 +10,8 @@
 # ROOT is a directory holding your code. Defaults to ~/Sites ~/Projects ~/code
 # ~/dev ~/Documents. Give the real ones, the scan is only as good as its roots.
 #
-# Exit codes: 0 clean, 1 review items only, 2 confirmed indicator hit.
+# Exit codes: 0 clean, 1 review items only, 2 confirmed indicator hit,
+#             3 could not scan.
 
 set -uo pipefail
 # shellcheck source=lib/local-common.sh
@@ -29,7 +30,7 @@ while [[ $# -gt 0 ]]; do
     --quarantine) QDIR="$2"; shift 2 ;;
     --report)     REPORT="$2"; shift 2 ;;
     -h|--help)    sed -n '2,16p' "$0"; exit 0 ;;
-    -*)           echo "unknown argument: $1" >&2; exit 2 ;;
+    -*)           echo "unknown argument: $1" >&2; exit 3 ;;
     *)            ROOTS+=("$1"); shift ;;
   esac
 done

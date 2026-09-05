@@ -20,10 +20,14 @@
 #                   malware, so they are never written inside a git checkout
 #                   and are not meant to outlive the incident.
 #   --purge-evidence  delete the evidence directory and everything in it
+#   --trusted-actor LOGIN
+#                   someone whose pushes are accounted for. Their pushes stop
+#                   counting as evidence of a force-push. Repeatable.
 #   --yes           never prompt. For scripts and AI agents
 #   -h, --help      this text
 #
-# Exit codes: 0 nothing found, 1 review items only, 2 something confirmed.
+# Exit codes: 0 nothing found, 1 review items only, 2 something confirmed,
+#             3 a scan could not run. 3 says nothing about whether you are infected.
 
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -31,6 +35,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 . "$HERE/lib/common.sh"
 
 MODE=""; ORG=""; USR=""; SCANPATH=""; OUT=""; ROOTS=""; ASSUME_YES=0; DO_ALL=0; PURGE=0
+TRUSTED_ARGS=()     # colleagues whose pushes are accounted for
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -43,6 +48,7 @@ while [[ $# -gt 0 ]]; do
     --out)     OUT="$2"; shift 2 ;;
     --yes|-y)  ASSUME_YES=1; shift ;;
     --purge-evidence) PURGE=1; shift ;;
+    --trusted-actor)  TRUSTED_ARGS+=(--trusted-actor "$2"); shift 2 ;;
     -h|--help) sed -n '2,27p' "$0"; exit 0 ;;
     *) printf 'unknown argument: %s\nTry --help\n' "$1" >&2; exit 2 ;;
   esac
@@ -118,9 +124,19 @@ check_deps() {  # check_deps <need-gh 0|1>
 }
 
 WORST=0
+ERRORED=0          # a scan that could not run. Never a statement about the code.
+ERRORS=""
 FOUND_IN=""        # machine | github | path, for the advice at the end
 GH_KIND=""; GH_NAME=""
-note_rc() { [[ "$1" -gt "$WORST" ]] && WORST="$1"; return 0; }
+# Exit code 3 means "could not scan". It must never reach WORST, or a missing
+# dependency and a bad path get reported as a confirmed infection, which is
+# what used to happen: `--path /nowhere` printed the full compromise playbook.
+note_rc() {
+  if [[ "$1" -ge 3 ]]; then ERRORED=1; return 0; fi
+  [[ "$1" -gt "$WORST" ]] && WORST="$1"
+  return 0
+}
+note_error() { ERRORED=1; ERRORS="${ERRORS}${1}"$'\n'; }
 
 # --- the scans --------------------------------------------------------------
 scan_machine() {
@@ -133,7 +149,7 @@ scan_machine() {
     say  ""
     return 0
   fi
-  check_deps 0 || return 2
+  check_deps 0 || { note_error "the machine scan needs git"; return 3; }
   local r; r="${ROOTS:-$(default_roots)}"
   if [[ -z "$r" ]]; then
     warn "No common code directory found under \$HOME."
@@ -144,17 +160,22 @@ scan_machine() {
   say "${DIM}this reads only; the first run takes a few minutes${X}"
   # shellcheck disable=SC2086  # roots are separate arguments on purpose
   "$LOCAL_TOOL" $r
-  local rc=$?; [[ $rc -ge 2 ]] && FOUND_IN="machine"; note_rc $rc; return $rc
+  local rc=$?; [[ $rc -eq 2 ]] && FOUND_IN="machine"; note_rc $rc; return $rc
 }
 
 scan_path() {
   step "Scanning $SCANPATH"
-  check_deps 0 || return 2
+  if [[ ! -d "$SCANPATH" ]]; then
+    bad "no such directory: $SCANPATH"
+    note_error "cannot scan $SCANPATH: no such directory"
+    return 3
+  fi
+  check_deps 0 || { note_error "scanning a folder needs git"; return 3; }
   local extra=""
   [[ -d "$SCANPATH/.git" ]] && extra="--all-refs"
   # shellcheck disable=SC2086  # extra is one optional flag
   "$HERE/ci/scan-workspace.sh" --path "$SCANPATH" $extra
-  local rc=$?; [[ $rc -ge 2 ]] && FOUND_IN="path"; note_rc $rc; return $rc
+  local rc=$?; [[ $rc -eq 2 ]] && FOUND_IN="path"; note_rc $rc; return $rc
 }
 
 # Earlier versions wrote mirrors to ./evidence, inside the checkout. If that is
@@ -181,17 +202,17 @@ scan_github() {  # scan_github <org|user> <name>
   local kind="$1" name="$2" dir
   if [[ "$kind" == "org" ]]; then dir="$HERE/github-org-recovery"; else dir="$HERE/github-account-recovery"; fi
   step "Scanning the $([[ "$kind" == org ]] && echo "organization" || echo "account") $name"
-  check_deps 1 || return 2
-  OUT="$(prc_prepare_out "$OUT")" || return 2
+  check_deps 1 || { note_error "the GitHub scan needs git, gh and jq, and gh must be signed in"; return 3; }
+  OUT="$(prc_prepare_out "$OUT")" || { note_error "cannot prepare the evidence directory"; return 3; }
   say "${DIM}mirror-cloning every repository into${X}"
   say "  ${B}$OUT${X}"
   say "${DIM}this can take a while. Evidence is kept outside your working directory${X}"
   say "${DIM}on purpose: the mirrors hold live malware.${X}"
   legacy_evidence_hint
   if [[ "$kind" == "org" ]]; then
-    "$dir/scan.sh" --org "$name" --out "$OUT" || return 2
+    "$dir/scan.sh" --org "$name" --out "$OUT" || { note_error "the scan of $name did not finish"; return 3; }
   else
-    "$dir/scan.sh" --user "$name" --out "$OUT" || return 2
+    "$dir/scan.sh" --user "$name" --out "$OUT" || { note_error "the scan of $name did not finish"; return 3; }
   fi
   step "Separating real findings from your own detection tooling"
   # triage-filter exits 0 by design, so its exit code must never be the verdict.
@@ -236,7 +257,21 @@ choose() {
     1) MODE="machine" ;;
     2) MODE="org";  printf 'Organization name: '; read -r ORG || return 1; [[ -n "$ORG" ]] || return 1 ;;
     3) MODE="user"; printf 'Your GitHub username: '; read -r USR || return 1; [[ -n "$USR" ]] || return 1 ;;
-    4) MODE="path"; printf 'Path to the folder: '; read -r SCANPATH || return 1; [[ -n "$SCANPATH" ]] || return 1 ;;
+    4) MODE="path"
+       local tries=0
+       while :; do
+         printf 'Path to the folder: '; read -r SCANPATH || return 1
+         [[ -n "$SCANPATH" ]] || return 1
+         SCANPATH="${SCANPATH/#\~/$HOME}"          # the shell does not expand ~ from read
+         [[ -d "$SCANPATH" ]] && break
+         bad "no such directory: $SCANPATH"
+         # /home/you is the reflex on macOS, where it is /Users/you.
+         if [[ "$OS" == "macOS" && "$SCANPATH" == /home/* ]]; then
+           local guess="/Users/${SCANPATH#/home/}"
+           [[ -d "${guess%/}" ]] && say "  On macOS that is probably ${DIM}${guess%/}${X}"
+         fi
+         tries=$((tries+1)); [[ $tries -ge 3 ]] && return 1
+       done ;;
     5) DO_ALL=1; MODE="machine"
        printf 'GitHub organization (leave blank to skip): '; read -r ORG
        if [[ -z "$ORG" ]]; then printf 'Your GitHub username (leave blank to skip): '; read -r USR; fi ;;
@@ -324,7 +359,8 @@ github_playbook() {
   # <two hours before the first bad push> as literal text, which is a command
   # that fails the moment you paste it.
   "$HERE/lib/next-steps.sh" --triage "$OUT/triage.json" --out "$OUT" \
-      --owner "$GH_NAME" --owner-type "$GH_KIND" || {
+      --owner "$GH_NAME" --owner-type "$GH_KIND" \
+      ${TRUSTED_ARGS[@]+"${TRUSTED_ARGS[@]}"} || {
     say "  Could not generate the plan. Read $OUT/triage.txt by hand."
     return 0
   }
@@ -392,6 +428,26 @@ machine_playbook() {
 # --- what next --------------------------------------------------------------
 rule
 head2 "Where that leaves you"
+
+# An error is reported before any verdict, and it cancels the clean result.
+# "Nothing found" and "could not look" are different answers.
+if [[ $ERRORED -eq 1 ]]; then
+  bad "A check could not run. This is not a clean result."
+  say ""
+  printf '%s' "$ERRORS" | grep -v '^$' | sed 's/^/  /'
+  say ""
+  if [[ "$WORST" -eq 0 ]]; then
+    say "  Nothing was found by the checks that did run, but at least one did not"
+    say "  run at all, so nothing here says you are clean. Fix the above and"
+    say "  re-run before you conclude anything."
+    say ""
+    say "${DIM}Full guide: README.md    Handing this to an AI agent: AGENTS.md${X}"
+    exit 3
+  fi
+  say "  The findings below come only from the checks that did complete."
+  say ""
+fi
+
 case "$WORST" in
   0) good "Nothing confirmed against the current indicator set."
      say  ""
@@ -427,4 +483,6 @@ if [[ "$WORST" -ge 2 ]]; then
   say "${DIM}an organization account, make sure you are the one who is allowed to do it.${X}"
   say "${DIM}See DISCLAIMER.md.${X}"
 fi
+# Confirmed beats incomplete: a caller that acts on 2 should still see it.
+if [[ "$WORST" -lt 2 && $ERRORED -eq 1 ]]; then exit 3; fi
 exit "$WORST"

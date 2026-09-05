@@ -29,7 +29,7 @@ while [[ $# -gt 0 ]]; do
     --quarantine) QDIR="$2"; shift 2 ;;
     --report)     REPORT="$2"; shift 2 ;;
     -h|--help)    sed -n '2,16p' "$0"; exit 0 ;;
-    -*)           echo "unknown argument: $1" >&2; exit 2 ;;
+    -*)           echo "unknown argument: $1" >&2; exit 3 ;;
     *)            ROOTS+=("$1"); shift ;;
   esac
 done
