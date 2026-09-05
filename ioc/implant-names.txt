@@ -1,0 +1,12 @@
+# Implant binary and process names. Matched against the process table, against
+# filenames on disk, and as fixed strings inside files.
+#
+# The process title is set by the implant itself, so a process called
+# MicrosoftSystem64 with no matching binary on disk is still a finding.
+MicrosoftSystem64
+MicrosoftSystem64.exe
+MicrosoftSystem64-win.exe
+MicrosoftSystem64-linux
+MicrosoftSystem64-darwin-x64
+MicrosoftSystem64-darwin-arm64
+com.launchkeeper.MicrosoftSystem64

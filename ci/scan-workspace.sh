@@ -149,7 +149,7 @@ while IFS= read -r f; do
   fi
   awk 'length($0) > 4000 {found=1} END{exit !found}' "$f" 2>/dev/null && \
     review "$f: line longer than 4000 characters, an obfuscation tell"
-done < <(grep -E '(postcss|tailwind|eslint|vite|next|rollup|webpack|babel)\.config\.(js|mjs|cjs|ts)$' "$FILES" 2>/dev/null)
+done < <(grep -E '((postcss|tailwind|eslint|vite|next|rollup|webpack|babel|gridsome|vue)\.config\.(js|mjs|cjs|ts)|truffle\.js)$' "$FILES" 2>/dev/null)
 
 # ---------------------------------------------------------------------------
 # History

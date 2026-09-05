@@ -26,3 +26,14 @@ vscode-settings-config.vercel.app
 vscode-bootstrapper.vercel.app
 vscode-load-config.vercel.app
 260120.vercel.app
+
+# Second-variant version tag, injected alongside the marker (8-st1 ... 8-st59
+# and a parallel numeric batch). Source: OpenSourceMalware dossier, April 2026.
+global['_V']='8-
+global["_V"]="8-
+#
+# Delivery and exfiltration infrastructure for the second stage.
+# Sources: JFrog Security Research, safedep.io, April-May 2026.
+Lordplay/system-releases
+jpeek998/system-releases
+copilot-ai.whisdev.org

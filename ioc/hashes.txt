@@ -1,0 +1,12 @@
+# SHA-256 of known second-stage binaries. Any file matching one of these is the
+# implant, whatever it has been renamed to.
+#
+# Format: <sha256>  <label>
+# Sources: JFrog Security Research (four platform binaries and the dropper),
+# safedep.io (Linux ELF, build 1.0.8). April-May 2026.
+f2c754a7f7b56e0e2a6dd429f06c42a1860c52c37b25d0a8e91c67d1239fa577  MicrosoftSystem64 Windows
+457a3323fe0cfa82d6e102074c6f07a399f55c7e0ce2d3b40643d9cfde0cf220  MicrosoftSystem64 macOS x64
+2fec04f2985510654d9656d57f6817de1ca0d6ae49e7085b1e33abb38f89cc55  MicrosoftSystem64 macOS arm64
+b505f1d1ca3dca8cb7e2b2dd99991b5a929ec9387f3de31ad36549823af07dfd  MicrosoftSystem64 Linux
+b2954c945b51dbd6fa88ac72338b7fbf76dec7d9909ceada9d36b21330842c97  MicrosoftSystem64 Linux build 1.0.8
+33401580619ae79bf3f87aab16208f169a44a038f18671b1def7836fb2682c9a  print.cjs dropper

@@ -7,7 +7,7 @@ export GIT_TERMINAL_PROMPT=0
 PRC_LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PRC_ROOT="$(cd "$PRC_LIB/.." && pwd)"
 # shellcheck disable=SC2034  # PRC_IOC is read by the scripts that source this file
-PRC_IOC="$PRC_ROOT/ioc"
+PRC_IOC="${PRC_IOC_DIR:-$PRC_ROOT/ioc}"
 
 # Obfuscation tells used to qualify a "content after module end" finding.
 PRC_TAIL_TELL='eval\(|new Function\(|Buffer\.from\(|child_process|atob\(|fromCharCode|\\x[0-9a-fA-F]{2}\\x[0-9a-fA-F]{2}|require\([^)]*(child_process|https?|net|dns)'
@@ -188,7 +188,7 @@ prc_scan_ref() {
       fi
     fi
   done < <(git -C "$dest" ls-tree -r --name-only "$ref" 2>/dev/null \
-           | grep -E '(postcss|tailwind|eslint|vite|next|rollup|webpack|babel)\.config\.(js|mjs|cjs|ts)$' | head -20)
+           | grep -E '((postcss|tailwind|eslint|vite|next|rollup|webpack|babel|gridsome|vue)\.config\.(js|mjs|cjs|ts)|truffle\.js)$' | head -20)
 
   woff="${woff%$'\n'}"
   tail_suspect="${tail_suspect%$'\n'}"

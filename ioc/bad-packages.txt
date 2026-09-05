@@ -4,3 +4,19 @@ tailwind-mainanimation
 tailwind-autoanimation
 tailwindcss-typography-style
 tailwindcss-style-modify
+
+# --- second-stage dropper family, delivered via postinstall or at require time
+# Sources: JFrog Security Research, safedep.io, Sonatype. Feb-Jun 2026.
+polymarket-validator
+changelog-logger-utilities
+js-logger-pack
+ts-logger-pack
+terminal-logger-utils
+pretty-logger-utils
+pinno-loggers
+node-env-resolve
+
+# --- hijacked legitimate packages, malicious versions only. Check the version
+# in your lockfile before concluding anything: the package name alone is not a
+# finding for these.
+#   @common-stack/generate-plugin  9.0.2-alpha.21, 9.0.2-alpha.22

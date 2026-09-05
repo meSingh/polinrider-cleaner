@@ -2,3 +2,5 @@
 # the full path. .vscode/tasks.json is deliberately NOT here: it is legitimate in
 # most repos and is only a finding when it carries "runOn": "folderOpen".
 (^|/)temp_auto_push\.bat$
+(^|/)MicrosoftSystem64(\.exe|-win\.exe|-linux|-darwin-(x64|arm64))?$
+(^|/)com\.launchkeeper\.MicrosoftSystem64\.plist$

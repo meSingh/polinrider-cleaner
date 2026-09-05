@@ -64,6 +64,7 @@ Usable in a script: `./check-linux.sh ~/src || echo "needs attention"`.
 
 | # | Area | Confirmed hit when |
 |---|---|---|
+| 0 | **Second-stage implant** | a known install path, persistence entry or working directory exists; a file matches a known implant hash whatever its name; or a process is running under a known implant name |
 | 1 | VS Code / Cursor / Windsurf / VSCodium extensions | an extension file contains an indicator string |
 | 2 | `.vscode/tasks.json` | it runs on folder open **and** contains an indicator |
 | 3 | Build configs (`postcss`, `tailwind`, `eslint`, `vite`, `next`, `rollup`, `webpack`, `babel`) | the file contains an indicator |
@@ -88,6 +89,7 @@ read, not for the script to judge.
 
 **Moved to quarantine:**
 
+- Second-stage implant binaries, working directories and persistence entries
 - IDE extensions containing an indicator
 - `.vscode/tasks.json` that runs on folder open and contains an indicator
 - `.woff` / `.woff2` files that are not fonts
@@ -121,8 +123,13 @@ them back.
 Keep it until the incident is closed. It is evidence.
 
 A launch agent or systemd unit that has already been loaded stays running after
-its file is moved. The script prints the `launchctl unload` or
+its file is moved. The script prints the `launchctl bootout` or
 `systemctl --user disable --now` command; run it, or reboot.
+
+**If the implant section reports anything, stop and read it first.** A running
+implant re-establishes its own persistence, so quarantining the files while the
+process is alive achieves nothing. Kill the process with the command the script
+prints, then re-run with `--apply`.
 
 ---
 
