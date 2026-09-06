@@ -297,9 +297,13 @@ if [[ -n "$T0" ]]; then
   printf '  Then:\n'
   printf '    ./%s/sweep.sh --%s %s --since %s --out %s\n\n' "$RECOVERY_DIR" "$KIND" "$OWNER" "$T0" "$OUT"
 else
-  printf '  No push events survive for any affected repository, so there is no\n'
-  printf '  earlier state to restore to. Do not run sweep.sh or restore.sh.\n'
-  printf '  The payload was committed, so removing it is the fix.\n\n'
+  # Driven from the entry point the menu carries this, as a greyed option with
+  # the reason attached. Printing it here as well says the same thing twice.
+  if [[ "${PRC_EMBEDDED:-0}" != "1" ]]; then
+    printf '  No push events survive for any affected repository, so there is no\n'
+    printf '  earlier state to restore to. Do not run sweep.sh or restore.sh.\n'
+    printf '  The payload was committed, so removing it is the fix.\n\n'
+  fi
 fi
 if [[ -s "$RESTORABLE" ]] && prc_evidence_is_volatile "$OUT"; then
   printf '  %s repo(s) are restore candidates. The commit you would restore to is\n' "$(awk 'END{print NR}' "$RESTORABLE")"

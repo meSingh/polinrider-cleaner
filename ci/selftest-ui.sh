@@ -142,6 +142,23 @@ out="$(bash -c '. '"$ROOT"'/ui/render.sh; printf "2\n" | ui_menu T a b c' 2>/dev
 out="$(bash -c '. '"$ROOT"'/ui/render.sh; printf "hi\n" | ui_prompt L' 2>/dev/null)"
 [[ "$out" == "hi" ]] && ok "ui_prompt returns only the typed line" || no "ui_prompt returned [$out]"
 
+echo "== an unavailable option is shown, not omitted =="
+# A missing option and an impossible one look identical from the outside, so a
+# disabled entry keeps its place in the list with the reason attached.
+out="$(bash -c '. '"$ROOT"'/ui/render.sh
+  printf "2\n" | ui_menu T "first" "!Restore branches   unavailable here" "~because of a window" "second"' 2>&1)"
+[[ "$out" == *"-  Restore branches"* ]] && ok "a disabled option renders with a dash" \
+                                        || no "a disabled option renders with a dash"
+[[ "$out" == *"because of a window"* ]] && ok "its reason is shown with it" || no "its reason is shown with it"
+# The numbering must skip it, or the caller's action list stops lining up.
+[[ "$out" == *"1  first"* && "$out" == *"2  second"* ]] \
+  && ok "disabled entries consume no number" || no "disabled entries consume no number"
+[[ "$out" == *"Choose 1-2,"* ]] && ok "the range counts only selectable options" \
+                               || no "the range counts only selectable options"
+sel="$(bash -c '. '"$ROOT"'/ui/render.sh
+  printf "2\n" | ui_menu T "first" "!nope" "~why" "second"' 2>/dev/null)"
+[[ "$sel" == "2" ]] && ok "choosing 2 selects the second enabled option" || no "selection returned [$sel]"
+
 echo "== a stray keypress does not end the run =="
 # Pressing Enter once too often after the pager used to quit the whole flow,
 # because an empty line was treated the same as q.

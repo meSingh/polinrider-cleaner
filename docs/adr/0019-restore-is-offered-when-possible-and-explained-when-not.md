@@ -21,9 +21,22 @@ same thing from the outside: a tool that only knows one trick.
 The menu is built from what the evidence supports.
 
 When restore candidates exist, it offers fetching the pre-attack commits, then
-restoring. When none exist, it says so before the menu and names the reason:
-GitHub keeps roughly 300 push events per repository for about 90 days, and
-nothing survives for these.
+restoring.
+
+When none exist the option is still shown, greyed, with a dash instead of a
+number and the reason attached:
+
+```
+    1  Read what was actually found
+    -  Restore branches                 unavailable for these repositories
+       GitHub keeps about 300 push events per repository for about 90 days.
+       None survive here, so there is no recorded earlier state to move a
+       branch back to. A limit of the GitHub API, not of this tool.
+    2  Clean one repository, dry run first
+```
+
+An option that is simply absent and one that is impossible look identical from
+the outside. Showing it in place says which this is.
 
 Performing the restore stays outside the menu. It points at the verified targets
 and the plan.
@@ -39,5 +52,6 @@ the one genuinely destructive operation here, and it stays behind its own
 preflight and a person who has read the plan. That is deliberate, and it means
 the better remedy is the one with more friction.
 
-Menu numbering is now dynamic, so no instruction anywhere may refer to an option
-by its number.
+Menu numbering is dynamic, so no instruction anywhere may refer to an option by
+its number. Disabled entries consume no number, or the caller's action list stops
+lining up with what can be picked.

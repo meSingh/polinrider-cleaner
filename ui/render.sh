@@ -291,11 +291,22 @@ ui_prompt() {
 # Returns 1 if the operator declines to choose.
 ui_menu() {
   local title="$1"; shift
-  local n=$# i=1 reply
+  # An option may be shown but not offered. Prefix it with "!" to render it
+  # dimmed with a dash instead of a number, and "~" for a continuation line
+  # explaining why. Neither is selectable, and neither consumes a number, so a
+  # caller's action list still lines up with what the operator can pick.
+  local n=0 i=1 reply opt
+  for opt in "$@"; do
+    case "$opt" in '!'*|'~'*) ;; *) n=$((n+1)) ;; esac
+  done
   printf '\n  %s%s%s\n\n' "$C_BOLD" "$title" "$C_RESET" >&2
   for opt in "$@"; do
-    printf '    %s%s%s  %s\n' "$C_CYAN" "$i" "$C_RESET" "$opt" >&2
-    i=$((i+1))
+    case "$opt" in
+      '!'*) printf '    %s-  %s%s\n' "$C_DIM" "${opt#!}" "$C_RESET" >&2 ;;
+      '~'*) printf '       %s%s%s\n' "$C_DIM" "${opt#\~}" "$C_RESET" >&2 ;;
+      *)    printf '    %s%s%s  %s\n' "$C_CYAN" "$i" "$C_RESET" "$opt" >&2
+            i=$((i+1)) ;;
+    esac
   done
   # Only q and end-of-input leave. A bare Enter, a typo or a number out of range
   # re-asks. Treating an empty line as "stop" meant one stray keypress after the

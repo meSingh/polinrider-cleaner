@@ -531,16 +531,6 @@ guided_cleanup() {  # guided_cleanup <recovery-dir> <out>
   local can_restore=0 n_restore=0
   if [[ -s "$restorable" ]]; then can_restore=1; n_restore="$(awk 'END{print NR}' "$restorable")"; fi
 
-  # Say why the better fix is not on offer, rather than silently not offering it.
-  if [[ "$can_restore" -eq 0 ]]; then
-    ui_blank
-    ui_text "Restoring branches is not possible here, so it is not offered below."
-    ui_dim  "GitHub keeps roughly 300 push events per repository for about 90 days."
-    ui_dim  "None survive for these repositories, so there is no recorded earlier"
-    ui_dim  "state to move a branch back to. That is a limit of the GitHub API, not"
-    ui_dim  "of this tool. Removing the files is the fix that remains."
-  fi
-
   while :; do
     local -a opts=("Read what was actually found")
     local -a acts=("read")
@@ -552,6 +542,13 @@ guided_cleanup() {  # guided_cleanup <recovery-dir> <out>
         opts+=("Fetch the pre-attack commits     needed before restoring, $n_restore repo(s)")
         acts+=("preserve")
       fi
+    else
+      # Shown, greyed, with the reason: a missing option and an impossible one
+      # look identical otherwise.
+      opts+=("!Restore branches                 unavailable for these repositories" \
+             "~GitHub keeps about 300 push events per repository for about 90 days." \
+             "~None survive here, so there is no recorded earlier state to move a" \
+             "~branch back to. A limit of the GitHub API, not of this tool.")
     fi
     opts+=("Clean one repository, dry run first" \
            "Clean every affected repository, one at a time" \
