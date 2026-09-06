@@ -95,8 +95,8 @@ ui_file_line() {
 ui_status() { printf '  %s%s%s %s\n' "$C_CYAN" "$S_BULLET" "$C_RESET" "$*"; }
 
 ui_rule() {
-  local w="${1:-$PRC_COLS}" out="" i=0
-  while [[ $i -lt $w ]]; do out="$out$S_RULE"; i=$((i+1)); done
+  local out="" i=0
+  while [[ $i -lt $PRC_COLS ]]; do out="$out$S_RULE"; i=$((i+1)); done
   printf '%s%s%s\n' "$C_DIM" "$out" "$C_RESET"
 }
 
