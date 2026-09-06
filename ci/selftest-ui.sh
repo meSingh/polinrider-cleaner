@@ -179,6 +179,30 @@ out="$(bash -c '. '"$ROOT"'/ui/render.sh; printf "b\n1\n" | ui_menu T a b c' 2>&
                                           || no "b is refused when there is no level above"
 [[ "$out" == *"q to quit"* ]] && ok "the prompt says q quits, not stops" || no "the prompt says q quits"
 
+echo "== a loop over a file must not eat the answers =="
+# "while read ... done < file" puts the file on stdin, so a confirmation inside
+# the loop reads the next line of the file as its answer. That silently skipped
+# every other repository and made every answer read as "no".
+# Reading the file into an array is fine; prompting from inside a loop fed by
+# that file is not. The array loop is a one-liner, so anything that reads from
+# the operator cannot be inside it. Assert that shape directly.
+bad=0
+while IFS= read -r l; do
+  case "$l" in *'while'*) ;; *) bad=1 ;; esac
+done < <(grep -n 'done < "\$repos"' "$ROOT/polinrider.sh" | cut -d: -f2-)
+[[ "$bad" -eq 0 ]] && ok "the only loop fed by the repository list is a one-liner" \
+                   || no "a multi-line loop is fed by the repository list"
+grep -q 'for repo in "${list\[@\]}"' "$ROOT/polinrider.sh" \
+  && ok "the list is read into an array and iterated" || no "the list is read into an array and iterated"
+
+echo "== the keyed prompt =="
+out="$(bash -c '. '"$ROOT"'/ui/render.sh; printf "a\n" | ui_choice Q y yes n no a all q stop' 2>/dev/null)"
+[[ "$out" == "a" ]] && ok "ui_choice returns only the key" || no "ui_choice returned [$out]"
+out="$(bash -c '. '"$ROOT"'/ui/render.sh; printf "zz\nn\n" | ui_choice Q y yes n no' 2>/dev/null)"
+[[ "$out" == "n" ]] && ok "an unrecognised key re-asks" || no "an unrecognised key re-asks"
+out="$(bash -c '. '"$ROOT"'/ui/render.sh; printf "a\n" | ui_choice Q y yes n no a all q stop' 2>&1)"
+[[ "$out" == *"y/n/a/q"* ]] && ok "the prompt lists the keys" || no "the prompt lists the keys"
+
 echo "== the layer stays presentation only =="
 # If this fails, someone has put logic where an auditor will not look for it.
 hits="$(grep -hE '(^|[^a-z_])(git|gh|curl|jq|rm|mv|cp) ' "$ROOT/ui/theme.sh" "$ROOT/ui/render.sh" \

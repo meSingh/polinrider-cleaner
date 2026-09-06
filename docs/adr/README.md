@@ -39,6 +39,7 @@ If you disagree with one, open an issue and quote its number.
 | [0021](./0021-only-q-leaves-a-prompt.md) | Only an explicit q leaves a prompt | Superseded by [ADR-0022](./0022-q-quits-b-goes-back.md) |
 | [0022](./0022-q-quits-b-goes-back.md) | q quits, b goes back | Accepted |
 | [0023](./0023-the-entry-point-parses-before-it-runs.md) | The entry point parses before it runs | Accepted |
+| [0024](./0024-a-prompt-inside-a-loop-must-not-share-its-stdin.md) | A prompt inside a loop must not share its stdin | Accepted |
 
 ## Adding one
 

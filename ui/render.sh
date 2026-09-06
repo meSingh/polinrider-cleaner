@@ -287,6 +287,30 @@ ui_prompt() {
   printf '%s\n' "$reply"
 }
 
+# ui_choice <question> <key> <label> [<key> <label>]... - a keyed question.
+# Echoes the chosen key. For answers that are not simply yes or no.
+ui_choice() {
+  local q="$1"; shift
+  local -a keys=() labels=()
+  while [[ $# -ge 2 ]]; do keys+=("$1"); labels+=("$2"); shift 2; done
+  local i reply hint=""
+  for i in "${!keys[@]}"; do hint="$hint${hint:+/}${keys[$i]}"; done
+  {
+    printf '\n  %s%s%s\n' "$C_BOLD" "$q" "$C_RESET"
+    for i in "${!keys[@]}"; do
+      printf '      %s%s%s  %s\n' "$C_CYAN" "${keys[$i]}" "$C_RESET" "${labels[$i]}"
+    done
+  } >&2
+  while :; do
+    printf '\n  %s[%s]:%s ' "$C_BOLD" "$hint" "$C_RESET" >&2
+    read -r reply || return 1
+    for i in "${!keys[@]}"; do
+      [[ "$reply" == "${keys[$i]}" ]] && { printf '%s\n' "$reply"; return 0; }
+    done
+    printf '  %sanswer with one of: %s%s\n' "$C_DIM" "$hint" "$C_RESET" >&2
+  done
+}
+
 # ui_menu <title> <label>... - prints a numbered menu, echoes the chosen index.
 #
 # Exit codes, because "leave this menu" and "leave the tool" are different

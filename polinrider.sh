@@ -44,6 +44,7 @@ PRC_EMBEDDED=1; export PRC_EMBEDDED
 
 MODE=""; ORG=""; USR=""; SCANPATH=""; OUT=""; ROOTS=""; ASSUME_YES=0; DO_ALL=0; PURGE=0
 declare -a ROOT_LIST=()
+APPLY_ALL=0        # 1 after "apply to all", "stop" after q, during a run
 TRUSTED_ARGS=()     # colleagues to name, so their machines get checked too
 
 while [[ $# -gt 0 ]]; do
@@ -580,7 +581,22 @@ clean_one() {  # clean_one <recovery-dir> <out> <repo> <mode> [n] [total]
     ui_warn "ones listed above. That is deliberate: a payload left on any ref can"
     ui_warn "be checked out."
   fi
-  if ask "Apply that to $repo now?" "n"; then
+  local answer
+  if [[ "${APPLY_ALL:-0}" == "1" || $ASSUME_YES -eq 1 ]]; then
+    answer=y
+  else
+    answer="$(ui_choice "Apply that to $repo?" \
+      "y" "yes, this one" \
+      "n" "no, skip it" \
+      "a" "yes, and every repository after it without asking again" \
+      "q" "stop here")" || answer=q
+  fi
+  case "$answer" in
+    a) APPLY_ALL=1 ;;
+    q) APPLY_ALL=stop; ui_dim "stopped"; return 0 ;;
+    n) ui_dim "left alone"; return 0 ;;
+  esac
+  if true; then
     ui_step "Applying to $repo"
     # shellcheck disable=SC2086
     if "$HERE/$dir/clean-repo.sh" "$repo" $extra --apply --out "$out" 2>&1; then
@@ -588,8 +604,6 @@ clean_one() {  # clean_one <recovery-dir> <out> <repo> <mode> [n] [total]
     else
       ui_warn "$repo finished with errors. Read the lines above."
     fi
-  else
-    ui_dim "left alone"
   fi
 }
 
@@ -646,14 +660,22 @@ guided_cleanup() {  # guided_cleanup <recovery-dir> <out>
             mode="$(ask_mode "$out" "$repo")"
             case "$?" in 2) quit_now ;; 1) continue ;; esac
             [[ "$mode" == "restore" ]] && { show_restore "$out" "$targets"; continue; }
+            # Read the list first. Looping with "done < $repos" puts the file
+            # on stdin, so the confirmation inside clean_one read the next
+            # repository name as its answer: the answer was never seen, and that
+            # repository was skipped without ever being scanned.
+            local -a list=(); local line
+            while IFS= read -r line; do [[ -n "$line" ]] && list+=("$line"); done < "$repos"
             ui_step "Every affected repository"
-            ui_dim "$(awk 'END{print NR}' "$repos") repositories, $mode, each with its own dry run"
-            local n=0 total; total="$(awk 'END{print NR}' "$repos")"
-            while read -r repo; do
-              [[ -z "$repo" ]] && continue
+            ui_dim "${#list[@]} repositories, $mode, each with its own dry run"
+            APPLY_ALL=0
+            local n=0
+            for repo in "${list[@]}"; do
               n=$((n+1))
-              clean_one "$dir" "$out" "$repo" "$mode" "$n" "$total"
-            done < "$repos" ;;
+              clean_one "$dir" "$out" "$repo" "$mode" "$n" "${#list[@]}"
+              [[ "$APPLY_ALL" == "stop" ]] && break
+            done
+            APPLY_ALL=0 ;;
       stop) return 0 ;;
     esac
   done
