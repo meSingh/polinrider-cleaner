@@ -126,10 +126,12 @@ echo "== long paths are shortened, not truncated =="
 out="$(TMPDIR=/some/tmp bash -c 'printf "report : /some/tmp/x/triage.json\n" | ( . '"$ROOT"'/ui/render.sh; ui_findings )')"
 [[ "$out" == *'$TMPDIR/x/triage.json'* ]] && ok "a \$TMPDIR path is collapsed to the variable" \
                                           || no "a \$TMPDIR path is collapsed: got [$out]"
-# And with no TMPDIR at all, paths must be left alone rather than mangled.
-out="$(env -u TMPDIR bash -c 'printf "cloning /home/runner/work/x\n" | ( . '"$ROOT"'/ui/render.sh; ui_stream )')"
-[[ "$out" == *"/home/runner/work/x"* ]] && ok "no TMPDIR leaves absolute paths intact" \
-                                        || no "no TMPDIR mangles paths: got [$out]"
+# And with no TMPDIR at all, paths must be left alone rather than mangled. The
+# path has to be under neither $HOME nor $TMPDIR, or a correct collapse looks
+# like a failure: on a CI runner /home/runner/... is $HOME.
+out="$(env -u TMPDIR bash -c 'printf "cloning /opt/example/x\n" | ( . '"$ROOT"'/ui/render.sh; ui_stream )')"
+[[ "$out" == *"/opt/example/x"* ]] && ok "no TMPDIR leaves absolute paths intact" \
+                                   || no "no TMPDIR mangles paths: got [$out]"
 out="$(printf 'cloning %s/w\n' "$HOME" | ( . "$ROOT/ui/render.sh"; ui_stream ))"
 [[ "$out" == *"~/w"* ]] && ok "a \$HOME path is collapsed to a tilde" || no "a \$HOME path is collapsed: got [$out]"
 
