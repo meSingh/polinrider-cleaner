@@ -122,14 +122,17 @@ ui_kv() { printf '      %s%-26s%s %s\n' "$C_DIM" "$1" "$C_RESET" "$2"; }
 # /var/folders/... prefix is 55 characters that tell nobody anything, and it
 # pushed the useful part of the line off the right edge.
 _shorten() {
-  local t="$1" tp tilde='~' 
-  # The prefix has to be computed first: bash cannot nest ${TMPDIR%/} inside a
-  # ${t//...} replacement.
-  if [[ -n "${TMPDIR:-}" ]]; then
-    tp="${TMPDIR%/}/"
-    t="${t//"$tp"/\$TMPDIR/}"
+  local t="$1" tp pat tilde='~'
+  # The pattern has to be its own variable. Written inline as "${t//"$tp/"/...}"
+  # bash mis-parses the quoting and leaves stray quotes in the result.
+  tp="${TMPDIR:-}"; tp="${tp%/}"
+  if [[ -n "$tp" && "$tp" != "/" ]]; then
+    pat="$tp/"
+    t="${t//"$pat"/\$TMPDIR/}"
   fi
-  t="${t//"$HOME"/$tilde}"
+  if [[ -n "${HOME:-}" && "$HOME" != "/" ]]; then
+    t="${t//"$HOME"/$tilde}"
+  fi
   printf '%s' "$t"
 }
 

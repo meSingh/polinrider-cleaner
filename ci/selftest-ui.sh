@@ -121,9 +121,15 @@ o2="$(PRC_EMBEDDED=1 "$ROOT/lib/triage-filter.sh" "$TMP/t.json" 2>/dev/null || t
 [[ "$o2" != *"Read every REAL_SUSPECT"* ]] && ok "embedded suppresses it" || no "embedded suppresses it"
 
 echo "== long paths are shortened, not truncated =="
-out="$(printf 'report : %s/x/triage.json\n' "${TMPDIR%/}" | ( . "$ROOT/ui/render.sh"; ui_findings ))"
+# Set it explicitly: CI runners have no TMPDIR, and the point here is the
+# collapsing, not what the runner happens to export.
+out="$(TMPDIR=/some/tmp bash -c 'printf "report : /some/tmp/x/triage.json\n" | ( . '"$ROOT"'/ui/render.sh; ui_findings )')"
 [[ "$out" == *'$TMPDIR/x/triage.json'* ]] && ok "a \$TMPDIR path is collapsed to the variable" \
                                           || no "a \$TMPDIR path is collapsed: got [$out]"
+# And with no TMPDIR at all, paths must be left alone rather than mangled.
+out="$(env -u TMPDIR bash -c 'printf "cloning /home/runner/work/x\n" | ( . '"$ROOT"'/ui/render.sh; ui_stream )')"
+[[ "$out" == *"/home/runner/work/x"* ]] && ok "no TMPDIR leaves absolute paths intact" \
+                                        || no "no TMPDIR mangles paths: got [$out]"
 out="$(printf 'cloning %s/w\n' "$HOME" | ( . "$ROOT/ui/render.sh"; ui_stream ))"
 [[ "$out" == *"~/w"* ]] && ok "a \$HOME path is collapsed to a tilde" || no "a \$HOME path is collapsed: got [$out]"
 
