@@ -146,10 +146,26 @@ the OS.
 | `machine-cleanup/` | check and clean **one computer**, one script per operating system |
 | `polinrider.sh` | the single entry point at the repository root |
 | `ui/` | colours, symbols and drawing. No scanning logic; skip it when auditing |
+| `docs/adr/` | one record per design decision, with its reasoning and its cost |
 | `ci/` | the vendorable scanner, its workflow template, installer, and eight self-tests |
 
 `common.sh` and `local-common.sh` are sourced, not executed, and are
 deliberately not marked executable.
+
+### Record the decision
+
+If a change makes a choice that could reasonably have gone the other way, add a
+record in `docs/adr/`. Copy `docs/adr/template.md`, take the next number, and add
+it to the table in `docs/adr/README.md`.
+
+State the reasoning **and the cost**. A record that only says why something is
+good is not worth writing; name the cases where the decision is wrong.
+
+Do not edit an existing record to reflect a new decision. Write a new one and set
+the old to `Superseded by ADR-XXXX`. The history of what was believed, and when,
+is the reason to keep them.
+
+If a record and the code disagree, the code is the truth and the record is a bug.
 
 ### Before you open a pull request
 

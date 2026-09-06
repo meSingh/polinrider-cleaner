@@ -799,6 +799,22 @@ current: [`ioc/README.md`](ioc/README.md).
 
 ---
 
+## Why it works this way
+
+Every choice that could reasonably have gone the other way has a record in
+[docs/adr/](docs/adr/), with the reasoning and the cost. Fifteen of them, including:
+
+| | |
+|---|---|
+| [0004](docs/adr/0004-node_modules-is-not-scanned.md) | why `node_modules` is not scanned, and what that misses |
+| [0009](docs/adr/0009-a-known-actor-escalates-rather-than-dismisses.md) | why a colleague's name on a hostile push does not clear them |
+| [0013](docs/adr/0013-history-rewriting-uses-filter-repo-when-it-is-installed.md) | why rewriting history does not remove anything from GitHub |
+| [0003](docs/adr/0003-evidence-lives-in-a-temporary-directory.md) | why the evidence directory is cleared on restart |
+| [0002](docs/adr/0002-exit-code-3-means-the-scan-could-not-run.md) | why a failed scan is not reported as clean |
+
+If you disagree with one, open an issue and quote its number. The full map of the
+documentation is in [docs/README.md](docs/README.md).
+
 ## Verifying this repository
 
 Do not take a security tool's word for its own integrity. Check it.
