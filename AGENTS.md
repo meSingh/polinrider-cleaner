@@ -55,7 +55,7 @@ nothing on GitHub or on the machine.
 | Command | Effect |
 |---|---|
 | `polinrider.sh` in any mode | routes to the tools below; never changes anything |
-| `ci/selftest*.sh` (seven of them) | offline, no network, no credentials |
+| `ci/selftest*.sh` (eight of them) | offline, no network, no credentials |
 | `ci/scan-workspace.sh --path DIR` | reads files |
 | `machine-cleanup/check-*.sh DIR ...` | reads the machine, writes one report file |
 | `github-org-recovery/scan.sh`, `sweep.sh`, `triage-filter.sh`, `preflight.sh` | reads the GitHub API, clones mirrors |
@@ -145,10 +145,27 @@ the OS.
 | `github-account-recovery/` | the same for **one personal account** |
 | `machine-cleanup/` | check and clean **one computer**, one script per operating system |
 | `polinrider.sh` | the single entry point at the repository root |
-| `ci/` | the vendorable scanner, its workflow template, installer, and seven self-tests |
+| `ui/` | colours, symbols and drawing. No scanning logic; skip it when auditing |
+| `docs/adr/` | one record per design decision, with its reasoning and its cost |
+| `ci/` | the vendorable scanner, its workflow template, installer, and eight self-tests |
 
 `common.sh` and `local-common.sh` are sourced, not executed, and are
 deliberately not marked executable.
+
+### Record the decision
+
+If a change makes a choice that could reasonably have gone the other way, add a
+record in `docs/adr/`. Copy `docs/adr/template.md`, take the next number, and add
+it to the table in `docs/adr/README.md`.
+
+State the reasoning **and the cost**. A record that only says why something is
+good is not worth writing; name the cases where the decision is wrong.
+
+Do not edit an existing record to reflect a new decision. Write a new one and set
+the old to `Superseded by ADR-XXXX`. The history of what was believed, and when,
+is the reason to keep them.
+
+If a record and the code disagree, the code is the truth and the record is a bug.
 
 ### Before you open a pull request
 
@@ -163,6 +180,7 @@ shellcheck --severity=warning --external-sources \
 ./ci/selftest-nextsteps.sh
 ./ci/selftest-preserve.sh
 ./ci/selftest-rewrite.sh
+./ci/selftest-ui.sh
 ```
 
 CI enforces `shellcheck --severity=warning` and runs all three self-tests, plus
@@ -171,6 +189,12 @@ The tree is clean at those levels; keep it that way. Where a warning is
 suppressed there is a `# shellcheck disable=` with the reason on the line above.
 
 ### Rules that are not negotiable
+
+**`ui/` stays presentation only.** Nothing in there may read a repository, run
+git, or decide whether something is infected. An auditor should be able to skip
+the directory entirely. `ci/selftest-ui.sh` fails the build if an external
+command appears in it.
+
 
 **An error is not a finding.** Exit code 3 means a scan could not run. It must
 never be reported as a verdict about the code, and it must never be folded into
@@ -264,7 +288,7 @@ its own version in the README.
 
 ```bash
 git checkout main && git pull
-VERSION=v1.0.8   # the release you are cutting
+VERSION=v1.0.9   # the release you are cutting
 git tag -s "$VERSION" -m "polinrider-cleaner $VERSION
 
 Summarise what changed and why it matters to someone running this."

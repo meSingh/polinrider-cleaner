@@ -33,10 +33,18 @@
 
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
+
+{   # read the whole script before running any of it, see the note above
 # shellcheck source=lib/common.sh
 . "$HERE/lib/common.sh"
+# The engines print standalone guidance by default. Driven from here, that
+# guidance duplicates the menu, so it is suppressed rather than deleted: someone
+# running lib/gh-scan.sh directly still needs it.
+PRC_EMBEDDED=1; export PRC_EMBEDDED
 
 MODE=""; ORG=""; USR=""; SCANPATH=""; OUT=""; ROOTS=""; ASSUME_YES=0; DO_ALL=0; PURGE=0
+declare -a ROOT_LIST=()
+APPLY_ALL=0        # 1 after "apply to all", "stop" after q, during a run
 TRUSTED_ARGS=()     # colleagues to name, so their machines get checked too
 
 while [[ $# -gt 0 ]]; do
@@ -60,31 +68,28 @@ done
 OUT="${OUT:-$(prc_default_evidence_dir)}"
 
 # --- presentation -----------------------------------------------------------
-if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
-  B=$'\033[1m'; DIM=$'\033[2m'; R=$'\033[31m'; Y=$'\033[33m'; G=$'\033[32m'; C=$'\033[36m'; X=$'\033[0m'
-else
-  B=""; DIM=""; R=""; Y=""; G=""; C=""; X=""
-fi
+# All drawing lives in ui/. Nothing in there reads a repository or decides what
+# is infected, so the presentation layer can be reviewed on its own and the
+# scanning logic stays readable without it.
+PRC_VERSION="$(sed -n 's/^## \[\?\(v[0-9.]*\).*/\1/p' "$HERE/CHANGELOG.md" 2>/dev/null | head -1)"
+PRC_VERSION="${PRC_VERSION:-$(git -C "$HERE" describe --tags --abbrev=0 2>/dev/null || true)}"
+# shellcheck source=ui/render.sh
+. "$HERE/ui/render.sh"
+
+# The old names, kept so the engines and the self-tests do not all have to
+# change at once. Each is now one line of delegation to the UI layer.
+B="$C_BOLD"; DIM="$C_DIM"; X="$C_RESET"
 say()  { printf '%s\n' "$*"; }
-head2(){ printf '\n%s%s%s\n' "$B" "$*" "$X"; }
-rule() { printf '%s%s%s\n' "$DIM" "────────────────────────────────────────────────────────────" "$X"; }
-step() { printf '\n%s▸ %s%s\n' "$C" "$*" "$X"; }
-warn() { printf '%s! %s%s\n' "$Y" "$*" "$X"; }
-bad()  { printf '%s✗ %s%s\n' "$R" "$*" "$X"; }
-good() { printf '%s✓ %s%s\n' "$G" "$*" "$X"; }
+head2(){ ui_section "$*"; }
+rule() { ui_rule; }
+step() { ui_step "$*"; }
+warn() { ui_warn "$*"; }
+bad()  { ui_bad "$*"; }
+good() { ui_ok "$*"; }
 
 ask() {  # ask <prompt> <default y|n>  -> 0 for yes
-  local prompt="$1" def="$2" reply
   [[ $ASSUME_YES -eq 1 ]] && return 0
-  if [[ ! -t 0 ]]; then [[ "$def" == "y" ]] && return 0 || return 1; fi
-  if [[ "$def" == "y" ]]; then printf '%s [Y/n] ' "$prompt"; else printf '%s [y/N] ' "$prompt"; fi
-  read -r reply
-  case "$reply" in
-    [yY]*) return 0 ;;
-    [nN]*) return 1 ;;
-    "")    [[ "$def" == "y" ]] && return 0 || return 1 ;;
-    *)     [[ "$def" == "y" ]] && return 0 || return 1 ;;
-  esac
+  ui_ask "$1" "${2:-n}"
 }
 
 # --- what machine is this ---------------------------------------------------
@@ -96,18 +101,96 @@ case "$OSNAME" in
   *)                           OS="$OSNAME"; LOCAL_TOOL="$HERE/machine-cleanup/check-linux.sh" ;;
 esac
 
+# Directories worth offering. Detected, never assumed: the list is shown and
+# confirmed before anything is scanned, because where people keep code varies
+# far too much to guess.
 default_roots() {
-  local d out=""
-  if [[ "$OS" == "macOS" ]]; then
-    for d in "$HOME/Sites" "$HOME/Projects" "$HOME/code" "$HOME/dev" "$HOME/Documents"; do
-      [[ -d "$d" ]] && out="$out $d"
-    done
-  else
-    for d in "$HOME/src" "$HOME/code" "$HOME/dev" "$HOME/projects" "$HOME/work" "$HOME/git"; do
-      [[ -d "$d" ]] && out="$out $d"
-    done
-  fi
-  printf '%s' "${out# }"
+  local d
+  for d in "$HOME/Sites" "$HOME/Projects" "$HOME/code" "$HOME/dev" "$HOME/src" \
+           "$HOME/work" "$HOME/git" "$HOME/projects" "$HOME/repos" "$HOME/Developer" \
+           "$HOME/Documents" "$HOME/go/src"; do
+    [[ -d "$d" ]] && printf '%s\n' "$d"
+  done
+}
+
+# Places that hold code which runs on its own: a plugin loaded at session start,
+# an extension loaded when the editor opens. Easy to forget and more interesting
+# to an attacker than a documents folder.
+runner_roots() {
+  local d
+  for d in "$HOME/.claude/plugins" "$HOME/.vscode/extensions" "$HOME/.vscode-insiders/extensions" \
+           "$HOME/.cursor/extensions" "$HOME/.config/Code/User" \
+           "$HOME/Library/Application Support/Code/User"; do
+    [[ -d "$d" ]] && printf '%s\n' "$d"
+  done
+}
+
+# ask_owner <org|user> - prompt until the name resolves on GitHub, or give up
+# after three tries. A typo should cost a retry, not the whole session.
+ask_owner() {  # ask_owner <org|user> [allow-blank]
+  local kind="$1" blank_ok="${2:-0}" label probe name tries=0
+  if [[ "$kind" == "org" ]]; then label="Organization name:"; probe="orgs"
+  else label="Your GitHub username:"; probe="users"; fi
+  while :; do
+    name="$(ui_prompt "$label" "$([[ "$blank_ok" == 1 ]] && printf '[blank to skip]')")" || return 1
+    if [[ -z "$name" ]]; then
+      [[ "$blank_ok" == 1 ]] && return 0        # skipping is a real answer here
+      continue                                   # a stray Enter is not
+    fi
+    if ! have gh; then printf '%s\n' "$name"; return 0; fi   # cannot check, take it
+    if gh api "$probe/$name" --jq .login >/dev/null 2>&1; then
+      printf '%s\n' "$name"; return 0
+    fi
+    tries=$((tries+1))
+    {
+      if gh api "users/$name" --jq .type 2>/dev/null | grep -q .; then
+        ui_bad "$name exists but is not $([[ "$kind" == org ]] && echo "an organization" || echo "a user account")."
+        ui_dim "try the other option from the first menu"
+      elif gh auth status >/dev/null 2>&1; then
+        ui_bad "GitHub does not know $probe/$name."
+        ui_dim "check the spelling, or that your account can see it if it is private"
+      else
+        ui_bad "cannot check $name: gh is not signed in."
+        ui_dim "run: gh auth login"
+        printf '%s\n' "$name"; return 0
+      fi
+      [[ $tries -ge 3 ]] && { ui_warn "Three tries, stopping."; return 1; }
+    } >&2
+  done
+}
+
+# ask_roots - confirm what to scan. Fills the ROOT_LIST array.
+ask_roots() {
+  local pick typed d
+  local -a found=() runners=()
+  while IFS= read -r d; do [[ -n "$d" ]] && found+=("$d"); done < <(default_roots)
+  while IFS= read -r d; do [[ -n "$d" ]] && runners+=("$d"); done < <(runner_roots)
+  {
+    ui_blank
+    if [[ ${#found[@]} -gt 0 ]]; then
+      ui_text "Code directories found under your home:"
+      for d in "${found[@]}"; do ui_bullet "${d/#$HOME/~}"; done
+    fi
+    if [[ ${#runners[@]} -gt 0 ]]; then
+      ui_blank; ui_text "Also worth checking, code that runs by itself:"
+      for d in "${runners[@]}"; do ui_bullet "${d/#$HOME/~}"; done
+    fi
+  } >&2
+  pick="$(PRC_MENU_BACK=1 ui_menu "Where should I look?" \
+    "The directories found above" \
+    "Those, plus the ones that run by themselves" \
+    "Let me type the list myself" \
+    "My whole home directory      slower, but misses nothing under \$HOME")" || return $?
+  ROOT_LIST=()
+  case "$pick" in
+    1) ROOT_LIST=(${found[@]+"${found[@]}"}) ;;
+    2) ROOT_LIST=(${found[@]+"${found[@]}"} ${runners[@]+"${runners[@]}"}) ;;
+    3) typed="$(ui_prompt "Directories, space separated:")" || return 1
+       # shellcheck disable=SC2206  # splitting on whitespace is the documented shape
+       ROOT_LIST=(${typed//\~/$HOME}) ;;
+    4) ROOT_LIST=("$HOME") ;;
+  esac
+  [[ ${#ROOT_LIST[@]} -gt 0 ]]
 }
 
 have() { command -v "$1" >/dev/null 2>&1; }
@@ -140,6 +223,20 @@ note_rc() {
 }
 note_error() { ERRORED=1; ERRORS="${ERRORS}${1}"$'\n'; }
 
+# quit_now - end the whole run, with the verdict code the final exit would use.
+# Must be called from the main shell: an exit inside $( ) only ends the subshell,
+# which is why the prompts return a code rather than exiting themselves.
+quit_now() {
+  ui_blank
+  ui_dim "Stopped. Nothing further was changed."
+  if [[ -n "${OUT:-}" && -f "$OUT/NEXT-STEPS.md" ]]; then
+    ui_text "Everything found is written up here, and the file stays after you exit:"
+    ui_file_line "plan" "$OUT/NEXT-STEPS.md"
+  fi
+  if [[ "$WORST" -lt 2 && "$ERRORED" -eq 1 ]]; then exit 3; fi
+  exit "$WORST"
+}
+
 # --- the scans --------------------------------------------------------------
 scan_machine() {
   step "Scanning this machine ($OS)"
@@ -152,17 +249,26 @@ scan_machine() {
     return 0
   fi
   check_deps 0 || { note_error "the machine scan needs git"; return 3; }
-  local r; r="${ROOTS:-$(default_roots)}"
-  if [[ -z "$r" ]]; then
+  local d
+  ROOT_LIST=()
+  if [[ -n "$ROOTS" ]]; then
+    # shellcheck disable=SC2206  # --roots is documented as space separated
+    ROOT_LIST=($ROOTS)
+  elif [[ $ASSUME_YES -eq 1 ]]; then
+    while IFS= read -r d; do [[ -n "$d" ]] && ROOT_LIST+=("$d"); done < <(default_roots)
+  else
+    ask_roots
+    case "$?" in 2) quit_now ;; 1|3) return 1 ;; esac
+  fi
+  if [[ ${#ROOT_LIST[@]} -eq 0 ]]; then
     warn "No common code directory found under \$HOME."
     say  "Re-run with the real ones, for example:  --roots \"\$HOME/work \$HOME/src\""
     return 1
   fi
-  say "${DIM}roots: $r${X}"
+  for d in "${ROOT_LIST[@]}"; do ui_bullet "${d/#$HOME/~}"; done
   say "${DIM}this reads only; the first run takes a few minutes${X}"
-  # shellcheck disable=SC2086  # roots are separate arguments on purpose
-  "$LOCAL_TOOL" $r
-  local rc=$?; [[ $rc -eq 2 ]] && FOUND_IN="machine"; note_rc $rc; return $rc
+  "$LOCAL_TOOL" "${ROOT_LIST[@]}" 2>&1 | ui_findings
+  local rc="${PIPESTATUS[0]}"; [[ $rc -eq 2 ]] && FOUND_IN="machine"; note_rc $rc; return $rc
 }
 
 scan_path() {
@@ -176,8 +282,8 @@ scan_path() {
   local extra=""
   [[ -d "$SCANPATH/.git" ]] && extra="--all-refs"
   # shellcheck disable=SC2086  # extra is one optional flag
-  "$HERE/ci/scan-workspace.sh" --path "$SCANPATH" $extra
-  local rc=$?; [[ $rc -eq 2 ]] && FOUND_IN="path"; note_rc $rc; return $rc
+  "$HERE/ci/scan-workspace.sh" --path "$SCANPATH" $extra 2>&1 | ui_findings
+  local rc="${PIPESTATUS[0]}"; [[ $rc -eq 2 ]] && FOUND_IN="path"; note_rc $rc; return $rc
 }
 
 # Earlier versions wrote mirrors to ./evidence, inside the checkout. If that is
@@ -206,15 +312,14 @@ scan_github() {  # scan_github <org|user> <name>
   step "Scanning the $([[ "$kind" == org ]] && echo "organization" || echo "account") $name"
   check_deps 1 || { note_error "the GitHub scan needs git, gh and jq, and gh must be signed in"; return 3; }
   OUT="$(prc_prepare_out "$OUT")" || { note_error "cannot prepare the evidence directory"; return 3; }
-  say "${DIM}mirror-cloning every repository into${X}"
-  say "  ${B}$OUT${X}"
-  say "${DIM}this can take a while. Evidence is kept outside your working directory${X}"
-  say "${DIM}on purpose: the mirrors hold live malware.${X}"
+  ui_dim "mirror-cloning every repository, this can take a while"
   legacy_evidence_hint
   if [[ "$kind" == "org" ]]; then
-    "$dir/scan.sh" --org "$name" --out "$OUT" || { note_error "the scan of $name did not finish"; return 3; }
+    "$dir/scan.sh" --org "$name" --out "$OUT" 2>&1 | ui_stream
+    [[ "${PIPESTATUS[0]}" -eq 0 ]] || { note_error "the scan of $name did not finish"; return 3; }
   else
-    "$dir/scan.sh" --user "$name" --out "$OUT" || { note_error "the scan of $name did not finish"; return 3; }
+    "$dir/scan.sh" --user "$name" --out "$OUT" 2>&1 | ui_stream
+    [[ "${PIPESTATUS[0]}" -eq 0 ]] || { note_error "the scan of $name did not finish"; return 3; }
   fi
   step "Separating real findings from your own detection tooling"
   # triage-filter exits 0 by design, so its exit code must never be the verdict.
@@ -238,58 +343,78 @@ scan_github() {  # scan_github <org|user> <name>
 
 # --- interactive ------------------------------------------------------------
 choose() {
-  head2 "PolinRider cleaner"
-  say "This machine looks like ${B}${OS}${X}."
-  say ""
-  say "What do you want to check?"
-  say ""
-  say "  ${B}1${X}  This computer            ${DIM}files, extensions, persistence, an installed implant${X}"
-  say "  ${B}2${X}  A GitHub organization    ${DIM}every repository and branch${X}"
-  say "  ${B}3${X}  My GitHub account        ${DIM}every repository you own${X}"
-  say "  ${B}4${X}  One folder or repo       ${DIM}quickest check${X}"
-  say "  ${B}5${X}  All of it, in order      ${DIM}recommended if you think you were hit${X}"
-  say ""
   local pick
-  printf 'Choose 1-5: '
-  # Reading rather than requiring a tty, so answers can be piped in. On an empty
-  # or closed stdin the read fails and the caller prints usage instead of hanging.
-  read -r pick || return 1
-  [[ -z "$pick" ]] && return 1
+  pick="$(PRC_MENU_BACK=0 ui_menu "What do you want to check?" \
+    "This computer            files, extensions, persistence, an installed implant" \
+    "A GitHub organization    every repository and branch" \
+    "My GitHub account        every repository you own" \
+    "One folder or repo       the quickest check" \
+    "All of it, in order      if you think you were hit")" || return $?
   case "$pick" in
     1) MODE="machine" ;;
-    2) MODE="org";  printf 'Organization name: '; read -r ORG || return 1; [[ -n "$ORG" ]] || return 1 ;;
-    3) MODE="user"; printf 'Your GitHub username: '; read -r USR || return 1; [[ -n "$USR" ]] || return 1 ;;
+    2) MODE="org";  ORG="$(ask_owner org)"  || return 1 ;;
+    3) MODE="user"; USR="$(ask_owner user)" || return 1 ;;
     4) MODE="path"
        local tries=0
        while :; do
-         printf 'Path to the folder: '; read -r SCANPATH || return 1
-         [[ -n "$SCANPATH" ]] || return 1
-         SCANPATH="${SCANPATH/#\~/$HOME}"          # the shell does not expand ~ from read
+         SCANPATH="$(ui_prompt "Path to the folder:")" || return 1
+         SCANPATH="${SCANPATH/#\~/$HOME}"        # the shell does not expand ~ from read
          [[ -d "$SCANPATH" ]] && break
-         bad "no such directory: $SCANPATH"
-         # /home/you is the reflex on macOS, where it is /Users/you.
+         ui_bad "no such directory: $SCANPATH"
          if [[ "$OS" == "macOS" && "$SCANPATH" == /home/* ]]; then
            local guess="/Users/${SCANPATH#/home/}"
-           [[ -d "${guess%/}" ]] && say "  On macOS that is probably ${DIM}${guess%/}${X}"
+           [[ -d "${guess%/}" ]] && ui_dim "on macOS that is probably ${guess%/}"
          fi
          tries=$((tries+1)); [[ $tries -ge 3 ]] && return 1
        done ;;
     5) DO_ALL=1; MODE="machine"
-       printf 'GitHub organization (leave blank to skip): '; read -r ORG
-       if [[ -z "$ORG" ]]; then printf 'Your GitHub username (leave blank to skip): '; read -r USR; fi ;;
-    *) bad "Not one of the options."; exit 2 ;;
+       ORG="$(ask_owner org 1 || true)"
+       if [[ -z "$ORG" ]]; then USR="$(ask_owner user 1 || true)"; fi ;;
   esac
 }
 
 # --purge-evidence is not a scan, so it must not fall into the mode menu.
+ui_banner
+ui_blank
+# The facts are gathered here, not in ui/, so the presentation layer keeps
+# running no external commands and stays skippable in an audit.
+_gh_who=""
+if have gh; then
+  _gh_who="$(gh api user --jq .login 2>/dev/null || true)"
+  if [[ -n "$_gh_who" ]]; then _gh_who="gh signed in as $_gh_who"; else _gh_who="gh installed, not signed in"; fi
+else _gh_who="gh not installed"; fi
+ui_status "$OS  $S_DOT  $_gh_who"
+# A /var/folders path is unreadable and tells nobody anything. Name the variable.
+_ev="$OUT"; _note=""
+if [[ -n "${TMPDIR:-}" && "$_ev" == "${TMPDIR%/}"/* ]]; then
+  _ev="\$TMPDIR/${_ev#"${TMPDIR%/}"/}"; _note="  $S_DOT  cleared on restart"
+else
+  _ev="${_ev/#$HOME/~}"
+fi
+ui_status "Evidence $S_ARROW $_ev$_note"
+ui_blank
 if [[ -z "$MODE" && $PURGE -eq 0 ]]; then
-  choose || { printf '\nNothing selected. Pass a flag instead:\n\n' >&2; sed -n '7,13p' "$0" >&2; exit 2; }
+  choose
+  case "$?" in
+    2) quit_now ;;          # the operator typed q
+  esac
+  [[ -n "$MODE" ]] || {     # no input, or nothing chosen: a usage error
+    ui_blank
+    ui_dim "Nothing selected. You can also say what to scan directly:"
+    ui_blank
+    sed -n '9,15p' "$0" | sed 's/^#   //;s/^#//' | while read -r l; do
+      [[ -n "$l" ]] && printf '    %s\n' "$l"
+    done
+    ui_blank
+    exit 2
+  }
 fi
 
 # --- run --------------------------------------------------------------------
-head2 "PolinRider cleaner"
-say "${DIM}Everything below is read-only. Nothing is changed.${X}"
-say "${DIM}Independent open source tool. No warranty, no liability. See DISCLAIMER.md.${X}"
+# The banner already said what this is. Repeating it here, ruled twice, just
+# pushed the first finding further down the screen.
+ui_blank
+ui_dim "Read-only. Nothing is changed. No warranty, no liability: DISCLAIMER.md"
 
 if [[ $PURGE -eq 1 ]]; then
   if [[ ! -d "$OUT" ]]; then
@@ -340,6 +465,222 @@ if [[ $DO_ALL -eq 1 ]]; then
   [[ -n "$USR" ]] && scan_github user "$USR"
 fi
 
+
+# --- guided cleanup ---------------------------------------------------------
+# The point of this: nobody should have to read a manual, assemble flags, and
+# guess which of two remedies applies. One question at a time, a dry run before
+# anything is written, and an explicit yes before it happens.
+pick_repo() {  # pick_repo <repos-file> -> echoes the chosen repo
+  local file="$1" n i=1 reply
+  n=$(awk 'END{print NR}' "$file")
+  printf '\n  %sWhich repository?%s\n\n' "$C_BOLD" "$C_RESET" >&2
+  while read -r r; do printf '    %s%2s%s  %s\n' "$C_CYAN" "$i" "$C_RESET" "$r" >&2; i=$((i+1)); done < "$file"
+  while :; do
+    printf '\n  %s1-%s, b to go back, q to quit:%s ' "$C_BOLD" "$n" "$C_RESET" >&2
+    read -r reply || return 3
+    case "$reply" in
+      [Qq]*)    return 2 ;;
+      [Bb]*)    return 1 ;;
+      "")       continue ;;
+      *[!0-9]*) printf '  %snot a number. Pick 1 to %s, b to go back, q to quit.%s\n' \
+                  "$C_DIM" "$n" "$C_RESET" >&2; continue ;;
+    esac
+    if [[ "$reply" -ge 1 && "$reply" -le "$n" ]]; then
+      awk -v k="$reply" 'NR==k{print; exit}' "$file"; return 0
+    fi
+    printf '  %sthere is no repository %s. Pick 1 to %s, or q.%s\n' "$C_DIM" "$reply" "$n" "$C_RESET" >&2
+  done
+}
+
+# ask_mode <out> <repo> - which remedy. Echoes restore, additive or rewrite.
+# Exit 1 to go back, 2 to quit.
+#
+# All three ways of getting the payload out belong here, including the one that
+# may not be available: an option that is absent and one that is impossible look
+# the same from the outside. Restorability is judged for this repository, not
+# for the scan as a whole.
+ask_mode() {
+  local out="$1" repo="$2" pick target=""
+  local -a opts=() acts=()
+
+  if [[ -s "$out/restore-targets.tsv" ]]; then
+    target="$(awk -F'\t' -v r="$repo" '$1==r && $3=="CLEAN" {print substr($2,1,10); exit}' \
+              "$out/restore-targets.tsv")"
+  fi
+
+  {
+    ui_blank
+    ui_text "Three ways to get the payload out of $repo, best first."
+    ui_blank
+    if [[ -n "$target" ]]; then
+      ui_text "Restore it  Moves each branch back to the commit before the attack."
+      ui_text "            No files are edited. The malicious commits stop being"
+      ui_text "            reachable. Verified clean target: $target"
+    else
+      ui_text "Restore it  Would move each branch back to its pre-attack commit,"
+      ui_text "            editing nothing. Not available here, see below."
+    fi
+    ui_blank
+    ui_text "Remove it   Adds one commit per branch deleting the files. Nothing is"
+    ui_text "            rewritten, so you can revert it. The payload stays in the"
+    ui_text "            history: an old commit can still be checked out and run."
+    ui_blank
+    ui_text "Erase it    Takes the files out of every commit and force-pushes every"
+    ui_text "            ref. Every commit id changes, existing clones diverge, and"
+    ui_text "            the old commits stay fetchable from GitHub by SHA until"
+    ui_text "            Support runs gc. Nothing left to check out."
+  } >&2
+
+  if [[ -n "$target" ]]; then
+    opts+=("Restore it   moves branches back to $target, edits nothing")
+    acts+=("restore")
+  else
+    opts+=("!Restore it   unavailable for this repository" \
+           "~No push event survives for it, so there is no recorded commit to" \
+           "~move back to. GitHub keeps about 300 events per repository for" \
+           "~about 90 days. A limit of the GitHub API, not of this tool.")
+  fi
+  opts+=("Remove it    safe, reversible, history keeps the payload" \
+         "Erase it     thorough, rewrites history, force-pushes everything")
+  acts+=("additive" "rewrite")
+
+  pick="$(PRC_MENU_BACK=1 ui_menu "How do you want to fix $repo?" "${opts[@]}")" || return $?
+  printf '%s\n' "${acts[$((pick-1))]}"
+}
+
+
+# show_restore <out> <targets> - restoring stays a deliberate, separate act.
+show_restore() {
+  local out="$1" targets="$2"
+  ui_step "Restoring is not run from this menu"
+  ui_text "Moving a branch pointer is the one genuinely destructive thing here, so"
+  ui_text "it stays behind its own preflight and a person who has read the plan."
+  ui_blank
+  ui_text "The verified targets and the exact commands are in:"
+  [[ -s "$targets" ]] && ui_file_line "targets" "$targets"
+  ui_file_line "plan" "$out/NEXT-STEPS.md"
+}
+
+clean_one() {  # clean_one <recovery-dir> <out> <repo> <mode> [n] [total]
+  local dir="$1" out="$2" repo="$3" mode="$4" n="${5:-}" total="${6:-}" extra=""
+  if [[ "$mode" == "restore" ]]; then show_restore "$out" "$out/restore-targets.tsv"; return 0; fi
+  [[ "$mode" == "rewrite" ]] && extra="--rewrite"
+  if [[ -n "$n" && -n "$total" ]]; then
+    ui_step "[$n/$total] $repo"
+  else
+    ui_step "$repo"
+  fi
+  ui_dim "dry run, $mode. Nothing is written; this only shows what would change."
+  ui_dim "The first step clones the repository, which is the slow part."
+  # shellcheck disable=SC2086  # extra is one optional flag
+  ui_dim "cloning and inspecting; git prints its own progress below"
+  "$HERE/$dir/clean-repo.sh" "$repo" $extra --out "$out" 2>&1
+  if [[ "$mode" == "rewrite" ]]; then
+    ui_blank
+    ui_warn "Erasing touches every branch and tag in the repository, not only the"
+    ui_warn "ones listed above. That is deliberate: a payload left on any ref can"
+    ui_warn "be checked out."
+  fi
+  local answer
+  if [[ "${APPLY_ALL:-0}" == "1" || $ASSUME_YES -eq 1 ]]; then
+    answer=y
+  else
+    answer="$(ui_choice "Apply that to $repo?" \
+      "y" "yes, this one" \
+      "n" "no, skip it" \
+      "a" "yes, and every repository after it without asking again" \
+      "q" "stop here")" || answer=q
+  fi
+  case "$answer" in
+    a) APPLY_ALL=1 ;;
+    q) APPLY_ALL=stop; ui_dim "stopped"; return 0 ;;
+    n) ui_dim "left alone"; return 0 ;;
+  esac
+  if true; then
+    ui_step "Applying to $repo"
+    # shellcheck disable=SC2086
+    if "$HERE/$dir/clean-repo.sh" "$repo" $extra --apply --out "$out" 2>&1; then
+      ui_ok "$repo done"
+    else
+      ui_warn "$repo finished with errors. Read the lines above."
+    fi
+  fi
+}
+
+guided_cleanup() {  # guided_cleanup <recovery-dir> <out>
+  local dir="$1" out="$2" repos="$2/affected-repos.txt" choice mode repo
+  local restorable="$2/restorable-repos.txt" targets="$2/restore-targets.tsv"
+  [[ -s "$repos" ]] || return 0
+  [[ $ASSUME_YES -eq 1 ]] && return 0    # a script asked for no prompts
+
+  local can_restore=0 n_restore=0
+  if [[ -s "$restorable" ]]; then can_restore=1; n_restore="$(awk 'END{print NR}' "$restorable")"; fi
+
+  while :; do
+    local -a opts=("Read what was actually found")
+    local -a acts=("read")
+    # Fetching is a prerequisite for restoring, so it stays an action. The
+    # choice between the three remedies is made per repository, in ask_mode.
+    if [[ "$can_restore" -eq 1 && ! -s "$targets" ]]; then
+      opts+=("Fetch the pre-attack commits     $n_restore repo(s) may be restorable")
+      acts+=("preserve")
+    fi
+    opts+=("Clean one repository, dry run first" \
+           "Clean every affected repository, one at a time" \
+           "Stop here, the plan is written to NEXT-STEPS.md")
+    acts+=("one" "all" "stop")
+
+    choice="$(PRC_MENU_BACK=0 ui_menu "What do you want to do?" "${opts[@]}")"
+    case "$?" in 2) quit_now ;; 1) return 0 ;; esac
+    case "${acts[$((choice-1))]}" in
+      read) ui_step "What matched"
+            if [[ -f "$out/triage.txt" ]]; then
+              ui_dim "full file: $out/triage.txt"; ui_pager "$out/triage.txt"
+            else ui_warn "no triage.txt in $out"; fi ;;
+      preserve)
+            ui_step "Fetching the pre-attack commits"
+            ui_dim "reads from GitHub, pushes nothing. Each one is checked for the payload."
+            "$HERE/$dir/preserve-restore-points.sh" --out "$out" 2>&1 ;;
+      show_restore_unused)
+            ui_step "unused"
+            ui_text "Moving a branch back is the one genuinely destructive thing in this"
+            ui_text "repository, so it stays behind its own preflight and a person who has"
+            ui_text "read the plan. The verified targets are in:"
+            ui_file_line "targets" "$targets"
+            ui_file_line "plan" "$out/NEXT-STEPS.md"
+            ui_blank
+            ui_text "The commands, with your values filled in, are in the plan under"
+            ui_text "\"How it got there\"." ;;
+      one)  repo="$(pick_repo "$repos")"
+            case "$?" in 2|3) quit_now ;; 1) continue ;; esac
+            mode="$(ask_mode "$out" "$repo")"
+            case "$?" in 2|3) quit_now ;; 1) continue ;; esac
+            clean_one "$dir" "$out" "$repo" "$mode" ;;
+      all)  repo="$(head -1 "$repos")"
+            mode="$(ask_mode "$out" "$repo")"
+            case "$?" in 2) quit_now ;; 1) continue ;; esac
+            [[ "$mode" == "restore" ]] && { show_restore "$out" "$targets"; continue; }
+            # Read the list first. Looping with "done < $repos" puts the file
+            # on stdin, so the confirmation inside clean_one read the next
+            # repository name as its answer: the answer was never seen, and that
+            # repository was skipped without ever being scanned.
+            local -a list=(); local line
+            while IFS= read -r line; do [[ -n "$line" ]] && list+=("$line"); done < "$repos"
+            ui_step "Every affected repository"
+            ui_dim "${#list[@]} repositories, $mode, each with its own dry run"
+            APPLY_ALL=0
+            local n=0
+            for repo in "${list[@]}"; do
+              n=$((n+1))
+              clean_one "$dir" "$out" "$repo" "$mode" "$n" "${#list[@]}"
+              [[ "$APPLY_ALL" == "stop" ]] && break
+            done
+            APPLY_ALL=0 ;;
+      stop) return 0 ;;
+    esac
+  done
+}
+
 # --- what to actually do -----------------------------------------------------
 github_playbook() {
   local dir
@@ -367,9 +708,12 @@ github_playbook() {
     return 0
   }
 
-  say ""
-  say "  ${B}Everything, in order, with each command written out:${X}"
-  say "    ${DIM}$OUT/NEXT-STEPS.md${X}"
+  ui_blank
+  ui_text "Everything, in order, with each command written out:"
+  ui_file_line "plan" "$OUT/NEXT-STEPS.md"
+  [[ -f "$OUT/triage.txt" ]] && ui_file_line "what matched" "$OUT/triage.txt"
+
+  guided_cleanup "$dir" "$OUT"
   say ""
   say "  Background: ${DIM}$dir/README.md${X}"
 }
@@ -488,3 +832,5 @@ fi
 # Confirmed beats incomplete: a caller that acts on 2 should still see it.
 if [[ "$WORST" -lt 2 && $ERRORED -eq 1 ]]; then exit 3; fi
 exit "$WORST"
+
+} # end of the parse-first group

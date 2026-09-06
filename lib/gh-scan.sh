@@ -161,6 +161,8 @@ $(if [[ -f "$OUT/clone-failed.txt" ]]; then
       "$(grep -c . "$OUT/events-failed.txt")" "$OUT/events-failed.txt"
   fi)
 
+$(if [[ "${PRC_EMBEDDED:-0}" != "1" ]]; then cat <<INNER
+
  Next:
    1. Filter out matches inside your own detection tooling:
         triage-filter.sh $PRC_REPORT
@@ -169,5 +171,7 @@ $(if [[ -f "$OUT/clone-failed.txt" ]]; then
    3. A "clean" verdict means the current indicator set is absent from that ref.
       It is not proof the ref was never touched. Reconcile pushes.tsv against
       pushes a named person will vouch for.
+INNER
+fi)
 =========================================================
 EOF

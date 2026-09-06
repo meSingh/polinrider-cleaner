@@ -79,21 +79,28 @@ than one applies, **the order is fixed and it matters**:
 ## Run it
 
 ```bash
-git clone --depth 1 --branch v1.0.8 https://github.com/meSingh/polinrider-cleaner.git
+git clone --depth 1 --branch v1.0.9 https://github.com/meSingh/polinrider-cleaner.git
 cd polinrider-cleaner
 ./polinrider.sh
 ```
+
+<p align="center">
+  <img src="docs/img/first-run.png" alt="polinrider.sh on first run: the wordmark, the version, whether gh is signed in, where evidence goes, and a numbered menu asking what to check" width="820">
+</p>
+
+It asks what to check and takes it from there. Nothing is written until you say
+so, and every destructive step is a dry run first.
 
 That pins you to a specific published release rather than to whatever `main`
 happens to be at the moment you clone.
 
 Tags in this repository are protected: once published, a tag cannot be moved,
-overwritten or deleted, by anyone, including the maintainer. So `v1.0.8` will
-always be exactly the code that was reviewed and released as `v1.0.8`. If you
+overwritten or deleted, by anyone, including the maintainer. So `v1.0.9` will
+always be exactly the code that was reviewed and released as `v1.0.9`. If you
 want to check that yourself:
 
 ```bash
-git verify-tag v1.0.8
+git verify-tag v1.0.9
 ```
 
 It is signed with GPG key `A743FEC7E4955B92`. Every commit in the repository is
@@ -798,6 +805,22 @@ current: [`ioc/README.md`](ioc/README.md).
 </details>
 
 ---
+
+## Why it works this way
+
+Every choice that could reasonably have gone the other way has a record in
+[docs/adr/](docs/adr/), with the reasoning and the cost. Fifteen of them, including:
+
+| | |
+|---|---|
+| [0004](docs/adr/0004-node_modules-is-not-scanned.md) | why `node_modules` is not scanned, and what that misses |
+| [0009](docs/adr/0009-a-known-actor-escalates-rather-than-dismisses.md) | why a colleague's name on a hostile push does not clear them |
+| [0013](docs/adr/0013-history-rewriting-uses-filter-repo-when-it-is-installed.md) | why rewriting history does not remove anything from GitHub |
+| [0003](docs/adr/0003-evidence-lives-in-a-temporary-directory.md) | why the evidence directory is cleared on restart |
+| [0002](docs/adr/0002-exit-code-3-means-the-scan-could-not-run.md) | why a failed scan is not reported as clean |
+
+If you disagree with one, open an issue and quote its number. The full map of the
+documentation is in [docs/README.md](docs/README.md).
 
 ## Verifying this repository
 

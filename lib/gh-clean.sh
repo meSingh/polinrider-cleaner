@@ -78,10 +78,18 @@ WORK="$OUT/clean/$(printf '%s' "$NWO" | tr '/' '_').git"
 mkdir -p "$(dirname "$WORK")" || prc_die "cannot create $(dirname "$WORK")"
 if [[ -d "$WORK" ]]; then
   prc_log "reusing bare clone $WORK"
-  git -C "$WORK" fetch --quiet origin '+refs/heads/*:refs/heads/*' 2>/dev/null || true
+  git -C "$WORK" fetch --progress origin '+refs/heads/*:refs/heads/*' || true
 else
-  prc_log "bare-cloning $NWO (nothing is checked out)"
-  git clone --bare --quiet "$(prc_clone_url "$NWO")" "$WORK" \
+  # --quiet emits nothing at all, so a large repository looks like a hang for
+  # minutes. --progress gives git's own live counter. Say the size first, so the
+  # wait is expected rather than alarming.
+  _kb="$(gh api "repos/$NWO" --jq '.size' 2>/dev/null || true)"
+  if [[ "$_kb" =~ ^[0-9]+$ ]] && [[ "$_kb" -gt 0 ]]; then
+    prc_log "bare-cloning $NWO, about $(( _kb / 1024 )) MB, nothing is checked out"
+  else
+    prc_log "bare-cloning $NWO (nothing is checked out)"
+  fi
+  git clone --bare --progress "$(prc_clone_url "$NWO")" "$WORK" \
     || prc_die "cannot clone $NWO"
 fi
 

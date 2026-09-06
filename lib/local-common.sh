@@ -226,6 +226,7 @@ check_extensions() {   # $@ = extension directories
     find "$d" -maxdepth 1 -mindepth 1 -type d -mtime -60 2>/dev/null | sed 's|.*/|    |' >> "$REPORT"
   done
   [[ $recent -gt 0 ]] && info "$recent extensions installed or updated in the last 60 days. Names are in the report; check any you did not install yourself."
+  info "This lists recent changes only. An extension compromised more than 60 days ago is not listed here; its files are still content-scanned."
   return 0
 }
 
