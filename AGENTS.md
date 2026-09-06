@@ -288,7 +288,7 @@ its own version in the README.
 
 ```bash
 git checkout main && git pull
-VERSION=v1.0.8   # the release you are cutting
+VERSION=v1.0.9   # the release you are cutting
 git tag -s "$VERSION" -m "polinrider-cleaner $VERSION
 
 Summarise what changed and why it matters to someone running this."
