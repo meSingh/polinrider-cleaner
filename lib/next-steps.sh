@@ -215,7 +215,12 @@ CLEAN="./$RECOVERY_DIR/clean-repo.sh"
       ' "$OUT/restore-targets.tsv" | sort
       printf '\nFull list with timestamps: `%s/restore-targets.tsv`\n\n' "$OUT"
     fi
-    printf 'T0 below is two hours before the earliest of them, already filled in.\n\n'
+    printf 'T0 below is two hours before the earliest push recorded on a flagged\n'
+    printf 'branch. **That two hours is an assumption, not a measurement.** If the\n'
+    printf 'first hostile push happened earlier than the API still remembers, the\n'
+    printf 'window starts too late and the restore target is itself infected.\n'
+    printf '`restore.sh` refuses those rows and marks them `MALICIOUS_TARGET`; if\n'
+    printf 'you see any, widen `--since` and build the plan again.\n\n'
     printf '```bash\n'
     printf './%s/sweep.sh --%s %s --since %s --out %s\n' "$RECOVERY_DIR" "$KIND" "$OWNER" "$T0" "$OUT"
     printf '```\n\n'
@@ -278,8 +283,9 @@ CLEAN="./$RECOVERY_DIR/clean-repo.sh"
 
 # --- 4. the short version, on screen ----------------------------------------
 printf '\n'
-printf '  %s repositories, %s branches. Written to:\n' "$N_REPOS" "$N_REFS"
-printf '    %s\n\n' "$DOC"
+printf '  %s repositories, %s branches.\n' "$N_REPOS" "$N_REFS"
+[[ "${PRC_EMBEDDED:-0}" == "1" ]] || printf '    %s\n' "$DOC"
+printf '\n'
 if [[ -n "$T0" ]]; then
   printf '  %s of %s repo(s) have pushes that landed on a flagged branch.\n' "$N_WITH_EVENTS" "$N_REPOS"
   printf '  Pushed by: %s\n' "$ACTORS"
@@ -301,8 +307,11 @@ if [[ -s "$RESTORABLE" ]] && prc_evidence_is_volatile "$OUT"; then
   printf '  GitHub still has them, but only until it garbage-collects them.\n'
   printf '  Fetch them now, before anything else:\n'
   printf '    ./%s/preserve-restore-points.sh --out %s\n\n' "$RECOVERY_DIR" "$OUT"
+  :
 fi
-printf '  Clean one repository, dry run, then for real:\n'
-printf '    %s %s\n'         "$CLEAN" "$(head -1 "$REPOS")"
-printf '    %s %s --apply\n' "$CLEAN" "$(head -1 "$REPOS")"
+if [[ "${PRC_EMBEDDED:-0}" != "1" ]]; then
+  printf '  Clean one repository, dry run, then for real:\n'
+  printf '    %s %s\n'         "$CLEAN" "$(head -1 "$REPOS")"
+  printf '    %s %s --apply\n' "$CLEAN" "$(head -1 "$REPOS")"
+fi
 exit 0

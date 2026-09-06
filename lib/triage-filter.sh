@@ -65,8 +65,10 @@ cat <<EOF
  REAL_SUSPECT refs           : $REALC
  BENIGN_TOOLING refs         : $(( TOTAL - REALC ))
 
- Read every REAL_SUSPECT path before concluding anything. Read the matched
- content, not the count: cat $(dirname "$REPORT")/triage.txt
+$(if [[ "${PRC_EMBEDDED:-0}" != "1" ]]; then
+  printf '\n Read every REAL_SUSPECT path before concluding anything. Read the\n'
+  printf ' matched content, not the count: cat %s/triage.txt\n' "$(dirname "$REPORT")"
+fi)
 ================================================================
 EOF
 

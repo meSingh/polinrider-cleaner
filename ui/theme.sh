@@ -13,6 +13,10 @@
 #   TERM=dumb         treated as no colour, no cursor tricks
 #   not a terminal    piping or redirecting turns everything off
 
+# This file defines names and assigns nothing else. Every one of them is read by
+# render.sh or by a caller, across a source boundary shellcheck cannot follow.
+# shellcheck disable=SC2034
+
 # --- what can this terminal do? ---------------------------------------------
 PRC_TTY=0;   [[ -t 1 ]] && PRC_TTY=1
 PRC_COLOR=0
@@ -47,13 +51,23 @@ fi
 # in a CI log, or on a terminal with no font for box drawing.
 if [[ "$PRC_UNICODE" -eq 1 ]]; then
   S_OK="✓"; S_BAD="✗"; S_WARN="!"; S_INFO="i"; S_STEP="▸"; S_DOT="·"
-  S_ARROW="→"; S_BAR_FULL="█"; S_BAR_EMPTY="░"; S_RULE="─"
+  S_ARROW="→"; S_BULLET="●"; S_LINK="↗"; S_BAR_FULL="█"; S_BAR_EMPTY="░"; S_RULE="─"
   S_TL="╭"; S_TR="╮"; S_BL="╰"; S_BR="╯"; S_V="│"
 else
   S_OK="[ok]"; S_BAD="[!!]"; S_WARN="[..]"; S_INFO="[--]"; S_STEP=">"; S_DOT="."
-  S_ARROW="->"; S_BAR_FULL="#"; S_BAR_EMPTY="."; S_RULE="-"
+  S_ARROW="->"; S_BULLET="*"; S_LINK=""; S_BAR_FULL="#"; S_BAR_EMPTY="."; S_RULE="-"
   S_TL="+"; S_TR="+"; S_BL="+"; S_BR="+"; S_V="|"
 fi
+
+# --- whose tool this is -----------------------------------------------------
+# Change these two lines to rebrand a fork. Nothing else refers to the author.
+PRC_AUTHOR="${PRC_AUTHOR:-Mandeep Singh}"
+PRC_AUTHOR_URL="${PRC_AUTHOR_URL:-https://github.com/meSingh}"
+
+# Clickable text needs OSC 8, which terminals that lack it ignore rather than
+# mangle. Off when there is no terminal, no colour, or PRC_NO_LINKS is set.
+PRC_LINKS=0
+[[ "$PRC_TTY" -eq 1 && "$PRC_COLOR" -eq 1 && -z "${PRC_NO_LINKS:-}" ]] && PRC_LINKS=1
 
 # --- meaning, not decoration ------------------------------------------------
 # Bound once here so a finding never renders as anything but red, anywhere.

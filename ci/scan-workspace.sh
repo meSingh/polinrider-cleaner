@@ -72,6 +72,15 @@ HITS=0; REVIEWS=0
 # sequences into the operator's console or into a CI log.
 clean() { LC_ALL=C tr -d '\000-\010\013\014\016-\037\177'; }
 note()  { printf '%s\n' "$*"; }
+
+# The campaign ships malicious npm packages, so a skipped node_modules is a real
+# gap rather than a tidy-up. Say it where it applies, not in a manual.
+if [[ -d "$PATH_ARG" ]] && find "$PATH_ARG" -maxdepth 3 -type d -name node_modules -print -quit 2>/dev/null | grep -q .; then
+  note "node_modules is present and NOT scanned: too large, and installed"
+  note "packages are checked by name against ioc/bad-packages.txt instead."
+  note "A package placed there by hand, or pulled in transitively, is not seen."
+  note "To include it anyway: --exclude '' (slow)"
+fi
 hit()   { local m; m="$(printf '%s' "$*" | clean)"; HITS=$((HITS+1))
           printf 'INFECTED  %s\n' "$m"
           [[ "${GITHUB_ACTIONS:-}" == "true" ]] && printf '::error title=PolinRider::%s\n' "$m"; }
