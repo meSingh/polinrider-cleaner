@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Accepted |
+| **Status** | Superseded by [ADR-0022](./0022-q-quits-b-goes-back.md) |
 | **Date** | 2026-09-06 |
 
 ## Context

@@ -36,7 +36,9 @@ If you disagree with one, open an issue and quote its number.
 | [0018](./0018-engines-hide-standalone-guidance-when-driven.md) | Engines hide their standalone guidance when driven | Accepted |
 | [0019](./0019-restore-is-offered-when-possible-and-explained-when-not.md) | Restore is offered when possible, and explained when it is not | Accepted |
 | [0020](./0020-a-captured-function-prints-only-its-value.md) | A captured function prints only its value | Accepted |
-| [0021](./0021-only-q-leaves-a-prompt.md) | Only an explicit q leaves a prompt | Accepted |
+| [0021](./0021-only-q-leaves-a-prompt.md) | Only an explicit q leaves a prompt | Superseded by [ADR-0022](./0022-q-quits-b-goes-back.md) |
+| [0022](./0022-q-quits-b-goes-back.md) | q quits, b goes back | Accepted |
+| [0023](./0023-the-entry-point-parses-before-it-runs.md) | The entry point parses before it runs | Accepted |
 
 ## Adding one
 

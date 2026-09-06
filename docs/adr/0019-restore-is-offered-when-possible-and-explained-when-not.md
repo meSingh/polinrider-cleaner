@@ -23,16 +23,21 @@ The menu is built from what the evidence supports.
 When restore candidates exist, it offers fetching the pre-attack commits, then
 restoring.
 
-When none exist the option is still shown, greyed, with a dash instead of a
-number and the reason attached:
+All three remedies are presented together, after a repository is chosen, because
+restoring is a way of getting the payload out rather than a separate activity.
+Restorability is judged for that repository, not for the scan as a whole.
+
+When it is not available the option is still shown, greyed, with the reason:
 
 ```
-    1  Read what was actually found
-    -  Restore branches                 unavailable for these repositories
-       GitHub keeps about 300 push events per repository for about 90 days.
-       None survive here, so there is no recorded earlier state to move a
-       branch back to. A limit of the GitHub API, not of this tool.
-    2  Clean one repository, dry run first
+  How do you want to fix DecX-AI/react-frontend?
+
+    -  Restore it   unavailable for this repository
+       No push event survives for it, so there is no recorded commit to
+       move back to. GitHub keeps about 300 events per repository for
+       about 90 days. A limit of the GitHub API, not of this tool.
+    1  Remove it    safe, reversible, history keeps the payload
+    2  Erase it     thorough, rewrites history, force-pushes everything
 ```
 
 An option that is simply absent and one that is impossible look identical from

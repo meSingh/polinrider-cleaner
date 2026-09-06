@@ -33,6 +33,8 @@
 
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
+
+{   # read the whole script before running any of it, see the note above
 # shellcheck source=lib/common.sh
 . "$HERE/lib/common.sh"
 # The engines print standalone guidance by default. Driven from here, that
@@ -173,11 +175,11 @@ ask_roots() {
       for d in "${runners[@]}"; do ui_bullet "${d/#$HOME/~}"; done
     fi
   } >&2
-  pick="$(ui_menu "Where should I look?" \
+  pick="$(PRC_MENU_BACK=1 ui_menu "Where should I look?" \
     "The directories found above" \
     "Those, plus the ones that run by themselves" \
     "Let me type the list myself" \
-    "My whole home directory      slower, but misses nothing under \$HOME")" || return 1
+    "My whole home directory      slower, but misses nothing under \$HOME")" || return $?
   ROOT_LIST=()
   case "$pick" in
     1) ROOT_LIST=(${found[@]+"${found[@]}"}) ;;
@@ -220,6 +222,20 @@ note_rc() {
 }
 note_error() { ERRORED=1; ERRORS="${ERRORS}${1}"$'\n'; }
 
+# quit_now - end the whole run, with the verdict code the final exit would use.
+# Must be called from the main shell: an exit inside $( ) only ends the subshell,
+# which is why the prompts return a code rather than exiting themselves.
+quit_now() {
+  ui_blank
+  ui_dim "Stopped. Nothing further was changed."
+  if [[ -n "${OUT:-}" && -f "$OUT/NEXT-STEPS.md" ]]; then
+    ui_text "Everything found is written up here, and the file stays after you exit:"
+    ui_file_line "plan" "$OUT/NEXT-STEPS.md"
+  fi
+  if [[ "$WORST" -lt 2 && "$ERRORED" -eq 1 ]]; then exit 3; fi
+  exit "$WORST"
+}
+
 # --- the scans --------------------------------------------------------------
 scan_machine() {
   step "Scanning this machine ($OS)"
@@ -240,7 +256,8 @@ scan_machine() {
   elif [[ $ASSUME_YES -eq 1 ]]; then
     while IFS= read -r d; do [[ -n "$d" ]] && ROOT_LIST+=("$d"); done < <(default_roots)
   else
-    ask_roots || return 1
+    ask_roots
+    case "$?" in 2) quit_now ;; 1|3) return 1 ;; esac
   fi
   if [[ ${#ROOT_LIST[@]} -eq 0 ]]; then
     warn "No common code directory found under \$HOME."
@@ -326,12 +343,12 @@ scan_github() {  # scan_github <org|user> <name>
 # --- interactive ------------------------------------------------------------
 choose() {
   local pick
-  pick="$(ui_menu "What do you want to check?" \
+  pick="$(PRC_MENU_BACK=0 ui_menu "What do you want to check?" \
     "This computer            files, extensions, persistence, an installed implant" \
     "A GitHub organization    every repository and branch" \
     "My GitHub account        every repository you own" \
     "One folder or repo       the quickest check" \
-    "All of it, in order      if you think you were hit")" || return 1
+    "All of it, in order      if you think you were hit")" || return $?
   case "$pick" in
     1) MODE="machine" ;;
     2) MODE="org";  ORG="$(ask_owner org)"  || return 1 ;;
@@ -376,7 +393,11 @@ fi
 ui_status "Evidence $S_ARROW $_ev$_note"
 ui_blank
 if [[ -z "$MODE" && $PURGE -eq 0 ]]; then
-  choose || {
+  choose
+  case "$?" in
+    2) quit_now ;;          # the operator typed q
+  esac
+  [[ -n "$MODE" ]] || {     # no input, or nothing chosen: a usage error
     ui_blank
     ui_dim "Nothing selected. You can also say what to scan directly:"
     ui_blank
@@ -454,12 +475,14 @@ pick_repo() {  # pick_repo <repos-file> -> echoes the chosen repo
   printf '\n  %sWhich repository?%s\n\n' "$C_BOLD" "$C_RESET" >&2
   while read -r r; do printf '    %s%2s%s  %s\n' "$C_CYAN" "$i" "$C_RESET" "$r" >&2; i=$((i+1)); done < "$file"
   while :; do
-    printf '\n  %s1-%s, or q to go back:%s ' "$C_BOLD" "$n" "$C_RESET" >&2
-    read -r reply || return 1
+    printf '\n  %s1-%s, b to go back, q to quit:%s ' "$C_BOLD" "$n" "$C_RESET" >&2
+    read -r reply || return 3
     case "$reply" in
-      [Qq]*)    return 1 ;;
+      [Qq]*)    return 2 ;;
+      [Bb]*)    return 1 ;;
       "")       continue ;;
-      *[!0-9]*) printf '  %snot a number. Pick 1 to %s, or q.%s\n' "$C_DIM" "$n" "$C_RESET" >&2; continue ;;
+      *[!0-9]*) printf '  %snot a number. Pick 1 to %s, b to go back, q to quit.%s\n' \
+                  "$C_DIM" "$n" "$C_RESET" >&2; continue ;;
     esac
     if [[ "$reply" -ge 1 && "$reply" -le "$n" ]]; then
       awk -v k="$reply" 'NR==k{print; exit}' "$file"; return 0
@@ -468,12 +491,34 @@ pick_repo() {  # pick_repo <repos-file> -> echoes the chosen repo
   done
 }
 
-# ask_mode - how thorough. Returns "additive" or "rewrite" on stdout.
+# ask_mode <out> <repo> - which remedy. Echoes restore, additive or rewrite.
+# Exit 1 to go back, 2 to quit.
+#
+# All three ways of getting the payload out belong here, including the one that
+# may not be available: an option that is absent and one that is impossible look
+# the same from the outside. Restorability is judged for this repository, not
+# for the scan as a whole.
 ask_mode() {
-  local pick
+  local out="$1" repo="$2" pick target=""
+  local -a opts=() acts=()
+
+  if [[ -s "$out/restore-targets.tsv" ]]; then
+    target="$(awk -F'\t' -v r="$repo" '$1==r && $3=="CLEAN" {print substr($2,1,10); exit}' \
+              "$out/restore-targets.tsv")"
+  fi
+
   {
     ui_blank
-    ui_text "There are two ways to get the payload out, and they are not equivalent."
+    ui_text "Three ways to get the payload out of $repo, best first."
+    ui_blank
+    if [[ -n "$target" ]]; then
+      ui_text "Restore it  Moves each branch back to the commit before the attack."
+      ui_text "            No files are edited. The malicious commits stop being"
+      ui_text "            reachable. Verified clean target: $target"
+    else
+      ui_text "Restore it  Would move each branch back to its pre-attack commit,"
+      ui_text "            editing nothing. Not available here, see below."
+    fi
     ui_blank
     ui_text "Remove it   Adds one commit per branch deleting the files. Nothing is"
     ui_text "            rewritten, so you can revert it. The payload stays in the"
@@ -484,14 +529,40 @@ ask_mode() {
     ui_text "            the old commits stay fetchable from GitHub by SHA until"
     ui_text "            Support runs gc. Nothing left to check out."
   } >&2
-  pick="$(ui_menu "How thorough?" \
-    "Remove it    safe, reversible, history keeps the payload" \
-    "Erase it     thorough, rewrites history, force-pushes everything")" || return 1
-  case "$pick" in 1) printf 'additive\n' ;; 2) printf 'rewrite\n' ;; esac
+
+  if [[ -n "$target" ]]; then
+    opts+=("Restore it   moves branches back to $target, edits nothing")
+    acts+=("restore")
+  else
+    opts+=("!Restore it   unavailable for this repository" \
+           "~No push event survives for it, so there is no recorded commit to" \
+           "~move back to. GitHub keeps about 300 events per repository for" \
+           "~about 90 days. A limit of the GitHub API, not of this tool.")
+  fi
+  opts+=("Remove it    safe, reversible, history keeps the payload" \
+         "Erase it     thorough, rewrites history, force-pushes everything")
+  acts+=("additive" "rewrite")
+
+  pick="$(PRC_MENU_BACK=1 ui_menu "How do you want to fix $repo?" "${opts[@]}")" || return $?
+  printf '%s\n' "${acts[$((pick-1))]}"
+}
+
+
+# show_restore <out> <targets> - restoring stays a deliberate, separate act.
+show_restore() {
+  local out="$1" targets="$2"
+  ui_step "Restoring is not run from this menu"
+  ui_text "Moving a branch pointer is the one genuinely destructive thing here, so"
+  ui_text "it stays behind its own preflight and a person who has read the plan."
+  ui_blank
+  ui_text "The verified targets and the exact commands are in:"
+  [[ -s "$targets" ]] && ui_file_line "targets" "$targets"
+  ui_file_line "plan" "$out/NEXT-STEPS.md"
 }
 
 clean_one() {  # clean_one <recovery-dir> <out> <repo> <mode> [n] [total]
   local dir="$1" out="$2" repo="$3" mode="$4" n="${5:-}" total="${6:-}" extra=""
+  if [[ "$mode" == "restore" ]]; then show_restore "$out" "$out/restore-targets.tsv"; return 0; fi
   [[ "$mode" == "rewrite" ]] && extra="--rewrite"
   if [[ -n "$n" && -n "$total" ]]; then
     ui_step "[$n/$total] $repo"
@@ -534,28 +605,19 @@ guided_cleanup() {  # guided_cleanup <recovery-dir> <out>
   while :; do
     local -a opts=("Read what was actually found")
     local -a acts=("read")
-    if [[ "$can_restore" -eq 1 ]]; then
-      if [[ -s "$targets" ]]; then
-        opts+=("Restore branches                 $n_restore repo(s), moves refs back, no files edited")
-        acts+=("restore")
-      else
-        opts+=("Fetch the pre-attack commits     needed before restoring, $n_restore repo(s)")
-        acts+=("preserve")
-      fi
-    else
-      # Shown, greyed, with the reason: a missing option and an impossible one
-      # look identical otherwise.
-      opts+=("!Restore branches                 unavailable for these repositories" \
-             "~GitHub keeps about 300 push events per repository for about 90 days." \
-             "~None survive here, so there is no recorded earlier state to move a" \
-             "~branch back to. A limit of the GitHub API, not of this tool.")
+    # Fetching is a prerequisite for restoring, so it stays an action. The
+    # choice between the three remedies is made per repository, in ask_mode.
+    if [[ "$can_restore" -eq 1 && ! -s "$targets" ]]; then
+      opts+=("Fetch the pre-attack commits     $n_restore repo(s) may be restorable")
+      acts+=("preserve")
     fi
     opts+=("Clean one repository, dry run first" \
            "Clean every affected repository, one at a time" \
            "Stop here, the plan is written to NEXT-STEPS.md")
     acts+=("one" "all" "stop")
 
-    choice="$(ui_menu "What do you want to do?" "${opts[@]}")" || return 0
+    choice="$(PRC_MENU_BACK=0 ui_menu "What do you want to do?" "${opts[@]}")"
+    case "$?" in 2) quit_now ;; 1) return 0 ;; esac
     case "${acts[$((choice-1))]}" in
       read) ui_step "What matched"
             if [[ -f "$out/triage.txt" ]]; then
@@ -565,8 +627,8 @@ guided_cleanup() {  # guided_cleanup <recovery-dir> <out>
             ui_step "Fetching the pre-attack commits"
             ui_dim "reads from GitHub, pushes nothing. Each one is checked for the payload."
             "$HERE/$dir/preserve-restore-points.sh" --out "$out" 2>&1 ;;
-      restore)
-            ui_step "Restoring is the better fix, and it is not automated here"
+      show_restore_unused)
+            ui_step "unused"
             ui_text "Moving a branch back is the one genuinely destructive thing in this"
             ui_text "repository, so it stays behind its own preflight and a person who has"
             ui_text "read the plan. The verified targets are in:"
@@ -575,10 +637,15 @@ guided_cleanup() {  # guided_cleanup <recovery-dir> <out>
             ui_blank
             ui_text "The commands, with your values filled in, are in the plan under"
             ui_text "\"How it got there\"." ;;
-      one)  repo="$(pick_repo "$repos")" || continue
-            mode="$(ask_mode)" || continue
+      one)  repo="$(pick_repo "$repos")"
+            case "$?" in 2|3) quit_now ;; 1) continue ;; esac
+            mode="$(ask_mode "$out" "$repo")"
+            case "$?" in 2|3) quit_now ;; 1) continue ;; esac
             clean_one "$dir" "$out" "$repo" "$mode" ;;
-      all)  mode="$(ask_mode)" || continue
+      all)  repo="$(head -1 "$repos")"
+            mode="$(ask_mode "$out" "$repo")"
+            case "$?" in 2) quit_now ;; 1) continue ;; esac
+            [[ "$mode" == "restore" ]] && { show_restore "$out" "$targets"; continue; }
             ui_step "Every affected repository"
             ui_dim "$(awk 'END{print NR}' "$repos") repositories, $mode, each with its own dry run"
             local n=0 total; total="$(awk 'END{print NR}' "$repos")"
@@ -743,3 +810,5 @@ fi
 # Confirmed beats incomplete: a caller that acts on 2 should still see it.
 if [[ "$WORST" -lt 2 && $ERRORED -eq 1 ]]; then exit 3; fi
 exit "$WORST"
+
+} # end of the parse-first group

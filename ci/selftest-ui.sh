@@ -166,11 +166,18 @@ out="$(bash -c '. '"$ROOT"'/ui/render.sh; printf "\n\n2\n" | ui_menu T a b c' 2>
 [[ "$out" == "2" ]] && ok "blank lines re-ask rather than quitting" || no "blank lines re-ask: got [$out]"
 out="$(bash -c '. '"$ROOT"'/ui/render.sh; printf "zz\n9\n1\n" | ui_menu T a b c' 2>/dev/null)"
 [[ "$out" == "1" ]] && ok "a typo and an out-of-range number both re-ask" || no "invalid input re-asks: got [$out]"
-bash -c '. '"$ROOT"'/ui/render.sh; printf "q\n" | ui_menu T a b c' >/dev/null 2>&1 \
-  && no "q still stops" || ok "q still stops"
-bash -c '. '"$ROOT"'/ui/render.sh; printf "" | ui_menu T a b c' >/dev/null 2>&1 \
-  && no "end of input still stops, so a pipe cannot loop" \
-  || ok "end of input still stops, so a pipe cannot loop"
+# q, back and no-input are three different answers and must not share a code.
+bash -c '. '"$ROOT"'/ui/render.sh; printf "q\n" | ui_menu T a b c' >/dev/null 2>&1
+[[ "$?" -eq 2 ]] && ok "q returns quit (2)" || no "q returns quit (2)"
+bash -c '. '"$ROOT"'/ui/render.sh; printf "" | ui_menu T a b c' >/dev/null 2>&1
+[[ "$?" -eq 3 ]] && ok "end of input returns no-input (3), so a pipe cannot loop" \
+                 || no "end of input returns no-input (3)"
+bash -c '. '"$ROOT"'/ui/render.sh; printf "b\n" | PRC_MENU_BACK=1 ui_menu T a b c' >/dev/null 2>&1
+[[ "$?" -eq 1 ]] && ok "b returns back (1) when a level above exists" || no "b returns back (1)"
+out="$(bash -c '. '"$ROOT"'/ui/render.sh; printf "b\n1\n" | ui_menu T a b c' 2>&1)"
+[[ "$out" == *"nothing to go back to"* ]] && ok "b is refused when there is no level above" \
+                                          || no "b is refused when there is no level above"
+[[ "$out" == *"q to quit"* ]] && ok "the prompt says q quits, not stops" || no "the prompt says q quits"
 
 echo "== the layer stays presentation only =="
 # If this fails, someone has put logic where an auditor will not look for it.

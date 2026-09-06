@@ -288,7 +288,16 @@ ui_prompt() {
 }
 
 # ui_menu <title> <label>... - prints a numbered menu, echoes the chosen index.
-# Returns 1 if the operator declines to choose.
+#
+# Exit codes, because "leave this menu" and "leave the tool" are different
+# things and were the same key:
+#   0  a choice was made, on stdout
+#   1  go back one level      (b, offered only when PRC_MENU_BACK=1)
+#   2  quit the tool entirely (q)
+#   3  no input at all        (end of input)
+#
+# 2 and 3 are separate because "the operator chose to stop" and "nobody was
+# there to answer" deserve different exit codes from the tool.
 ui_menu() {
   local title="$1"; shift
   # An option may be shown but not offered. Prefix it with "!" to render it
@@ -311,17 +320,22 @@ ui_menu() {
   # Only q and end-of-input leave. A bare Enter, a typo or a number out of range
   # re-asks. Treating an empty line as "stop" meant one stray keypress after the
   # pager ended dropped the operator out of the whole run.
+  local back_hint=""
+  [[ "${PRC_MENU_BACK:-0}" -eq 1 ]] && back_hint="b to go back, "
   while :; do
-    printf '\n  %sChoose 1-%s, or q to stop:%s ' "$C_BOLD" "$n" "$C_RESET" >&2
-    read -r reply || return 1
+    printf '\n  %sChoose 1-%s, %sq to quit:%s ' "$C_BOLD" "$n" "$back_hint" "$C_RESET" >&2
+    read -r reply || return 3
     case "$reply" in
-      [Qq]*)    return 1 ;;
+      [Qq]*)    return 2 ;;
+      [Bb]*)    [[ "${PRC_MENU_BACK:-0}" -eq 1 ]] && return 1
+                printf '  %snothing to go back to. Pick 1 to %s, or q to quit.%s\n' \
+                  "$C_DIM" "$n" "$C_RESET" >&2; continue ;;
       "")       continue ;;
-      *[!0-9]*) printf '  %snot a number. Pick 1 to %s, or q.%s\n' "$C_DIM" "$n" "$C_RESET" >&2
+      *[!0-9]*) printf '  %snot a number. Pick 1 to %s, or q to quit.%s\n' "$C_DIM" "$n" "$C_RESET" >&2
                 continue ;;
     esac
     if [[ "$reply" -ge 1 && "$reply" -le "$n" ]]; then printf '%s\n' "$reply"; return 0; fi
-    printf '  %sthere is no option %s. Pick 1 to %s, or q.%s\n' "$C_DIM" "$reply" "$n" "$C_RESET" >&2
+    printf '  %sthere is no option %s. Pick 1 to %s, or q to quit.%s\n' "$C_DIM" "$reply" "$n" "$C_RESET" >&2
   done
 }
 
