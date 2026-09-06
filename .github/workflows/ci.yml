@@ -67,6 +67,9 @@ jobs:
       - name: Self-test - history rewrite
         run: ./ci/selftest-rewrite.sh
 
+      - name: Self-test - presentation layer
+        run: ./ci/selftest-ui.sh
+
   powershell:
     name: PowerShell lint
     runs-on: ubuntu-latest

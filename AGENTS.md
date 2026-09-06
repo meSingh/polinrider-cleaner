@@ -55,7 +55,7 @@ nothing on GitHub or on the machine.
 | Command | Effect |
 |---|---|
 | `polinrider.sh` in any mode | routes to the tools below; never changes anything |
-| `ci/selftest*.sh` (seven of them) | offline, no network, no credentials |
+| `ci/selftest*.sh` (eight of them) | offline, no network, no credentials |
 | `ci/scan-workspace.sh --path DIR` | reads files |
 | `machine-cleanup/check-*.sh DIR ...` | reads the machine, writes one report file |
 | `github-org-recovery/scan.sh`, `sweep.sh`, `triage-filter.sh`, `preflight.sh` | reads the GitHub API, clones mirrors |
@@ -145,7 +145,8 @@ the OS.
 | `github-account-recovery/` | the same for **one personal account** |
 | `machine-cleanup/` | check and clean **one computer**, one script per operating system |
 | `polinrider.sh` | the single entry point at the repository root |
-| `ci/` | the vendorable scanner, its workflow template, installer, and seven self-tests |
+| `ui/` | colours, symbols and drawing. No scanning logic; skip it when auditing |
+| `ci/` | the vendorable scanner, its workflow template, installer, and eight self-tests |
 
 `common.sh` and `local-common.sh` are sourced, not executed, and are
 deliberately not marked executable.
@@ -163,6 +164,7 @@ shellcheck --severity=warning --external-sources \
 ./ci/selftest-nextsteps.sh
 ./ci/selftest-preserve.sh
 ./ci/selftest-rewrite.sh
+./ci/selftest-ui.sh
 ```
 
 CI enforces `shellcheck --severity=warning` and runs all three self-tests, plus
@@ -171,6 +173,12 @@ The tree is clean at those levels; keep it that way. Where a warning is
 suppressed there is a `# shellcheck disable=` with the reason on the line above.
 
 ### Rules that are not negotiable
+
+**`ui/` stays presentation only.** Nothing in there may read a repository, run
+git, or decide whether something is infected. An auditor should be able to skip
+the directory entirely. `ci/selftest-ui.sh` fails the build if an external
+command appears in it.
+
 
 **An error is not a finding.** Exit code 3 means a scan could not run. It must
 never be reported as a verdict about the code, and it must never be folded into

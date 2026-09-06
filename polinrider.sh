@@ -60,31 +60,28 @@ done
 OUT="${OUT:-$(prc_default_evidence_dir)}"
 
 # --- presentation -----------------------------------------------------------
-if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
-  B=$'\033[1m'; DIM=$'\033[2m'; R=$'\033[31m'; Y=$'\033[33m'; G=$'\033[32m'; C=$'\033[36m'; X=$'\033[0m'
-else
-  B=""; DIM=""; R=""; Y=""; G=""; C=""; X=""
-fi
+# All drawing lives in ui/. Nothing in there reads a repository or decides what
+# is infected, so the presentation layer can be reviewed on its own and the
+# scanning logic stays readable without it.
+PRC_VERSION="$(sed -n 's/^## \[\?\(v[0-9.]*\).*/\1/p' "$HERE/CHANGELOG.md" 2>/dev/null | head -1)"
+PRC_VERSION="${PRC_VERSION:-$(git -C "$HERE" describe --tags --abbrev=0 2>/dev/null || true)}"
+# shellcheck source=ui/render.sh
+. "$HERE/ui/render.sh"
+
+# The old names, kept so the engines and the self-tests do not all have to
+# change at once. Each is now one line of delegation to the UI layer.
+B="$C_BOLD"; DIM="$C_DIM"; X="$C_RESET"
 say()  { printf '%s\n' "$*"; }
-head2(){ printf '\n%s%s%s\n' "$B" "$*" "$X"; }
-rule() { printf '%s%s%s\n' "$DIM" "────────────────────────────────────────────────────────────" "$X"; }
-step() { printf '\n%s▸ %s%s\n' "$C" "$*" "$X"; }
-warn() { printf '%s! %s%s\n' "$Y" "$*" "$X"; }
-bad()  { printf '%s✗ %s%s\n' "$R" "$*" "$X"; }
-good() { printf '%s✓ %s%s\n' "$G" "$*" "$X"; }
+head2(){ ui_section "$*"; }
+rule() { ui_rule; }
+step() { ui_step "$*"; }
+warn() { ui_warn "$*"; }
+bad()  { ui_bad "$*"; }
+good() { ui_ok "$*"; }
 
 ask() {  # ask <prompt> <default y|n>  -> 0 for yes
-  local prompt="$1" def="$2" reply
   [[ $ASSUME_YES -eq 1 ]] && return 0
-  if [[ ! -t 0 ]]; then [[ "$def" == "y" ]] && return 0 || return 1; fi
-  if [[ "$def" == "y" ]]; then printf '%s [Y/n] ' "$prompt"; else printf '%s [y/N] ' "$prompt"; fi
-  read -r reply
-  case "$reply" in
-    [yY]*) return 0 ;;
-    [nN]*) return 1 ;;
-    "")    [[ "$def" == "y" ]] && return 0 || return 1 ;;
-    *)     [[ "$def" == "y" ]] && return 0 || return 1 ;;
-  esac
+  ui_ask "$1" "${2:-n}"
 }
 
 # --- what machine is this ---------------------------------------------------
@@ -161,8 +158,8 @@ scan_machine() {
   say "${DIM}roots: $r${X}"
   say "${DIM}this reads only; the first run takes a few minutes${X}"
   # shellcheck disable=SC2086  # roots are separate arguments on purpose
-  "$LOCAL_TOOL" $r
-  local rc=$?; [[ $rc -eq 2 ]] && FOUND_IN="machine"; note_rc $rc; return $rc
+  "$LOCAL_TOOL" $r 2>&1 | ui_findings
+  local rc="${PIPESTATUS[0]}"; [[ $rc -eq 2 ]] && FOUND_IN="machine"; note_rc $rc; return $rc
 }
 
 scan_path() {
@@ -176,8 +173,8 @@ scan_path() {
   local extra=""
   [[ -d "$SCANPATH/.git" ]] && extra="--all-refs"
   # shellcheck disable=SC2086  # extra is one optional flag
-  "$HERE/ci/scan-workspace.sh" --path "$SCANPATH" $extra
-  local rc=$?; [[ $rc -eq 2 ]] && FOUND_IN="path"; note_rc $rc; return $rc
+  "$HERE/ci/scan-workspace.sh" --path "$SCANPATH" $extra 2>&1 | ui_findings
+  local rc="${PIPESTATUS[0]}"; [[ $rc -eq 2 ]] && FOUND_IN="path"; note_rc $rc; return $rc
 }
 
 # Earlier versions wrote mirrors to ./evidence, inside the checkout. If that is
@@ -212,9 +209,11 @@ scan_github() {  # scan_github <org|user> <name>
   say "${DIM}on purpose: the mirrors hold live malware.${X}"
   legacy_evidence_hint
   if [[ "$kind" == "org" ]]; then
-    "$dir/scan.sh" --org "$name" --out "$OUT" || { note_error "the scan of $name did not finish"; return 3; }
+    "$dir/scan.sh" --org "$name" --out "$OUT" 2>&1 | ui_stream
+    [[ "${PIPESTATUS[0]}" -eq 0 ]] || { note_error "the scan of $name did not finish"; return 3; }
   else
-    "$dir/scan.sh" --user "$name" --out "$OUT" || { note_error "the scan of $name did not finish"; return 3; }
+    "$dir/scan.sh" --user "$name" --out "$OUT" 2>&1 | ui_stream
+    [[ "${PIPESTATUS[0]}" -eq 0 ]] || { note_error "the scan of $name did not finish"; return 3; }
   fi
   step "Separating real findings from your own detection tooling"
   # triage-filter exits 0 by design, so its exit code must never be the verdict.
@@ -287,6 +286,7 @@ if [[ -z "$MODE" && $PURGE -eq 0 ]]; then
 fi
 
 # --- run --------------------------------------------------------------------
+ui_banner
 head2 "PolinRider cleaner"
 say "${DIM}Everything below is read-only. Nothing is changed.${X}"
 say "${DIM}Independent open source tool. No warranty, no liability. See DISCLAIMER.md.${X}"
@@ -340,6 +340,88 @@ if [[ $DO_ALL -eq 1 ]]; then
   [[ -n "$USR" ]] && scan_github user "$USR"
 fi
 
+
+# --- guided cleanup ---------------------------------------------------------
+# The point of this: nobody should have to read a manual, assemble flags, and
+# guess which of two remedies applies. One question at a time, a dry run before
+# anything is written, and an explicit yes before it happens.
+pick_repo() {  # pick_repo <repos-file> -> echoes the chosen repo
+  local file="$1" n i=1 reply
+  n=$(awk 'END{print NR}' "$file")
+  printf '\n  %sWhich repository?%s\n\n' "$C_BOLD" "$C_RESET"
+  while read -r r; do printf '    %s%2s%s  %s\n' "$C_CYAN" "$i" "$C_RESET" "$r"; i=$((i+1)); done < "$file"
+  printf '\n  %s1-%s, or q to go back:%s ' "$C_BOLD" "$n" "$C_RESET"
+  read -r reply || return 1
+  case "$reply" in [Qq]*|""|*[!0-9]*) return 1 ;; esac
+  [[ "$reply" -ge 1 && "$reply" -le "$n" ]] || return 1
+  awk -v k="$reply" 'NR==k{print; exit}' "$file"
+}
+
+clean_one() {  # clean_one <recovery-dir> <out> <repo> <mode>
+  local dir="$1" out="$2" repo="$3" mode="$4" extra=""
+  [[ "$mode" == "rewrite" ]] && extra="--rewrite"
+  ui_step "Dry run on $repo"
+  ui_dim "nothing is written; this only shows what would change"
+  # shellcheck disable=SC2086  # extra is one optional flag
+  "$HERE/$dir/clean-repo.sh" "$repo" $extra --out "$out" 2>&1 | ui_stream
+  if [[ "$mode" == "rewrite" ]]; then
+    ui_blank
+    ui_warn "This rewrites history. Every commit id in that repository changes,"
+    ui_warn "and the old commits stay fetchable from GitHub until Support runs gc."
+  fi
+  if ask "Apply that to $repo now?" "n"; then
+    ui_step "Applying to $repo"
+    # shellcheck disable=SC2086
+    if "$HERE/$dir/clean-repo.sh" "$repo" $extra --apply --out "$out" 2>&1 | ui_stream; then
+      ui_ok "$repo done"
+    else
+      ui_warn "$repo finished with errors. Read the lines above."
+    fi
+  else
+    ui_dim "left alone"
+  fi
+}
+
+guided_cleanup() {  # guided_cleanup <recovery-dir> <out>
+  local dir="$1" out="$2" repos="$2/affected-repos.txt" choice mode repo
+  [[ -s "$repos" ]] || return 0
+  [[ $ASSUME_YES -eq 1 ]] && return 0    # a script asked for no prompts
+
+  mode="additive"
+  while :; do
+    choice="$(ui_menu "What do you want to do?" \
+      "Read what was actually found" \
+      "Clean one repository, dry run first" \
+      "Clean every affected repository, one at a time" \
+      "Choose how thorough the cleaning is (now: $mode)" \
+      "Stop here, the plan is written to NEXT-STEPS.md")" || return 0
+    case "$choice" in
+      1) ui_step "What matched"
+         if [[ -f "$out/triage.txt" ]]; then
+           "${PAGER:-less}" "$out/triage.txt" </dev/tty >/dev/tty 2>/dev/null \
+             || head -60 "$out/triage.txt" | ui_stream
+         else ui_warn "no triage.txt in $out"; fi ;;
+      2) repo="$(pick_repo "$repos")" && clean_one "$dir" "$out" "$repo" "$mode" ;;
+      3) ui_step "Every affected repository"
+         ui_dim "$(awk 'END{print NR}' "$repos") repositories, each with its own dry run"
+         while read -r repo; do
+           [[ -z "$repo" ]] && continue
+           clean_one "$dir" "$out" "$repo" "$mode"
+         done < "$repos" ;;
+      4) if [[ "$mode" == "additive" ]]; then
+           ui_blank
+           ui_text "additive  a commit that deletes the files. History keeps the payload,"
+           ui_text "          so an old commit can still be checked out and run."
+           ui_text "rewrite   the files leave every commit. Force-pushes everything."
+           if ask "Switch to rewrite?" "n"; then mode="rewrite"; ui_ok "mode: rewrite"; fi
+         else
+           if ask "Switch back to additive?" "n"; then mode="additive"; ui_ok "mode: additive"; fi
+         fi ;;
+      5) return 0 ;;
+    esac
+  done
+}
+
 # --- what to actually do -----------------------------------------------------
 github_playbook() {
   local dir
@@ -366,6 +448,8 @@ github_playbook() {
     say "  Could not generate the plan. Read $OUT/triage.txt by hand."
     return 0
   }
+
+  guided_cleanup "$dir" "$OUT"
 
   say ""
   say "  ${B}Everything, in order, with each command written out:${X}"
