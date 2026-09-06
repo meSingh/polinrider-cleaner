@@ -84,6 +84,13 @@ cd polinrider-cleaner
 ./polinrider.sh
 ```
 
+<p align="center">
+  <img src="docs/img/first-run.png" alt="polinrider.sh on first run: the wordmark, the version, whether gh is signed in, where evidence goes, and a numbered menu asking what to check" width="820">
+</p>
+
+It asks what to check and takes it from there. Nothing is written until you say
+so, and every destructive step is a dry run first.
+
 That pins you to a specific published release rather than to whatever `main`
 happens to be at the moment you clone.
 
