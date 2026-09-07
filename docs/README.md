@@ -8,7 +8,7 @@
 | check or clean one computer | [`../machine-cleanup/`](../machine-cleanup/) |
 | run the scanner in CI | [`../ci/README.md`](../ci/README.md) |
 | understand the indicator set | [`../ioc/README.md`](../ioc/README.md) |
-| know when the indicator set was last reviewed | [`indicator-review-log.md`](./indicator-review-log.md) |
+| know when the indicator set was last reviewed | [`indicator-reviews/`](./indicator-reviews/) |
 | change this repository, or point an agent at it | [`../AGENTS.md`](../AGENTS.md) |
 | know **why** it works the way it does | [`adr/`](./adr/) |
 | know what this tool does not promise | [`../DISCLAIMER.md`](../DISCLAIMER.md) |
