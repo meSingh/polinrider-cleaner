@@ -90,8 +90,11 @@ repository covers: Socket counted 162 malicious release artifacts across 108
 unique packages and extensions, spanning npm, Packagist, Go modules and one
 Chrome extension, and Checkmarx documented two npm clusters — ChainVeil and
 ViteVenom, the latter scoped names imitating `@vitejs/*` — which the
-OpenSourceMalware team then attributed to this same actor. None of that is in
-`ioc/`. The package lists were not retrievable from the review environment, and
+OpenSourceMalware team then attributed to this same actor. The main README's
+scale table already records those counts; what is missing is the names, none of
+which are in `ioc/`, so the scanner cannot match a single one of them.
+
+The package lists were not retrievable from the review environment, and
 `ioc/` holds only indicators traceable to a source that was actually read, so
 nothing from it has been added here. Retrieving those lists is worth doing
 deliberately, from a machine that can reach the reports.
