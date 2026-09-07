@@ -892,3 +892,33 @@ certificate. Nothing here is legal or compliance advice.
 
 **Read [DISCLAIMER.md](DISCLAIMER.md) before running this against anything you
 cannot afford to break.**
+
+---
+
+## Indicator review
+
+This campaign rotates its signatures, so the indicator set is reviewed weekly
+against the published sources and every review is written down, including the
+weeks that found nothing. The full log, and the list of sources it checks, is in
+[`docs/indicator-review-log.md`](docs/indicator-review-log.md).
+
+**Last reviewed: 7 September 2026.**
+
+No new analysis was published in the seven days to that date, and the campaign's
+signatures have not visibly rotated again. The dossier's README still carries its
+11 April revision; its most recent commit, from 9 July, adds 2,417 victim
+repositories and no new marker, host or path.
+
+The review did close three gaps against the April dossier that this repository
+had carried since its first release: two malicious npm package names,
+`tailwind-animationbased` and `tailwindcss-animate-style`, and the loader's
+second BNB Smart Chain RPC endpoint, `bsc-rpc.publicnode.com`. The first two are
+verdict-grade; the third is a review signal, because legitimate projects use that
+endpoint too.
+
+One gap is still open, and it is larger than a line in `ioc/`. The scale table
+above records the July expansion into Packagist, Go modules and the Chrome Web
+Store, but not one of those 108 packages is named in `ioc/`, so the scanner
+cannot match any of them. Closing that means lifting the package lists out of the
+Socket and Checkmarx reports, which is deliberate work rather than a weekly
+sweep.
