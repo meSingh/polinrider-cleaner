@@ -5,6 +5,15 @@ tailwind-autoanimation
 tailwindcss-typography-style
 tailwindcss-style-modify
 
+# --- the rest of the same publisher family, from the `allavin` and
+# `blackedward` npm accounts. Both accounts are deleted and both packages had
+# zero observed victim repositories at the time of the hunt, which is why they
+# were not carried here at first. A ghost dependency reference in a package.json
+# outlives the registry entry, so the names are still worth matching.
+# Source: OpenSourceMalware dossier, npm package table. April 2026.
+tailwind-animationbased
+tailwindcss-animate-style
+
 # --- second-stage dropper family, delivered via postinstall or at require time
 # Sources: JFrog Security Research, safedep.io, Sonatype. Feb-Jun 2026.
 polymarket-validator
