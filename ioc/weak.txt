@@ -2,6 +2,10 @@
 api.trongrid.io
 fullnode.mainnet.aptoslabs.com
 bsc-dataseed
+# The loader's second BNB Smart Chain RPC node, listed beside bsc-dataseed in
+# the dossier. It is a public endpoint that legitimate projects also use, so it
+# stays weak. Source: OpenSourceMalware dossier, April 2026.
+bsc-rpc.publicnode.com
 folderOpen
 windowsHide
 stdio: 'ignore'
