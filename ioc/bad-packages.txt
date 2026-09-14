@@ -29,3 +29,55 @@ node-env-resolve
 # in your lockfile before concluding anything: the package name alone is not a
 # finding for these.
 #   @common-stack/generate-plugin  9.0.2-alpha.21, 9.0.2-alpha.22
+#
+#   Packagist packages compromised through their backing GitHub repositories in
+#   the July 2026 expansion. Packagist resolves from the git repo, so the tagged
+#   commit IS the published artifact — check the commit, never the name. Listed
+#   as a comment for that reason: these are victims, not attacker-owned names.
+#   Source: OpenSourceMalware, "PolinRider Jumps the Fence to Go, Packagist,
+#   npm, PyPI", July 2026.
+#     thiio/kubernetes-php-sdk     sevenspan/code-generator
+#     arsl/optima-class            lambda-platform/moqup
+#     olc/olc-php                  roberts/leads
+#     sevenspan/laravel-whatsapp   sevenspan/laravel-chat
+#     adxio/twig-hmvc              plusinfolab/logstation
+
+# --- the ChainVeil and ViteVenom npm clusters. Checkmarx Zero named these as
+# two separate campaigns; OpenSourceMalware attributed both to PolinRider on
+# shared infrastructure — the two TRON wallets, the Aptos address and both XOR
+# keys already carried in strong.txt, all published 100 days before the first
+# ChainVeil package existed. These are attacker-owned packages, not hijacked
+# ones, so the name alone is a finding.
+# Source: OpenSourceMalware, "ChainVeil and ViteVenom are DPRK's PolinRider
+# Campaign", July 2026.
+tailwindcss-animatics
+tailwindcss-animates-kit
+tailwindcss-merge
+sass-formats
+rate-limit-flexible
+rate-limits-flexible
+@vite-mcp/vite-type
+@vite-pro/vite-ui
+@vitets/vite-ts
+@vite-ts/vite-ui
+@vite-tab/tab
+@vite-ln/build-ts
+@uw010010/vite-tree
+#
+# Three names from those same two tables are deliberately NOT here. Each is a
+# strict substring of a legitimate, live package, and this file is matched with
+# grep -F, so carrying them would report every project that depends on the real
+# one as INFECTED:
+#   sass-format     is inside  sass-formatter       (43 versions, maintained)
+#   typeorm-encrypt is inside  typeorm-encrypted    (10 versions, since 2022)
+#   clsx-tailwind   is inside  clsx-tailwind-merge  (published 2023)
+# Matching them needs a whole-name check against a parsed manifest, not a fixed
+# string. See docs/indicator-reviews/2026-09-14.md.
+
+# --- NullReceiver-branded packages: DPRK-linked clones of legitimate Tailwind
+# CSS plugins that resolve their C2 from the recipient address of an empty
+# Ethereum transfer rather than from a hardcoded host.
+# Source: OpenSourceMalware, "NullReceiver's Blank Crypto Transfers Solves the
+# Challenges of EtherHiding", August 2026.
+bianira-ui
+fluid-type-ui

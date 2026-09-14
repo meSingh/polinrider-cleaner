@@ -25,3 +25,8 @@ fullnode.mainnet.aptoslabs.com
 # analyses (safedep.io and JFrog Security Research), April-May 2026
 195.201.194.107
 copilot-ai.whisdev.org
+
+# --- NullReceiver C2, decoded from the recipient bytes of a zero-value
+# Ethereum transfer. The trailing bytes of the same address spell "helloipbot!!".
+# Source: OpenSourceMalware, August 2026.
+166.88.134.62

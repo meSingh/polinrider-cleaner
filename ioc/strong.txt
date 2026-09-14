@@ -37,3 +37,20 @@ global["_V"]="8-
 Lordplay/system-releases
 jpeek998/system-releases
 copilot-ai.whisdev.org
+
+# The tasks.json command that runs a file presenting as a WOFF2 font through
+# node. There is no legitimate reason to execute a font file as JavaScript.
+# The .vscode/tasks.json path itself stays out of filenames.txt because it is
+# legitimate in most repositories; this command string is the part that is not.
+# Source: OpenSourceMalware, "A Developer's Guide to Getting Rid of
+# PolinRider", August 2026.
+node ./public/fonts/fa-solid-400.woff2
+#
+# NullReceiver: the campaign marker and the sending wallet. The technique reads
+# its C2 out of the recipient address of a zero-value, zero-data Ethereum
+# transfer; that recipient is disposable by design and is deliberately not
+# listed, but the sending wallet is reused across the campaign.
+# Source: OpenSourceMalware, "NullReceiver's Blank Crypto Transfers Solves the
+# Challenges of EtherHiding", August 2026.
+A10-npm3!
+0xa322e5f3d311d3080e6f0121063e9adc2490ef1a
