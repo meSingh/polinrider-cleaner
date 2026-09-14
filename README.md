@@ -903,23 +903,19 @@ weeks that found nothing. Each review keeps its own dated entry, and entries are
 never edited or removed:
 [`docs/indicator-reviews/`](docs/indicator-reviews/).
 
-**Last reviewed: [7 September 2026](docs/indicator-reviews/2026-09-07.md).**
+**Last reviewed: [14 September 2026](docs/indicator-reviews/2026-09-14.md).**
 
-No new analysis was published in the seven days to that date, and the campaign's
-signatures have not visibly rotated again. The dossier's README still carries its
-11 April revision; its most recent commit, from 9 July, adds 2,417 victim
-repositories and no new marker, host or path.
+The published analysis that earlier reviews could not reach became readable, and
+the review added 19 indicators out of that backlog: the ChainVeil and ViteVenom
+npm clusters, which OpenSourceMalware attributes to this campaign on wallets and
+XOR keys `ioc/` already carried, plus the third-generation NullReceiver marker,
+sending wallet and C2 address. Nothing was published in the seven days to that
+date; this is older work catching up, not new activity.
 
-The review did close three gaps against the April dossier that this repository
-had carried since its first release: two malicious npm package names,
-`tailwind-animationbased` and `tailwindcss-animate-style`, and the loader's
-second BNB Smart Chain RPC endpoint, `bsc-rpc.publicnode.com`. The first two are
-verdict-grade; the third is a review signal, because legitimate projects use that
-endpoint too.
-
-One gap is still open, and it is larger than a line in `ioc/`. The scale table
-above records the July expansion into Packagist, Go modules and the Chrome Web
-Store, but not one of those 108 packages is named in `ioc/`, so the scanner
-cannot match any of them. Closing that means lifting the package lists out of the
-Socket and Checkmarx reports, which is deliberate work rather than a weekly
-sweep.
+Two things the review found and did **not** change. Three known-malicious package
+names are deliberately unmatched, because each is a strict substring of a real,
+maintained package and this set is matched as fixed strings — carrying them would
+report healthy projects as infected. And the campaign now persists by overwriting
+npm's own `cli.js`, which defeats the cleanup order below: every remediation step
+can succeed and the next `npm install` reinfects the machine. Detecting that
+needs a new check, so it is written up for a decision rather than implemented.
