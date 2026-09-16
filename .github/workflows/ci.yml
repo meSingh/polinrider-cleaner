@@ -69,6 +69,8 @@ jobs:
 
       - name: Self-test - presentation layer
         run: ./ci/selftest-ui.sh
+      - name: Self-test - filesystem walk, prune and resume
+        run: ./ci/selftest-walk.sh
 
   powershell:
     name: PowerShell lint

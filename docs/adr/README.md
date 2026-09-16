@@ -40,6 +40,7 @@ If you disagree with one, open an issue and quote its number.
 | [0022](./0022-q-quits-b-goes-back.md) | q quits, b goes back | Accepted |
 | [0023](./0023-the-entry-point-parses-before-it-runs.md) | The entry point parses before it runs | Accepted |
 | [0024](./0024-a-prompt-inside-a-loop-must-not-share-its-stdin.md) | A prompt inside a loop must not share its stdin | Accepted |
+| [0025](./0025-walk-the-filesystem-once-with-prune-and-checkpoint-it.md) | Walk the filesystem once, with -prune, and checkpoint it | Accepted |
 
 ## Adding one
 

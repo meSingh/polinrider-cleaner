@@ -94,7 +94,10 @@ review(){ local m; m="$(printf '%s' "$*" | clean)"; REVIEWS=$((REVIEWS+1))
 note "== working tree: $(pwd) =="
 
 FILES="$WORK/files"
-find . -type f 2>/dev/null | sed 's|^\./||' | grep -Ev "$EXCLUDES" > "$FILES"
+# -prune stops find at the directory. Filtering afterwards with grep would
+# still walk every node_modules, which is the whole cost on a real tree.
+find . \( -name node_modules -o -name .git \) -prune -o -type f -print 2>/dev/null \
+  | sed 's|^\./||' | grep -Ev "$EXCLUDES" > "$FILES"
 note "files in scope: $(grep -c . "$FILES")"
 
 # One grep over the whole file list, not one grep per file. On a 3,000 file tree

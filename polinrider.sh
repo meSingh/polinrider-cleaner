@@ -15,6 +15,9 @@
 #
 # Options:
 #   --roots "A B"   code directories for the machine scan
+#   --background    machine scan only: run detached so the terminal can close
+#   --resume [DIR]  machine scan only: pick up an interrupted scan where it stopped
+#   --jobs N        machine scan only: parallel hashing workers (default: all cores)
 #   --out DIR       where evidence goes. Default: a directory under $TMPDIR,
 #                   which your machine clears on reboot. Mirrors hold live
 #                   malware, so they are never written inside a git checkout
@@ -46,6 +49,8 @@ MODE=""; ORG=""; USR=""; SCANPATH=""; OUT=""; ROOTS=""; ASSUME_YES=0; DO_ALL=0; 
 declare -a ROOT_LIST=()
 APPLY_ALL=0        # 1 after "apply to all", "stop" after q, during a run
 TRUSTED_ARGS=()     # colleagues to name, so their machines get checked too
+MACHINE_ARGS=()   # --background / --resume / --jobs, handed to the machine check
+RESUMING=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -55,6 +60,11 @@ while [[ $# -gt 0 ]]; do
     --path)    MODE="path"; SCANPATH="$2"; shift 2 ;;
     --all)     DO_ALL=1; shift ;;
     --roots)   ROOTS="$2"; shift 2 ;;
+    --background) MACHINE_ARGS+=(--background); shift ;;
+    --resume)  MACHINE_ARGS+=(--resume); RESUMING=1
+               if [[ $# -gt 1 && -d "$2" ]]; then MACHINE_ARGS+=("$2"); shift; fi
+               shift ;;
+    --jobs)    MACHINE_ARGS+=(--jobs "$2"); shift 2 ;;
     --out)     OUT="$2"; shift 2 ;;
     --yes|-y)  ASSUME_YES=1; shift ;;
     --purge-evidence) PURGE=1; shift ;;
@@ -251,6 +261,12 @@ scan_machine() {
   check_deps 0 || { note_error "the machine scan needs git"; return 3; }
   local d
   ROOT_LIST=()
+  if [[ $RESUMING -eq 1 ]]; then
+    # the roots are recorded in the run being resumed; asking again would be noise
+    say "${DIM}resuming the previous scan; roots come from its state directory${X}"
+    "$LOCAL_TOOL" ${MACHINE_ARGS[@]+"${MACHINE_ARGS[@]}"} 2>&1 | ui_findings
+    local rc="${PIPESTATUS[0]}"; [[ $rc -eq 2 ]] && FOUND_IN="machine"; note_rc $rc; return $rc
+  fi
   if [[ -n "$ROOTS" ]]; then
     # shellcheck disable=SC2206  # --roots is documented as space separated
     ROOT_LIST=($ROOTS)
@@ -267,7 +283,7 @@ scan_machine() {
   fi
   for d in "${ROOT_LIST[@]}"; do ui_bullet "${d/#$HOME/~}"; done
   say "${DIM}this reads only; the first run takes a few minutes${X}"
-  "$LOCAL_TOOL" "${ROOT_LIST[@]}" 2>&1 | ui_findings
+  "$LOCAL_TOOL" ${MACHINE_ARGS[@]+"${MACHINE_ARGS[@]}"} "${ROOT_LIST[@]}" 2>&1 | ui_findings
   local rc="${PIPESTATUS[0]}"; [[ $rc -eq 2 ]] && FOUND_IN="machine"; note_rc $rc; return $rc
 }
 

@@ -4,6 +4,8 @@
 # ---------------------------------------------------------------------------
 NOTES.local.md
 *.local.md
+# the promotion and distribution tracker; outreach notes, never published
+TASKS.md
 *.local
 notes.local/
 
@@ -25,6 +27,8 @@ restore-plan.tsv
 audit-log-*.json
 polinrider-report-*.txt
 polinrider-quarantine-*/
+# walk manifest, checkpoints and log of a machine scan; lists every file path
+polinrider-scan-*/
 manifest.tsv
 NEXT-STEPS.md
 affected-refs.tsv
