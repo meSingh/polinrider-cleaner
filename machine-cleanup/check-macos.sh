@@ -66,7 +66,7 @@ else
   STATE="${STATE_ARG:-$HOME/polinrider-scan-$TS}"
 fi
 [[ ${#ROOTS[@]} -eq 0 ]] && ROOTS=("$HOME/Sites" "$HOME/Projects" "$HOME/code" "$HOME/dev" "$HOME/Documents")
-prc_state_init "$STATE"
+prc_state_init "$STATE" "$RESUME"
 printf '%s\n' "${ROOTS[@]}" > "$STATE/roots"
 
 # Detach. nohup survives the terminal closing; caffeinate -i keeps the machine

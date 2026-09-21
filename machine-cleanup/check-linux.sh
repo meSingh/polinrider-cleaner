@@ -66,7 +66,7 @@ else
   STATE="${STATE_ARG:-$HOME/polinrider-scan-$TS}"
 fi
 [[ ${#ROOTS[@]} -eq 0 ]] && ROOTS=("$HOME/src" "$HOME/code" "$HOME/dev" "$HOME/projects" "$HOME/work" "$HOME/git")
-prc_state_init "$STATE"
+prc_state_init "$STATE" "$RESUME"
 printf '%s\n' "${ROOTS[@]}" > "$STATE/roots"
 
 # Detach. setsid puts it in its own session so closing the terminal does not

@@ -33,13 +33,19 @@ out="$(LANG=en_US.UTF-8 bash -c '. '"$ROOT"'/ui/render.sh; PRC_COLS=60 ui_banner
   && ok "a narrow terminal gets plain text rather than squashed art" \
   || no "a narrow terminal gets plain text rather than squashed art"
 # The wordmark must fit the width it claims to need, or it wraps into nonsense.
-out="$(LANG=en_US.UTF-8 bash -c '. '"$ROOT"'/ui/render.sh; PRC_COLS=80 ui_banner' | sed -n 2p)"
+# A UTF-8 locale that actually exists here: macOS ships en_US.UTF-8 and no
+# C.UTF-8; a slim Linux image ships C.UTF-8 and no en_US.UTF-8. Hardcoding
+# either one makes wc count bytes on the other, and the banner "fails" at
+# three times its real width.
+U8="$(locale -a 2>/dev/null | grep -iE '^(C\.utf-?8|en_US\.utf-?8)$' | head -1)"
+: "${U8:=C.UTF-8}"
+out="$(LANG="$U8" bash -c '. '"$ROOT"'/ui/render.sh; PRC_COLS=80 ui_banner' | sed -n 2p)"
 # wc counts bytes unless it is told the encoding; these glyphs are 3 bytes each.
-w=$(printf '%s' "$out" | LC_ALL=en_US.UTF-8 wc -m | tr -d ' ')
+w=$(printf '%s' "$out" | LC_ALL="$U8" wc -m | tr -d ' ')
 [[ "$w" -le 80 ]] && ok "the wordmark fits in 80 columns ($w)" || no "the wordmark is $w columns wide"
 
 echo "== the author signature =="
-out="$(LANG=en_US.UTF-8 bash -c '. '"$ROOT"'/ui/render.sh; ui_banner')"
+out="$(LANG="$U8" bash -c '. '"$ROOT"'/ui/render.sh; ui_banner')"
 [[ "$out" == *"by Mandeep Singh"* ]] && ok "the signature is present" || no "the signature is present"
 # Piped output must stay clean: no OSC 8, and no bare URL leaking into a log.
 [[ "$out" != *"]8;;"* ]] && ok "no hyperlink escape when stdout is not a terminal" \
@@ -219,9 +225,18 @@ if [[ -n "$hits" ]]; then
   no "ui/ runs no external commands"; printf '%s\n' "$hits" | sed 's/^/       /'
 else ok "ui/ runs no external commands"; fi
 grep -q 'INFECTED\|rmcej' "$ROOT/ui/theme.sh" && no "ui/theme.sh holds no indicators" || ok "ui/theme.sh holds no indicators"
-for f in "$ROOT/ui/theme.sh" "$ROOT/ui/render.sh"; do
-  [[ -x "$f" ]] && no "$(basename "$f") is not executable, it is sourced" \
-                || ok "$(basename "$f") is not executable, it is sourced"
+# Ask git for the mode, not the filesystem. These files are sourced, never run,
+# so the committed mode is what matters -- and a Docker bind mount on macOS
+# reports a 644 file as executable to access(), which made this assertion lie.
+for f in ui/theme.sh ui/render.sh; do
+  mode="$(git -C "$ROOT" ls-files -s -- "$f" 2>/dev/null | awk '{print $1}')"
+  if [[ -z "$mode" ]]; then
+    ok "$(basename "$f") mode not checked (not a git checkout)"
+  elif [[ "$mode" == "100644" ]]; then
+    ok "$(basename "$f") is not executable, it is sourced"
+  else
+    no "$(basename "$f") is not executable, it is sourced (committed as $mode)"
+  fi
 done
 
 printf '\n  passed %s, failed %s\n' "$PASS" "$FAIL"

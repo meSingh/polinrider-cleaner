@@ -169,11 +169,22 @@ run_check() {         # $1 = name, $2 = function, rest = its arguments
   fi
 }
 
-prc_state_init() {    # $1 = state directory, new or being resumed
+prc_state_init() {    # $1 = state directory, $2 = 1 when resuming
   STATE="$1"
+  local resuming="${2:-0}"
   mkdir -p "$STATE" || { echo "cannot create $STATE" >&2; exit 3; }
-  # shellcheck source=/dev/null
-  [[ -f "$STATE/counters" ]] && . "$STATE/counters"
+  if [[ "$resuming" -eq 1 ]]; then
+    # shellcheck source=/dev/null
+    [[ -f "$STATE/counters" ]] && . "$STATE/counters"
+  else
+    # A run without --resume starts from nothing. The directory name carries a
+    # timestamp at second resolution, so two runs started in the same second
+    # land on the same path; inheriting that one's checkpoints made the second
+    # run skip every check and report a clean machine it never looked at.
+    # Silently doing no work is the worst failure this tool has.
+    rm -f "$STATE/done" "$STATE/counters" "$STATE/manifest.txt" "$STATE/gitdirs.txt"
+    HITS=0; REVIEW=0
+  fi
   printf '%s\n' "$REPORT" > "$STATE/report-path"
 }
 

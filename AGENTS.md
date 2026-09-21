@@ -169,6 +169,9 @@ If a record and the code disagree, the code is the truth and the record is a bug
 
 ### Before you open a pull request
 
+Run these in the sandbox, not on your machine: `./ci/sandbox.sh --all` does
+all of it. See ADR-0027.
+
 ```bash
 bash -n polinrider.sh lib/*.sh ci/*.sh github-*/*.sh machine-cleanup/*.sh
 shellcheck --severity=warning --external-sources \
