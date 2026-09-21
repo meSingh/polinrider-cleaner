@@ -1,0 +1,14 @@
+/* The campaign's own colour, used only for the verdict markers below. */
+:root { --prc-hit: #d64545; --prc-review: #c78a2b; --prc-ok: #3c9a5f; }
+
+/* Verdict markers, so [HIT] / [review] / [ok] read the same on the page as
+   they do in the terminal. Written as inline code in the Markdown. */
+code.hit    { color: var(--prc-hit);    font-weight: 600; }
+code.review { color: var(--prc-review); font-weight: 600; }
+code.ok     { color: var(--prc-ok);     font-weight: 600; }
+
+/* Long command lines are common here; wrap rather than clip. */
+pre code { white-space: pre-wrap; word-break: break-word; }
+
+/* Tables of indicators get wide. Let them scroll inside the page. */
+.content table { display: block; overflow-x: auto; max-width: 100%; }

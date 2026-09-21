@@ -108,8 +108,10 @@ jobs:
       # This repository contains indicator strings by design: they are what it
       # detects. The scanner must still come back clean once its own detection
       # code is excluded, which is what proves the exclusion logic works.
-      # Markdown is skipped by the scanner's own defaults.
+      # Markdown is skipped by the scanner's own defaults, but docs-site/book/
+      # is the rendered HTML of that same Markdown, so it carries the same
+      # strings without the .md extension that would exempt it.
       - name: Scan with detection tooling excluded
         run: |
           ./ci/scan-workspace.sh --path . --all-refs --fail-on infected \
-            --exclude '(^|/)(lib|ci|github-org-recovery|github-account-recovery|machine-cleanup)/'
+            --exclude '(^|/)(lib|ci|github-org-recovery|github-account-recovery|machine-cleanup)/|(^|/)docs-site/book/'

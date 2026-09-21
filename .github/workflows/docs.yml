@@ -1,0 +1,85 @@
+# The documentation site.
+#
+# Builds on every push and pull request, so a broken link or a bad book.toml
+# fails the check rather than the deploy. Publishes only from main: the site
+# describes the released tool, not whatever is in flight on a branch.
+#
+# GitHub Pages has to be enabled once, by hand, with the source set to
+# "GitHub Actions" rather than a branch. Settings > Pages.
+name: Docs
+
+on:
+  push:
+    branches: [main, v2]
+    paths: ['docs-site/**', 'docs/adr/**', '.github/workflows/docs.yml']
+  pull_request:
+    paths: ['docs-site/**', 'docs/adr/**', '.github/workflows/docs.yml']
+  workflow_dispatch:
+
+permissions: read-all
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build the site
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install mdBook
+        env:
+          MDBOOK_VERSION: '0.5.4'
+        run: |
+          # Pinned. A docs build that silently changes renderer version is a
+          # diff nobody asked for.
+          mkdir -p "$HOME/.cargo/bin"
+          curl -sSL "https://github.com/rust-lang/mdBook/releases/download/v${MDBOOK_VERSION}/mdbook-v${MDBOOK_VERSION}-x86_64-unknown-linux-gnu.tar.gz" \
+            | tar -xz -C "$HOME/.cargo/bin"
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
+      - name: Build
+        run: mdbook build docs-site
+
+      - name: Check every internal link resolves
+        run: |
+          # create-missing = false already fails on a SUMMARY entry with no
+          # file. This catches the other direction: a link in prose to a page
+          # that was renamed or never written.
+          fail=0
+          while IFS= read -r f; do
+            d=$(dirname "$f")
+            grep -oE '\]\(\.{1,2}/[^)#]+\.md' "$f" | sed 's/^](//' | while IFS= read -r l; do
+              t=$(cd "$d" && printf '%s' "$(realpath -m "$l")")
+              [ -f "$t" ] || { echo "broken link in $f -> $l"; exit 1; }
+            done || fail=1
+          done < <(find docs-site/src -name '*.md')
+          [ "$fail" -eq 0 ] || exit 1
+          echo "all internal links resolve"
+
+      - name: Upload the site
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
+        with:
+          path: docs-site/book
+
+  deploy:
+    name: Publish to GitHub Pages
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write       # publish
+      id-token: write    # OIDC, required by deploy-pages
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5

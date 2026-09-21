@@ -1,0 +1,32 @@
+[book]
+title = "polinrider-cleaner"
+description = "Detect and clean up after the PolinRider supply-chain campaign, on a machine, a GitHub account, or a whole organization."
+authors = ["Mandeep Singh"]
+language = "en"
+src = "src"
+
+[build]
+build-dir = "book"
+create-missing = false        # a SUMMARY entry with no file is a build failure, not a blank page
+
+[output.html]
+default-theme = "navy"
+preferred-dark-theme = "navy"
+git-repository-url = "https://github.com/meSingh/polinrider-cleaner"
+git-repository-icon = "fab-github"
+# Every page gets an "edit this page" link, so a correction is a pull request
+# rather than an issue somebody has to translate.
+edit-url-template = "https://github.com/meSingh/polinrider-cleaner/edit/main/docs-site/src/{path}"
+site-url = "/polinrider-cleaner/"
+additional-css = ["theme/custom.css"]
+
+[output.html.search]
+enable = true
+limit-results = 20
+use-boolean-and = true
+boost-title = 2
+boost-hierarchy = 2
+
+[output.html.fold]
+enable = true
+level = 1

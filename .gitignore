@@ -88,3 +88,6 @@ temp/
 *.rej
 *.log
 node_modules/
+
+# the documentation site build output; CI builds and publishes it
+docs-site/book/
