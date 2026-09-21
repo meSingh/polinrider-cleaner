@@ -49,7 +49,11 @@ pub struct Finding {
 
 impl Finding {
     pub fn new(level: Level, message: impl Into<String>) -> Self {
-        Self { level, message: message.into(), remedy: None }
+        Self {
+            level,
+            message: message.into(),
+            remedy: None,
+        }
     }
 
     pub fn hit(message: impl Into<String>) -> Self {

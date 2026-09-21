@@ -125,6 +125,17 @@ if [[ "$1" == "--all" ]]; then
     done
     echo "== conformance =="
     ./conformance/run.sh || fail=1
+    if command -v cargo >/dev/null 2>&1 && [ -f Cargo.toml ]; then
+      echo "== rust =="
+      # --locked: the repository is mounted read-only, and a lockfile that
+      # needed rewriting should fail loudly rather than be silently resolved.
+      cargo fmt --check || fail=1
+      cargo clippy --locked --all-targets -- -D warnings >/dev/null 2>&1 \
+        && echo "  pass  clippy" || { echo "  FAIL  clippy"; fail=1; }
+      if cargo test --locked >/tmp/ct.log 2>&1; then
+        echo "  pass  cargo test ($(grep -c "^test .* ok$" /tmp/ct.log) tests)"
+      else echo "  FAIL  cargo test"; tail -15 /tmp/ct.log; fail=1; fi
+    fi
     exit $fail
   '
   exit $?

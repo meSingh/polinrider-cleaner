@@ -1,36 +1,49 @@
-/* Small additions on top of the Lucode theme. Lucode owns the palette, the
- * typography and the component styling; nothing here should fight it.
+/* Additions on top of the Lucode theme.
  *
- * The one thing worth carrying over from the tool itself: the scanner prints
- * [HIT], [review] and [ok], and the documentation should use the same three
- * colours so a reader moving between terminal and page relearns nothing.
+ * Lucode ships a full OKLCH palette (--red, --orange, --green, --blue,
+ * --purple, each with -low and -high) but leaves --accent as var(--gray-7),
+ * which is grey. That is why the site read as flat. Everything below either
+ * gives it an accent or maps the tool's own vocabulary onto tokens the theme
+ * already defines, rather than inventing a second palette beside it.
  */
-:root {
-  --prc-hit: #b8382f;
-  --prc-review: #8d6412;
-  --prc-ok: #2c7048;
-}
+
+/* A teal accent, in the theme's own OKLCH idiom so it sits with the rest of
+ * the palette rather than on top of it. Hue 195 lands between the theme's
+ * green (150) and blue (240), and matches the cyan of the project's artwork.
+ * Deliberately not the indigo-on-slate that every generated docs site uses. */
 :root[data-theme='dark'] {
-  --prc-hit: #e2645c;
-  --prc-review: #d3a244;
-  --prc-ok: #5fb87e;
+  --accent: oklch(74% 0.115 195);
+  --accent-low: oklch(28% 0.055 195);
+  --accent-high: oklch(86% 0.075 195);
+}
+:root[data-theme='light'] {
+  --accent: oklch(52% 0.105 195);
+  --accent-low: oklch(97% 0.014 195);
+  --accent-high: oklch(40% 0.095 195);
 }
 
-/* Verdict markers, written in the Markdown as inline code. */
-code.hit    { color: var(--prc-hit);    font-weight: 600; }
-code.review { color: var(--prc-review); font-weight: 600; }
-code.ok     { color: var(--prc-ok);     font-weight: 600; }
+/* The scanner prints [HIT], [review] and [ok]. The page uses the theme's own
+ * red, orange and green for those, so a reader moving between terminal and
+ * documentation relearns nothing and the palette stays coherent. */
+code.hit    { color: var(--red);    font-weight: 600; }
+code.review { color: var(--orange); font-weight: 600; }
+code.ok     { color: var(--green);  font-weight: 600; }
 
-/* The badge strip on the landing page. A row that wraps, with no list
- * bullets and no baseline gaps between images. */
+/* Badge strip: a row that wraps, no bullets, no baseline gaps. */
 .badges {
-  display: flex; flex-wrap: wrap; gap: 0.4rem;
-  margin: 0 0 1.75rem; padding: 0; list-style: none;
+  display: flex; flex-wrap: wrap; gap: 0.4rem; justify-content: center;
+  margin: 0 0 2rem; padding: 0; list-style: none;
 }
-.badges li { margin: 0; }
-.badges a  { display: block; line-height: 0; }
+.badges li  { margin: 0; }
+.badges a   { display: block; line-height: 0; }
 .badges img { display: block; height: 20px; }
 
-/* Wide tables are common here. Let them scroll inside the page rather than
- * pushing the whole layout sideways on a phone. */
+/* One number worth making loud on the landing page. */
+.figure {
+  display: block; font-size: clamp(2.5rem, 7vw, 4rem); line-height: 1;
+  font-weight: 700; color: var(--accent); letter-spacing: -0.03em;
+}
+.figure-note { display: block; color: var(--muted-foreground); margin-top: 0.4rem; }
+
+/* Wide tables scroll inside the page instead of pushing the layout sideways. */
 .sl-markdown-content table { display: block; overflow-x: auto; }

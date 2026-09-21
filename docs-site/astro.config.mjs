@@ -20,7 +20,22 @@ export default defineConfig({
       // Lucode: a shadcn/ui-styled Starlight theme. It supplies the component
       // overrides, tokens and Expressive Code config; everything below is
       // ordinary Starlight configuration on top of it.
-      plugins: [lucode()],
+      plugins: [
+        lucode({
+          // Attribution, and where the site came from. Shown on every page.
+          footerText:
+            'Built by [Mandeep Singh](https://github.com/meSingh) after cleaning up a real ' +
+            'PolinRider incident. Source and documentation are [MIT licensed]' +
+            '(https://github.com/meSingh/polinrider-cleaner/blob/main/LICENSE). ' +
+            'Theme: [Lucode](https://github.com/lucas-labs/lucode-starlight-theme) for ' +
+            '[Starlight](https://starlight.astro.build).',
+          navLinks: [
+            { label: 'Quick start', link: '/quick-start/' },
+            { label: 'The campaign', link: '/campaign/what-it-is/' },
+            { label: 'Decisions', link: '/project/decisions/', badge: '28' },
+          ],
+        }),
+      ],
 
       social: [
         { icon: 'github', label: 'GitHub', href: 'https://github.com/meSingh/polinrider-cleaner' },
