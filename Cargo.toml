@@ -1,0 +1,35 @@
+[package]
+name = "polinrider"
+version = "2.0.0-alpha.1"
+edition = "2021"
+rust-version = "1.98"
+description = "Detect and clean up after the PolinRider supply-chain campaign"
+repository = "https://github.com/meSingh/polinrider-cleaner"
+license = "MIT"
+
+[[bin]]
+name = "polinrider"
+path = "src/main.rs"
+
+[lib]
+name = "polinrider"
+path = "src/lib.rs"
+
+[dependencies]
+
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1
+panic = "abort"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+# A scanner that silently swallows a failure reports clean for work it did not
+# do, which is the worst thing this tool can do. Make the shortcuts loud.
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+indexing_slicing = "deny"

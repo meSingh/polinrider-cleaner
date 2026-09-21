@@ -66,8 +66,11 @@ cat <<EOF
   ----------------------------------------------------------------------
 EOF
 
-"$ROOT/machine-cleanup/check-linux.sh" --fs-only \
-  --report /tmp/demo-report.txt --state /tmp/demo-state "$DEMO"
+# The branded entry point, not the raw engine underneath it: the banner, the
+# colours and the verdict box are the thing being demonstrated as much as the
+# findings are.
+"$ROOT/polinrider.sh" --machine --roots "$DEMO" --fs-only \
+  --report /tmp/demo-report.txt --state /tmp/demo-state --yes
 rc=$?
 
 cat <<EOF

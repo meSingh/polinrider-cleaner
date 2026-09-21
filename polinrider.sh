@@ -18,6 +18,8 @@
 #   --background    machine scan only: run detached so the terminal can close
 #   --resume [DIR]  machine scan only: pick up an interrupted scan where it stopped
 #   --jobs N        machine scan only: parallel hashing workers (default: all cores)
+#   --fs-only       machine scan only: skip the live-host checks (processes,
+#                   sockets, npm, crontab). For a backup drive or a mounted image.
 #   --out DIR       where evidence goes. Default: a directory under $TMPDIR,
 #                   which your machine clears on reboot. Mirrors hold live
 #                   malware, so they are never written inside a git checkout
@@ -65,6 +67,9 @@ while [[ $# -gt 0 ]]; do
                if [[ $# -gt 1 && -d "$2" ]]; then MACHINE_ARGS+=("$2"); shift; fi
                shift ;;
     --jobs)    MACHINE_ARGS+=(--jobs "$2"); shift 2 ;;
+    --fs-only) MACHINE_ARGS+=(--fs-only); shift ;;
+    --report)  MACHINE_ARGS+=(--report "$2"); shift 2 ;;
+    --state)   MACHINE_ARGS+=(--state "$2"); shift 2 ;;
     --out)     OUT="$2"; shift 2 ;;
     --yes|-y)  ASSUME_YES=1; shift ;;
     --purge-evidence) PURGE=1; shift ;;
@@ -82,7 +87,9 @@ OUT="${OUT:-$(prc_default_evidence_dir)}"
 # is infected, so the presentation layer can be reviewed on its own and the
 # scanning logic stays readable without it.
 PRC_VERSION="$(sed -n 's/^## \[\?\(v[0-9.]*\).*/\1/p' "$HERE/CHANGELOG.md" 2>/dev/null | head -1)"
-PRC_VERSION="${PRC_VERSION:-$(git -C "$HERE" describe --tags --abbrev=0 2>/dev/null || true)}"
+# --match 'v*' so a non-release tag, such as a restore point kept on a branch,
+# cannot end up printed as the version.
+PRC_VERSION="${PRC_VERSION:-$(git -C "$HERE" describe --tags --abbrev=0 --match 'v*' 2>/dev/null || true)}"
 # shellcheck source=ui/render.sh
 . "$HERE/ui/render.sh"
 

@@ -624,7 +624,23 @@ verdict() {
   [[ $APPLY -eq 1 ]] && say "  quarantine               : $QDIR"
   say ""
   if [[ $HITS -gt 0 ]]; then
-    say "VERDICT: COMPROMISED."
+    # Loud on purpose. A confirmed finding scrolling past in a wall of [ok]
+    # lines is the difference between somebody acting and somebody not. Plain
+    # ASCII so it survives a dumb terminal, a pipe and a log file; the
+    # presentation layer adds the colour when there is a terminal to add it to.
+    local word="indicator"; [[ $HITS -gt 1 ]] && word="indicators"
+    local w=54 bar line                       # inner width, one place
+    bar="$(printf '%*s' $((w+7)) '' | tr ' ' '#')"
+    _vbox() { printf '  ##   %-*s##' "$w" "$1"; }
+    say "  $bar"
+    say "$(_vbox "")"
+    say "$(_vbox "VERDICT: COMPROMISED")"
+    say "$(_vbox "")"
+    say "$(_vbox "$HITS confirmed $word found.")"
+    say "$(_vbox "This machine cannot be trusted until it is rebuilt.")"
+    say "$(_vbox "")"
+    say "  $bar"
+    say ""
     say "  Quarantining artifacts does not make this machine trustworthy again. The"
     say "  payload is a remote access trojan and an infostealer, so assume every"
     say "  credential reachable from this user account has been taken."

@@ -169,6 +169,9 @@ ui_findings() {
     case "$line" in
       INFECTED*)          body="$(_trim "${line#INFECTED}")"
                           printf '      %s%s %s%s\n' "$T_HIT" "$T_HIT_S" "$body" "$C_RESET" ;;
+      '  ##'*)          printf '      %s%s%s%s\n' "$T_HIT" "$C_BOLD" "$line" "$C_RESET" ;;
+      *'VERDICT: COMPROMISED'*)
+                          printf '      %s%s%s%s\n' "$T_HIT" "$C_BOLD" "$line" "$C_RESET" ;;
       *'[HIT]'*)          body="$(_trim "${line#*\[HIT\]}")"
                           printf '      %s%s %s%s\n' "$T_HIT" "$T_HIT_S" "$body" "$C_RESET" ;;
       review*)            body="$(_trim "${line#review}")"
