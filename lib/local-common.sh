@@ -121,7 +121,7 @@ prc_walk() {          # $@ = roots. Writes $STATE/manifest.txt and gitdirs.txt o
     find "$root" "${PRUNE_ARGS[@]}" -o -type d -name .git -print -prune 2>/dev/null >> "$PRC_GITDIRS"
   done
   t1=$(date +%s); n=$(grep -c . "$PRC_MANIFEST")
-  info "$n files listed in $((t1-t0))s. Not walked: $(IFS=', '; printf '%s' "${PRC_PRUNE[*]}")"
+  info "$n files listed in $((t1-t0))s. Not walked: $(printf '%s, ' "${PRC_PRUNE[@]}" | sed 's/, $//')"
   [[ $n -eq 0 ]] && warn "no files found under the roots. Are they the right directories?"
   return 0
 }
@@ -552,7 +552,11 @@ check_npm() {
 # is a public key, not a credential. Listed so you know what to rotate IF
 # something else was a confirmed hit, which is why these are [info].
 check_credentials() {  # $@ = code roots
-  hdr "Credential surface on this machine"
+  if [[ $FS_ONLY -eq 1 ]]; then
+    hdr "Credential surface under the scanned paths"
+  else
+    hdr "Credential surface on this machine"
+  fi
   local f envcount=0 found=0
   [[ $FS_ONLY -eq 1 ]] && set --   # keep the .env count below, drop the $HOME sweep
   for f in "$HOME"/.ssh/id_* "$HOME/.aws/credentials" "$HOME/.config/gcloud/credentials.db" \

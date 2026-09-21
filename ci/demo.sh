@@ -72,7 +72,16 @@ rc=$?
 
 cat <<EOF
 
-  ----------------------------------------------------------------------
+  ======================================================================
+  That was a simulation. Your own machine was not scanned and is not
+  affected. The scan looked only at $DEMO, inside this container.
+
+  The COMPROMISED verdict above is the tool behaving correctly: it found
+  three real indicators in the sample and said exactly what it would say
+  on a genuine finding. That wording is deliberately left alone here so
+  you can judge how it lands when it matters.
+  ======================================================================
+
   That exit code was $rc.  0 clean · 1 needs a look · 2 confirmed · 3 could not run
 
   Things worth trying from here:
