@@ -12,6 +12,11 @@ style preference.
 4. **Scan every future push**, so a reinfection is caught by CI rather than by
    a stranger.
 
+> [!CAUTION]
+> Cleaning a remote while an infected machine still holds a valid token puts you
+> back where you started within minutes. This is documented behaviour of the
+> campaign, and it is the single most common way a cleanup fails.
+
 ## Why
 
 Cleaning the remote while an infected machine still holds a valid token puts you

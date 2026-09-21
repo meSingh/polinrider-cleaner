@@ -8,8 +8,9 @@ git clone https://github.com/meSingh/polinrider-cleaner.git && cd polinrider-cle
 ./polinrider.sh
 ```
 
-**This is read-only. It changes nothing.** Everything else on this site can
-wait until it has told you what it found.
+> [!NOTE]
+> This is read-only. It changes nothing. Everything else on this site can wait
+> until it has told you what it found.
 
 ## Installing instead of cloning
 

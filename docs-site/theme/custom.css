@@ -1,14 +1,277 @@
-/* The campaign's own colour, used only for the verdict markers below. */
-:root { --prc-hit: #d64545; --prc-review: #c78a2b; --prc-ok: #3c9a5f; }
+/* ===========================================================================
+   polinrider-cleaner documentation theme
+   ---------------------------------------------------------------------------
+   The reference is a technical field manual, not a product site: numbered
+   procedures, warnings that mean something, and a typographic hierarchy you
+   can follow at 2am. Deliberately not the conventions this kind of page
+   usually reaches for — no gradients, no glass, no indigo-on-slate, no emoji
+   standing in for icons.
 
-/* Verdict markers, so [HIT] / [review] / [ok] read the same on the page as
-   they do in the terminal. Written as inline code in the Markdown. */
-code.hit    { color: var(--prc-hit);    font-weight: 600; }
-code.review { color: var(--prc-review); font-weight: 600; }
-code.ok     { color: var(--prc-ok);     font-weight: 600; }
+   Two decisions are not arbitrary and should not be "simplified" later:
 
-/* Long command lines are common here; wrap rather than clip. */
-pre code { white-space: pre-wrap; word-break: break-word; }
+   1. The signal colours are the tool's own. The scanner prints [HIT],
+      [review], [ok] and [info]; the documentation uses the same four so a
+      reader moves between terminal and page without relearning anything.
 
-/* Tables of indicators get wide. Let them scroll inside the page. */
-.content table { display: block; overflow-x: auto; max-width: 100%; }
+   2. The fonts are self-hosted. A documentation site for a supply-chain
+      security tool should not open a third-party connection to render its own
+      text. IBM Plex is also designed for technical documentation, which is
+      what this is.
+   =========================================================================== */
+
+/* Font faces live in theme/fonts/fonts.css: mdBook hashes asset filenames,
+   and only that file gets the {{ resource }} helper that resolves them. */
+
+/* --- Palette -------------------------------------------------------------
+   html.<theme> beats mdBook's .<theme>, so only the values that matter are
+   restated rather than reproducing all 249 of them.
+   ------------------------------------------------------------------------- */
+
+/* Paper. Warm, because a pure-white technical page is glare at night. */
+html.light {
+  --bg: #fbfaf7;
+  --fg: #1c1d20;
+  --fg-muted: #5f6166;
+  --rule: #e2ded4;
+  --raised: #f4f1ea;
+
+  --sidebar-bg: #f3f1ea;
+  --sidebar-fg: #3f4146;
+  --sidebar-active: #0f6d63;
+  --sidebar-spacer: #e2ded4;
+  --sidebar-non-existant: #a4a29b;
+
+  --links: #0f6d63;
+  --inline-code-color: #8a3f2f;
+  --scrollbar: #c9c5bb;
+  --icons: #85837c;
+  --icons-hover: #1c1d20;
+
+  --quote-bg: #f4f1ea;
+  --quote-border: #ddd8cc;
+  --table-border-color: #e2ded4;
+  --table-header-bg: transparent;
+  --table-alternate-bg: #f7f5ef;
+
+  --searchbar-bg: #ffffff;
+  --searchbar-fg: #1c1d20;
+  --searchbar-border-color: #ddd8cc;
+  --search-mark-bg: #f0d8a0;
+
+  /* The scanner's four verdicts. */
+  --sig-hit: #b8382f;
+  --sig-review: #8d6412;
+  --sig-ok: #2c7048;
+  --sig-info: #64665f;
+  --sig-hit-tint: #fbefed;
+  --sig-review-tint: #fbf5e6;
+  --sig-ok-tint: #edf6f0;
+  --sig-info-tint: #f2f1ec;
+  --color-scheme: light;
+}
+
+/* Ink. Near-neutral on purpose: slate-blue with an indigo accent is the
+   house style of every generated docs page, and this is not that. */
+html.navy, html.coal, html.ayu, html.rust {
+  --bg: #131417;
+  --fg: #dbd9d3;
+  --fg-muted: #93918a;
+  --rule: #2a2b30;
+  --raised: #1a1b1f;
+
+  --sidebar-bg: #0e0f12;
+  --sidebar-fg: #a8a69f;
+  --sidebar-active: #5cb5a9;
+  --sidebar-spacer: #24252a;
+  --sidebar-non-existant: #55565c;
+
+  --links: #5cb5a9;
+  --inline-code-color: #d9a08c;
+  --scrollbar: #3a3b41;
+  --icons: #6d6f75;
+  --icons-hover: #dbd9d3;
+
+  --quote-bg: #1a1b1f;
+  --quote-border: #2f3036;
+  --table-border-color: #2a2b30;
+  --table-header-bg: transparent;
+  --table-alternate-bg: #17181c;
+
+  --searchbar-bg: #1a1b1f;
+  --searchbar-fg: #dbd9d3;
+  --searchbar-border-color: #33343a;
+  --search-mark-bg: #4a4426;
+
+  --sig-hit: #e2645c;
+  --sig-review: #d3a244;
+  --sig-ok: #5fb87e;
+  --sig-info: #8d8b84;
+  --sig-hit-tint: #241a1a;
+  --sig-review-tint: #221e15;
+  --sig-ok-tint: #17211b;
+  --sig-info-tint: #1b1c20;
+  --color-scheme: dark;
+}
+
+/* --- Typography ----------------------------------------------------------
+   mdBook sets html { font-size: 62.5% }, so 1rem is 10px here, not 16px.
+   Every length below is written as px/10. Getting this wrong renders the
+   whole site at 62% scale, which is exactly what happened the first time.
+   ------------------------------------------------------------------------- */
+html {
+  font-family: "Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono-font: "Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --content-max-width: 78rem;          /* 780px */
+}
+.content { font-size: 1.65rem; line-height: 1.65; }   /* 16.5px */
+
+.content h1, .content h2, .content h3, .content h4 {
+  font-weight: 600; letter-spacing: -0.012em; line-height: 1.25; color: var(--fg);
+}
+.content h1 { font-size: 3.3rem; margin: 0 0 2rem; }            /* 33px */
+/* A rule above every h2: in a manual, sections are separated, not just bigger. */
+.content h2 {
+  font-size: 2.25rem; margin: 4.4rem 0 1.6rem;
+  padding-top: 2.2rem; border-top: 1px solid var(--rule);
+}
+.content h3 { font-size: 1.8rem; margin: 3.2rem 0 1rem; }
+.content h4 {
+  font-size: 1.3rem; margin: 2.6rem 0 0.8rem;
+  font-family: var(--mono-font); font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-muted);
+}
+.content strong { font-weight: 600; }
+.content a { text-decoration-thickness: 1px; text-underline-offset: 0.18em; }
+.content a:hover { text-decoration-thickness: 2px; }
+
+/* --- Code ---------------------------------------------------------------- */
+.content code { font-family: var(--mono-font); font-size: 0.88em; }
+.content :not(pre) > code {
+  background: var(--raised); border: 1px solid var(--rule);
+  border-radius: 2px; padding: 0.1em 0.35em;
+}
+.content pre {
+  border: 1px solid var(--rule); border-radius: 2px;
+  background: var(--raised); padding: 0;
+}
+.content pre > code { display: block; padding: 1.5rem 1.8rem; line-height: 1.55; }
+
+/* --- Callouts ------------------------------------------------------------
+   mdBook renders > [!WARNING] as blockquote.blockquote-tag-warning with an
+   icon and a title. Restyled so a warning looks like a procedure warning:
+   a rule in the signal colour, a tinted field, a mono label.
+   ------------------------------------------------------------------------- */
+.content blockquote.blockquote-tag {
+  border: 1px solid var(--rule); border-left: 3px solid var(--sig-info);
+  background: var(--sig-info-tint); border-radius: 2px;
+  padding: 1.4rem 1.8rem; margin: 2.4rem 0; color: var(--fg);
+}
+.content blockquote.blockquote-tag > :first-child { margin-top: 0; }
+.content blockquote.blockquote-tag > :last-child  { margin-bottom: 0; }
+.content .blockquote-tag-title {
+  display: flex; align-items: center; gap: 0.7rem;
+  font-family: var(--mono-font); font-weight: 500;
+  font-size: 1.15rem; letter-spacing: 0.09em; text-transform: uppercase;
+  margin-bottom: 0.8rem;
+}
+.content .blockquote-tag-title svg { width: 16px; height: 16px; fill: currentColor; flex: none; }
+
+.content .blockquote-tag-caution,
+.content .blockquote-tag-warning { border-left-color: var(--sig-hit); background: var(--sig-hit-tint); }
+.content .blockquote-tag-caution .blockquote-tag-title,
+.content .blockquote-tag-warning .blockquote-tag-title { color: var(--sig-hit); }
+.content .blockquote-tag-important { border-left-color: var(--sig-review); background: var(--sig-review-tint); }
+.content .blockquote-tag-important .blockquote-tag-title { color: var(--sig-review); }
+.content .blockquote-tag-tip { border-left-color: var(--sig-ok); background: var(--sig-ok-tint); }
+.content .blockquote-tag-tip .blockquote-tag-title { color: var(--sig-ok); }
+.content .blockquote-tag-note .blockquote-tag-title { color: var(--sig-info); }
+
+/* A plain blockquote is an aside, and must not read as a warning. */
+.content blockquote:not(.blockquote-tag) {
+  border: 0; border-left: 2px solid var(--rule); background: none;
+  color: var(--fg-muted); padding: 0.2rem 0 0.2rem 1.8rem; margin: 2.4rem 0;
+}
+
+/* --- Tables --------------------------------------------------------------
+   Most of this site's content is tabular. No vertical rules, no zebra:
+   a specification table, read by row.
+   ------------------------------------------------------------------------- */
+.content table { border-collapse: collapse; width: 100%; margin: 2.4rem 0; font-size: 1.5rem; }
+.content table thead th {
+  font-family: var(--mono-font); font-weight: 500;
+  font-size: 1.15rem; letter-spacing: 0.09em; text-transform: uppercase;
+  color: var(--fg-muted); text-align: left;
+  border: 0; border-bottom: 1px solid var(--fg-muted);
+  padding: 0 1.4rem 0.8rem 0;
+}
+.content table td {
+  border: 0; border-bottom: 1px solid var(--rule);
+  padding: 1rem 1.4rem 1rem 0; vertical-align: top; line-height: 1.55;
+}
+.content table tbody tr:nth-child(2n) { background: transparent; }
+.content table td:last-child, .content table th:last-child { padding-right: 0; }
+
+/* --- Numbered procedures ------------------------------------------------- */
+.content ol { counter-reset: step; list-style: none; padding-left: 0; }
+.content ol > li {
+  counter-increment: step; position: relative;
+  padding-left: 3.6rem; margin: 1rem 0;
+}
+.content ol > li::before {
+  content: counter(step); position: absolute; left: 0; top: 0.05em;
+  font-family: var(--mono-font); font-size: 1.25rem; font-weight: 500;
+  color: var(--sig-info); border: 1px solid var(--rule); border-radius: 2px;
+  min-width: 2.4rem; height: 2.4rem;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.content ol ol { margin-top: 1rem; }
+.content ul { padding-left: 2.2rem; }
+.content ul > li { margin: 0.6rem 0; }
+.content ul > li::marker { color: var(--fg-muted); }
+
+/* --- Sidebar ------------------------------------------------------------- */
+.sidebar { font-size: 1.45rem; }
+.sidebar .sidebar-scrollbox { padding: 2rem 1.8rem; }
+.chapter li.part-title {
+  font-family: var(--mono-font); font-weight: 500;
+  font-size: 1.1rem; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--sig-info); margin: 2.6rem 0 0.8rem;
+  padding: 0 0 0.6rem; border-bottom: 1px solid var(--sidebar-spacer);
+}
+.chapter li.chapter-item { line-height: 1.45; margin: 0.25rem 0; }
+.chapter li a { padding: 0.45rem 0; border-radius: 2px; }
+.chapter li a.active { font-weight: 600; }
+
+/* --- Chrome -------------------------------------------------------------- */
+#menu-bar { border-bottom: 1px solid var(--rule); }
+#menu-bar .menu-title { font-family: var(--mono-font); font-size: 1.45rem; letter-spacing: 0.02em; }
+::selection { background: var(--sidebar-active); color: var(--bg); }
+a:focus-visible, button:focus-visible, .chapter li a:focus-visible {
+  outline: 2px solid var(--sidebar-active); outline-offset: 2px; border-radius: 2px;
+}
+
+/* --- Verdict markers, so page and terminal agree ------------------------- */
+code.hit    { color: var(--sig-hit);    font-weight: 500; }
+code.review { color: var(--sig-review); font-weight: 500; }
+code.ok     { color: var(--sig-ok);     font-weight: 500; }
+
+/* --- Landing page -------------------------------------------------------- */
+.badges {
+  display: flex; flex-wrap: wrap; gap: 0.6rem;
+  margin: 0 0 2.6rem; padding: 0; list-style: none;
+}
+.badges li { margin: 0; }
+.badges img { display: block; height: 20px; }
+.badges a { display: block; line-height: 0; }
+.standfirst {
+  font-size: 1.85rem; line-height: 1.6; color: var(--fg-muted); margin: 0 0 2.4rem;
+}
+.standfirst strong { color: var(--fg); font-weight: 600; }
+
+/* --- Wide content -------------------------------------------------------- */
+.content table, .content pre { overflow-x: auto; max-width: 100%; }
+@media (max-width: 700px) {
+  .content h1 { font-size: 2.6rem; }
+  .content h2 { font-size: 2rem; }
+  .content { font-size: 1.6rem; }
+}

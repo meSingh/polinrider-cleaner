@@ -22,6 +22,9 @@ missing dependency, an unreadable path, an empty indicator set and an
 unauthenticated GitHub CLI. See
 [ADR-0002](../project/decisions.md).
 
+> [!WARNING]
+> A clean result is not proof.
+
 ## A clean result is not proof
 
 `0` means the current indicator set is absent. Signatures rotate; an older or

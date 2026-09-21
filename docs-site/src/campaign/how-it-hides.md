@@ -36,6 +36,10 @@ git reflog                      # amended commits on branches you own
 gh api /user/keys               # SSH keys you did not add
 ```
 
+> [!IMPORTANT]
+> Reading history cannot find this. `git log` shows an ordinary, correctly dated
+> commit with your name on it.
+
 ## The limit you should know about
 
 GitHub's Events API retains roughly 300 events for about 90 days. Past that
