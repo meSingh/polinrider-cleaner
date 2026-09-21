@@ -1,0 +1,19 @@
+{
+  "why": "The same task carrying an indicator is confirmed, not review.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/.vscode/tasks.json": "{\"tasks\":[{\"runOptions\":{\"runOn\":\"folderOpen\"},\"command\":\"{{STRONG}}\"}]}\n"
+  },
+  "expect": {
+    "exit": 2,
+    "findings": [
+      {
+        "level": "HIT",
+        "match": "runs on folder open AND contains an indicator",
+        "path": "tasks.json"
+      }
+    ]
+  }
+}

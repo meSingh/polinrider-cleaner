@@ -11,6 +11,11 @@
 # ROOT is a directory holding your code. Defaults to ~/src ~/code ~/dev
 # ~/projects ~/work ~/git. Give the real ones, the scan is only as good as its roots.
 #
+# --fs-only     only the checks that read the filesystem being scanned. Skips
+#               live processes, sockets, npm config, crontab and $HOME
+#               persistence, which describe the machine you are running on
+#               rather than the disk you pointed at. Use it for a backup
+#               drive, an external disk or a mounted image.
 # --background  run detached (setsid + nohup). The terminal can be closed. It does
 #               not survive a logout or reboot; the system may still sleep.
 # --resume      pick up an interrupted run: reuse its file list, skip the checks
@@ -34,6 +39,7 @@ PASS=()      # the arguments handed to the detached copy, minus --background
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --apply)      APPLY=1; PASS+=("$1"); shift ;;
+    --fs-only)    FS_ONLY=1; PASS+=("$1"); shift ;;
     --background) BACKGROUND=1; shift ;;
     --resume)     RESUME=1; PASS+=("$1")
                   if [[ $# -gt 1 && -d "$2" ]]; then RESUME_DIR="$2"; PASS+=("$2"); shift; fi
@@ -155,22 +161,22 @@ check_connections() {
 }
 
 run_check "Second-stage implant"        check_implants   "${ROOTS[@]}"
-run_check "IDE extensions"              check_extensions "$HOME/.vscode/extensions" "$HOME/.vscode-insiders/extensions" \
+run_host_check "IDE extensions"              check_extensions "$HOME/.vscode/extensions" "$HOME/.vscode-insiders/extensions" \
                                                          "$HOME/.cursor/extensions" "$HOME/.windsurf/extensions" \
                                                          "$HOME/.vscode-oss/extensions" \
                                                          "$HOME/.var/app/com.visualstudio.code/data/vscode/extensions"
 run_check "Workspace tasks"             check_tasks_json  "${ROOTS[@]}"
 run_check "Build configs"               check_configs     "${ROOTS[@]}"
 run_check "Font files"                  check_fonts       "${ROOTS[@]}"
-run_check "Propagation artifact"        check_propagation "$HOME"
+run_host_check "Propagation artifact"        check_propagation "$HOME"
 run_check "Known-bad packages"          check_packages    "${ROOTS[@]}"
-run_check "Persistence"                 check_persistence
-run_check "Shell startup files"         check_shell_rc "$HOME/.bashrc" "$HOME/.bash_profile" "$HOME/.profile" \
+run_host_check "Persistence"                 check_persistence
+run_host_check "Shell startup files"         check_shell_rc "$HOME/.bashrc" "$HOME/.bash_profile" "$HOME/.profile" \
                                                        "$HOME/.zshrc" "$HOME/.zprofile" "$HOME/.zshenv"
 run_check "Git configuration and hooks" check_git      "${ROOTS[@]}"
-run_check "npm configuration"           check_npm
-run_check "Resident interpreters"       check_processes
-run_check "Live connections"            check_connections
+run_host_check "npm configuration"           check_npm
+run_host_check "Resident interpreters"       check_processes
+run_host_check "Live connections"            check_connections
 run_check "Credential surface"          check_credentials "${ROOTS[@]}"
 verdict
 exit $?

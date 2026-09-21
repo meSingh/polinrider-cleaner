@@ -19,7 +19,7 @@ PRC_BENIGN_RE='(^|/)\.github/workflows/[^/]*polinrider[^/]*\.(yml|yaml)$'
 PRC_BENIGN_RE="$PRC_BENIGN_RE"'|(^|/)\.github/polinrider/'
 PRC_BENIGN_RE="$PRC_BENIGN_RE"'|(^|/)(polinrider|scan-workspace|gh-scan|gh-sweep|gh-restore|triage-filter|check-macos|check-linux|check-windows|preflight|selftest|install-workflow|local-common|common)[^/]*\.(sh|ps1)$'
 PRC_BENIGN_RE="$PRC_BENIGN_RE"'|(^|/)ioc/[^/]*\.txt$'
-PRC_BENIGN_RE="$PRC_BENIGN_RE"'|(^|/)(lib|ci)/'
+PRC_BENIGN_RE="$PRC_BENIGN_RE"'|(^|/)(lib|ci|conformance)/'
 PRC_BENIGN_RE="$PRC_BENIGN_RE"'|\.md$|(^|/)docs/|README'
 
 # prc_shift_back_2h <iso8601Z> - two hours earlier, same format. Fails loudly.

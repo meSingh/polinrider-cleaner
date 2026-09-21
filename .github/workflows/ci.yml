@@ -72,6 +72,9 @@ jobs:
       - name: Self-test - filesystem walk, prune and resume
         run: ./ci/selftest-walk.sh
 
+      - name: Conformance corpus - shell implementation
+        run: ./conformance/run.sh
+
   powershell:
     name: PowerShell lint
     runs-on: ubuntu-latest
@@ -110,8 +113,10 @@ jobs:
       # code is excluded, which is what proves the exclusion logic works.
       # Markdown is skipped by the scanner's own defaults, but docs-site/book/
       # is the rendered HTML of that same Markdown, so it carries the same
-      # strings without the .md extension that would exempt it.
+      # strings without the .md extension that would exempt it. conformance/
+      # is excluded for the same reason as lib/ and ci/: a corpus that tests
+      # for an indicator has to contain it.
       - name: Scan with detection tooling excluded
         run: |
           ./ci/scan-workspace.sh --path . --all-refs --fail-on infected \
-            --exclude '(^|/)(lib|ci|github-org-recovery|github-account-recovery|machine-cleanup)/|(^|/)docs-site/book/'
+            --exclude '(^|/)(lib|ci|conformance|github-org-recovery|github-account-recovery|machine-cleanup)/|(^|/)docs-site/book/'

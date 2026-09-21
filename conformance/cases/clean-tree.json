@@ -1,0 +1,24 @@
+{
+  "why": "A clean project reports clean and exits 0.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/postcss.config.mjs": "export default { plugins: {} }\n",
+    "code/proj/package.json": "{\"name\":\"proj\",\"dependencies\":{\"react\":\"^18.0.0\"}}\n",
+    "code/proj/public/real.woff2": "wOF2 followed by bytes that are not checked\n",
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "expect": {
+    "exit": 0,
+    "findings": [
+      {
+        "level": "ok",
+        "match": "build config files checked"
+      }
+    ],
+    "must_not_report": [
+      "[HIT]"
+    ]
+  }
+}

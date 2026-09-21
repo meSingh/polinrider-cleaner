@@ -140,6 +140,22 @@ prc_need_walk() { [[ -n "${PRC_MANIFEST:-}" && -f "$PRC_MANIFEST" ]] || prc_walk
 # the hit and review counters, so --resume skips what is done and the verdict
 # still counts what the interrupted run found.
 # ---------------------------------------------------------------------------
+# Checks that describe the running machine rather than the filesystem being
+# scanned: processes, sockets, npm config, crontab, $HOME persistence. Skipped
+# by --fs-only, because pointing the scanner at a backup drive or a mounted
+# image asks a question about that disk, not about the laptop holding it.
+# It also makes a run reproducible, which is what lets the conformance corpus
+# assert on an exit code at all.
+FS_ONLY=0
+
+run_host_check() {    # same signature as run_check, skipped under --fs-only
+  if [[ $FS_ONLY -eq 1 ]]; then
+    say ""; say "== $1: skipped, --fs-only =="
+    return 0
+  fi
+  run_check "$@"
+}
+
 run_check() {         # $1 = name, $2 = function, rest = its arguments
   local name="$1" fn="$2"; shift 2
   if [[ -n "$STATE" && -f "$STATE/done" ]] && grep -qxF "$name" "$STATE/done"; then
@@ -281,6 +297,11 @@ check_implants() {
   # it, an editor with the file open - would otherwise be reported as a running
   # implant. That is the same self-signature collision that makes a grep-based
   # scanner flag its own detection rules.
+  # The process table describes this machine, not the disk being scanned.
+  if [[ $FS_ONLY -eq 1 ]]; then
+    [[ $found -eq 0 ]] && ok "no second-stage implant found on disk (--fs-only: process table not read)"
+    return 0
+  fi
   local procs re
   re="$(sed -e '/^#/d' -e '/^$/d' "$PRC_IOC/implant-names.txt" \
         | sed 's/[].[^$*\\]/\\&/g' | paste -sd'|' - )"
@@ -522,6 +543,7 @@ check_npm() {
 check_credentials() {  # $@ = code roots
   hdr "Credential surface on this machine"
   local f envcount=0 found=0
+  [[ $FS_ONLY -eq 1 ]] && set --   # keep the .env count below, drop the $HOME sweep
   for f in "$HOME"/.ssh/id_* "$HOME/.aws/credentials" "$HOME/.config/gcloud/credentials.db" \
            "$HOME/.docker/config.json" "$HOME/.kube/config" "$HOME/.netrc"; do
     [[ -e "$f" ]] || continue

@@ -1,0 +1,16 @@
+{
+  "why": "The machine check is targeted by filename, not a general content grep. A payload in an arbitrary .js is out of scope here and is caught by the repository scan instead. Recorded so the port does not silently change the contract in either direction.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/vendor.js": "{{PAD}}{{STRONG}}\n",
+    "code/proj/postcss.config.mjs": "export default { plugins: {} }\n"
+  },
+  "expect": {
+    "exit": 0,
+    "must_not_report": [
+      "[HIT]"
+    ]
+  }
+}

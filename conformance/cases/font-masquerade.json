@@ -1,0 +1,23 @@
+{
+  "why": "A .woff2 whose bytes are JavaScript is a payload, not a font.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/public/fake.woff2": "var _0x4a=function(){return 1};\n",
+    "code/proj/public/real.woff2": "wOF2 followed by bytes that are not checked\n"
+  },
+  "expect": {
+    "exit": 2,
+    "findings": [
+      {
+        "level": "HIT",
+        "match": "font file is not a font",
+        "path": "fake.woff2"
+      }
+    ],
+    "must_not_report": [
+      "real.woff2"
+    ]
+  }
+}
