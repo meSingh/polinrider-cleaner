@@ -190,6 +190,19 @@ affected repositories, before you touch GitHub at all.
 It detects the operating system and runs the right check. Exit `0` clean ·
 `1` review items only · `2` a confirmed indicator.
 
+A big drive takes a while. Two flags for that:
+
+```bash
+./polinrider.sh --machine --background    # detached; the terminal can close, the machine will not sleep
+./polinrider.sh --machine --resume        # a run that was interrupted picks up where it stopped
+```
+
+`--background` survives the terminal closing and idle sleep. It does not survive
+a logout or a reboot; that is what `--resume` is for, and it reuses the file list
+and skips the checks that already finished. `node_modules`, `.git` and caches are
+never walked: malicious packages are caught by name from manifests and
+lockfiles, and the payload lives in the project's own files.
+
 <details>
 <summary>Running the per-OS script directly instead</summary>
 

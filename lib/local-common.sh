@@ -62,6 +62,111 @@ has_strong() { grep -qaF "${STRONG_ARGS[@]}" "$1" 2>/dev/null; }
 has_weak()   { grep -qaF "${WEAK_ARGS[@]}"   "$1" 2>/dev/null; }
 
 # ---------------------------------------------------------------------------
+# The filesystem walk. Once, pruned, saved. ADR-0025.
+#
+# Every check used to run its own find over every root, eight walks in all,
+# each written as -not -path '*/node_modules/*'. That filters what find prints;
+# it does not stop the walk. find still descended into every node_modules and
+# tested every file inside, and on a drive of old projects that was a six-hour
+# scan that never finished. -prune stops at the directory. The walk now happens
+# once, the list of regular files is written to the state directory, each check
+# greps that list, and a resumed run reuses it instead of walking again.
+#
+# node_modules is not walked at all. The campaign's malicious packages are
+# caught by name in manifests and lockfiles, and the payload it plants lives in
+# the project's own config files and public/ fonts, never inside a dependency.
+# ---------------------------------------------------------------------------
+PRC_PRUNE=(node_modules .git .Trash .cache __MACOSX .npm .pnpm-store .yarn .venv venv Library)
+PRC_MANIFEST=""
+PRC_GITDIRS=""
+STATE=""              # manifest, done list, counters, log. Set by the entry script.
+PRC_JOBS="${PRC_JOBS:-0}"
+
+prc_jobs() {
+  if [[ "$PRC_JOBS" -gt 0 ]] 2>/dev/null; then printf '%s' "$PRC_JOBS"; return; fi
+  sysctl -n hw.ncpu 2>/dev/null || nproc 2>/dev/null || echo 4
+}
+
+# Sets PRUNE_ARGS to  \( -name a -o -name b ... \) -prune  for find. With $1 = nogit
+# the .git entry is left out, for the walk that has to see .git directories.
+prc_prune_args() {
+  PRUNE_ARGS=('(')
+  local n first=1
+  for n in "${PRC_PRUNE[@]}"; do
+    [[ "${1:-}" == "nogit" && "$n" == ".git" ]] && continue
+    [[ $first -eq 1 ]] || PRUNE_ARGS+=(-o)
+    PRUNE_ARGS+=(-name "$n"); first=0
+  done
+  PRUNE_ARGS+=(')' -prune)
+}
+
+prc_walk() {          # $@ = roots. Writes $STATE/manifest.txt and gitdirs.txt once.
+  [[ -n "$STATE" ]] || STATE="$(mktemp -d "${TMPDIR:-/tmp}/polinrider-state.XXXXXX")"
+  PRC_MANIFEST="$STATE/manifest.txt"; PRC_GITDIRS="$STATE/gitdirs.txt"
+  hdr "Filesystem walk"
+  if [[ -s "$PRC_MANIFEST" ]]; then
+    info "reusing the file list from the previous run: $(grep -c . "$PRC_MANIFEST") files"
+    return 0
+  fi
+  local root t0 t1 n
+  t0=$(date +%s)
+  : > "$PRC_MANIFEST"; : > "$PRC_GITDIRS"
+  for root in "$@"; do
+    [[ -d "$root" ]] || continue
+    prc_prune_args
+    find "$root" "${PRUNE_ARGS[@]}" -o -type f -print 2>/dev/null >> "$PRC_MANIFEST"
+    # .git is pruned above. Its hooks still need reading, so list the .git
+    # directories themselves, still without entering them.
+    prc_prune_args nogit
+    find "$root" "${PRUNE_ARGS[@]}" -o -type d -name .git -print -prune 2>/dev/null >> "$PRC_GITDIRS"
+  done
+  t1=$(date +%s); n=$(grep -c . "$PRC_MANIFEST")
+  info "$n files listed in $((t1-t0))s. Not walked: $(IFS=', '; printf '%s' "${PRC_PRUNE[*]}")"
+  [[ $n -eq 0 ]] && warn "no files found under the roots. Are they the right directories?"
+  return 0
+}
+
+# prc_files <extended regex on the full path> [cap]
+prc_files() { grep -E "$1" "$PRC_MANIFEST" 2>/dev/null | head -"${2:-100000}"; }
+
+# Every check that walks calls this first, so a check still works when it is
+# called on its own without the entry script having walked already. The test is
+# "does the file exist", not "is it non-empty": an empty root produces an empty
+# list, and that is a finished walk, not a missing one.
+prc_need_walk() { [[ -n "${PRC_MANIFEST:-}" && -f "$PRC_MANIFEST" ]] || prc_walk "$@"; }
+
+# ---------------------------------------------------------------------------
+# Checkpoints. A check that finishes is recorded in $STATE/done together with
+# the hit and review counters, so --resume skips what is done and the verdict
+# still counts what the interrupted run found.
+# ---------------------------------------------------------------------------
+run_check() {         # $1 = name, $2 = function, rest = its arguments
+  local name="$1" fn="$2"; shift 2
+  if [[ -n "$STATE" && -f "$STATE/done" ]] && grep -qxF "$name" "$STATE/done"; then
+    say ""; say "== $name: done in the previous run, skipped =="
+    return 0
+  fi
+  "$fn" "$@"
+  if [[ -n "$STATE" ]]; then
+    printf '%s\n' "$name" >> "$STATE/done"
+    printf 'HITS=%s\nREVIEW=%s\n' "$HITS" "$REVIEW" > "$STATE/counters"
+  fi
+}
+
+prc_state_init() {    # $1 = state directory, new or being resumed
+  STATE="$1"
+  mkdir -p "$STATE" || { echo "cannot create $STATE" >&2; exit 3; }
+  # shellcheck source=/dev/null
+  [[ -f "$STATE/counters" ]] && . "$STATE/counters"
+  printf '%s\n' "$REPORT" > "$STATE/report-path"
+}
+
+prc_resume_dir() {    # $1 = a state directory, or empty for the newest one
+  if [[ -n "${1:-}" ]]; then printf '%s' "$1"; return 0; fi
+  ls -1dt "$HOME"/polinrider-scan-* 2>/dev/null | head -1
+}
+
+# ---------------------------------------------------------------------------
 # Quarantine. Moves, never deletes. Dry run unless --apply was given.
 # ---------------------------------------------------------------------------
 quarantine() {
@@ -149,19 +254,23 @@ check_implants() {
     quarantine "$path" "second-stage-implant"
   done < <(sed -e '/^#/d' -e '/^$/d' "$PRC_IOC/implant-paths.txt")
 
-  # A renamed binary still hashes the same.
-  local root f
+  # A renamed binary still hashes the same. Hashing up to 200 files of up to
+  # 300 MB is the one per-file step worth spreading across cores.
+  local root f h
+  export -f prc_sha256
   for root in "$@"; do
     [[ -d "$root" ]] || continue
-    while read -r f; do
+    prc_prune_args
+    while IFS=$'\t' read -r h f; do
       [[ -z "$f" ]] && continue
-      if label="$(prc_hash_verdict "$f")"; then
-        found=1
-        bad "file matches a known implant hash ($label): $f"
-        quarantine "$f" "second-stage-implant"
-      fi
-    done < <(find "$root" -type f -size +10M -size -300M \
-               -not -path '*/node_modules/*' -not -path '*/.git/*' 2>/dev/null | head -200)
+      label="$(awk -v h="$h" '$1==h {$1=""; sub(/^ +/,""); print; exit}' "$PRC_IOC/hashes.txt")"
+      [[ -n "$label" ]] || continue
+      found=1
+      bad "file matches a known implant hash ($label): $f"
+      quarantine "$f" "second-stage-implant"
+    done < <(find "$root" "${PRUNE_ARGS[@]}" -o -type f -size +10M -size -300M -print 2>/dev/null \
+             | head -200 | tr '\n' '\0' \
+             | xargs -0 -n 8 -P "$(prc_jobs)" bash -c 'for f; do h=$(prc_sha256 "$f"); [ -n "$h" ] && printf "%s\t%s\n" "$h" "$f"; done' _ 2>/dev/null)
   done
 
   # The process title is set by the implant, so a match here is a finding even
@@ -232,9 +341,9 @@ check_extensions() {   # $@ = extension directories
 
 check_tasks_json() {   # $@ = code roots
   hdr "Workspace tasks that run on folder open"
-  local root f seen=0 flagged=0
-  for root in "$@"; do
-    [[ -d "$root" ]] || continue
+  local f seen=0 flagged=0
+  prc_need_walk "$@"
+  {
     while read -r f; do
       [[ -z "$f" ]] && continue
       seen=$((seen+1))
@@ -246,8 +355,8 @@ check_tasks_json() {   # $@ = code roots
       else
         warn "tasks.json runs on folder open, verify the command by hand: $f"
       fi
-    done < <(find "$root" -name 'tasks.json' -path '*/.vscode/*' -not -path '*/node_modules/*' 2>/dev/null | head -200)
-  done
+    done < <(prc_files '/\.vscode/tasks\.json$' 200)
+  }
   if [[ $flagged -eq 0 ]]; then
     if [[ $seen -eq 0 ]]; then ok "no .vscode/tasks.json found under the scanned paths"
     else ok "$seen .vscode/tasks.json checked, none run on folder open"; fi
@@ -256,9 +365,9 @@ check_tasks_json() {   # $@ = code roots
 
 check_configs() {      # $@ = code roots
   hdr "Build configs with code after the module end"
-  local root f total endln seen=0 flagged=0
-  for root in "$@"; do
-    [[ -d "$root" ]] || continue
+  local f total endln seen=0 flagged=0
+  prc_need_walk "$@"
+  {
     while read -r f; do
       [[ -z "$f" ]] && continue
       seen=$((seen+1))
@@ -282,21 +391,16 @@ check_configs() {      # $@ = code roots
         flagged=$((flagged+1))
         warn "line longer than 4000 characters, an obfuscation tell: $f"
       fi
-    done < <(find "$root" -not -path '*/node_modules/*' -not -path '*/.git/*' \
-               \( -name 'postcss.config.*' -o -name 'tailwind.config.*' \
-                  -o -name 'eslint.config.*' -o -name 'vite.config.*' \
-                  -o -name 'next.config.*'  -o -name 'rollup.config.*' \
-                  -o -name 'webpack.config.*' -o -name 'babel.config.*' \
-                  -o -name 'gridsome.config.*' -o -name 'vue.config.*' -o -name 'truffle.js' \) 2>/dev/null | head -500)
-  done
+    done < <(prc_files '/(postcss|tailwind|eslint|vite|next|rollup|webpack|babel|gridsome|vue)\.config\.[^/]+$|/truffle\.js$' 500)
+  }
   [[ $flagged -eq 0 ]] && ok "$seen build config files checked, nothing appended after the module end"
 }
 
 check_fonts() {        # $@ = code roots
   hdr "Font files that are not fonts"
-  local root f magic seen=0 flagged=0
-  for root in "$@"; do
-    [[ -d "$root" ]] || continue
+  local f magic seen=0 flagged=0
+  prc_need_walk "$@"
+  {
     while read -r f; do
       [[ -z "$f" ]] && continue
       [[ -s "$f" ]] || continue          # empty file cannot carry a payload
@@ -311,10 +415,8 @@ check_fonts() {        # $@ = code roots
            bad "font file is not a font (first bytes: $hex): $f"
            quarantine "$f" "font-masquerade" ;;
       esac
-    done < <(find "$root" -not -path '*/node_modules/*' -not -path '*/.git/*' \
-               -not -path '*/__MACOSX/*' -not -name '._*' \
-               \( -name '*.woff' -o -name '*.woff2' \) 2>/dev/null | head -600)
-  done
+    done < <(prc_files '\.woff2?$' | grep -Ev '/__MACOSX/|/\._[^/]*$' | head -600)
+  }
   [[ $flagged -eq 0 ]] && ok "$seen font files checked, all are real fonts"
 }
 
@@ -333,9 +435,9 @@ check_propagation() {  # $1 = home
 
 check_packages() {     # $@ = code roots
   hdr "Known-bad packages"
-  local root f found=0
-  for root in "$@"; do
-    [[ -d "$root" ]] || continue
+  local f found=0
+  prc_need_walk "$@"
+  {
     while read -r f; do
       [[ -z "$f" ]] && continue
       if grep -qaF "${PKG_ARGS[@]}" "$f" 2>/dev/null; then
@@ -343,10 +445,8 @@ check_packages() {     # $@ = code roots
         bad "known-bad package referenced: $f"
         say  "           remove the dependency, delete node_modules and the lockfile entry, reinstall."
       fi
-    done < <(find "$root" -not -path '*/node_modules/*' \
-               \( -name 'package.json' -o -name 'package-lock.json' \
-                  -o -name 'pnpm-lock.yaml' -o -name 'yarn.lock' \) 2>/dev/null | head -600)
-  done
+    done < <(prc_files '/(package\.json|package-lock\.json|pnpm-lock\.yaml|yarn\.lock)$' 600)
+  }
   [[ $found -eq 0 ]] && ok "no known-bad package names in manifests or lockfiles"
 }
 
@@ -380,18 +480,19 @@ check_git() {          # $@ = code roots
   fi
   git config --global --list 2>/dev/null \
     | grep -Ei '(url\..*insteadof|http\..*proxy|credential\.helper)' | sed 's/^/    /' | tee -a "$REPORT"
-  for root in "$@"; do
-    [[ -d "$root" ]] || continue
-    while read -r h; do
-      [[ -z "$h" ]] && continue
-      if has_strong "$h"; then
-        bad "git hook contains an indicator: $h"
-        quarantine "$h" "git-hook"
-      else
-        warn "active git hook, verify by hand: $h"
-      fi
-    done < <(find "$root" -path '*/.git/hooks/*' -type f ! -name '*.sample' -perm -u+x 2>/dev/null | head -100)
-  done
+  prc_need_walk "$@"
+  local g
+  while read -r h; do
+    [[ -z "$h" ]] && continue
+    if has_strong "$h"; then
+      bad "git hook contains an indicator: $h"
+      quarantine "$h" "git-hook"
+    else
+      warn "active git hook, verify by hand: $h"
+    fi
+  done < <(while read -r g; do
+             [[ -d "$g/hooks" ]] && find "$g/hooks" -maxdepth 1 -type f ! -name '*.sample' -perm -u+x 2>/dev/null
+           done < "$PRC_GITDIRS" | head -100)
 }
 
 check_npm() {
@@ -420,7 +521,7 @@ check_npm() {
 # something else was a confirmed hit, which is why these are [info].
 check_credentials() {  # $@ = code roots
   hdr "Credential surface on this machine"
-  local f n envcount=0 root found=0
+  local f envcount=0 found=0
   for f in "$HOME"/.ssh/id_* "$HOME/.aws/credentials" "$HOME/.config/gcloud/credentials.db" \
            "$HOME/.docker/config.json" "$HOME/.kube/config" "$HOME/.netrc"; do
     [[ -e "$f" ]] || continue
@@ -428,11 +529,8 @@ check_credentials() {  # $@ = code roots
     found=$((found+1))
     note "  credential material: $f"
   done
-  for root in "$@"; do
-    [[ -d "$root" ]] || continue
-    n=$(find "$root" -name '.env*' -not -path '*/node_modules/*' 2>/dev/null | grep -c .)
-    envcount=$(( envcount + n ))
-  done
+  prc_need_walk "$@"
+  envcount=$(prc_files '/\.env[^/]*$' | grep -c .)
   if [[ $found -gt 0 || $envcount -gt 0 ]]; then
     info "$found private key or credential files, and $envcount .env files, under the scanned paths."
     info "None of this is a finding. It is the list to rotate if anything else was a HIT."

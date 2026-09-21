@@ -181,6 +181,7 @@ shellcheck --severity=warning --external-sources \
 ./ci/selftest-preserve.sh
 ./ci/selftest-rewrite.sh
 ./ci/selftest-ui.sh
+./ci/selftest-walk.sh
 ```
 
 CI enforces `shellcheck --severity=warning` and runs all three self-tests, plus
