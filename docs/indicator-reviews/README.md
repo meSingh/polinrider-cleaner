@@ -25,6 +25,7 @@ Newest first.
 
 | Date | Outcome | What it found |
 |---|---|---|
+| [2026-09-21](2026-09-21.md) | 8 indicators added | The `A8-` campaign marker, five Ethereum RPC resolvers and two NullReceiver C2 addresses read off the chain. CloudSEK's GHAPPIER report rejected as a separate loader family sharing victims, not infrastructure. Found one PolinRider post the previous week's sweep missed. |
 | [2026-09-14](2026-09-14.md) | 19 indicators added | The egress block on the analysis hosts lifted. Drained a backlog: the ChainVeil and ViteVenom npm clusters, the NullReceiver marker, wallet and C2. Three known-malicious names rejected as substrings of real packages. npm-CLI persistence found, not implemented. |
 | [2026-09-07](2026-09-07.md) | 3 indicators added | Two npm package names and one BSC RPC node, all gaps against the April 2026 dossier. Nothing new published upstream. |
 
@@ -33,7 +34,7 @@ Newest first.
 | Source | What it is | Reachable from the review environment |
 |---|---|---|
 | [OpenSourceMalware/PolinRider](https://github.com/OpenSourceMalware/PolinRider) | the primary dossier: README, YARA rules, CSV data drops | yes, by git clone |
-| [opensourcemalware.com blog](https://opensourcemalware.com/blog) | the team's running coverage | yes, since 2026-09-14. Fetch a **post path** — the bare domain and `/blog/rss.xml` return an empty single-page-app shell |
+| [opensourcemalware.com blog](https://opensourcemalware.com/blog) | the team's running coverage | yes, since 2026-09-14. Fetch a **post path** — the bare domain and `/blog/rss.xml` return an empty single-page-app shell, though `/blog` itself now server-renders the full post index. Enumerate every slug containing `polinrider` and check it off; following the posts a previous entry named misses the ones it missed |
 | Web search | anything published in the last seven days, searched under the campaign name and under `MicrosoftSystem64` and `ForceMemo`, where new analysis often lands first | yes |
 | [socket.dev tracker](https://socket.dev/supply-chain-attacks/polinrider) | current package counts | no, and it refuses automated fetches regardless |
 

@@ -9,3 +9,15 @@ bsc-rpc.publicnode.com
 folderOpen
 windowsHide
 stdio: 'ignore'
+# The public Ethereum RPC endpoints the NullReceiver loader walks to read its
+# dead drop, tried in this order, with ETH_RPC_URL consulted first if it is set.
+# Named independently by OpenSourceMalware and by CloudSEK, whose report says of
+# them: "Legitimate services. Alert, do not block." That is exactly this tier,
+# and it is why they are not in network.txt, which is the block list.
+# Sources: OpenSourceMalware, "NPM Isn't Prepared For North Korean PolinRider
+# Attack", August 2026; CloudSEK, "GHAPPIER", September 2026.
+1rpc.io
+eth.drpc.org
+ethereum-rpc.publicnode.com
+eth-mainnet.public.blastapi.io
+eth.blockscout.com
