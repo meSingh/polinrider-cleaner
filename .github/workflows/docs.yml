@@ -4,8 +4,10 @@
 # fails the check rather than the deploy. Publishes only from main: the site
 # describes the released tool, not whatever is in flight on a branch.
 #
-# GitHub Pages has to be enabled once, by hand, with the source set to
-# "GitHub Actions" rather than a branch. Settings > Pages.
+# GitHub Pages is enabled with the source set to "GitHub Actions".
+#
+# Built with Astro + Starlight. Astro fails the build on a broken internal
+# link by itself, so there is no separate link-checking step.
 name: Docs
 
 on:
@@ -32,41 +34,26 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install mdBook
-        env:
-          MDBOOK_VERSION: '0.5.4'
-        run: |
-          # Pinned. A docs build that silently changes renderer version is a
-          # diff nobody asked for.
-          mkdir -p "$HOME/.cargo/bin"
-          curl -sSL "https://github.com/rust-lang/mdBook/releases/download/v${MDBOOK_VERSION}/mdbook-v${MDBOOK_VERSION}-x86_64-unknown-linux-gnu.tar.gz" \
-            | tar -xz -C "$HOME/.cargo/bin"
-          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - name: Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: docs-site/package-lock.json
+
+      - name: Install, from the lockfile only
+        # npm ci fails rather than silently resolving a different tree, which
+        # is the property that matters for a repository about supply chains.
+        run: npm ci --prefix docs-site
 
       - name: Build
-        run: mdbook build docs-site
-
-      - name: Check every internal link resolves
-        run: |
-          # create-missing = false already fails on a SUMMARY entry with no
-          # file. This catches the other direction: a link in prose to a page
-          # that was renamed or never written.
-          fail=0
-          while IFS= read -r f; do
-            d=$(dirname "$f")
-            grep -oE '\]\(\.{1,2}/[^)#]+\.md' "$f" | sed 's/^](//' | while IFS= read -r l; do
-              t=$(cd "$d" && printf '%s' "$(realpath -m "$l")")
-              [ -f "$t" ] || { echo "broken link in $f -> $l"; exit 1; }
-            done || fail=1
-          done < <(find docs-site/src -name '*.md')
-          [ "$fail" -eq 0 ] || exit 1
-          echo "all internal links resolve"
+        run: npm run build --prefix docs-site
 
       - name: Upload the site
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
         with:
-          path: docs-site/book
+          path: docs-site/dist
 
   deploy:
     name: Publish to GitHub Pages

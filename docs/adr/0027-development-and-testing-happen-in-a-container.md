@@ -20,7 +20,7 @@ during the 2.0.0 port.
 
 ## Decision
 
-`ci/sandbox.sh` runs any command in this repository inside a container built
+`polinrider-sandbox` runs any command in this repository inside a container built
 from `.devcontainer/Dockerfile`.
 
 - `$HOME` is the container's, so a run that walks or writes `$HOME` cannot
@@ -36,7 +36,7 @@ from `.devcontainer/Dockerfile`.
 - The base image is pinned by digest. A supply-chain cleanup tool that pulls a
   floating base image is not making an argument it can defend.
 
-`./ci/sandbox.sh --all` runs lint, every self-test and the conformance corpus.
+`./polinrider-sandbox --all` runs lint, every self-test and the conformance corpus.
 
 ## Consequences
 

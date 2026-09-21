@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # demo.sh - build a realistically infected project and scan it.
 #
-# Runs INSIDE the sandbox (ci/sandbox.sh --demo). It needs somewhere writable
+# Runs INSIDE the sandbox (polinrider-sandbox --demo). It needs somewhere writable
 # and somewhere safe, and the container is both.
 #
 # The fixture carries no payload. It writes a real indicator pulled from ioc/

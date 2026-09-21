@@ -3,7 +3,7 @@
 # Why it exists: the tool quarantines files, rewrites git history and walks
 # $HOME. Running its test suite directly on a workstation means one bad path
 # expansion away from moving somebody's real files. Every test run goes through
-# ci/sandbox.sh, which uses this image and gives the run a $HOME of its own.
+# polinrider-sandbox, which uses this image and gives the run a $HOME of its own.
 #
 # Pinned by digest, not by tag. A supply-chain cleanup tool that pulls a
 # floating base image is not making an argument it can defend.
@@ -70,8 +70,8 @@ RUN git config --global user.email "sandbox@localhost" \
  && git config --global user.name  "polinrider sandbox" \
  && git config --global --add safe.directory /work
 
-# cargo writes here; /work is mounted read-only by ci/sandbox.sh.
-# This lives under a single subdirectory on purpose: ci/sandbox.sh mounts a
+# cargo writes here; /work is mounted read-only by polinrider-sandbox.
+# This lives under a single subdirectory on purpose: polinrider-sandbox mounts a
 # named volume here, and a volume mounted at $HOME itself would mask the
 # .gitconfig written above, along with anything else the image puts in home.
 RUN mkdir -p /home/dev/build

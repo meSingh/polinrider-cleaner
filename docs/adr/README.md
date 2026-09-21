@@ -43,6 +43,7 @@ If you disagree with one, open an issue and quote its number.
 | [0025](./0025-walk-the-filesystem-once-with-prune-and-checkpoint-it.md) | Walk the filesystem once, with -prune, and checkpoint it | Accepted |
 | [0026](./0026-2-0-0-is-one-binary-built-against-a-conformance-corpus.md) | 2.0.0 is one binary, built against a conformance corpus | Accepted |
 | [0027](./0027-development-and-testing-happen-in-a-container.md) | Development and testing happen in a container | Accepted |
+| [0028](./0028-the-documentation-site-is-astro-starlight.md) | The documentation site is Astro Starlight, on a Node toolchain | Accepted |
 
 ## Adding one
 

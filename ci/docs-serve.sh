@@ -17,18 +17,15 @@ set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PORT="${1:-3000}"
 
-if ! command -v mdbook >/dev/null 2>&1; then
-  cat >&2 <<'EOS'
-docs-serve: mdbook is not installed.
-
-  macOS    brew install mdbook
-  Linux    cargo install mdbook --locked
-           or a release binary from https://github.com/rust-lang/mdBook/releases
-
-It is a single Rust binary with no runtime, which is why the site is built
-with it and not with a Node toolchain.
-EOS
+if ! command -v npm >/dev/null 2>&1; then
+  echo "docs-serve: npm is not installed. The site is built with Astro + Starlight." >&2
+  echo "  macOS    brew install node" >&2
   exit 3
+fi
+
+if [[ ! -d "$ROOT/docs-site/node_modules" ]]; then
+  echo "docs-serve: installing dependencies, once"
+  npm ci --prefix "$ROOT/docs-site" || { echo "docs-serve: npm ci failed" >&2; exit 3; }
 fi
 
 if lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
@@ -42,17 +39,16 @@ cat <<EOS
 
   Live reload is on. Edit these and the browser follows:
 
-    docs-site/src/**/*.md      the words
-    docs-site/theme/custom.css the design: colours, type, spacing, callouts
-    docs-site/src/SUMMARY.md   the sidebar and page order
+    docs-site/src/content/docs/**/*.md   the words
+    docs-site/src/styles/custom.css      small style additions
+    docs-site/astro.config.mjs           the sidebar, title and theme options
 
-  The palette and type choices are commented at the top of custom.css, and
-  one number there is easy to get wrong: mdBook sets the root font size to
-  62.5%, so 1rem is 10px, not 16px. Every length is written as px divided
-  by 10.
+  The look comes from the Lucode theme, a shadcn/ui-styled Starlight theme.
+  Most appearance changes belong in astro.config.mjs or in the theme's own
+  options rather than in custom.css.
 
   Ctrl-C to stop.
 
 EOS
 
-exec mdbook serve "$ROOT/docs-site" --port "$PORT" --open
+exec npm run dev --prefix "$ROOT/docs-site" -- --port "$PORT" --open

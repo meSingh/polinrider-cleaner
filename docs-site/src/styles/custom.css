@@ -1,0 +1,36 @@
+/* Small additions on top of the Lucode theme. Lucode owns the palette, the
+ * typography and the component styling; nothing here should fight it.
+ *
+ * The one thing worth carrying over from the tool itself: the scanner prints
+ * [HIT], [review] and [ok], and the documentation should use the same three
+ * colours so a reader moving between terminal and page relearns nothing.
+ */
+:root {
+  --prc-hit: #b8382f;
+  --prc-review: #8d6412;
+  --prc-ok: #2c7048;
+}
+:root[data-theme='dark'] {
+  --prc-hit: #e2645c;
+  --prc-review: #d3a244;
+  --prc-ok: #5fb87e;
+}
+
+/* Verdict markers, written in the Markdown as inline code. */
+code.hit    { color: var(--prc-hit);    font-weight: 600; }
+code.review { color: var(--prc-review); font-weight: 600; }
+code.ok     { color: var(--prc-ok);     font-weight: 600; }
+
+/* The badge strip on the landing page. A row that wraps, with no list
+ * bullets and no baseline gaps between images. */
+.badges {
+  display: flex; flex-wrap: wrap; gap: 0.4rem;
+  margin: 0 0 1.75rem; padding: 0; list-style: none;
+}
+.badges li { margin: 0; }
+.badges a  { display: block; line-height: 0; }
+.badges img { display: block; height: 20px; }
+
+/* Wide tables are common here. Let them scroll inside the page rather than
+ * pushing the whole layout sideways on a phone. */
+.sl-markdown-content table { display: block; overflow-x: auto; }

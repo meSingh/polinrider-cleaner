@@ -169,7 +169,7 @@ If a record and the code disagree, the code is the truth and the record is a bug
 
 ### Before you open a pull request
 
-Run these in the sandbox, not on your machine: `./ci/sandbox.sh --all` does
+Run these in the sandbox, not on your machine: `./polinrider-sandbox --all` does
 all of it. See ADR-0027.
 
 ```bash

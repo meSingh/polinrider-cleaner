@@ -4,8 +4,8 @@ Everything you need, in one page. Three commands do almost all of it.
 
 | I want to… | Command |
 |---|---|
-| Check nothing is broken | `./ci/sandbox.sh --all` |
-| Try the tool on a sample infected project | `./ci/sandbox.sh --demo` |
+| Check nothing is broken | `./polinrider-sandbox --all` |
+| Try the tool on a sample infected project | `./polinrider-sandbox --demo` |
 | Look at the documentation site | `./ci/docs-serve.sh` |
 
 ## First time only
@@ -17,7 +17,7 @@ brew install --cask docker    # if you do not have it
 open -a Docker                # start it, wait for the whale in the menu bar
 ```
 
-The first `./ci/sandbox.sh` builds a container image and takes a few minutes.
+The first `./polinrider-sandbox` builds a container image and takes a few minutes.
 Every run after that is seconds.
 
 ## Why a container
@@ -36,7 +36,7 @@ Nothing it does in there can reach your Mac.
 ## Checking nothing is broken
 
 ```bash
-./ci/sandbox.sh --all
+./polinrider-sandbox --all
 ```
 
 Runs the linter, all nine self-tests, and the conformance corpus. Everything
@@ -45,7 +45,7 @@ should say `pass`. If something says `FAIL`, that is worth telling me about.
 ## Trying the tool for real
 
 ```bash
-./ci/sandbox.sh --demo
+./polinrider-sandbox --demo
 ```
 
 This builds a fake workspace with two projects: `shop/`, infected five
@@ -80,18 +80,16 @@ one that says nothing.
 Opens <http://localhost:3000>. Edit any file under `docs-site/` and the page
 reloads by itself, so you can adjust the design by looking at it.
 
-- `docs-site/src/**/*.md` — the words
-- `docs-site/theme/custom.css` — colours, type, spacing, callouts
-- `docs-site/src/SUMMARY.md` — the sidebar and page order
+- `docs-site/src/content/docs/**/*.md` — the words
+- `docs-site/astro.config.mjs` — the sidebar, the title, theme options
+- `docs-site/src/styles/custom.css` — small additions on top of the theme
+
+Built with Astro + Starlight and the Lucode theme. The first run installs
+dependencies once; after that it starts in seconds. Needs Node.
 
 This one runs on your Mac rather than in the container, because rendering
 Markdown is not dangerous and a read-only container would fight the
 edit-and-see-it loop.
-
-> [!NOTE]
-> One thing that bites in `custom.css`: mdBook sets the root font size to
-> 62.5%, so `1rem` is **10px**, not 16px. Every length is written as pixels
-> divided by ten. `1.65rem` is 16.5px.
 
 ## Where things are
 
