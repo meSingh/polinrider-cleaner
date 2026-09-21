@@ -14,6 +14,7 @@ export default defineConfig({
   integrations: [
     starlight({
       title: 'polinrider-cleaner',
+      favicon: '/favicon.svg',
       description:
         'Detect and clean up after the PolinRider supply-chain campaign, on a machine, a GitHub account, or a whole organization.',
 
