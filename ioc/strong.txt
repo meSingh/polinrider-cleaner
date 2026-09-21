@@ -54,3 +54,13 @@ node ./public/fonts/fa-solid-400.woff2
 # Challenges of EtherHiding", August 2026.
 A10-npm3!
 0xa322e5f3d311d3080e6f0121063e9adc2490ef1a
+
+# The A8 campaign-marker assignment, written literally into the payload that is
+# appended to a config file. Published as a grep-friendly signature in three
+# forms -- global.i="A8-*#" for the fake-font variant, and global.i="A8-3292-1"
+# and global.i="A8-3292-2" for the babel.config.cjs variant -- so the shared
+# prefix is carried here instead of the three. Nothing legitimate assigns a
+# string beginning "A8-" to global.i.
+# Source: OpenSourceMalware, "NPM Isn't Prepared For North Korean PolinRider
+# Attack", August 2026.
+global.i="A8-
