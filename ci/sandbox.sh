@@ -8,6 +8,7 @@
 #   ./ci/sandbox.sh                       interactive shell in the sandbox
 #   ./ci/sandbox.sh --all                 lint, every self-test, the corpus
 #   ./ci/sandbox.sh ./conformance/run.sh  one command
+#   ./ci/sandbox.sh --demo                build a sample infected project and scan it
 #   ./ci/sandbox.sh --build               rebuild the image and stop
 #   ./ci/sandbox.sh --net <cmd>           allow networking (cargo fetch)
 #
@@ -94,6 +95,13 @@ run() {
 if [[ $# -eq 0 ]]; then
   echo "sandbox: interactive shell. Repository is read-only at /work, network ${NET}."
   run bash
+  exit $?
+fi
+
+# A sample workspace to point the tool at, built inside the container and left
+# there. Ends in a shell so the scan can be repeated with different flags.
+if [[ "$1" == "--demo" ]]; then
+  run bash -c './ci/demo.sh; echo "  Dropping you into the sandbox. Type exit when done."; echo; exec bash'
   exit $?
 fi
 
