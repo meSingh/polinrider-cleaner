@@ -9,7 +9,7 @@ use crate::quarantine::{Apply, DryRun, Quarantine};
 use crate::verdict::{Finding, Verdict};
 use crate::walk::Walk;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 /// Where confirmed artifacts go, if anywhere. The two variants are different
 /// types, so a dry run has no way to move a file. See `quarantine`.
@@ -279,6 +279,179 @@ pub fn git_hooks(walk: &Walk, ind: &Indicators, v: &mut Verdict, sink: &mut Sink
                 hook.display()
             )));
         }
+    }
+}
+
+/// The second-stage implant: known install and persistence paths, plus a hash
+/// sweep so a renamed binary is still caught.
+///
+/// `~` in `implant-paths.txt` expands against the home directory given here,
+/// not the process environment, so a scan of a mounted backup can point at the
+/// backup's home rather than the running user's.
+pub fn implants(
+    walk: &Walk,
+    ind: &Indicators,
+    home: &Path,
+    ioc_dir: &Path,
+    v: &mut Verdict,
+    sink: &mut Sink,
+) {
+    v.section("Second-stage implant");
+    let mut found = false;
+
+    // 1. the paths the implant installs itself to
+    if let Ok(text) = fs::read_to_string(ioc_dir.join("implant-paths.txt")) {
+        for line in text
+            .lines()
+            .map(str::trim)
+            .filter(|l| !l.is_empty() && !l.starts_with('#'))
+        {
+            // A Windows path; check-windows.ps1 owns those.
+            if line.starts_with('%') {
+                continue;
+            }
+            let path = match line.strip_prefix("~/") {
+                Some(rest) => home.join(rest),
+                None => Path::new(line).to_path_buf(),
+            };
+            if !path.exists() {
+                continue;
+            }
+            found = true;
+            let line_out = sink.take(&path, "second-stage-implant");
+            v.push(
+                Finding::hit(format!("implant artifact present: {}", path.display()))
+                    .with_remedy(line_out),
+            );
+        }
+    }
+
+    // 2. a renamed binary still hashes the same. Bounded by size so the sweep
+    //    does not read every file on the disk.
+    let known = load_hashes(ioc_dir);
+    if !known.is_empty() {
+        for path in &walk.files {
+            let Ok(meta) = fs::metadata(path) else {
+                continue;
+            };
+            let len = meta.len();
+            if !(10 * 1024 * 1024..=300 * 1024 * 1024).contains(&len) {
+                continue;
+            }
+            let Ok(digest) = crate::sha256::file(path) else {
+                continue;
+            };
+            if let Some(label) = known.iter().find(|(h, _)| *h == digest).map(|(_, l)| l) {
+                found = true;
+                let line_out = sink.take(path, "second-stage-implant");
+                v.push(
+                    Finding::hit(format!(
+                        "file matches a known implant hash ({label}): {}",
+                        path.display()
+                    ))
+                    .with_remedy(line_out),
+                );
+            }
+        }
+    }
+
+    let _ = ind;
+    if !found {
+        v.push(Finding::ok(
+            "no second-stage implant found on disk (--fs-only: process table not read)",
+        ));
+    }
+}
+
+/// `hashes.txt` is `<sha256><space><label>` per line.
+fn load_hashes(ioc_dir: &Path) -> Vec<(String, String)> {
+    let Ok(text) = fs::read_to_string(ioc_dir.join("hashes.txt")) else {
+        return Vec::new();
+    };
+    text.lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty() && !l.starts_with('#'))
+        .filter_map(|l| {
+            let (h, label) = l.split_once(char::is_whitespace)?;
+            Some((h.to_ascii_lowercase(), label.trim().to_string()))
+        })
+        .collect()
+}
+
+/// The propagation script the campaign drops to spread to other remotes.
+pub fn propagation(walk: &Walk, v: &mut Verdict, sink: &mut Sink) {
+    v.section("Propagation artifact temp_auto_push.bat");
+    let mut found = false;
+    for path in walk.by_name(|n| n == "temp_auto_push.bat" || n == "config.bat") {
+        found = true;
+        let line = sink.take(path, "propagation-script");
+        v.push(
+            Finding::hit(format!("propagation script present: {}", path.display()))
+                .with_remedy(line),
+        );
+    }
+    if !found {
+        v.push(Finding::ok("temp_auto_push.bat not found"));
+    }
+}
+
+/// Editor extensions, which is how the campaign most often arrives.
+///
+/// Scoped to the extension directories given, and matched on content. The
+/// weak list is deliberately not used here: a bundled extension legitimately
+/// contains "folderOpen", which is a codicon name, and matching it produces
+/// pages of noise.
+pub fn extensions(dirs: &[PathBuf], ind: &Indicators, v: &mut Verdict, sink: &mut Sink) {
+    v.section("IDE extensions");
+    let mut any_dir = false;
+    let mut found = false;
+
+    for dir in dirs {
+        if !dir.is_dir() {
+            continue;
+        }
+        any_dir = true;
+        let w = crate::walk::walk(std::slice::from_ref(dir));
+        let mut flagged: Vec<PathBuf> = Vec::new();
+
+        for file in w.by_name(|n| {
+            [".js", ".mjs", ".cjs", ".ts", ".json", ".map"]
+                .iter()
+                .any(|e| n.ends_with(e))
+        }) {
+            if !ind.file_has_strong(file) {
+                continue;
+            }
+            // Report the extension, not every file inside it.
+            let ext_root = file
+                .strip_prefix(dir)
+                .ok()
+                .and_then(|r| r.components().next())
+                .map(|c| dir.join(c.as_os_str()));
+            if let Some(root) = ext_root {
+                if !flagged.contains(&root) {
+                    flagged.push(root);
+                }
+            }
+        }
+
+        for root in flagged {
+            found = true;
+            let line = sink.take(&root, "ide-extension");
+            v.push(
+                Finding::hit(format!(
+                    "extension contains an indicator: {}",
+                    root.display()
+                ))
+                .with_remedy(line),
+            );
+        }
+    }
+
+    if !any_dir {
+        v.push(Finding::ok("no IDE extension directories found"));
+    } else if !found {
+        v.push(Finding::ok("no IDE extension contains an indicator"));
     }
 }
 

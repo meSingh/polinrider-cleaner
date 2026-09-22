@@ -1,11 +1,11 @@
 //! The `polinrider` binary.
 //!
-//! Argument parsing is hand-written rather than pulled from a crate. This is
-//! the cleanup tool for a package supply-chain campaign; every dependency it
-//! does not have is one fewer thing a user has to trust to run it during an
-//! incident.
+//! Argument handling lives in `cli`, which refuses anything it does not
+//! recognise before a single file is read. This binary moves things; a typo
+//! must not get as far as doing work.
 
 use polinrider::checks::{self, Sink};
+use polinrider::cli::{self, Rejection};
 use polinrider::indicators::Indicators;
 use polinrider::quarantine::{Apply, DryRun, Quarantine};
 use polinrider::verdict::{Entry, ExitCode, Level, Verdict};
@@ -14,119 +14,20 @@ use polinrider::walk;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode as ProcExit;
 
-const USAGE: &str = "\
-polinrider - detect and clean up after the PolinRider supply-chain campaign.
-
-  polinrider check [options] ROOT...
-
-Options:
-  --fs-only            only the checks that read the filesystem being scanned.
-                       Skips live processes, sockets, npm config and $HOME
-                       persistence, which describe the machine you are running
-                       on rather than the disk you pointed at.
-  --apply              move confirmed artifacts into quarantine. Never deletes.
-  --quarantine DIR     where they go. Default: a directory beside the report.
-  --report FILE        write the full report here.
-  --state DIR          walk manifest and checkpoints.
-  --ioc DIR            indicator set. Default: ioc/ beside the binary's source.
-  -h, --help           this.
-
-Exit codes: 0 clean - 1 review items only - 2 a confirmed indicator
-            3 the scan could not run.
-";
-
-struct Args {
-    roots: Vec<PathBuf>,
-    fs_only: bool,
-    apply: bool,
-    quarantine: Option<PathBuf>,
-    report: Option<PathBuf>,
-    ioc: Option<PathBuf>,
-}
-
-fn parse(mut argv: impl Iterator<Item = String>) -> Result<Args, String> {
-    let mut a = Args {
-        roots: Vec::new(),
-        fs_only: false,
-        apply: false,
-        quarantine: None,
-        report: None,
-        ioc: None,
-    };
-    let next = |flag: &str, it: &mut dyn Iterator<Item = String>| {
-        it.next().ok_or_else(|| format!("{flag} needs a value"))
-    };
-    while let Some(arg) = argv.next() {
-        match arg.as_str() {
-            "--fs-only" => a.fs_only = true,
-            "--apply" => a.apply = true,
-            "--quarantine" => a.quarantine = Some(next("--quarantine", &mut argv)?.into()),
-            "--report" => a.report = Some(next("--report", &mut argv)?.into()),
-            "--ioc" => a.ioc = Some(next("--ioc", &mut argv)?.into()),
-            // Accepted and ignored: resume is not implemented yet, and a flag
-            // that is silently dropped is better than one that errors out of a
-            // script that used to work. It is reported below.
-            "--state" | "--jobs" => {
-                let _ = next(&arg, &mut argv)?;
-            }
-            "-h" | "--help" => return Err(String::new()),
-            s if s.starts_with('-') => return Err(format!("unknown argument: {s}")),
-            s => a.roots.push(PathBuf::from(s)),
-        }
-    }
-    Ok(a)
-}
-
-/// Where `ioc/` lives relative to the running binary, so the tool works from a
-/// checkout without being told.
-fn default_ioc() -> PathBuf {
-    if let Ok(exe) = std::env::current_exe() {
-        for dir in exe.ancestors() {
-            let candidate = dir.join("ioc");
-            if candidate.join("strong.txt").is_file() {
-                return candidate;
-            }
-        }
-    }
-    PathBuf::from("ioc")
-}
-
-fn render(v: &Verdict, out: &mut String) {
-    for entry in v.entries() {
-        match entry {
-            Entry::Section(title) => {
-                out.push_str(&format!("\n== {title} ==\n"));
-            }
-            Entry::Finding(f) => {
-                out.push_str(&format!("  {} {}\n", f.level.tag(), f.message));
-                if let Some(r) = &f.remedy {
-                    out.push_str(&format!("           {r}\n"));
-                }
-            }
-        }
-    }
-}
-
 fn main() -> ProcExit {
-    let args = match parse(std::env::args().skip(1).skip_while(|a| a == "check")) {
+    let args = match cli::parse(std::env::args().skip(1), cli::default_ioc()) {
         Ok(a) => a,
-        Err(msg) => {
-            if msg.is_empty() {
-                print!("{USAGE}");
-                return ProcExit::from(0);
-            }
-            eprintln!("{msg}\nTry --help");
+        Err(Rejection::HelpRequested) => {
+            print!("{}", cli::usage());
+            return ProcExit::from(0);
+        }
+        Err(e) => {
+            eprintln!("polinrider: {e}");
             return ProcExit::from(ExitCode::CouldNotRun.code() as u8);
         }
     };
 
-    if args.roots.is_empty() {
-        eprintln!("polinrider: no roots given. A scan of nothing is not a clean scan.");
-        return ProcExit::from(ExitCode::CouldNotRun.code() as u8);
-    }
-
-    let ioc_dir = args.ioc.clone().unwrap_or_else(default_ioc);
-    let ind = match Indicators::load(&ioc_dir) {
+    let ind = match Indicators::load(&args.ioc) {
         Ok(i) => i,
         Err(e) => {
             eprintln!("polinrider: {e}");
@@ -136,9 +37,8 @@ fn main() -> ProcExit {
 
     let mut out = String::new();
     out.push_str(&format!(
-        "PolinRider local check - {} - {}\n",
-        std::env::consts::OS,
-        "scan"
+        "PolinRider local check - {} - scan\n",
+        std::env::consts::OS
     ));
     out.push_str(&format!(
         "roots: {}\n",
@@ -158,7 +58,6 @@ fn main() -> ProcExit {
     ));
 
     let mut v = Verdict::new();
-
     v.section("Filesystem walk");
     let w = walk::walk(&args.roots);
     v.push(polinrider::Finding::info(format!(
@@ -166,6 +65,8 @@ fn main() -> ProcExit {
         w.files.len(),
         walk::PRUNED.join(", ")
     )));
+    // Roots were validated before this point, so anything unreadable here is a
+    // subdirectory the current user cannot open. Reported, never silent.
     for bad in &w.unreadable {
         v.push(polinrider::Finding::review(format!(
             "could not read, so it was not scanned: {}",
@@ -173,50 +74,79 @@ fn main() -> ProcExit {
         )));
     }
 
-    // The two quarantine types are different, so the whole scan is run under
-    // whichever one this invocation is allowed to use.
-    let qroot = args
-        .quarantine
-        .clone()
-        .unwrap_or_else(|| PathBuf::from("polinrider-quarantine"));
-
     let code = if args.apply {
-        let mut q = match Quarantine::<Apply>::create(&qroot) {
+        let mut q = match Quarantine::<Apply>::create(&args.quarantine) {
             Ok(q) => q,
             Err(e) => {
-                eprintln!("polinrider: cannot create {}: {e}", qroot.display());
+                eprintln!(
+                    "polinrider: cannot create {}: {e}",
+                    args.quarantine.display()
+                );
                 return ProcExit::from(ExitCode::CouldNotRun.code() as u8);
             }
         };
         {
             let mut sink = Sink::Apply(&mut q);
-            run_checks(&w, &ind, &mut v, &mut sink, args.fs_only);
+            run_checks(&w, &ind, &args, &mut v, &mut sink);
         }
         if let Err(e) = q.write_manifest() {
             eprintln!("polinrider: could not write the quarantine manifest: {e}");
         }
         finish(&v, &mut out, &args.report)
     } else {
-        let q = Quarantine::<DryRun>::new(&qroot);
+        let q = Quarantine::<DryRun>::new(&args.quarantine);
         let mut sink = Sink::Dry(&q);
-        run_checks(&w, &ind, &mut v, &mut sink, args.fs_only);
+        run_checks(&w, &ind, &args, &mut v, &mut sink);
         finish(&v, &mut out, &args.report)
     };
 
     ProcExit::from(code.code() as u8)
 }
 
-fn run_checks(w: &walk::Walk, ind: &Indicators, v: &mut Verdict, sink: &mut Sink, fs_only: bool) {
+fn extension_dirs(home: &Path) -> Vec<PathBuf> {
+    [
+        ".vscode/extensions",
+        ".vscode-insiders/extensions",
+        ".cursor/extensions",
+        ".windsurf/extensions",
+        ".vscode-oss/extensions",
+        ".var/app/com.visualstudio.code/data/vscode/extensions",
+    ]
+    .iter()
+    .map(|p| home.join(p))
+    .collect()
+}
+
+fn run_checks(
+    w: &walk::Walk,
+    ind: &Indicators,
+    args: &cli::Args,
+    v: &mut Verdict,
+    sink: &mut Sink,
+) {
+    checks::implants(w, ind, &args.home, &args.ioc, v, sink);
+
+    if args.fs_only {
+        v.section("IDE extensions: skipped, --fs-only");
+    } else {
+        checks::extensions(&extension_dirs(&args.home), ind, v, sink);
+    }
+
     checks::tasks_json(w, ind, v, sink);
     checks::build_configs(w, ind, v);
     checks::fonts(w, v, sink);
+
+    if args.fs_only {
+        v.section("Propagation artifact: skipped, --fs-only");
+    } else {
+        checks::propagation(w, v, sink);
+    }
+
     checks::packages(w, ind, v);
     checks::git_hooks(w, ind, v, sink);
 
-    if fs_only {
+    if args.fs_only {
         for name in [
-            "IDE extensions",
-            "Propagation artifact",
             "Persistence",
             "Shell startup files",
             "npm configuration",
@@ -224,6 +154,20 @@ fn run_checks(w: &walk::Walk, ind: &Indicators, v: &mut Verdict, sink: &mut Sink
             "Live connections",
         ] {
             v.section(format!("{name}: skipped, --fs-only"));
+        }
+    }
+}
+
+fn render(v: &Verdict, out: &mut String) {
+    for entry in v.entries() {
+        match entry {
+            Entry::Section(title) => out.push_str(&format!("\n== {title} ==\n")),
+            Entry::Finding(f) => {
+                out.push_str(&format!("  {} {}\n", f.level.tag(), f.message));
+                if let Some(r) = &f.remedy {
+                    out.push_str(&format!("           {r}\n"));
+                }
+            }
         }
     }
 }

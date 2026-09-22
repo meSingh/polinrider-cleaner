@@ -71,10 +71,17 @@ impl_rust() {
     echo "conformance: no binary at $bin. Build it: cargo build --release" >&2
     return 3
   }
+  # $state belongs to the shell engine. Discarded here, at the top: putting
+  # it after the run made ":" the last command, so rc captured its exit status
+  # instead of the binary's and every case read as exit 0.
+  : "$state"
+  # No --state flag either: the Rust engine refuses what it has not
+  # implemented rather than ignoring it. --home is explicit so the scan reads
+  # the fixture's home rather than the runner's.
   if [[ -n "$qdir" ]]; then
-    HOME="$FAKE_HOME" "$bin" check --fs-only --report "$report" --state "$state" --apply --quarantine "$qdir" "$@" 2>&1
+    "$bin" check --fs-only --home "$FAKE_HOME" --report "$report" --apply --quarantine "$qdir" "$@" 2>&1
   else
-    HOME="$FAKE_HOME" "$bin" check --fs-only --report "$report" --state "$state" "$@" 2>&1
+    "$bin" check --fs-only --home "$FAKE_HOME" --report "$report" "$@" 2>&1
   fi
 }
 
@@ -190,8 +197,40 @@ run_case() {
   rm -rf "$tmp"
 }
 
+# --- refusals -------------------------------------------------------------
+# Only the Rust engine promises these. The shell accepts some of them by
+# ignoring them, which is the behaviour being replaced.
+refusals() {
+  [[ "$IMPL" != "rust" ]] && return 0
+  local bin="${CARGO_TARGET_DIR:-$ROOT/target}/release/polinrider"
+  [[ -x "$bin" ]] || return 0
+  local tmp; tmp="$(mktemp -d)"
+
+  check_refusal() {
+    local why="$1"; shift
+    local out rc
+    out="$("$bin" "$@" 2>&1)"; rc=$?
+    if [[ $rc -eq 3 ]]; then
+      PASS=$((PASS+1)); printf '  \033[32mpass\033[0m  %-38s %s\n' "refuses" "$why"
+    else
+      FAIL=$((FAIL+1)); FAILED_CASES+=("refuse:$why")
+      printf '  \033[31mFAIL\033[0m  %-38s %s\n' "refuses" "$why"
+      printf '        exit %s, expected 3\n        %s\n' "$rc" "${out%%$'\n'*}"
+    fi
+  }
+
+  check_refusal "an unknown flag"            check --not-a-real-flag "$tmp"
+  check_refusal "a flag it has not built"    check --state /tmp/s "$tmp"
+  check_refusal "a root that does not exist" check "$tmp/definitely-absent"
+  check_refusal "no root at all"             check --fs-only
+  check_refusal "a missing indicator set"    check --ioc "$tmp/no-ioc-here" "$tmp"
+  check_refusal "a root that is a file"      check "$0"
+  rm -rf "$tmp"
+}
+
 printf 'conformance: %s implementation, indicators from ioc/\n\n' "$IMPL"
 for cf in "$HERE"/cases/*.json; do run_case "$cf"; done
+[[ -z "$ONLY" ]] && refusals
 
 printf '\n  %d passed, %d failed\n' "$PASS" "$FAIL"
 if [[ $FAIL -gt 0 ]]; then

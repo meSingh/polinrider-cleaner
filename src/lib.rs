@@ -6,8 +6,10 @@
 //! compiles. See ADR-0026.
 
 pub mod checks;
+pub mod cli;
 pub mod indicators;
 pub mod quarantine;
+pub mod sha256;
 pub mod verdict;
 pub mod walk;
 
