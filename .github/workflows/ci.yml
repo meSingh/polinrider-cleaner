@@ -75,6 +75,22 @@ jobs:
       - name: Conformance corpus - shell implementation
         run: ./conformance/run.sh
 
+      - name: Rust toolchain
+        run: rustup toolchain install --profile minimal --component clippy,rustfmt 1.98.1
+
+      - name: Rust - format, lint, test
+        run: |
+          cargo fmt --check
+          cargo clippy --locked --all-targets -- -D warnings
+          cargo test --locked
+
+      - name: Conformance corpus - Rust implementation
+        # The port is finished when it answers the same specification as the
+        # shell, not when it compiles.
+        run: |
+          cargo build --locked --release
+          ./conformance/run.sh --impl rust
+
   powershell:
     name: PowerShell lint
     runs-on: ubuntu-latest

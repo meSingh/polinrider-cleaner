@@ -135,6 +135,13 @@ if [[ "$1" == "--all" ]]; then
       if cargo test --locked >/tmp/ct.log 2>&1; then
         echo "  pass  cargo test ($(grep -c "^test .* ok$" /tmp/ct.log) tests)"
       else echo "  FAIL  cargo test"; tail -15 /tmp/ct.log; fail=1; fi
+      # The milestone that matters: the Rust implementation answering the same
+      # specification as the shell, case for case.
+      if cargo build --locked --release >/dev/null 2>&1; then
+        ./conformance/run.sh --impl rust || fail=1
+      else
+        echo "  FAIL  cargo build --release"; fail=1
+      fi
     fi
     exit $fail
   '

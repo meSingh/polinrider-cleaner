@@ -19,6 +19,8 @@ pub enum Level {
     /// verdict: "eight things need your attention" is untrue when six of them
     /// are "you own an SSH key".
     Info,
+    /// A check ran and found nothing.
+    Ok,
     /// Nothing is confirmed, but a human has to look at this.
     Review,
     /// A confirmed indicator. No plausible innocent explanation.
@@ -29,6 +31,7 @@ impl Level {
     /// The tag as it appears in the output. The corpus depends on this.
     pub const fn tag(self) -> &'static str {
         match self {
+            Level::Ok => "[ok]    ",
             Level::Info => "[info]  ",
             Level::Review => "[review]",
             Level::Hit => "[HIT]   ",
@@ -66,6 +69,13 @@ impl Finding {
 
     pub fn info(message: impl Into<String>) -> Self {
         Self::new(Level::Info, message)
+    }
+
+    /// A check that ran and found nothing. Not counted in the verdict, but it
+    /// must be printed: a silent section is indistinguishable from one that
+    /// never ran, and that ambiguity is how a skipped check gets missed.
+    pub fn ok(message: impl Into<String>) -> Self {
+        Self::new(Level::Ok, message)
     }
 
     #[must_use]
@@ -109,10 +119,17 @@ impl fmt::Display for ExitCode {
     }
 }
 
-/// Everything a scan concluded.
+/// One line of a scan: a section heading, or a finding inside it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Entry {
+    Section(String),
+    Finding(Finding),
+}
+
+/// Everything a scan concluded, in the order it concluded it.
 #[derive(Debug, Default)]
 pub struct Verdict {
-    findings: Vec<Finding>,
+    entries: Vec<Entry>,
 }
 
 impl Verdict {
@@ -121,15 +138,28 @@ impl Verdict {
     }
 
     pub fn push(&mut self, finding: Finding) {
-        self.findings.push(finding);
+        self.entries.push(Entry::Finding(finding));
     }
 
-    pub fn findings(&self) -> &[Finding] {
-        &self.findings
+    /// Start a section. Every check opens one, so a section that prints no
+    /// findings still shows it ran.
+    pub fn section(&mut self, title: impl Into<String>) {
+        self.entries.push(Entry::Section(title.into()));
+    }
+
+    pub fn entries(&self) -> &[Entry] {
+        &self.entries
+    }
+
+    pub fn findings(&self) -> impl Iterator<Item = &Finding> {
+        self.entries.iter().filter_map(|e| match e {
+            Entry::Finding(f) => Some(f),
+            Entry::Section(_) => None,
+        })
     }
 
     pub fn count(&self, level: Level) -> usize {
-        self.findings.iter().filter(|f| f.level == level).count()
+        self.findings().filter(|f| f.level == level).count()
     }
 
     pub fn hits(&self) -> usize {
@@ -157,6 +187,7 @@ impl Verdict {
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used, clippy::unwrap_used, clippy::indexing_slicing)]
 mod tests {
     use super::*;
 

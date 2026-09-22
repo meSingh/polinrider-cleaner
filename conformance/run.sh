@@ -63,8 +63,14 @@ impl_shell() {
 
 impl_rust() {
   local report="$1" state="$2" qdir="$3"; shift 3
-  local bin="$ROOT/target/release/polinrider"
-  [[ -x "$bin" ]] || { echo "conformance: $bin not built. cargo build --release" >&2; return 3; }
+  # CARGO_TARGET_DIR moves the build output, which the sandbox does because
+  # the repository is mounted read-only. Hardcoding $ROOT/target meant every
+  # case failed in the sandbox while passing on the host.
+  local bin="${CARGO_TARGET_DIR:-$ROOT/target}/release/polinrider"
+  [[ -x "$bin" ]] || {
+    echo "conformance: no binary at $bin. Build it: cargo build --release" >&2
+    return 3
+  }
   if [[ -n "$qdir" ]]; then
     HOME="$FAKE_HOME" "$bin" check --fs-only --report "$report" --state "$state" --apply --quarantine "$qdir" "$@" 2>&1
   else

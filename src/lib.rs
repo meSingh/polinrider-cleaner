@@ -5,8 +5,12 @@
 //! An implementation is finished when it agrees with that corpus, not when it
 //! compiles. See ADR-0026.
 
+pub mod checks;
+pub mod indicators;
 pub mod quarantine;
 pub mod verdict;
+pub mod walk;
 
+pub use indicators::Indicators;
 pub use quarantine::{Apply, DryRun, Outcome, Quarantine};
-pub use verdict::{ExitCode, Finding, Level, Verdict};
+pub use verdict::{Entry, ExitCode, Finding, Level, Verdict};

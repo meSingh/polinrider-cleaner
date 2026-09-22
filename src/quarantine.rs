@@ -194,6 +194,7 @@ Keep this directory until the incident is closed. It is evidence.
 ";
 
 #[cfg(test)]
+#[allow(clippy::expect_used, clippy::unwrap_used, clippy::indexing_slicing)]
 mod tests {
     use super::*;
 
