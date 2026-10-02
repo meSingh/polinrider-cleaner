@@ -1,5 +1,10 @@
 # AGENTS.md
 
+> **Picking this up fresh?** [`HANDOVER.md`](./HANDOVER.md) has the current state
+> of the 2.0.0 work, the branch layout, and the mistakes already made.
+> [`HACKING.md`](./HACKING.md) is how to run it. This file is the reference for
+> changing the repository.
+
 Instructions for AI coding agents. Humans want [README.md](README.md).
 
 This file follows the [AGENTS.md](https://agents.md/) convention. It has two

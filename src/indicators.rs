@@ -163,14 +163,18 @@ mod tests {
             &[
                 (
                     "strong.txt",
-                    "# a comment\n\nrmcej%otb%\n\n# another\nCot%3t=shtP\n",
+                    // Synthetic markers, never live ones. A repository that
+                    // commits real indicator strings trips every scanner that
+                    // clones it, including its own. This test is about comment
+                    // and blank-line parsing, not about any one indicator.
+                    "# a comment\n\nMARKER-ALPHA\n\n# another\nMARKER-BETA\n",
                 ),
                 ("bad-packages.txt", "# packages\nevil-pkg\n"),
             ],
         );
         let ind = Indicators::load(&dir).expect("loads");
-        assert!(ind.strong.contains(&"rmcej%otb%".to_string()));
-        assert!(ind.strong.contains(&"Cot%3t=shtP".to_string()));
+        assert!(ind.strong.contains(&"MARKER-ALPHA".to_string()));
+        assert!(ind.strong.contains(&"MARKER-BETA".to_string()));
         assert!(!ind.strong.iter().any(|s| s.starts_with('#')));
         assert!(!ind.strong.iter().any(|s| s.is_empty()));
     }

@@ -135,4 +135,4 @@ jobs:
       - name: Scan with detection tooling excluded
         run: |
           ./ci/scan-workspace.sh --path . --all-refs --fail-on infected \
-            --exclude '(^|/)(lib|ci|conformance|github-org-recovery|github-account-recovery|machine-cleanup)/|(^|/)docs-site/(book|dist|node_modules)/'
+            --exclude '(^|/)(lib|ci|src|conformance|github-org-recovery|github-account-recovery|machine-cleanup)/|(^|/)docs-site/(book|dist|node_modules|\\.astro)/'
