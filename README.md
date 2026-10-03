@@ -1,3 +1,10 @@
+> [!WARNING]
+> **This is the `v2` branch: a beta build, not ready for use.**
+> It holds the 2.0.0 rewrite while it is being built, and it has not been
+> tested on real machines yet. Do not rely on its results. If you are here to
+> clean up an infection, use the released tool on
+> [`main`](https://github.com/meSingh/polinrider-cleaner/tree/main).
+
 <p align="center">
   <img src="docs/img/hero-lattice.jpg" alt="polinrider-cleaner" width="100%">
 </p>
