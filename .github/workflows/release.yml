@@ -39,7 +39,6 @@ jobs:
         run: |
           ./ci/selftest.sh
           ./ci/selftest-restore.sh
-          ./ci/selftest-implant.sh
 
       # The tag reaches the shell through the environment, never through
       # expression interpolation. `run: TAG="${{ inputs.tag }}"` would let anyone

@@ -2,7 +2,7 @@
 
 <sub>[← back to the main README](../README.md) · this folder is for a **GitHub
 organization**. For one personal account use [`github-account-recovery/`](../github-account-recovery/);
-for a computer use [`machine-cleanup/`](../machine-cleanup/).</sub>
+for a computer use the `polinrider` binary: see [the machine guide](../docs-site/src/content/docs/guides/machine.md).</sub>
 
 ---
 
@@ -54,7 +54,7 @@ without `--apply`.
 ## Step 0. Before anything else
 
 > [!WARNING]
-> **Is anyone's machine still infected?** Run [`../machine-cleanup/`](../machine-cleanup/)
+> **Is anyone's machine still infected?** Run `polinrider check`
 > on every developer machine first. Restoring branches while an implant holds a
 > live token means it re-pushes within minutes. This campaign did exactly that in
 > one documented case: a second wave landed fifty minutes after the first

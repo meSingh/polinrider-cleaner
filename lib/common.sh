@@ -17,7 +17,7 @@ PRC_TAIL_TELL='eval\(|new Function\(|Buffer\.from\(|child_process|atob\(|fromCha
 # payload. Extend this list if you keep your scanners somewhere else.
 PRC_BENIGN_RE='(^|/)\.github/workflows/[^/]*polinrider[^/]*\.(yml|yaml)$'
 PRC_BENIGN_RE="$PRC_BENIGN_RE"'|(^|/)\.github/polinrider/'
-PRC_BENIGN_RE="$PRC_BENIGN_RE"'|(^|/)(polinrider|scan-workspace|gh-scan|gh-sweep|gh-restore|triage-filter|check-macos|check-linux|check-windows|preflight|selftest|install-workflow|local-common|common)[^/]*\.(sh|ps1)$'
+PRC_BENIGN_RE="$PRC_BENIGN_RE"'|(^|/)(polinrider|scan-workspace|gh-scan|gh-sweep|gh-restore|triage-filter|preflight|selftest|install-workflow|local-common|common)[^/]*\.(sh|ps1)$'
 PRC_BENIGN_RE="$PRC_BENIGN_RE"'|(^|/)ioc/[^/]*\.txt$'
 PRC_BENIGN_RE="$PRC_BENIGN_RE"'|(^|/)(lib|ci|src|conformance)/'
 PRC_BENIGN_RE="$PRC_BENIGN_RE"'|\.md$|(^|/)docs/|README'

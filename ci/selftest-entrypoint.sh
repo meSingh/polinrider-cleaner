@@ -60,19 +60,27 @@ if printf '%s\n' "$OUT" | grep -q "Rotate every credential"; then
 OUT="$(printf '4\n%s\n' "$TMP/dirty" | "$ROOT/polinrider.sh" 2>&1)"; RC=$?
 if [[ $RC -eq 2 ]]; then pass "menu answers can be piped in"; else fail "piped menu exited $RC"; fi
 
-# --- OS routing --------------------------------------------------------------
-case "$(uname -s)" in
-  Darwin) EXPECT="$ROOT/machine-cleanup/check-macos.sh" ;;
-  *)      EXPECT="$ROOT/machine-cleanup/check-linux.sh" ;;
-esac
-if [[ -x "$EXPECT" ]]; then
-  pass "the per-OS tool for this machine exists and is executable"
-else fail "missing per-OS tool: $EXPECT"; fi
+# --- the machine check is not this script any more ---------------------------
+# 2.0 moved it into the polinrider binary. Asking this script for it must say
+# so and exit 3: an exit 0 here would read as "this computer is clean".
+OUT="$("$ROOT/polinrider.sh" --machine 2>&1)"; RC=$?
+if [[ $RC -eq 3 ]]; then pass "--machine exits 3: nothing was checked"
+else fail "--machine exited $RC"; fi
+if printf '%s\n' "$OUT" | grep -q "polinrider check DIR"; then
+  pass "--machine says which command checks this computer now"
+else fail "--machine does not name the polinrider binary"; fi
+if printf '%s\n' "$OUT" | grep -q "not a clean result"; then
+  pass "--machine is not reported as a clean result"
+else fail "--machine did not say the check was incomplete"; fi
+
+"$ROOT/polinrider.sh" --machine --fs-only >/dev/null 2>&1; RC=$?
+if [[ $RC -eq 3 ]]; then pass "an option of the old machine check is refused, not ignored"
+else fail "--fs-only exited $RC"; fi
 
 OUT="$("$ROOT/polinrider.sh" --path "$TMP/dirty" 2>&1)"
-if printf '%s\n' "$OUT" | grep -q -- "--machine"; then
+if printf '%s\n' "$OUT" | grep -q "choose computer"; then
   pass "a finding points the operator at the machine check"
-else fail "guidance does not mention --machine"; fi
+else fail "guidance does not say how to check this computer"; fi
 
 # --- the GitHub verdict must come from counts, never from an exit code -------
 # A previous version returned triage-filter's exit status, which is 0 by design.

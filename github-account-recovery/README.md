@@ -2,7 +2,7 @@
 
 <sub>[← back to the main README](../README.md) · this folder is for **one personal
 GitHub account**. For an organization use [`github-org-recovery/`](../github-org-recovery/); for a
-computer use [`machine-cleanup/`](../machine-cleanup/).</sub>
+computer use the `polinrider` binary: see [the machine guide](../docs-site/src/content/docs/guides/machine.md).</sub>
 
 ---
 
@@ -54,8 +54,8 @@ commit that still exists. History is intact and no work is lost.
 
 In this order, and finish both before touching a single branch.
 
-**1. The machine.** Run `./polinrider.sh --machine` on every machine you have
-used for git. See [`../machine-cleanup/`](../machine-cleanup/). If anything comes
+**1. The machine.** Run `polinrider` and choose `computer` on every machine you
+have used for git. See [the machine guide](../docs-site/src/content/docs/guides/machine.md). If anything comes
 back as a confirmed hit, that machine is out of the process entirely; do the rest
 from a different one.
 

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# demo.sh - build a realistically infected project and scan it.
+# demo.sh - build a realistically infected project to scan.
 #
-# Runs INSIDE the sandbox (polinrider-sandbox --demo). It needs somewhere writable
+# Runs INSIDE the sandbox (polinrider-sandbox --beta calls it). It needs somewhere writable
 # and somewhere safe, and the container is both.
 #
-#   ./ci/demo.sh              build the sample and scan it with the 1.x tool
+#   ./ci/demo.sh              build the sample and say how to scan it
 #   ./ci/demo.sh --tree-only  build the sample and stop
 #
 # The fixture carries no payload. It writes a real indicator pulled from ioc/
@@ -68,51 +68,10 @@ cat <<EOF
   Nothing here is live malware. It carries one real indicator string, pulled
   from ioc/ when this ran, which is what makes the scanner match it.
 
-  ----------------------------------------------------------------------
-  Scanning it now, read-only. Nothing will be changed.
-  ----------------------------------------------------------------------
-EOF
+  This script used to scan it with the shell machine check. That check is the
+  polinrider binary now. To build the binary, install it in the container and
+  scan this sample with it:
 
-# The branded entry point, not the raw engine underneath it: the banner, the
-# colours and the verdict box are the thing being demonstrated as much as the
-# findings are.
-"$ROOT/polinrider.sh" --machine --roots "$DEMO" --fs-only \
-  --report /tmp/demo-report.txt --state /tmp/demo-state --yes
-rc=$?
-
-cat <<EOF
-
-  ======================================================================
-  That was a simulation. Your own machine was not scanned and is not
-  affected. The scan looked only at $DEMO, inside this container.
-
-  The COMPROMISED verdict above is the tool behaving correctly: it found
-  three real indicators in the sample and said exactly what it would say
-  on a genuine finding. That wording is deliberately left alone here so
-  you can judge how it lands when it matters.
-  ======================================================================
-
-  That exit code was $rc.  0 clean · 1 needs a look · 2 confirmed · 3 could not run
-
-  Things worth trying from here:
-
-    # the same scan, but actually move the bad files into quarantine
-    ./machine-cleanup/check-linux.sh --fs-only --apply \\
-        --quarantine /tmp/demo-quarantine \\
-        --report /tmp/demo-report.txt --state /tmp/demo-state2 $DEMO
-
-    # then look at what it moved, and at the receipt it left
-    ls -R /tmp/demo-quarantine
-    cat /tmp/demo-quarantine/manifest.tsv
-
-    # scan only the clean project, to see a pass
-    ./machine-cleanup/check-linux.sh --fs-only \\
-        --report /tmp/r.txt --state /tmp/s $DEMO/blog
-
-    # rebuild the sample if you break it
-    ./ci/demo.sh
-
-  The full report of the scan above: /tmp/demo-report.txt
-  Nothing you do in here can touch your Mac.
+    ./polinrider-sandbox --beta
 
 EOF

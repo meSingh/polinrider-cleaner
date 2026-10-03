@@ -28,7 +28,7 @@ before anything is applied. See [DISCLAIMER.md](DISCLAIMER.md).
 ### Non-negotiable order
 
 ```
-1. machine-cleanup/     on every affected machine
+1. polinrider check     on every affected machine
 2. credential rotation                       (the human does this, not you)
 3. github-org-recovery/ or github-account-recovery/         restore the branches
 4. ci/                                       prevent the next one
@@ -60,9 +60,9 @@ nothing on GitHub or on the machine.
 | Command | Effect |
 |---|---|
 | `polinrider.sh` in any mode | routes to the tools below; never changes anything |
-| `ci/selftest*.sh` (eight of them) | offline, no network, no credentials |
+| `ci/selftest*.sh` (seven of them) | offline, no network, no credentials |
 | `ci/scan-workspace.sh --path DIR` | reads files |
-| `machine-cleanup/check-*.sh DIR ...` | reads the machine, writes one report file |
+| `polinrider check DIR ...` | reads the machine, writes one report file |
 | `github-org-recovery/scan.sh`, `sweep.sh`, `triage-filter.sh`, `preflight.sh` | reads the GitHub API, clones mirrors |
 | `github-account-recovery/*` (same four) | as above |
 | `restore.sh` **without** `--apply` | prints a plan, changes nothing |
@@ -77,7 +77,8 @@ nothing on GitHub or on the machine.
 | `restore.sh --apply` | force-updates branch refs on GitHub. Irreversible from the tool's side |
 | `clean-repo.sh --apply` | commits and pushes a deletion to every affected branch. Reversible, but it is still a push |
 | `clean-repo.sh --rewrite --apply` | rewrites every commit and force-pushes every ref. Every SHA changes. Not reversible from the remote's side |
-| `check-*.sh --apply` / `-Apply` | moves files on the human's machine |
+| `polinrider check --apply` | moves files on the human's machine |
+| `polinrider clean --apply` | also cuts an appended payload out of a build config, in place |
 | Any `gh api -X DELETE` or `-X PATCH` printed by these tools | the tools print commands deliberately so a human runs them |
 
 For `restore.sh --apply` specifically, all of these must be true first, and you
@@ -145,17 +146,17 @@ the OS.
 | Path | Contains |
 |---|---|
 | `ioc/` | the indicator set, single source of truth, read at runtime by everything |
-| `lib/` | shared engines: `gh-scan`, `gh-sweep`, `gh-restore`, `gh-clean`, `gh-preserve`, `next-steps`, `triage-filter`, `common.sh`, `local-common.sh` |
+| `lib/` | shared engines: `gh-scan`, `gh-sweep`, `gh-restore`, `gh-clean`, `gh-preserve`, `next-steps`, `triage-filter`, `common.sh` |
 | `github-org-recovery/` | recover a GitHub **organization**: thin wrappers over `lib/` plus its own `preflight.sh` |
 | `github-account-recovery/` | the same for **one personal account** |
-| `machine-cleanup/` | check and clean **one computer**, one script per operating system |
+| `src/` | the `polinrider` binary: check and clean **one computer** on macOS, Linux and Windows, and the guided flow |
 | `polinrider.sh` | the single entry point at the repository root |
 | `ui/` | colours, symbols and drawing. No scanning logic; skip it when auditing |
 | `docs/adr/` | one record per design decision, with its reasoning and its cost |
-| `ci/` | the vendorable scanner, its workflow template, installer, and eight self-tests |
+| `ci/` | the vendorable scanner, its workflow template, installer, and seven self-tests |
 
-`common.sh` and `local-common.sh` are sourced, not executed, and are
-deliberately not marked executable.
+`common.sh` is sourced, not executed, and is deliberately not marked
+executable.
 
 ### Record the decision
 
@@ -178,22 +179,20 @@ Run these in the sandbox, not on your machine: `./polinrider-sandbox --all` does
 all of it. See ADR-0027.
 
 ```bash
-bash -n polinrider.sh lib/*.sh ci/*.sh github-*/*.sh machine-cleanup/*.sh
+bash -n polinrider.sh lib/*.sh ci/*.sh github-*/*.sh
 shellcheck --severity=warning --external-sources \
-  polinrider.sh lib/*.sh ci/*.sh github-*/*.sh machine-cleanup/*.sh
+  polinrider.sh lib/*.sh ci/*.sh github-*/*.sh
 ./ci/selftest.sh
 ./ci/selftest-restore.sh
-./ci/selftest-implant.sh
 ./ci/selftest-entrypoint.sh
 ./ci/selftest-nextsteps.sh
 ./ci/selftest-preserve.sh
 ./ci/selftest-rewrite.sh
 ./ci/selftest-ui.sh
-./ci/selftest-walk.sh
 ```
 
-CI enforces `shellcheck --severity=warning` and runs all three self-tests, plus
-a PowerShell parse and PSScriptAnalyzer pass at Error and Warning severity.
+CI enforces `shellcheck --severity=warning` and runs the self-tests, then
+`cargo fmt`, `clippy`, the unit tests and the conformance corpus.
 The tree is clean at those levels; keep it that way. Where a warning is
 suppressed there is a `# shellcheck disable=` with the reason on the line above.
 

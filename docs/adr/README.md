@@ -54,6 +54,7 @@ If you disagree with one, open an issue and quote its number.
 | [0036](./0036-github-is-checked-through-one-boundary-and-fixed-one-agreed-way-at-a-time.md) | GitHub is checked through one boundary, and fixed one agreed way at a time | Accepted |
 | [0037](./0037-a-github-fix-is-planned-on-the-copy-pushed-on-a-yes-and-believed-when-github-shows-it.md) | A GitHub fix is planned on the copy, pushed on a yes, and believed when GitHub shows it | Accepted |
 | [0038](./0038-windows-is-read-through-the-same-boundary-with-powershell-as-the-tool.md) | Windows is read through the same boundary, with PowerShell as the tool | Accepted |
+| [0039](./0039-the-shell-machine-check-is-removed-and-the-corpus-holds-one-engine.md) | The shell machine check is removed, and the corpus holds one engine | Accepted |
 
 ## Adding one
 

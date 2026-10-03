@@ -6,7 +6,7 @@ labels: false-positive
 ---
 
 **Which script**
-<!-- e.g. ci/scan-workspace.sh, machine-cleanup/check-macos.sh, github-org-recovery/scan.sh -->
+<!-- e.g. ci/scan-workspace.sh, polinrider check, github-org-recovery/scan.sh -->
 
 **The finding, copied exactly**
 

@@ -55,7 +55,7 @@
 |---|---|---|
 | Branches across an organization's repos were force-pushed | [**`github-org-recovery/`**](github-org-recovery/) | Scans every repo in a GitHub **organization**, then puts each branch back where it was |
 | Your own GitHub repositories were force-pushed | [**`github-account-recovery/`**](github-account-recovery/) | The same for **one personal account**, where the attacker pushed using your own login |
-| Your laptop opened an infected repo, or installed a flagged package | [**`machine-cleanup/`**](machine-cleanup/) | Checks and cleans **one computer**: files, editor extensions, persistence, an installed implant. macOS, Linux, Windows |
+| Your laptop opened an infected repo, or installed a flagged package | the **`polinrider`** binary | Checks and cleans **one computer** on macOS, Linux or Windows: files, editor extensions, what starts by itself, an installed implant. On this branch it replaces the per-system scripts |
 | You want every future push and PR scanned automatically | [**`ci/`**](ci/) | A scanner you **copy into your own repo**, so every push is checked with no third-party action |
 
 <sub>The two GitHub folders say <strong>recovery</strong> because that is what they do: they put
@@ -211,21 +211,17 @@ never walked: malicious packages are caught by name from manifests and
 lockfiles, and the payload lives in the project's own files.
 
 <details>
-<summary>Running the per-OS script directly instead</summary>
+<summary>On this branch, the machine check is the <code>polinrider</code> binary</summary>
 
 <br>
 
 ```bash
-./machine-cleanup/check-macos.sh ~/Sites ~/Projects      # macOS
-./machine-cleanup/check-linux.sh ~/src ~/code            # Linux
+polinrider                 # asks what to check, one question at a time
+polinrider check ~/code    # a read-only check of this computer and that folder
 ```
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\machine-cleanup\check-windows.ps1 -Roots C:\work
-```
-
-Windows is the one case `polinrider.sh` cannot run for you, because it is a
-PowerShell script; it prints this command instead.
+The three per-system scripts are gone. macOS, Linux and Windows are checked by
+the same code. `./polinrider.sh --machine` says so and exits 3.
 
 </details>
 
@@ -244,7 +240,7 @@ a manifest and restore instructions. **Nothing is ever deleted.** Build config
 files and shell startup files are never touched automatically. The payload is
 appended to real files, so the script reports them and you re-clone.
 
-Full detail: **[`machine-cleanup/README.md`](machine-cleanup/README.md)**
+Full detail: **[the machine guide](docs-site/src/content/docs/guides/machine.md)**
 
 </details>
 
@@ -647,7 +643,7 @@ and others, plus hijacked versions of legitimate packages.
 Two consequences:
 
 1. **A repository scan is no longer sufficient.** Run
-   [`machine-cleanup/`](machine-cleanup/) even when every repository comes back clean.
+   `polinrider check` even when every repository comes back clean.
 2. **Install-time hooks are not the only trigger.** Some clusters skip
    `postinstall` entirely and fire at `require` time or on first use of a
    function. This is the part that reaches production: the payload runs when your

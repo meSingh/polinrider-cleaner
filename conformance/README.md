@@ -1,17 +1,23 @@
 # The conformance corpus
 
-This is the specification. Not the shell scripts, not the Rust that replaces
-them: this.
+This is the specification. Not the code: this.
 
 Each case declares a filesystem to build and exactly what a scan of it must
 return — exit code, findings that must appear, findings that must **not**, and
-which paths the run is allowed to touch. Every implementation runs the same
-cases, so the port is finished when it agrees with the shell on all of them,
-rather than when it compiles.
+which paths the run is allowed to touch.
+
+It was written so that two implementations had to give the same answers: the
+shell machine check and the Rust binary that replaced it. The port was
+finished when they agreed on every case both could run, not when it compiled.
+The shell machine check was then removed
+([ADR-0039](../docs/adr/0039-the-shell-machine-check-is-removed-and-the-corpus-holds-one-engine.md)),
+so the corpus now holds one engine to what was agreed, and every new case has
+to carry its own argument in `why`, because there is no second implementation
+left to disagree with it.
 
 ```bash
-./conformance/run.sh                    # the shell implementation
-./conformance/run.sh --impl rust        # the Rust binary
+cargo build --release                   # the corpus runs the built binary
+./conformance/run.sh                    # every case
 ./conformance/run.sh --case font-masquerade   # one case, with the run output
 ./conformance/run.sh --diff             # every case, with output
 ```
@@ -91,9 +97,8 @@ one thing it is about.
 Host cases add three placeholders: `{{IMPLANT}}`, `{{IMPLANT_CUT}}` (the same
 name cut to the 15 bytes the Linux kernel keeps) and `{{NETIP}}`.
 
-**The shell implementation skips these**, and prints `skip` for each one so a
-shell run cannot look as though it covered them. Only the Rust engine can be
-handed a machine that does not exist. That has a cost, written into
+The shell implementation could never run these: only the Rust engine can be
+handed a machine that does not exist. That had a cost, written into
 [ADR-0029](../docs/adr/0029-host-state-is-read-through-one-boundary-and-can-be-supplied.md):
 for the host checks there is no second implementation to disagree with the
 corpus, so a wrong expected value here has nothing to catch it but its `why`.
@@ -111,8 +116,7 @@ Three more things can be expected of a case:
 | `file_after` | the exact contents of a file afterwards. Used to show that unrelated files, and everything under `.git`, are untouched |
 | `must_print` | text that must appear in the output, for advice that carries no level tag |
 
-Half of these cases are about what `clean` must leave alone. The shell has no
-such command, so they skip under it, the same way the host cases do.
+Half of these cases are about what `clean` must leave alone.
 
 ## Guide cases
 

@@ -5,7 +5,7 @@ Everything you need, in one page. Three commands do almost all of it.
 | I want to… | Command |
 |---|---|
 | Check nothing is broken | `./polinrider-sandbox --all` |
-| Try the tool on a sample infected project | `./polinrider-sandbox --demo` |
+| Try the tool on a sample infected project | `./polinrider-sandbox --beta` |
 | Look at the documentation site | `./ci/docs-serve.sh` |
 
 ## First time only
@@ -45,7 +45,7 @@ should say `pass`. If something says `FAIL`, that is worth telling me about.
 ## Trying the tool for real
 
 ```bash
-./polinrider-sandbox --demo
+./polinrider-sandbox --beta
 ```
 
 This builds a fake workspace with two projects: `shop/`, infected five
@@ -96,7 +96,7 @@ edit-and-see-it loop.
 | | |
 |---|---|
 | `polinrider.sh` | The one command a user runs |
-| `machine-cleanup/` | Scans one computer |
+| `src/` | The `polinrider` binary: checks one computer, a folder, or GitHub |
 | `github-*-recovery/` | Scans and repairs GitHub accounts and organizations |
 | `ioc/` | The indicator set. Plain text, read at runtime |
 | `conformance/` | The specification: what a scan must return, as data |

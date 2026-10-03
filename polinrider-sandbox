@@ -13,7 +13,6 @@
 #   ./polinrider-sandbox                       interactive shell in the sandbox
 #   ./polinrider-sandbox --all                 lint, every self-test, the corpus
 #   ./polinrider-sandbox ./conformance/run.sh  one command
-#   ./polinrider-sandbox --demo                build a sample infected project and scan it
 #   ./polinrider-sandbox --beta [DIR]          a shell with the 2.0 beta installed and on
 #                                              the PATH, and a sample to use it on. DIR,
 #                                              if given, is mounted READ-ONLY at /scan
@@ -109,11 +108,12 @@ if [[ $# -eq 0 ]]; then
   exit $?
 fi
 
-# A sample workspace to point the tool at, built inside the container and left
-# there. Ends in a shell so the scan can be repeated with different flags.
+# --demo scanned a sample with the shell machine check. That check is the
+# binary now, and --beta is the mode that builds it, installs it and scans the
+# same sample.
 if [[ "$1" == "--demo" ]]; then
-  run bash -c './ci/demo.sh; echo "  Dropping you into the sandbox. Type exit when done."; echo; exec bash'
-  exit $?
+  echo "sandbox: --demo is --beta now. Starting that." >&2
+  set -- --beta
 fi
 
 # The 2.0 beta the way somebody who installed it would have it: on the PATH,
@@ -139,34 +139,32 @@ if [[ "$1" == "--all" ]]; then
     set -uo pipefail
     fail=0
     echo "== syntax =="
-    bash -n polinrider.sh lib/*.sh ci/*.sh conformance/*.sh github-*/*.sh machine-cleanup/*.sh || fail=1
+    bash -n polinrider.sh lib/*.sh ci/*.sh conformance/*.sh github-*/*.sh || fail=1
     echo "== shellcheck =="
     shellcheck --severity=warning --external-sources \
-      polinrider.sh lib/*.sh ci/*.sh conformance/*.sh github-*/*.sh machine-cleanup/*.sh || fail=1
+      polinrider.sh lib/*.sh ci/*.sh conformance/*.sh github-*/*.sh || fail=1
     echo "== self-tests =="
     for t in ci/selftest*.sh; do
       if ./"$t" >/dev/null 2>&1; then printf "  pass  %s\n" "$(basename "$t")"
       else printf "  FAIL  %s\n" "$(basename "$t")"; fail=1; fi
     done
+    echo "== rust =="
+    # --locked: the repository is mounted read-only, and a lockfile that
+    # needed rewriting should fail loudly rather than be silently resolved.
+    cargo fmt --check || fail=1
+    cargo clippy --locked --all-targets -- -D warnings >/dev/null 2>&1 \
+      && echo "  pass  clippy" || { echo "  FAIL  clippy"; fail=1; }
+    if cargo test --locked >/tmp/ct.log 2>&1; then
+      echo "  pass  cargo test ($(grep -c "^test .* ok$" /tmp/ct.log) tests)"
+    else echo "  FAIL  cargo test"; tail -15 /tmp/ct.log; fail=1; fi
+    # The specification. The shell machine check answered to it too, until the
+    # two agreed and the shell one was removed; it now holds the one engine to
+    # what was agreed.
     echo "== conformance =="
-    ./conformance/run.sh || fail=1
-    if command -v cargo >/dev/null 2>&1 && [ -f Cargo.toml ]; then
-      echo "== rust =="
-      # --locked: the repository is mounted read-only, and a lockfile that
-      # needed rewriting should fail loudly rather than be silently resolved.
-      cargo fmt --check || fail=1
-      cargo clippy --locked --all-targets -- -D warnings >/dev/null 2>&1 \
-        && echo "  pass  clippy" || { echo "  FAIL  clippy"; fail=1; }
-      if cargo test --locked >/tmp/ct.log 2>&1; then
-        echo "  pass  cargo test ($(grep -c "^test .* ok$" /tmp/ct.log) tests)"
-      else echo "  FAIL  cargo test"; tail -15 /tmp/ct.log; fail=1; fi
-      # The milestone that matters: the Rust implementation answering the same
-      # specification as the shell, case for case.
-      if cargo build --locked --release >/dev/null 2>&1; then
-        ./conformance/run.sh --impl rust || fail=1
-      else
-        echo "  FAIL  cargo build --release"; fail=1
-      fi
+    if cargo build --locked --release >/dev/null 2>&1; then
+      ./conformance/run.sh || fail=1
+    else
+      echo "  FAIL  cargo build --release"; fail=1
     fi
     exit $fail
   '

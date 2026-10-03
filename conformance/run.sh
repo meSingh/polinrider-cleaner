@@ -1,16 +1,19 @@
 #!/usr/bin/env bash
 # run.sh - the conformance corpus. The specification 2.0.0 is measured against.
 #
-# Each case in cases/ declares a filesystem to build, an implementation to run
-# against it, and exactly what must come back. Every implementation has to
-# produce the same answers, so the Rust port is finished when it passes this
-# suite rather than when it compiles.
+# Each case in cases/ declares a filesystem to build and exactly what must come
+# back. It was written so that two implementations had to give the same
+# answers: the shell machine check and the Rust binary. The port finished when
+# they agreed, and the shell one has since been removed, so this now holds the
+# one engine to what was agreed.
 #
 # Usage:
-#   ./conformance/run.sh                   # the shell implementation
-#   ./conformance/run.sh --impl rust       # the Rust binary
+#   ./conformance/run.sh                   # every case
 #   ./conformance/run.sh --case fake-font  # one case, with full output on failure
 #   ./conformance/run.sh --diff            # print the run output for every case
+#
+# Build the binary first: cargo build --release. --impl rust is still accepted,
+# because scripts written when there were two say it.
 #
 # Exit 0 all passed, 1 a case failed, 3 the harness could not run.
 #
@@ -21,9 +24,7 @@
 #
 # HOST CASES. A case with a "host" key describes a machine as well as a tree:
 # its process table, sockets, crontab and system directories, as files. They
-# run without --fs-only and with --host-state pointing at those files. Only the
-# Rust engine can be handed a machine that does not exist, so under the shell
-# implementation these print "skip" and are counted, never silently dropped.
+# run without --fs-only and with --host-state pointing at those files.
 #
 # GUIDE CASES. A case with "command": "guide" runs the guided flow and feeds it
 # the case's "stdin", one answer per line. {{TREE}} in an answer is the
@@ -40,14 +41,13 @@
 # case that pushes has to say so, and say what the push should have done.
 #
 # CLEAN CASES. A case with "command": "clean" runs the clean command, which
-# strips an appended payload out of a build config in place. The shell has no
-# such command, so these skip under it too, the same way.
+# strips an appended payload out of a build config in place.
 
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$HERE/.." && pwd)"
 
-IMPL="shell"; ONLY=""; SHOW_DIFF=0
+IMPL="rust"; ONLY=""; SHOW_DIFF=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --impl) IMPL="$2"; shift 2 ;;
@@ -82,19 +82,6 @@ PAD="$(printf '%280s' '')"
 # --- implementation adapters ------------------------------------------------
 # Each takes: <report> <state> <quarantine|""> <root...>
 # and prints the run output. The exit code is the implementation's.
-impl_shell() {
-  local report="$1" state="$2" qdir="$3"; shift 3
-  local tool; case "$(uname -s)" in
-    Darwin) tool="$ROOT/machine-cleanup/check-macos.sh" ;;
-    *)      tool="$ROOT/machine-cleanup/check-linux.sh" ;;
-  esac
-  if [[ -n "$qdir" ]]; then
-    HOME="$FAKE_HOME" "$tool" --fs-only --report "$report" --state "$state" --apply --quarantine "$qdir" "$@" 2>&1
-  else
-    HOME="$FAKE_HOME" "$tool" --fs-only --report "$report" --state "$state" "$@" 2>&1
-  fi
-}
-
 impl_rust() {
   local report="$1" state="$2" qdir="$3"; shift 3
   # CARGO_TARGET_DIR moves the build output, which the sandbox does because
@@ -139,8 +126,9 @@ impl_rust() {
 }
 
 case "$IMPL" in
-  shell|rust) ;;
-  *) echo "unknown implementation: $IMPL (shell|rust)" >&2; exit 3 ;;
+  rust) ;;
+  shell) echo "the shell implementation was removed in 2.0: there is one engine now" >&2; exit 3 ;;
+  *) echo "unknown implementation: $IMPL" >&2; exit 3 ;;
 esac
 
 # --- helpers ----------------------------------------------------------------
@@ -258,7 +246,7 @@ forge_refs() {
 # forge_repos <case file>: owner/repo for every repository of the case.
 forge_repos() { jq -r '.forge // {} | to_entries[] | .key as $o | .value | keys[] | "\($o)/\(.)"' "$1"; }
 
-PASS=0; FAIL=0; SKIP=0; FAILED_CASES=()
+PASS=0; FAIL=0; FAILED_CASES=()
 FORGE_STATE=""
 HOST_STATE=""
 COMMAND="check"
@@ -271,21 +259,8 @@ run_case() {
 
   local why; why="$(jq -r '.why' "$cf")"
 
-  # A host case needs an engine that can be handed a machine. Said, and
-  # counted, so a shell run never looks as though it covered them.
   local is_host; is_host="$(jq -r 'has("host")' "$cf")"
-  if [[ "$is_host" == "true" && "$IMPL" != "rust" ]]; then
-    SKIP=$((SKIP+1))
-    printf '  \033[33mskip\033[0m  %-38s %s\n' "$name" "needs supplied host state, which only the Rust engine takes"
-    return 0
-  fi
-
   COMMAND="$(jq -r '.command // "check"' "$cf")"
-  if [[ "$COMMAND" != "check" && "$IMPL" != "rust" ]]; then
-    SKIP=$((SKIP+1))
-    printf '  \033[33mskip\033[0m  %-38s %s\n' "$name" "runs the $COMMAND command, which only the Rust engine has"
-    return 0
-  fi
 
   local tmp; tmp="$(mktemp -d)"
   FAKE_HOME="$tmp/home"; mkdir -p "$FAKE_HOME" "$tmp/tree" "$tmp/out"
@@ -501,10 +476,9 @@ run_case() {
 }
 
 # --- refusals -------------------------------------------------------------
-# Only the Rust engine promises these. The shell accepts some of them by
-# ignoring them, which is the behaviour being replaced.
+# The shell accepted some of these by ignoring them. That is the behaviour
+# the binary replaced, and why each is pinned.
 refusals() {
-  [[ "$IMPL" != "rust" ]] && return 0
   local bin="${CARGO_TARGET_DIR:-$ROOT/target}/release/polinrider"
   [[ -x "$bin" ]] || return 0
   local tmp; tmp="$(mktemp -d)"
@@ -562,15 +536,11 @@ refusals() {
   rm -rf "$tmp"
 }
 
-printf 'conformance: %s implementation, indicators from ioc/\n\n' "$IMPL"
+printf 'conformance: indicators from ioc/\n\n'
 for cf in "$HERE"/cases/*.json; do run_case "$cf"; done
 [[ -z "$ONLY" ]] && refusals
 
-if [[ $SKIP -gt 0 ]]; then
-  printf '\n  %d passed, %d failed, %d skipped\n' "$PASS" "$FAIL" "$SKIP"
-else
-  printf '\n  %d passed, %d failed\n' "$PASS" "$FAIL"
-fi
+printf '\n  %d passed, %d failed\n' "$PASS" "$FAIL"
 if [[ $FAIL -gt 0 ]]; then
   printf '  failed: %s\n' "${FAILED_CASES[*]}"
   printf '  one case in detail:  ./conformance/run.sh --case %s\n' "${FAILED_CASES[0]}"

@@ -7,19 +7,14 @@
 #
 # Usage:
 #   ./polinrider.sh                     ask, then scan
-#   ./polinrider.sh --machine           scan this computer
+#   ./polinrider.sh --machine           says how: the machine check is the
+#                                       polinrider binary now, not this script
 #   ./polinrider.sh --org ACME          scan a GitHub organization
 #   ./polinrider.sh --user LOGIN        scan a personal GitHub account
 #   ./polinrider.sh --path DIR          scan one folder or repository
 #   ./polinrider.sh --all --org ACME    everything, in the order that works
 #
 # Options:
-#   --roots "A B"   code directories for the machine scan
-#   --background    machine scan only: run detached so the terminal can close
-#   --resume [DIR]  machine scan only: pick up an interrupted scan where it stopped
-#   --jobs N        machine scan only: parallel hashing workers (default: all cores)
-#   --fs-only       machine scan only: skip the live-host checks (processes,
-#                   sockets, npm, crontab). For a backup drive or a mounted image.
 #   --out DIR       where evidence goes. Default: a directory under $TMPDIR,
 #                   which your machine clears on reboot. Mirrors hold live
 #                   malware, so they are never written inside a git checkout
@@ -47,12 +42,9 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 # running lib/gh-scan.sh directly still needs it.
 PRC_EMBEDDED=1; export PRC_EMBEDDED
 
-MODE=""; ORG=""; USR=""; SCANPATH=""; OUT=""; ROOTS=""; ASSUME_YES=0; DO_ALL=0; PURGE=0
-declare -a ROOT_LIST=()
+MODE=""; ORG=""; USR=""; SCANPATH=""; OUT=""; ASSUME_YES=0; DO_ALL=0; PURGE=0
 APPLY_ALL=0        # 1 after "apply to all", "stop" after q, during a run
 TRUSTED_ARGS=()     # colleagues to name, so their machines get checked too
-MACHINE_ARGS=()   # --background / --resume / --jobs, handed to the machine check
-RESUMING=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -61,20 +53,15 @@ while [[ $# -gt 0 ]]; do
     --user)    MODE="user"; USR="$2"; shift 2 ;;
     --path)    MODE="path"; SCANPATH="$2"; shift 2 ;;
     --all)     DO_ALL=1; shift ;;
-    --roots)   ROOTS="$2"; shift 2 ;;
-    --background) MACHINE_ARGS+=(--background); shift ;;
-    --resume)  MACHINE_ARGS+=(--resume); RESUMING=1
-               if [[ $# -gt 1 && -d "$2" ]]; then MACHINE_ARGS+=("$2"); shift; fi
-               shift ;;
-    --jobs)    MACHINE_ARGS+=(--jobs "$2"); shift 2 ;;
-    --fs-only) MACHINE_ARGS+=(--fs-only); shift ;;
-    --report)  MACHINE_ARGS+=(--report "$2"); shift 2 ;;
-    --state)   MACHINE_ARGS+=(--state "$2"); shift 2 ;;
+    --roots|--jobs|--report|--state|--background|--resume|--fs-only)
+      # These belonged to the shell machine check, which 2.0 replaced.
+      printf '%s was an option of the machine check, which is the polinrider binary now.\nRun: polinrider --help\n' "$1" >&2
+      exit 3 ;;
     --out)     OUT="$2"; shift 2 ;;
     --yes|-y)  ASSUME_YES=1; shift ;;
     --purge-evidence) PURGE=1; shift ;;
     --known-actor|--trusted-actor) TRUSTED_ARGS+=(--known-actor "$2"); shift 2 ;;
-    -h|--help) sed -n '2,27p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,23p' "$0"; exit 0 ;;
     *) printf 'unknown argument: %s\nTry --help\n' "$1" >&2; exit 2 ;;
   esac
 done
@@ -112,35 +99,11 @@ ask() {  # ask <prompt> <default y|n>  -> 0 for yes
 # --- what machine is this ---------------------------------------------------
 OSNAME="$(uname -s 2>/dev/null || echo unknown)"
 case "$OSNAME" in
-  Darwin)                      OS="macOS";   LOCAL_TOOL="$HERE/machine-cleanup/check-macos.sh" ;;
-  Linux)                       OS="Linux";   LOCAL_TOOL="$HERE/machine-cleanup/check-linux.sh" ;;
-  MINGW*|MSYS*|CYGWIN*|Windows_NT) OS="Windows"; LOCAL_TOOL="" ;;
-  *)                           OS="$OSNAME"; LOCAL_TOOL="$HERE/machine-cleanup/check-linux.sh" ;;
+  Darwin)                      OS="macOS" ;;
+  Linux)                       OS="Linux" ;;
+  MINGW*|MSYS*|CYGWIN*|Windows_NT) OS="Windows" ;;
+  *)                           OS="$OSNAME" ;;
 esac
-
-# Directories worth offering. Detected, never assumed: the list is shown and
-# confirmed before anything is scanned, because where people keep code varies
-# far too much to guess.
-default_roots() {
-  local d
-  for d in "$HOME/Sites" "$HOME/Projects" "$HOME/code" "$HOME/dev" "$HOME/src" \
-           "$HOME/work" "$HOME/git" "$HOME/projects" "$HOME/repos" "$HOME/Developer" \
-           "$HOME/Documents" "$HOME/go/src"; do
-    [[ -d "$d" ]] && printf '%s\n' "$d"
-  done
-}
-
-# Places that hold code which runs on its own: a plugin loaded at session start,
-# an extension loaded when the editor opens. Easy to forget and more interesting
-# to an attacker than a documents folder.
-runner_roots() {
-  local d
-  for d in "$HOME/.claude/plugins" "$HOME/.vscode/extensions" "$HOME/.vscode-insiders/extensions" \
-           "$HOME/.cursor/extensions" "$HOME/.config/Code/User" \
-           "$HOME/Library/Application Support/Code/User"; do
-    [[ -d "$d" ]] && printf '%s\n' "$d"
-  done
-}
 
 # ask_owner <org|user> - prompt until the name resolves on GitHub, or give up
 # after three tries. A typo should cost a retry, not the whole session.
@@ -176,40 +139,6 @@ ask_owner() {  # ask_owner <org|user> [allow-blank]
   done
 }
 
-# ask_roots - confirm what to scan. Fills the ROOT_LIST array.
-ask_roots() {
-  local pick typed d
-  local -a found=() runners=()
-  while IFS= read -r d; do [[ -n "$d" ]] && found+=("$d"); done < <(default_roots)
-  while IFS= read -r d; do [[ -n "$d" ]] && runners+=("$d"); done < <(runner_roots)
-  {
-    ui_blank
-    if [[ ${#found[@]} -gt 0 ]]; then
-      ui_text "Code directories found under your home:"
-      for d in "${found[@]}"; do ui_bullet "${d/#$HOME/~}"; done
-    fi
-    if [[ ${#runners[@]} -gt 0 ]]; then
-      ui_blank; ui_text "Also worth checking, code that runs by itself:"
-      for d in "${runners[@]}"; do ui_bullet "${d/#$HOME/~}"; done
-    fi
-  } >&2
-  pick="$(PRC_MENU_BACK=1 ui_menu "Where should I look?" \
-    "The directories found above" \
-    "Those, plus the ones that run by themselves" \
-    "Let me type the list myself" \
-    "My whole home directory      slower, but misses nothing under \$HOME")" || return $?
-  ROOT_LIST=()
-  case "$pick" in
-    1) ROOT_LIST=(${found[@]+"${found[@]}"}) ;;
-    2) ROOT_LIST=(${found[@]+"${found[@]}"} ${runners[@]+"${runners[@]}"}) ;;
-    3) typed="$(ui_prompt "Directories, space separated:")" || return 1
-       # shellcheck disable=SC2206  # splitting on whitespace is the documented shape
-       ROOT_LIST=(${typed//\~/$HOME}) ;;
-    4) ROOT_LIST=("$HOME") ;;
-  esac
-  [[ ${#ROOT_LIST[@]} -gt 0 ]]
-}
-
 have() { command -v "$1" >/dev/null 2>&1; }
 
 check_deps() {  # check_deps <need-gh 0|1>
@@ -228,7 +157,7 @@ check_deps() {  # check_deps <need-gh 0|1>
 WORST=0
 ERRORED=0          # a scan that could not run. Never a statement about the code.
 ERRORS=""
-FOUND_IN=""        # machine | github | path, for the advice at the end
+FOUND_IN=""        # github | path, for the advice at the end
 GH_KIND=""; GH_NAME=""
 # Exit code 3 means "could not scan". It must never reach WORST, or a missing
 # dependency and a bad path get reported as a confirmed infection, which is
@@ -255,43 +184,21 @@ quit_now() {
 }
 
 # --- the scans --------------------------------------------------------------
+# The machine check was three scripts, one per system. In 2.0 it is the
+# polinrider binary, which checks macOS, Linux and Windows through one tested
+# boundary (ADR-0026, ADR-0029, ADR-0038). This script does not wrap it: a
+# wrapper nobody tests is how the two came apart the first time.
 scan_machine() {
-  step "Scanning this machine ($OS)"
-  if [[ "$OS" == "Windows" ]]; then
-    warn "On Windows the machine check is PowerShell, which this shell cannot run for you."
-    say  "Run this instead, from the repository root:"
-    say  ""
-    say  "    powershell -ExecutionPolicy Bypass -File .\\machine-cleanup\\check-windows.ps1 -Roots C:\\your\\code"
-    say  ""
-    return 0
-  fi
-  check_deps 0 || { note_error "the machine scan needs git"; return 3; }
-  local d
-  ROOT_LIST=()
-  if [[ $RESUMING -eq 1 ]]; then
-    # the roots are recorded in the run being resumed; asking again would be noise
-    say "${DIM}resuming the previous scan; roots come from its state directory${X}"
-    "$LOCAL_TOOL" ${MACHINE_ARGS[@]+"${MACHINE_ARGS[@]}"} 2>&1 | ui_findings
-    local rc="${PIPESTATUS[0]}"; [[ $rc -eq 2 ]] && FOUND_IN="machine"; note_rc $rc; return $rc
-  fi
-  if [[ -n "$ROOTS" ]]; then
-    # shellcheck disable=SC2206  # --roots is documented as space separated
-    ROOT_LIST=($ROOTS)
-  elif [[ $ASSUME_YES -eq 1 ]]; then
-    while IFS= read -r d; do [[ -n "$d" ]] && ROOT_LIST+=("$d"); done < <(default_roots)
-  else
-    ask_roots
-    case "$?" in 2) quit_now ;; 1|3) return 1 ;; esac
-  fi
-  if [[ ${#ROOT_LIST[@]} -eq 0 ]]; then
-    warn "No common code directory found under \$HOME."
-    say  "Re-run with the real ones, for example:  --roots \"\$HOME/work \$HOME/src\""
-    return 1
-  fi
-  for d in "${ROOT_LIST[@]}"; do ui_bullet "${d/#$HOME/~}"; done
-  say "${DIM}this reads only; the first run takes a few minutes${X}"
-  "$LOCAL_TOOL" ${MACHINE_ARGS[@]+"${MACHINE_ARGS[@]}"} "${ROOT_LIST[@]}" 2>&1 | ui_findings
-  local rc="${PIPESTATUS[0]}"; [[ $rc -eq 2 ]] && FOUND_IN="machine"; note_rc $rc; return $rc
+  step "This computer ($OS)"
+  warn "The machine check is the polinrider binary now, not this script."
+  say  ""
+  say  "    polinrider                 asks what to check, one question at a time"
+  say  "    polinrider check DIR       a read-only check of this computer and DIR"
+  say  ""
+  say  "  To try it in a container, where nothing can touch this computer:"
+  say  "    ${DIM}./polinrider-sandbox --beta${X}"
+  note_error "this computer was not checked: run polinrider for that"
+  return 3
 }
 
 scan_path() {
@@ -752,7 +659,7 @@ path_playbook() {
   say "     are the two common shapes."
   say ""
   say "  ${B}3. Check the machine${X}, because whatever put it there had access:"
-  say "     ${DIM}./polinrider.sh --machine${X}"
+  say "     ${DIM}polinrider${X}   and choose computer"
   say "     If the payload ran here, assume it read what this account could reach."
   say "     Rotate every credential once you know which machines are clean."
   say "     ${DIM}README, Step 2. Rotate every credential${X}"
@@ -764,34 +671,6 @@ path_playbook() {
   say "  ${B}5. Do not fix it in this clone and push.${X} Clean the remote first, then"
   say "     delete this clone and clone again. A push from an infected clone puts"
   say "     the payload straight back."
-}
-
-machine_playbook() {
-  say "  ${B}This machine has a confirmed indicator.${X} In order:"
-  say ""
-  say "  ${B}1. Disconnect it from the network.${X}"
-  say ""
-  say "  ${B}2. Rotate every credential, from a different machine.${X}"
-  say "     ${DIM}README, Step 2. Rotate every credential${X}"
-  say "     If a crypto wallet or seed phrase was on this machine, move the funds."
-  say ""
-  say "  ${B}3. Read the report before changing anything.${X}"
-  say "     It lists what matched and where."
-  say ""
-  say "  ${B}4. Quarantine the artifacts.${X} Nothing is deleted; everything is moved"
-  say "     to a timestamped folder with a manifest."
-  say "     ${DIM}$LOCAL_TOOL --apply${X}"
-  say "     If a persistence entry was found, stop it first with the command the"
-  say "     report prints. Moving the file does not stop what it already started."
-  say ""
-  say "  ${B}5. Decide whether to rebuild.${X} If any persistence artifact was found,"
-  say "     rebuild from a clean install. Do not restore a backup from after the"
-  say "     infection date."
-  say "     ${DIM}README, \"Should the machine be rebuilt?\"${X}"
-  say ""
-  say "  ${B}6. Then check your GitHub repositories${X}, because the credentials on"
-  say "     this machine were reachable."
-  say "     ${DIM}./polinrider.sh --user YOUR-USERNAME${X}"
 }
 
 # --- what next --------------------------------------------------------------
@@ -834,7 +713,6 @@ case "$WORST" in
      say  ""
      case "$FOUND_IN" in
        github) github_playbook ;;
-       machine) machine_playbook ;;
        path)   path_playbook ;;
        *)      say  "  Read what matched, then follow the recovery steps in the README."
                say  "     ${DIM}README, Step 2 onwards${X}" ;;

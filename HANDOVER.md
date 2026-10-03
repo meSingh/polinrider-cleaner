@@ -54,8 +54,7 @@ reflog if they are ever wanted.
 Full detail in [`HACKING.md`](./HACKING.md). The three commands:
 
 ```bash
-./polinrider-sandbox --all     # lint, 9 self-tests, 89 conformance cases, clippy, 178 Rust tests
-./polinrider-sandbox --demo    # build an infected sample and scan it with 1.x
+./polinrider-sandbox --all     # lint, 7 self-tests, clippy, 178 Rust tests, 89 conformance cases
 ./polinrider-sandbox --beta    # 2.0 installed in the container, on the PATH, with a sample
 ./ci/docs-serve.sh             # the documentation site, with live reload
 ```
@@ -101,11 +100,10 @@ argument for running unknown code on a machine you believe is compromised.
 ## What is done
 
 **The corpus** — `conformance/`, 13 filesystem cases, 27 host cases (5 of them a Windows machine), 7 clean
-cases, 24 guide cases (15 of them GitHub, 10 of those the fixes), 16 refusal cases and 2 closed-pipe checks. A GitHub case must name any repository it expects to change; every other one must be exactly as it was afterwards. The filesystem cases are green
-against both implementations. The host, clean and guide cases run against the
-Rust engine only and print `skip` under the
-shell, which cannot be handed a machine that does not exist. Running in CI and
-in `--all`. Fixtures contain no
+cases, 24 guide cases (15 of them GitHub, 10 of those the fixes), 16 refusal cases and 2 closed-pipe checks. A GitHub case must name any repository it expects to change; every other one must be exactly as it was afterwards. The filesystem cases were green
+against both implementations until the shell machine check was removed
+(ADR-0039); every case now runs against the one engine and none is skipped.
+Running in CI and in `--all`. Fixtures contain no
 payload: cases write `{{STRONG}}` and the runner substitutes from `ioc/` at build
 time, so the repository stays clean and the corpus cannot drift from the
 indicator set.
@@ -202,12 +200,16 @@ the whole home folder; `folder` suggests the code folders it finds.
    developer's machine yet. **What has not been seen is a real Windows 11**:
    a non-English locale, a restricted execution policy, years of startup
    items.
-3. **Delete the shell machine check.** Nothing in it is missing from Rust
-   any more. Asked of Mandeep on 2026-10-03 and not yet answered: delete it
-   now, or after a run on a real Windows machine. It is also the other half
-   of the corpus, so deleting it means the corpus has one implementation, and
-   the eight differences in item 1 stop being differences. That is why it
-   waits for his word and not only for the code.
+3. **The shell machine check is deleted** (ADR-0039, 2026-10-03). Mandeep
+   chose the removal once Windows was covered, on the decision card, and it
+   went the same day. Gone: `machine-cleanup/`, `lib/local-common.sh`,
+   `selftest-implant.sh`, `selftest-walk.sh`. `polinrider.sh --machine` says
+   where it went and exits 3. The corpus runs one engine and skips nothing.
+   **His review of the ADR-0029 differences is still open**: they are final
+   by default now, and each can still be changed in Rust if he rules against
+   one. What is left of the shell (`polinrider.sh`, `lib/gh-*.sh`, the two
+   recovery folders, `ci/scan-workspace.sh`) goes after the GitHub fixes have
+   run against real GitHub.
 4. **Rewrite the user-facing documentation for 2.0**, before it is released.
    The README, `AGENTS.md` and most of the docs site on `v2` still describe
    1.x: seventeen scripts, `--apply` that only moves files, "no new

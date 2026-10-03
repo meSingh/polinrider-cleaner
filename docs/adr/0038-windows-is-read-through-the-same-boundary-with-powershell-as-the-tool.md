@@ -78,8 +78,9 @@ Worse:
 - **A scheduled task whose action is not a program**, a COM handler, has an
   empty command and is seen only by its name.
 - **The unit tests still assume Unix paths** and are not run on Windows.
-- `check-windows.ps1` is not deleted by this. That waits for a run on a real
-  Windows machine.
+- `check-windows.ps1` was not deleted by this change. It went the same day
+  with the rest of the shell machine check, on the maintainer's word, after
+  the Windows probes had run on the CI runner: ADR-0039.
 
 ## Related
 
