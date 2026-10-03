@@ -15,6 +15,7 @@ pub mod indicators;
 pub mod pattern;
 pub mod quarantine;
 pub mod remote;
+pub mod remote_fix;
 pub mod scan;
 pub mod sha256;
 pub mod strip;

@@ -19,7 +19,7 @@ use crate::host::Probe;
 use crate::indicators::Indicators;
 use crate::pattern::Pattern;
 use std::fs;
-use std::io;
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
@@ -99,6 +99,167 @@ pub trait Forge {
     /// "none": an empty feed and a failed call look the same downstream, and
     /// that difference decides whether a repository is believed untouched.
     fn pushes(&self, repository: &str) -> Probe<Vec<Push>>;
+
+    // Reading more of a repository already copied.
+
+    /// Bring a copy made earlier up to date with its branches and tags.
+    fn refresh(&self, mirror: &Path) -> Result<(), String>;
+    /// Fetch one commit by its ID into the copy. A commit a branch was moved
+    /// off is reachable from nothing, so a mirror never has it, and GitHub
+    /// still serves it by ID until it collects its garbage.
+    fn fetch_commit(&self, mirror: &Path, commit: &str) -> Result<(), String>;
+    /// Where every branch and tag points on GitHub at this moment.
+    fn remote_refs(&self, mirror: &Path) -> Result<Vec<(String, String)>, String>;
+
+    // The only four things that change GitHub. Nothing calls them before the
+    // operator has seen what they would do and typed yes.
+
+    /// Move branches and tags, all or none. Each one moves only if it still
+    /// points where the copy says it does: a push that landed in the
+    /// meantime is never overwritten. Without `force` only a push that adds
+    /// commits is accepted.
+    fn push(&self, mirror: &Path, updates: &[Update], force: bool) -> Result<(), String>;
+    /// Replace the repository's description.
+    fn set_description(&self, repository: &str, text: &str) -> Result<(), String>;
+    /// Make the repository read-only.
+    fn archive(&self, repository: &str) -> Result<(), String>;
+}
+
+/// One branch or tag to move.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Update {
+    pub git_ref: String,
+    /// What it must point to now for the move to go ahead.
+    pub expect: String,
+    pub to: String,
+}
+
+/// A full object ID as git prints one: 40 or 64 hexadecimal digits, and not
+/// the all-zero ID GitHub uses for "there was nothing here".
+pub fn is_object_id(text: &str) -> bool {
+    (text.len() == 40 || text.len() == 64)
+        && text.bytes().all(|b| b.is_ascii_hexdigit())
+        && text.bytes().any(|b| b != b'0')
+}
+
+/// Git arguments that let git ask `gh` for the token. The token never
+/// appears in an argument or in a copy's config.
+const GH_CREDENTIALS: &[&str] = &[
+    "-c",
+    "credential.helper=",
+    "-c",
+    "credential.helper=!gh auth git-credential",
+];
+
+/// Where a copy was made from.
+fn origin_of(mirror: &Path) -> Result<String, String> {
+    match run(
+        "git",
+        &["config", "--get", "remote.origin.url"],
+        Some(mirror),
+    ) {
+        Ran::Finished {
+            ok: true, stdout, ..
+        } => Ok(String::from_utf8_lossy(&stdout).trim().to_string()),
+        Ran::Finished { .. } => Err(format!(
+            "{} does not say where it was copied from",
+            mirror.display()
+        )),
+        Ran::NoTool => Err("git is not installed".into()),
+        Ran::Failed(why) => Err(why),
+    }
+}
+
+/// Run git against the place a copy came from. `credentials` go before the
+/// git command, and are empty for a repository on this disk.
+fn with_origin(mirror: &Path, credentials: &[&str], args: &[&str]) -> Result<Vec<u8>, String> {
+    let all: Vec<&str> = credentials.iter().chain(args).copied().collect();
+    let pushing = args.first() == Some(&"push");
+    match run("git", &all, Some(mirror)) {
+        Ran::Finished {
+            ok: true, stdout, ..
+        } => Ok(stdout),
+        Ran::Finished { stderr, .. } if pushing => Err(push_refusal(&stderr)),
+        Ran::Finished { stderr, .. } => Err(first_line("git", &stderr)),
+        Ran::NoTool => Err("git is not installed".into()),
+        Ran::Failed(why) => Err(why),
+    }
+}
+
+fn refresh_with(mirror: &Path, credentials: &[&str]) -> Result<(), String> {
+    // Only branches and tags, named, so that pruning cannot reach the
+    // restore points kept under refs/polinrider/.
+    with_origin(
+        mirror,
+        credentials,
+        &[
+            "fetch",
+            "--quiet",
+            "--prune",
+            "origin",
+            "+refs/heads/*:refs/heads/*",
+            "+refs/tags/*:refs/tags/*",
+        ],
+    )
+    .map(|_| ())
+}
+
+fn fetch_commit_with(mirror: &Path, credentials: &[&str], commit: &str) -> Result<(), String> {
+    if !is_object_id(commit) {
+        return Err(format!("{commit} is not a commit ID"));
+    }
+    with_origin(mirror, credentials, &["fetch", "--quiet", "origin", commit]).map(|_| ())
+}
+
+fn remote_refs_with(mirror: &Path, credentials: &[&str]) -> Result<Vec<(String, String)>, String> {
+    let url = origin_of(mirror)?;
+    let out = with_origin(mirror, credentials, &["ls-remote", "--refs", &url])?;
+    Ok(String::from_utf8_lossy(&out)
+        .lines()
+        .filter_map(|line| {
+            let (id, name) = line.split_once('\t')?;
+            (name.starts_with("refs/heads/") || name.starts_with("refs/tags/"))
+                .then(|| (name.to_string(), id.to_string()))
+        })
+        .collect())
+}
+
+fn push_with(
+    mirror: &Path,
+    credentials: &[&str],
+    updates: &[Update],
+    force: bool,
+) -> Result<(), String> {
+    // A copy made with --mirror refuses "git push origin <refspec>", so the
+    // push names the address.
+    let url = origin_of(mirror)?;
+    // In batches, so that a repository with hundreds of branches does not
+    // outgrow the longest command line Windows allows.
+    for batch in updates.chunks(40) {
+        let mut owned: Vec<String> = Vec::new();
+        for update in batch {
+            if !is_object_id(&update.to) || !is_object_id(&update.expect) {
+                return Err(format!(
+                    "{} is not being moved between two commit IDs",
+                    update.git_ref
+                ));
+            }
+            if force {
+                owned.push(format!(
+                    "--force-with-lease={}:{}",
+                    update.git_ref, update.expect
+                ));
+            }
+        }
+        owned.push(url.clone());
+        for update in batch {
+            owned.push(format!("{}:{}", update.to, update.git_ref));
+        }
+        let mut args: Vec<&str> = vec!["push", "--quiet", "--atomic"];
+        args.extend(owned.iter().map(String::as_str));
+        with_origin(mirror, credentials, &args)?;
+    }
+    Ok(())
 }
 
 // --- running git and gh -------------------------------------------------------
@@ -114,24 +275,85 @@ enum Ran {
 }
 
 fn run(program: &str, args: &[&str], dir: Option<&Path>) -> Ran {
+    run_with(program, args, dir, &[], None)
+}
+
+/// Run a command with extra environment and, when given, bytes on its input.
+fn run_with(
+    program: &str,
+    args: &[&str],
+    dir: Option<&Path>,
+    envs: &[(&str, &str)],
+    input: Option<&[u8]>,
+) -> Ran {
     let mut command = Command::new(program);
     command
         .args(args)
-        .stdin(Stdio::null())
+        .stdin(if input.is_some() {
+            Stdio::piped()
+        } else {
+            Stdio::null()
+        })
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
         .env("LC_ALL", "C")
         // Never sit waiting on a credential prompt nobody can see.
-        .env("GIT_TERMINAL_PROMPT", "0");
+        .env("GIT_TERMINAL_PROMPT", "0")
+        // A path handed to git is that path, never a pattern: a file an
+        // attacker named with a * in it must not widen what is removed.
+        .env("GIT_LITERAL_PATHSPECS", "1");
+    for (name, value) in envs {
+        command.env(name, value);
+    }
     if let Some(dir) = dir {
         command.current_dir(dir);
     }
-    match command.output() {
+    let mut child = match command.spawn() {
+        Ok(child) => child,
+        Err(e) if e.kind() == io::ErrorKind::NotFound => return Ran::NoTool,
+        Err(e) => return Ran::Failed(format!("{program}: {e}")),
+    };
+    let pipe = child.stdin.take();
+    // Written from a second thread: a command that answers before it has
+    // read everything would otherwise leave both sides waiting.
+    let out = std::thread::scope(|scope| {
+        if let (Some(mut pipe), Some(bytes)) = (pipe, input) {
+            scope.spawn(move || {
+                let _ = pipe.write_all(bytes);
+            });
+        }
+        child.wait_with_output()
+    });
+    match out {
         Ok(out) => Ran::Finished {
             ok: out.status.success(),
             stdout: out.stdout,
             stderr: String::from_utf8_lossy(&out.stderr).into_owned(),
         },
-        Err(e) if e.kind() == io::ErrorKind::NotFound => Ran::NoTool,
         Err(e) => Ran::Failed(format!("{program}: {e}")),
+    }
+}
+
+/// The line of a failed push that says why: git prints the refusal after
+/// lines that only name the remote.
+fn push_refusal(stderr: &str) -> String {
+    let lines: Vec<&str> = stderr
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty())
+        .collect();
+    let why = lines
+        .iter()
+        .find(|l| l.contains("rejected") || l.contains("protected") || l.contains("stale info"))
+        .or_else(|| {
+            lines
+                .iter()
+                .find(|l| l.starts_with("fatal:") || l.starts_with("error:"))
+        })
+        .or(lines.first());
+    match why {
+        Some(line) => format!("git push: {line}"),
+        None => "git push failed without saying why".into(),
     }
 }
 
@@ -262,8 +484,8 @@ impl Forge for GitHub {
                 "clone",
                 "--quiet",
                 "--mirror",
-                &url,
-                &dest,
+                url.as_str(),
+                dest.as_str(),
             ],
             None,
         ) {
@@ -292,6 +514,39 @@ impl Forge for GitHub {
             Probe::Failed(why) => Probe::Failed(why),
         }
     }
+
+    fn refresh(&self, mirror: &Path) -> Result<(), String> {
+        refresh_with(mirror, GH_CREDENTIALS)
+    }
+
+    fn fetch_commit(&self, mirror: &Path, commit: &str) -> Result<(), String> {
+        fetch_commit_with(mirror, GH_CREDENTIALS, commit)
+    }
+
+    fn remote_refs(&self, mirror: &Path) -> Result<Vec<(String, String)>, String> {
+        remote_refs_with(mirror, GH_CREDENTIALS)
+    }
+
+    fn push(&self, mirror: &Path, updates: &[Update], force: bool) -> Result<(), String> {
+        push_with(mirror, GH_CREDENTIALS, updates, force)
+    }
+
+    fn set_description(&self, repository: &str, text: &str) -> Result<(), String> {
+        gh_did(&["repo", "edit", repository, "--description", text])
+    }
+
+    fn archive(&self, repository: &str) -> Result<(), String> {
+        gh_did(&["repo", "archive", repository, "--yes"])
+    }
+}
+
+fn gh_did(args: &[&str]) -> Result<(), String> {
+    match run("gh", args, None) {
+        Ran::Finished { ok: true, .. } => Ok(()),
+        Ran::Finished { stderr, .. } => Err(first_line("gh", &stderr)),
+        Ran::NoTool => Err("gh is not installed".into()),
+        Ran::Failed(why) => Err(why),
+    }
 }
 
 // --- supplied -----------------------------------------------------------------
@@ -305,6 +560,7 @@ impl Forge for GitHub {
 /// | `repos/<owner>` | `owner/name`, one per line |
 /// | `git/<owner>/<name>.git` | a bare repository to mirror from |
 /// | `pushes/<owner>/<name>.tsv` | ref, before, head, actor, time, size, tab-separated |
+/// | `changed/<owner>/<name>.description`, `.archived` | written here when a fix sets them |
 ///
 /// As with supplied host state, a file that is absent is a question nobody
 /// answered and is reported as that, never read as empty.
@@ -389,6 +645,53 @@ impl Forge for Supplied {
             Probe::Failed(why) => Probe::Failed(why),
         }
     }
+
+    fn refresh(&self, mirror: &Path) -> Result<(), String> {
+        refresh_with(mirror, &[])
+    }
+
+    fn fetch_commit(&self, mirror: &Path, commit: &str) -> Result<(), String> {
+        fetch_commit_with(mirror, &[], commit)
+    }
+
+    fn remote_refs(&self, mirror: &Path) -> Result<Vec<(String, String)>, String> {
+        remote_refs_with(mirror, &[])
+    }
+
+    fn push(&self, mirror: &Path, updates: &[Update], force: bool) -> Result<(), String> {
+        push_with(mirror, &[], updates, force)
+    }
+
+    fn set_description(&self, repository: &str, text: &str) -> Result<(), String> {
+        self.record(repository, "description", text)
+    }
+
+    fn archive(&self, repository: &str) -> Result<(), String> {
+        if !self
+            .dir
+            .join("git")
+            .join(format!("{repository}.git"))
+            .is_dir()
+        {
+            return Err(format!("no repository called {repository}"));
+        }
+        self.record(repository, "archived", "")
+    }
+}
+
+impl Supplied {
+    /// What a real GitHub would now show, kept beside the repositories as
+    /// `changed/<owner>/<name>.<what>`.
+    fn record(&self, repository: &str, what: &str, text: &str) -> Result<(), String> {
+        let file = self
+            .dir
+            .join("changed")
+            .join(format!("{repository}.{what}"));
+        file.parent()
+            .map_or(Ok(()), fs::create_dir_all)
+            .and_then(|()| fs::write(&file, format!("{text}\n")))
+            .map_err(|e| format!("cannot write {}: {e}", file.display()))
+    }
 }
 
 // --- the evidence directory ---------------------------------------------------
@@ -461,14 +764,29 @@ pub fn prepare_evidence(dir: &Path) -> Result<PathBuf, EvidenceError> {
 
 // --- reading a mirror ---------------------------------------------------------
 
+/// Where the copy of `owner/name` is kept.
+pub fn mirror_path(evidence: &Path, repository: &str) -> PathBuf {
+    evidence.join(format!("{}.git", repository.replace('/', "__")))
+}
+
 /// A bare mirror on disk, read through git plumbing. Nothing is checked out.
-struct Mirror<'a> {
-    dir: &'a Path,
+pub(crate) struct Mirror<'a> {
+    pub(crate) dir: &'a Path,
 }
 
 impl Mirror<'_> {
-    fn git(&self, args: &[&str]) -> Result<Vec<u8>, String> {
-        match run("git", args, Some(self.dir)) {
+    pub(crate) fn git(&self, args: &[&str]) -> Result<Vec<u8>, String> {
+        self.git_with(args, &[], None)
+    }
+
+    /// Git with extra environment and, when given, bytes on its input.
+    pub(crate) fn git_with(
+        &self,
+        args: &[&str],
+        envs: &[(&str, &str)],
+        input: Option<&[u8]>,
+    ) -> Result<Vec<u8>, String> {
+        match run_with("git", args, Some(self.dir), envs, input) {
             Ran::Finished {
                 ok: true, stdout, ..
             } => Ok(stdout),
@@ -478,13 +796,19 @@ impl Mirror<'_> {
         }
     }
 
+    /// Git for one line of text.
+    pub(crate) fn word(&self, args: &[&str]) -> Result<String, String> {
+        self.git(args)
+            .map(|out| String::from_utf8_lossy(&out).trim().to_string())
+    }
+
     /// Orphaned objects are the restore targets. They must survive.
     fn freeze(&self) {
         let _ = self.git(&["config", "gc.auto", "0"]);
         let _ = self.git(&["config", "gc.pruneExpire", "never"]);
     }
 
-    fn refs(&self) -> Result<Vec<String>, String> {
+    pub(crate) fn refs(&self) -> Result<Vec<String>, String> {
         let out = self.git(&[
             "for-each-ref",
             "--format=%(refname)",
@@ -494,12 +818,60 @@ impl Mirror<'_> {
         Ok(lines(&String::from_utf8_lossy(&out)))
     }
 
-    fn paths(&self, git_ref: &str) -> Result<Vec<String>, String> {
+    /// Every branch and tag with the ID it points to.
+    pub(crate) fn tips(&self) -> Result<Vec<(String, String)>, String> {
+        let out = self.git(&[
+            "for-each-ref",
+            "--format=%(refname)%09%(objectname)",
+            "refs/heads/",
+            "refs/tags/",
+        ])?;
+        Ok(String::from_utf8_lossy(&out)
+            .lines()
+            .filter_map(|line| {
+                let (name, id) = line.split_once('\t')?;
+                Some((name.to_string(), id.to_string()))
+            })
+            .collect())
+    }
+
+    /// The ID a name points to, when it points to anything.
+    pub(crate) fn id_of(&self, name: &str) -> Option<String> {
+        self.word(&["rev-parse", "--verify", "--quiet", name])
+            .ok()
+            .filter(|id| is_object_id(id))
+    }
+
+    /// Whether the copy holds this commit.
+    pub(crate) fn has_commit(&self, commit: &str) -> bool {
+        is_object_id(commit)
+            && self
+                .git(&["cat-file", "-e", &format!("{commit}^{{commit}}")])
+                .is_ok()
+    }
+
+    /// How many commits `range` names.
+    pub(crate) fn count(&self, range: &[&str]) -> Result<usize, String> {
+        let mut args = vec!["rev-list", "--count"];
+        args.extend(range);
+        self.word(&args)?
+            .parse()
+            .map_err(|_| "git rev-list did not answer with a number".to_string())
+    }
+
+    /// The branch the repository opens on.
+    pub(crate) fn default_branch(&self) -> Option<String> {
+        self.word(&["symbolic-ref", "--quiet", "HEAD"])
+            .ok()
+            .filter(|name| name.starts_with("refs/heads/") && self.id_of(name).is_some())
+    }
+
+    pub(crate) fn paths(&self, git_ref: &str) -> Result<Vec<String>, String> {
         let out = self.git(&["ls-tree", "-r", "--name-only", "-z", git_ref])?;
         Ok(nul_separated(&out))
     }
 
-    fn blob(&self, git_ref: &str, path: &str) -> Option<Vec<u8>> {
+    pub(crate) fn blob(&self, git_ref: &str, path: &str) -> Option<Vec<u8>> {
         self.git(&["cat-file", "blob", &format!("{git_ref}:{path}")])
             .ok()
     }
@@ -533,6 +905,125 @@ impl Mirror<'_> {
             Ran::Failed(why) => Err(why),
         }
     }
+
+    /// Every path that carried the payload in any commit a branch or tag
+    /// can reach, not only in the newest one. A file the payload once sat in
+    /// and that has since been renamed or deleted is still in the history,
+    /// and "out of every commit" has to mean that one too.
+    ///
+    /// One pass over every file version in the history: git lists them, and
+    /// their contents are read here. Nothing is checked out.
+    pub(crate) fn payload_paths_in_history(&self, ind: &Indicators) -> Result<Vec<String>, String> {
+        let listing = self.git(&["rev-list", "--objects", "--branches", "--tags"])?;
+        let listing = String::from_utf8_lossy(&listing);
+        // "<id> <path>" for files and folders, "<id>" alone for commits.
+        let named: Vec<(&str, &str)> = listing
+            .lines()
+            .filter_map(|line| line.split_once(' '))
+            .filter(|(_, path)| !path.is_empty())
+            .collect();
+        let mut found: Vec<String> = named
+            .iter()
+            .filter(|(_, path)| ind.is_bad_filename(path))
+            .map(|(_, path)| (*path).to_string())
+            .collect();
+
+        let ids: String = named.iter().map(|(id, _)| format!("{id}\n")).collect();
+        let out = self.git_with(&["cat-file", "--batch"], &[], Some(ids.as_bytes()))?;
+        // The answer is "<id> <type> <size>\n<bytes>\n" for each ID asked, in
+        // the order asked.
+        let mut carriers: Vec<&str> = Vec::new();
+        let mut rest: &[u8] = &out;
+        for (id, path) in &named {
+            let Some(end) = rest.iter().position(|b| *b == b'\n') else {
+                break;
+            };
+            let header = String::from_utf8_lossy(rest.get(..end).unwrap_or_default()).into_owned();
+            rest = rest.get(end + 1..).unwrap_or_default();
+            let mut fields = header.split(' ');
+            let (kind, size) = (fields.nth(1), fields.next());
+            let Some(size) = size.and_then(|n| n.parse::<usize>().ok()) else {
+                // "<id> missing": nothing follows the header.
+                continue;
+            };
+            let body = rest.get(..size).unwrap_or_default();
+            rest = rest.get(size + 1..).unwrap_or_default();
+            if kind != Some("blob") {
+                continue;
+            }
+            if ind
+                .strong
+                .iter()
+                .any(|s| !s.is_empty() && contains(body, s.as_bytes()))
+                || is_fake_font(path, body)
+            {
+                found.push((*path).to_string());
+                carriers.push(id);
+            }
+        }
+        // git lists each file version once, under one path. The same bytes
+        // may have been committed under others, so ask for every path each
+        // carrier was ever added at.
+        for id in carriers {
+            let out = self.git(&[
+                "log",
+                "--branches",
+                "--tags",
+                "-m",
+                "--no-renames",
+                "--format=",
+                "--name-only",
+                "-z",
+                &format!("--find-object={id}"),
+            ])?;
+            found.extend(
+                nul_separated(&out)
+                    .into_iter()
+                    .map(|p| p.trim().to_string()),
+            );
+        }
+        found.retain(|path| !path.is_empty());
+        found.retain(|path| !is_detection_tooling(path));
+        found.sort_unstable();
+        found.dedup();
+        Ok(found)
+    }
+}
+
+fn contains(haystack: &[u8], needle: &[u8]) -> bool {
+    haystack.windows(needle.len()).any(|w| w == needle)
+}
+
+/// A file named as a web font whose first bytes are not a font's.
+fn is_fake_font(path: &str, bytes: &[u8]) -> bool {
+    fake_font_magic(path, bytes).is_some()
+}
+
+/// The first four bytes of a file that is named as a web font and is not
+/// one, in hexadecimal.
+fn fake_font_magic(path: &str, bytes: &[u8]) -> Option<String> {
+    let name = path.rsplit('/').next().unwrap_or(path);
+    let lower = name.to_ascii_lowercase();
+    if !(lower.ends_with(".woff") || lower.ends_with(".woff2"))
+        || name.starts_with("._")
+        || path.split('/').any(|part| part == "__MACOSX")
+    {
+        return None;
+    }
+    // An empty file has nothing to inspect, and a Git LFS pointer is a text
+    // stub standing in for the font.
+    let magic = bytes.get(..4);
+    let real = bytes.is_empty()
+        || bytes.starts_with(b"version https://git-lfs")
+        || matches!(magic, Some(b"wOFF" | b"wOF2") | None);
+    (!real).then(|| {
+        magic
+            .unwrap_or_default()
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect::<Vec<_>>()
+            .join(" ")
+    })
 }
 
 fn nul_separated(bytes: &[u8]) -> Vec<String> {
@@ -643,6 +1134,9 @@ pub struct Findings {
     /// Repositories whose push record could not be read. Missing evidence,
     /// not an absence of pushes.
     pub no_push_record: Vec<String>,
+    /// Repositories whose copy from an earlier run could not be brought up
+    /// to date. They were checked as they were when copied.
+    pub not_refreshed: Vec<String>,
     pub confirmed: Vec<RefFinding>,
     pub review: Vec<RefFinding>,
     /// Branches flagged only because of the operator's own detection files.
@@ -713,12 +1207,7 @@ pub fn check(
         Probe::NoTool(why) | Probe::Failed(why) => return Err(why),
     };
 
-    // git grep reads its fixed strings from files.
-    let strong = request.evidence.join("indicators-strong.txt");
-    let weak = request.evidence.join("indicators-weak.txt");
-    fs::write(&strong, request.ind.strong.join("\n") + "\n")
-        .and_then(|()| fs::write(&weak, request.ind.weak.join("\n") + "\n"))
-        .map_err(|e| format!("cannot write to {}: {e}", request.evidence.display()))?;
+    let (strong, weak) = indicator_files(request.evidence, request.ind)?;
 
     let mut findings = Findings {
         repositories: repositories.len(),
@@ -733,14 +1222,16 @@ pub fn check(
             refs: findings.refs,
             affected: findings.affected().len(),
         });
-        let dest = request
-            .evidence
-            .join(format!("{}.git", repository.replace('/', "__")));
-        if !dest.is_dir() {
-            if let Err(why) = forge.mirror(repository, &dest) {
-                findings.not_checked.push((repository.clone(), why));
-                continue;
+        let dest = mirror_path(request.evidence, repository);
+        if dest.is_dir() {
+            // A copy from an earlier run is brought up to date, so that a
+            // repository fixed since then is not reported as it was.
+            if forge.refresh(&dest).is_err() {
+                findings.not_refreshed.push(repository.clone());
             }
+        } else if let Err(why) = forge.mirror(repository, &dest) {
+            findings.not_checked.push((repository.clone(), why));
+            continue;
         }
         let mirror = Mirror { dir: &dest };
         mirror.freeze();
@@ -790,7 +1281,23 @@ pub fn check(
     Ok(findings)
 }
 
-fn check_ref(
+/// Write the indicator lists where `git grep` can read them: it takes its
+/// fixed strings from files.
+pub(crate) fn indicator_files(
+    evidence: &Path,
+    ind: &Indicators,
+) -> Result<(PathBuf, PathBuf), String> {
+    let strong = evidence.join("indicators-strong.txt");
+    let weak = evidence.join("indicators-weak.txt");
+    fs::write(&strong, ind.strong.join("\n") + "\n")
+        .and_then(|()| fs::write(&weak, ind.weak.join("\n") + "\n"))
+        .map_err(|e| format!("cannot write to {}: {e}", evidence.display()))?;
+    Ok((strong, weak))
+}
+
+/// What one branch, tag or commit of a copy holds. `git_ref` is anything git
+/// can resolve to a tree.
+pub(crate) fn check_ref(
     mirror: &Mirror,
     repository: &str,
     git_ref: &str,
@@ -832,24 +1339,9 @@ fn check_ref(
         }
 
         let lower = name.to_ascii_lowercase();
-        if (lower.ends_with(".woff") || lower.ends_with(".woff2"))
-            && !name.starts_with("._")
-            && !path.split('/').any(|part| part == "__MACOSX")
-        {
+        if lower.ends_with(".woff") || lower.ends_with(".woff2") {
             if let Some(bytes) = mirror.blob(git_ref, &path) {
-                // An empty blob has nothing to inspect, and a Git LFS pointer
-                // is a text stub standing in for the font.
-                let magic = bytes.get(..4);
-                let real = bytes.is_empty()
-                    || bytes.starts_with(b"version https://git-lfs")
-                    || matches!(magic, Some(b"wOFF" | b"wOF2") | None);
-                if !real {
-                    let hex = magic
-                        .unwrap_or_default()
-                        .iter()
-                        .map(|b| format!("{b:02x}"))
-                        .collect::<Vec<_>>()
-                        .join(" ");
+                if let Some(hex) = fake_font_magic(&path, &bytes) {
                     finding.fake_fonts.push((path.clone(), hex));
                 }
             }
@@ -894,6 +1386,15 @@ pub(crate) mod fixture {
             "git {args:?}: {}",
             String::from_utf8_lossy(&out.stderr)
         );
+    }
+
+    pub(crate) fn git_out(dir: &Path, args: &[&str]) -> String {
+        let out = Command::new("git")
+            .args(args)
+            .current_dir(dir)
+            .output()
+            .expect("git runs");
+        String::from_utf8_lossy(&out.stdout).trim().to_string()
     }
 
     /// The files of one branch: (path, contents).
@@ -948,10 +1449,108 @@ pub(crate) mod fixture {
                     &bare.join(format!("{name}.git")).display().to_string(),
                 ],
             );
+            // GitHub serves a commit by its ID whether or not a branch
+            // still reaches it. A plain git repository has to be told to.
+            git(
+                &self.bare(name),
+                &["config", "uploadpack.allowAnySHA1InWant", "true"],
+            );
             let list = self.dir.join("forge/repos/acme");
             let mut repos = fs::read_to_string(&list).expect("read");
             repos.push_str(&format!("acme/{name}\n"));
             fs::write(list, repos).expect("write");
+        }
+
+        /// The repository as the pretend GitHub holds it.
+        pub(crate) fn bare(&self, name: &str) -> PathBuf {
+            self.dir.join("forge/git/acme").join(format!("{name}.git"))
+        }
+
+        /// Where a branch or tag points on the pretend GitHub.
+        pub(crate) fn tip(&self, name: &str, git_ref: &str) -> String {
+            git_out(
+                &self.bare(name),
+                &["rev-parse", "--verify", "--quiet", git_ref],
+            )
+        }
+
+        /// A file as the pretend GitHub has it on a branch, if it is there.
+        pub(crate) fn file(&self, name: &str, branch: &str, path: &str) -> Option<String> {
+            let out = Command::new("git")
+                .args(["cat-file", "blob", &format!("{branch}:{path}")])
+                .current_dir(self.bare(name))
+                .output()
+                .expect("git runs");
+            out.status
+                .success()
+                .then(|| String::from_utf8_lossy(&out.stdout).into_owned())
+        }
+
+        /// One more push to a branch after the repository exists. `rewrite`
+        /// replaces the newest commit, as a force-push does, which leaves
+        /// the commit it replaced reachable from nothing. With `record`, the
+        /// push goes into the push record as (actor, time). Returns the
+        /// commit the branch pointed to before, and after.
+        pub(crate) fn push(
+            &self,
+            name: &str,
+            branch: &str,
+            files: Files,
+            rewrite: bool,
+            record: Option<(&str, &str)>,
+        ) -> (String, String) {
+            let work = self.dir.join("work").join(name);
+            git(&work, &["checkout", "-q", branch]);
+            for (path, body) in files {
+                let file = work.join(path);
+                fs::create_dir_all(file.parent().expect("parent")).expect("mkdir");
+                fs::write(file, body).expect("write");
+            }
+            git(&work, &["add", "-A"]);
+            if rewrite {
+                git(&work, &["commit", "-q", "--amend", "-m", "update config"]);
+            } else {
+                git(&work, &["commit", "-q", "-m", "update config"]);
+            }
+            let before = self.tip(name, &format!("refs/heads/{branch}"));
+            git(
+                &work,
+                &[
+                    "push",
+                    "-q",
+                    "--force",
+                    &self.bare(name).display().to_string(),
+                    &format!("{branch}:{branch}"),
+                ],
+            );
+            let head = self.tip(name, &format!("refs/heads/{branch}"));
+            if let Some((actor, at)) = record {
+                let dir = self.dir.join("forge/pushes/acme");
+                fs::create_dir_all(&dir).expect("mkdir");
+                let file = dir.join(format!("{name}.tsv"));
+                let mut tsv = fs::read_to_string(&file).unwrap_or_default();
+                tsv.push_str(&format!(
+                    "refs/heads/{branch}\t{before}\t{head}\t{actor}\t{at}\t{}\n",
+                    u8::from(!rewrite)
+                ));
+                fs::write(file, tsv).expect("write");
+            }
+            (before, head)
+        }
+
+        /// Tag what a branch points to, on the pretend GitHub too.
+        pub(crate) fn tag(&self, name: &str, tag: &str, branch: &str) {
+            let work = self.dir.join("work").join(name);
+            git(&work, &["tag", tag, branch]);
+            git(
+                &work,
+                &[
+                    "push",
+                    "-q",
+                    &self.bare(name).display().to_string(),
+                    &format!("refs/tags/{tag}"),
+                ],
+            );
         }
 
         pub(crate) fn pushes(&self, name: &str, tsv: &str) {
