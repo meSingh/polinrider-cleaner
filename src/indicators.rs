@@ -8,6 +8,7 @@
 //! same as `grep -F` in the shell. No regex, so nothing in the indicator set
 //! can be a malformed pattern that silently matches nothing.
 
+use crate::pattern::{BadPattern, Pattern};
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -27,6 +28,9 @@ pub struct Indicators {
     /// never a command line: matching the command line reports this scanner,
     /// and anyone grepping for the implant, as the implant.
     pub implant_names: Vec<String>,
+    /// Paths that are indicators on their own, as patterns. From
+    /// `filenames.txt`, which the shell hands to `grep -E`.
+    pub filenames: Vec<Pattern>,
 }
 
 /// Why the indicator set could not be used. Each of these is an exit code 3
@@ -42,6 +46,10 @@ pub enum LoadError {
     },
     /// A present but empty `strong.txt` would make every scan pass.
     Empty,
+    /// A pattern in `filenames.txt` that this build cannot honour. Refused,
+    /// because a pattern that silently matches nothing is an indicator that
+    /// silently stopped working.
+    Pattern(BadPattern),
 }
 
 impl std::fmt::Display for LoadError {
@@ -53,6 +61,7 @@ impl std::fmt::Display for LoadError {
             LoadError::Unreadable { file, source } => {
                 write!(f, "cannot read {}: {source}", file.display())
             }
+            LoadError::Pattern(bad) => write!(f, "in filenames.txt, {bad}"),
             LoadError::Empty => f.write_str(
                 "the indicator set is empty. Refusing to scan: every result would be clean",
             ),
@@ -104,6 +113,10 @@ impl Indicators {
             bad_packages,
             network: read_list(dir, "network.txt", false)?,
             implant_names: read_list(dir, "implant-names.txt", false)?,
+            filenames: read_list(dir, "filenames.txt", false)?
+                .iter()
+                .map(|p| Pattern::parse(p).map_err(LoadError::Pattern))
+                .collect::<Result<_, _>>()?,
         };
 
         if indicators.strong.is_empty() {
@@ -160,6 +173,11 @@ impl Indicators {
                     && implant.len() > KERNEL_NAME_LEN
                     && implant.starts_with(base))
         })
+    }
+
+    /// Is this path an indicator by its name alone?
+    pub fn is_bad_filename(&self, path: &str) -> bool {
+        self.filenames.iter().any(|p| p.is_match(path))
     }
 
     /// Read a file and test it. Binary files are read lossily rather than
@@ -340,6 +358,31 @@ mod tests {
             Indicators::load(&dir),
             Err(LoadError::Missing { .. })
         ));
+    }
+
+    #[test]
+    fn filename_patterns_load_and_a_bad_one_stops_the_scan() {
+        let dir = fixture(
+            "filenames",
+            &[
+                ("strong.txt", "marker-one\n"),
+                ("bad-packages.txt", ""),
+                ("filenames.txt", "# by name\n(^|/)temp_helper\\.bat$\n"),
+            ],
+        );
+        let ind = Indicators::load(&dir).expect("loads");
+        assert!(ind.is_bad_filename("win/temp_helper.bat"));
+        assert!(!ind.is_bad_filename("win/temp_helper.bat.bak"));
+
+        let bad = fixture(
+            "badpattern",
+            &[
+                ("strong.txt", "marker-one\n"),
+                ("bad-packages.txt", ""),
+                ("filenames.txt", "(^|/unclosed\n"),
+            ],
+        );
+        assert!(matches!(Indicators::load(&bad), Err(LoadError::Pattern(_))));
     }
 
     #[test]

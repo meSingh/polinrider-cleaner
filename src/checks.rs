@@ -73,7 +73,7 @@ impl Sink<'_> {
 }
 
 /// The config filenames the campaign appends to.
-fn is_build_config(name: &str) -> bool {
+pub(crate) fn is_build_config(name: &str) -> bool {
     const STEMS: &[&str] = &[
         "postcss.config",
         "tailwind.config",
@@ -111,6 +111,23 @@ fn looks_like_payload(tail: &str) -> bool {
         "fromCharCode",
     ];
     TELLS.iter().any(|t| tail.contains(t)) || tail.lines().any(|l| l.len() > 500)
+}
+
+/// A config whose module ends and is then followed by a long remainder that
+/// looks like a payload. Returns the line count and the line the module ends
+/// on. Shared by the machine check and the remote one, so the two cannot come
+/// to disagree about what a suspicious config looks like.
+pub(crate) fn payload_shaped_tail(body: &str) -> Option<(usize, usize)> {
+    let lines: Vec<&str> = body.lines().collect();
+    let total = lines.len();
+    let end = lines
+        .iter()
+        .rposition(|l| l.starts_with("export default") || l.starts_with("module.exports"))?;
+    if total <= end + 16 {
+        return None;
+    }
+    let tail = lines.get(end + 1..).unwrap_or_default().join("\n");
+    looks_like_payload(&tail).then_some((total, end + 1))
 }
 
 pub fn tasks_json(walk: &Walk, ind: &Indicators, v: &mut Verdict, sink: &mut Sink) {
@@ -225,23 +242,12 @@ pub fn build_configs(
         }
 
         let lines: Vec<&str> = body.lines().collect();
-        let total = lines.len();
-        let end = lines
-            .iter()
-            .rposition(|l| l.starts_with("export default") || l.starts_with("module.exports"));
-
-        if let Some(end) = end {
-            if total > end + 16 {
-                let tail = lines.get(end + 1..).unwrap_or_default().join("\n");
-                if looks_like_payload(&tail) {
-                    flagged += 1;
-                    v.push(Finding::review(format!(
-                        "content after module end that looks like a payload ({total} lines, module ends at {}): {}",
-                        end + 1,
-                        path.display()
-                    )));
-                }
-            }
+        if let Some((total, end)) = payload_shaped_tail(&body) {
+            flagged += 1;
+            v.push(Finding::review(format!(
+                "content after module end that looks like a payload ({total} lines, module ends at {end}): {}",
+                path.display()
+            )));
         }
 
         if lines.iter().any(|l| l.len() > 4000) {

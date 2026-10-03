@@ -54,7 +54,7 @@ reflog if they are ever wanted.
 Full detail in [`HACKING.md`](./HACKING.md). The three commands:
 
 ```bash
-./polinrider-sandbox --all     # lint, 9 self-tests, 66 conformance cases, clippy, 125 Rust tests
+./polinrider-sandbox --all     # lint, 9 self-tests, 66 conformance cases, clippy, 138 Rust tests
 ./polinrider-sandbox --demo    # build an infected sample and scan it with 1.x
 ./polinrider-sandbox --beta    # 2.0 installed in the container, on the PATH, with a sample
 ./ci/docs-serve.sh             # the documentation site, with live reload
@@ -131,6 +131,8 @@ that this reversed an earlier mdBook decision and what the Node dependency costs
 | `checks.rs` | Implants, tasks.json, build configs, fonts, packages, git hooks, extensions, propagation |
 | `scan.rs` | One scan: the walk, every check that applies, and rendering. In the library so a session can run more than one |
 | `guide.rs` | The guided flow. Four screens, one question on each, answered in words. A summary first, the full list on `details`. Every prompt goes through one `Console` trait so a test can drive a session: ADR-0035 |
+| `remote.rs` | Checking GitHub: the `Forge` boundary (`GitHub` through `gh` and `git`, or `Supplied` from a directory of bare repositories), mirroring into an evidence directory, and checking every branch and tag through git plumbing. Read-only. Not wired into the guided flow yet |
+| `pattern.rs` | A small regular-expression matcher for `ioc/filenames.txt`, which is data written as patterns. A pattern it cannot honour stops the scan |
 | `ui.rs` | The wordmark and the colours, and nothing else. Runs no command, reads no file. Colour never changes a character: ADR-0033 |
 | `strip.rs` | Plans the cut for `clean`: what to keep of an infected build config, or why not to touch it. Pure, no I/O |
 | `host.rs` | The boundary. `Host`, with `LiveHost` (asks the machine) and `Snapshot` (holds the answers as data). The only module that runs a command |
@@ -216,6 +218,23 @@ until the port in item 6 lands.
    like `Host` so the corpus can drive it with local repositories, and real
    GitHub can only be tried from the sandbox with a network, a sign-in and a
    throwaway repository, all of which are Mandeep's to give.
+
+   **Where it stands:** the read-only check is built and tested against local
+   repositories (`src/remote.rs`): list, mirror, check every branch and tag,
+   set aside the operator's own detection files, and read who pushed to the
+   confirmed branches. It is not reachable from the command line or the
+   guided flow yet. Next: the screens, once the mock is agreed; conformance
+   cases that build repositories; then `remove`.
+
+   **Two more differences from 1.x, for Mandeep's list** (with the eight in
+   ADR-0029): a `tasks.json` that runs on folder open but carries no indicator
+   is review in the remote check, as it already is in the machine check, where
+   1.x's remote scan called it infected. And a path under `lib/` or `ci/` is
+   no longer assumed to be the operator's own detection tooling: 1.x discounts
+   every infected file in a directory with either name, in anybody's
+   repository. On `v2` the shell's list had also grown `src/` and
+   `conformance/`, added to quiet this repository's self-scan; that is a
+   false negative in the v2 shell and is not carried into Rust.
 7. **Release.** Only after 5 and 6, and only on Mandeep's word. 2.0.0 merges to
    `main` then. No backport of the ADR-0029 fixes to 1.x: 2.0 carries them.
 
