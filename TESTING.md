@@ -37,7 +37,8 @@ polinrider
 
 That is the guided flow: four screens, one question on each, answered in
 words. Type `computer`, which in here is the container, and press Enter to
-accept `~/code`. It checks, then shows a short summary of what it found and
+check its whole home folder. (`folder` offers the code folders it finds, such
+as `~/code`.) It checks, then shows a short summary of what it found and
 asks one question.
 
 The sample it finds:

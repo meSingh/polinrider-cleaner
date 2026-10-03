@@ -252,7 +252,11 @@ fn steps(
 
     // --- 3: check, and say what was found -----------------------------------
     blank(io, 2);
-    io.say(&[dim("  Checking now. This only reads.")]);
+    io.say(&[dim(if what == What::Computer {
+        "  Checking now. This only reads. A whole home folder can take a few minutes."
+    } else {
+        "  Checking now. This only reads."
+    })]);
     let dry = Quarantine::<DryRun>::new(session.quarantine);
     let found = scan::run(&scope, &mut Sink::Dry(&dry));
     report.push_str(&format!(
@@ -332,9 +336,12 @@ fn choose_what(session: &Session, io: &mut dyn Console) -> Result<What, Stop> {
     if session.host.is_some() {
         io.say(&[
             word("      computer"),
-            p("     This computer: your code, login items"),
+            p("     This whole computer: your home folder,"),
         ]);
-        line(io, "                   and what is running right now.");
+        line(
+            io,
+            "                   login items and what is running right now.",
+        );
     } else {
         io.say(&[
             dim("      computer"),
@@ -410,23 +417,37 @@ fn choose_roots(session: &Session, what: What, io: &mut dyn Console) -> Result<V
         session,
         2,
         if what == What::Computer {
-            "Where is your code?"
+            "Where should I look?"
         } else {
             "Which folder?"
         },
         true,
     );
-    let usual = if what == What::Computer {
-        usual_roots(session.home)
+    // What Enter accepts. For the computer it is the whole home folder:
+    // somebody who wanted one folder would have said folder, and checking a
+    // computer by looking in one code directory is the same check twice
+    // under two names. For a folder it is the places code usually lives.
+    let suggested = if what == What::Computer {
+        vec![session.home.to_path_buf()]
     } else {
-        Vec::new()
+        usual_roots(session.home)
     };
-    if usual.is_empty() {
+    if what == What::Computer {
+        line(io, "  Your home folder, and everything in it:");
+        blank(io, 1);
+        io.say(&[p(format!(
+            "      {}",
+            clean(&session.home.display().to_string())
+        ))]);
+        blank(io, 2);
+        io.say(&[p("  Press "), word("Enter"), p(" to check it.")]);
+        line(io, "  Or type a different folder, then press Enter.");
+    } else if suggested.is_empty() {
         line(io, "  Type the folder to check, then press Enter.");
     } else {
-        line(io, "  I found these in your home folder:");
+        line(io, "  I found these code folders in your home folder:");
         blank(io, 1);
-        for dir in &usual {
+        for dir in &suggested {
             io.say(&[p(format!("      {}", tilde(dir, session.home)))]);
         }
         blank(io, 2);
@@ -449,8 +470,8 @@ fn choose_roots(session: &Session, what: What, io: &mut dyn Console) -> Result<V
                 if !roots.is_empty() {
                     return Ok(roots);
                 }
-                if !usual.is_empty() {
-                    return Ok(usual);
+                if !suggested.is_empty() {
+                    return Ok(suggested);
                 }
                 // A blank line with nothing chosen asks again. It does not
                 // check nothing and call it clean.
@@ -1259,10 +1280,17 @@ mod tests {
             name: "implant-process".into(),
             command: "x".into(),
         }]);
-        // Enter accepts the code folder found under the home directory.
+        // Enter accepts the whole home folder.
         let (outcome, io) = w.run_with(Some(&host), &["computer", "", ""]);
         assert_eq!(outcome.exit, ExitCode::Confirmed);
-        assert!(io.said.contains("      ~/code\n"), "{}", io.said);
+        assert!(
+            io.said.contains("Your home folder, and everything in it:"),
+            "{}",
+            io.said
+        );
+        assert!(io
+            .said
+            .contains("Checked 1 file in 1 folder, and this computer."));
         assert!(io.said.contains(", and this computer."));
         assert!(io
             .said
@@ -1306,6 +1334,35 @@ mod tests {
             .said
             .contains("Nothing is confirmed. 1 thing needs your eyes."));
         assert!(!io.said.contains("Rebuild"));
+    }
+
+    #[test]
+    fn computer_checks_the_whole_home_folder_and_folder_suggests_where_code_lives() {
+        // The two choices used to be the same check: computer looked in the
+        // code folders and so did folder. A payload in ~/Downloads was in
+        // neither.
+        let w = World::new(
+            "home",
+            &[
+                ("home/code/index.js", "export const a = 1\n"),
+                ("home/Downloads/unzipped/postcss.config.mjs", &infected()),
+            ],
+        );
+        let host = Snapshot::quiet(Platform::Linux, w.dir.join("root"));
+        let (outcome, io) = w.run_with(Some(&host), &["computer", ""]);
+        assert_eq!(outcome.exit, ExitCode::Confirmed, "{}", io.said);
+        assert!(io
+            .said
+            .contains("1 config file with the payload hidden in it"));
+
+        // folder offers the code folder it found, and Enter takes it. The
+        // payload in Downloads is outside what was asked for.
+        let (outcome, io) = w.run(&["folder", ""]);
+        assert!(io
+            .said
+            .contains("I found these code folders in your home folder:"));
+        assert!(io.said.contains("      ~/code\n"), "{}", io.said);
+        assert_eq!(outcome.exit, ExitCode::Clean, "{}", io.said);
     }
 
     #[test]
