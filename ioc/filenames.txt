@@ -4,3 +4,12 @@
 (^|/)temp_auto_push\.bat$
 (^|/)MicrosoftSystem64(\.exe|-win\.exe|-linux|-darwin-(x64|arm64))?$
 (^|/)com\.launchkeeper\.MicrosoftSystem64\.plist$
+# The second working file of the force-push tool, beside temp_auto_push.bat
+# above. Never committed -- it lives on the infected developer's machine -- so
+# this fires on a disk scan, and weak.txt carries the name for the separate case
+# of a committed .gitignore that lists it. config.bat and branch_structure.json,
+# named in the same block, are not here: both are ordinary names, and this file
+# is INFECTED tier with no weaker path tier to put them in.
+# Source: OpenSourceMalware, "PolinRider is A/B Testing its Way Past Your
+# Detections", September 2026.
+(^|/)temp_interactive_push\.bat$

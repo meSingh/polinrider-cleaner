@@ -64,3 +64,25 @@ A10-npm3!
 # Source: OpenSourceMalware, "NPM Isn't Prepared For North Korean PolinRider
 # Attack", August 2026.
 global.i="A8-
+
+# The A8 marker again, in the other quote style. The entry above was taken from
+# a sample written global.i="A8-3292-1". The September 2026 fake-font build
+# opens its payload with global.i = 'A8'; -- single quotes, spaces around the
+# '=' -- so the double-quoted prefix does not match it, and a build in a second
+# repository carries the related marker A8-n*. Carried as its own prefix rather
+# than by relaxing the other entry, because ioc/ is matched as fixed strings and
+# cannot express "either quote".
+# Source: OpenSourceMalware, "PolinRider is A/B Testing its Way Past Your
+# Detections", September 2026.
+global.i = 'A8
+
+# The two XOR keys in the string table of the 500-variant fake-font payload,
+# readable without deobfuscating the file. The second is carried as the
+# whitespace-free tail of the published key: the source prints it inside a
+# pre-formatted table as Sr3=@   y-p_>d$0B&@^1aQk, and the run of spaces cannot
+# be distinguished from column alignment, so the part that can be established
+# byte for byte is what is matched.
+# Source: OpenSourceMalware, "PolinRider is A/B Testing its Way Past Your
+# Detections", September 2026.
+q4FZkxX{!h
+y-p_>d$0B&@^1aQk

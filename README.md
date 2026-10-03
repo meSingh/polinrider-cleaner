@@ -903,16 +903,17 @@ weeks that found nothing. Each review keeps its own dated entry, and entries are
 never edited or removed:
 [`docs/indicator-reviews/`](docs/indicator-reviews/).
 
-**Last reviewed: [21 September 2026](docs/indicator-reviews/2026-09-21.md).**
+**Last reviewed: [28 September 2026](docs/indicator-reviews/2026-09-28.md).**
 
-Eight indicators added: the `A8-` campaign marker as it is written into a poisoned
-config file, the five public Ethereum RPC endpoints the loader walks to read its
-blockchain dead drop, and the two C2 addresses that drop published between 30
-August and 15 September, read off the chain rather than taken on trust.
+Eleven indicators added, after published analysis showed the campaign running
+three fake-font variants side by side rather than replacing one with the next:
+the campaign marker in the quote style the set was missing, two XOR keys readable
+in the payload, the four-line `.gitignore` block that marks a contributor's
+machine as infected even when the repository is clean, and the VS Code setting
+that lets the malicious task run unprompted.
 
-Most of what the review read, it turned away. CloudSEK's GHAPPIER report
-describes a separate loader family that merely shares victims with this campaign,
-and adopting its indicators would make this scanner report the wrong thing; the
-current `A9-` marker exists only after deobfuscation, so a fixed string for it
-could never match. Both are written up in the entry so the next review does not
-re-derive them.
+The same analysis dates one of this repository's own indicators. The only entry
+covering the fake-font vector names the 400 filename and the `public/fonts` path,
+and the two variants now in circulation use neither; catching them needs a regex
+tier that `ioc/` does not have, so it is written up as a gap rather than papered
+over. Read the entry before trusting a clean result on that vector.

@@ -25,6 +25,7 @@ Newest first.
 
 | Date | Outcome | What it found |
 |---|---|---|
+| [2026-09-28](2026-09-28.md) | 11 indicators added | The campaign is A/B testing three fake-font variants at once. Added the single-quoted `A8` marker, two XOR keys, the `.gitignore` machine fingerprint and `allowAutomaticTasks`. Reversed last week's rejection of the C2 paths: this build leaves them in plain text. The font indicators are a variant behind and cannot catch up as fixed strings. |
 | [2026-09-21](2026-09-21.md) | 8 indicators added | The `A8-` campaign marker, five Ethereum RPC resolvers and two NullReceiver C2 addresses read off the chain. CloudSEK's GHAPPIER report rejected as a separate loader family sharing victims, not infrastructure. Found one PolinRider post the previous week's sweep missed. |
 | [2026-09-14](2026-09-14.md) | 19 indicators added | The egress block on the analysis hosts lifted. Drained a backlog: the ChainVeil and ViteVenom npm clusters, the NullReceiver marker, wallet and C2. Three known-malicious names rejected as substrings of real packages. npm-CLI persistence found, not implemented. |
 | [2026-09-07](2026-09-07.md) | 3 indicators added | Two npm package names and one BSC RPC node, all gaps against the April 2026 dossier. Nothing new published upstream. |

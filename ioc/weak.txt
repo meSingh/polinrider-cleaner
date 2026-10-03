@@ -21,3 +21,45 @@ eth.drpc.org
 ethereum-rpc.publicnode.com
 eth-mainnet.public.blastapi.io
 eth.blockscout.com
+
+# The .gitignore fingerprint of an infected contributor's machine. These are the
+# working files of the force-push tool running on the developer's own computer;
+# the entries keep them out of `git status` so nobody notices them. The source
+# reports finding this block in every infected organization it has examined, and
+# recommends grepping .gitignore for it. Review tier, not INFECTED, for two
+# reasons: the block says a contributor's machine is infected rather than that
+# this repository holds a payload, and branch_structure.json is a name a
+# legitimate tool could also write. config.bat is deliberately absent -- far too
+# generic to carry at any tier. temp_auto_push.bat is also in filenames.txt,
+# which matches paths; this entry is the separate case of the name appearing
+# inside a committed file.
+# Source: OpenSourceMalware, "PolinRider is A/B Testing its Way Past Your
+# Detections", September 2026.
+temp_auto_push.bat
+temp_interactive_push.bat
+branch_structure.json
+
+# The VS Code setting that lets a folderOpen task run without the usual prompt.
+# The source's own recommended hunt is `folderOpen|allowAutomaticTasks`, and
+# folderOpen is already above. Carried as the bare key rather than the full
+# `"task.allowAutomaticTasks": true` line, because the spacing in a settings
+# file is not something to bet a fixed string on. A project can legitimately
+# ship it, which is why this is review tier -- but, in the source's words,
+# "there's very little reason for a project to ship it".
+# Source: as above.
+allowAutomaticTasks
+
+# Strings readable in the 500-variant payload's string table without decoding
+# it: the response header the loader reads its next stage out of, and the two
+# C2 request paths. The 2026-09-21 review turned the paths away on the grounds
+# that they are assembled at runtime and never appear in a file; this source
+# states the opposite for this build -- "its indicators (the Ethereum wallet,
+# the C2 paths, the response header) can be read straight out of the file" --
+# so they are carried, at review tier. The published form is `:443/0x/cls`; the
+# port prefix is dropped here so the entry matches whether or not the literal in
+# the file carries it. The request header `Sec-V` is deliberately absent: five
+# characters is too short to match safely.
+# Source: as above. See docs/indicator-reviews/2026-09-28.md.
+X-Payload-B64
+/0x/cls
+/0x/ls
