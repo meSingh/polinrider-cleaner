@@ -79,7 +79,7 @@ fn read(io: &mut dyn Console, prompt: &str) -> Result<String, Stop> {
 /// Run a session. Never panics on bad input and never writes without a yes.
 pub fn run(session: &Session, io: &mut dyn Console) -> Outcome {
     let mut report = String::new();
-    io.say("PolinRider guided check. This is a beta build of 2.0.");
+    io.say("This is a beta build of 2.0.");
     io.say("Type q at any prompt to stop. Nothing is changed unless you type yes.");
 
     let mut worst: Option<ExitCode> = None;

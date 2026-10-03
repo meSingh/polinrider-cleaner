@@ -47,3 +47,4 @@ reason to keep them.
 - [2.0 does not checkpoint a scan](https://github.com/meSingh/polinrider-cleaner/blob/main/docs/adr/0030-2-0-does-not-checkpoint-a-scan.md) — Accepted
 - [clean strips an appended payload in place, and never touches git](https://github.com/meSingh/polinrider-cleaner/blob/main/docs/adr/0031-clean-strips-an-appended-payload-in-place-and-never-touches-git.md) — Accepted
 - [The guided flow changes something only on a typed yes](https://github.com/meSingh/polinrider-cleaner/blob/main/docs/adr/0032-the-guided-flow-changes-something-only-on-a-typed-yes.md) — Accepted
+- [Every run opens with the banner, and colour changes no character](https://github.com/meSingh/polinrider-cleaner/blob/main/docs/adr/0033-every-run-opens-with-the-banner-and-colour-changes-no-character.md) — Accepted

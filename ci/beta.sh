@@ -43,9 +43,13 @@ mkdir -p "$HOME/.config/systemd/user"
 printf '[Unit]\nDescription=System update helper\n\n[Service]\nExecStart=/bin/sh -c "%s"\n' "$STRONG" \
   > "$HOME/.config/systemd/user/sysupdate-helper.service"
 
-cat <<TXT
+# Shown whole and not cut down to a line with head: the first version of this
+# script did that, the pipe closed while the binary was still writing, and
+# the first thing the beta ever printed for its maintainer was a Rust panic.
+printf '\n  The 2.0 beta is installed in this container. This is polinrider --version:\n\n'
+"$HOME/bin/polinrider" --version
 
-  The 2.0 beta is installed in this container:  $("$HOME/bin/polinrider" --version | head -1)
+cat <<TXT
 
   A sample is waiting for it. None of it is live malware: each file carries
   one indicator string from ioc/, which is what the scanner matches.
@@ -60,7 +64,7 @@ cat <<TXT
 
   Or drive it yourself:
 
-    polinrider --version              which build this is, and where its indicators are
+    polinrider --version              which build this is, and how many indicators it has
     polinrider check ~/code           read-only check of this container and that folder
     polinrider clean ~/code/shop      what it would strip and move. Add --apply to do it
     ls ~/polinrider-quarantine-*      where the originals went, after an --apply or a yes

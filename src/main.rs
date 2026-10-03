@@ -11,34 +11,37 @@ use polinrider::host::{Host, LiveHost, Snapshot};
 use polinrider::indicators::Indicators;
 use polinrider::quarantine::{Apply, DryRun, Quarantine};
 use polinrider::scan::{self, Scope, Target};
+use polinrider::ui::Ui;
 use polinrider::verdict::ExitCode;
 
 use std::io::{BufRead, Write};
 use std::path::Path;
 use std::process::ExitCode as ProcExit;
 
+/// Print to standard output, and carry on if nobody is reading.
+///
+/// `println!` panics when the reader has gone away, and `polinrider | head`
+/// is an ordinary thing to type. A scan that has finished has an exit code to
+/// return whether or not anybody read its report to the end, and a crash with
+/// a Rust backtrace hint is not what a security tool should say on its way
+/// out. `print_stdout` is denied in Cargo.toml so that this stays the only
+/// way anything is printed.
+fn emit(text: &str) {
+    let mut out = std::io::stdout().lock();
+    let _ = out.write_all(text.as_bytes());
+    let _ = out.flush();
+}
+
 fn main() -> ProcExit {
+    let ui = Ui::for_stdout();
     let args = match cli::parse(std::env::args().skip(1), cli::default_ioc()) {
         Ok(a) => a,
         Err(Rejection::HelpRequested) => {
-            print!("{}", cli::usage());
+            emit(&cli::usage());
             return ProcExit::from(0);
         }
         Err(Rejection::VersionRequested) => {
-            // Where the indicators are is part of the answer. A binary that
-            // cannot find them refuses every scan, and this is how somebody
-            // finds that out before an incident and not during one.
-            println!("{}", cli::version());
-            let ioc = cli::default_ioc();
-            match Indicators::load(&ioc) {
-                Ok(i) => println!(
-                    "indicators: {} ({} strong, {} network)",
-                    ioc.display(),
-                    i.strong.len(),
-                    i.network.len()
-                ),
-                Err(e) => println!("indicators: NOT USABLE, every scan will be refused. {e}"),
-            }
+            emit(&about(&ui));
             return ProcExit::from(0);
         }
         Err(e) => {
@@ -82,43 +85,16 @@ fn main() -> ProcExit {
     };
     let host = host.as_deref();
 
+    // The wordmark, on every run. On the console only: a report file is read
+    // by tools and attached to tickets, and has no use for it.
+    emit(&format!("{}\n", ui.banner(&cli::version())));
+
     if args.command == Command::Guide {
-        return guided(&args, &ind, host);
+        return guided(&args, &ind, host, ui);
     }
 
     let clean = args.command == Command::Clean;
-    let mut out = String::new();
-    out.push_str(&format!(
-        "PolinRider local {} - {} - scan\n",
-        args.command.name(),
-        std::env::consts::OS
-    ));
-    out.push_str(&format!(
-        "roots: {}\n",
-        args.roots
-            .iter()
-            .map(|r| r.display().to_string())
-            .collect::<Vec<_>>()
-            .join(" ")
-    ));
-    out.push_str(&format!(
-        "mode: {}\n",
-        match (args.apply, clean) {
-            (false, _) => "dry run - nothing will be changed",
-            (true, false) => "APPLY - confirmed artifacts will be moved to quarantine",
-            (true, true) =>
-                "APPLY - appended payloads are stripped in place, other confirmed artifacts are moved to quarantine. Every original is kept",
-        }
-    ));
-    out.push_str(&format!(
-        "host state: {}\n",
-        match host {
-            Some(h) => h.describe(),
-            None if clean =>
-                "not read, clean looks only at the directories it is given".to_string(),
-            None => "not read, --fs-only".to_string(),
-        }
-    ));
+    let out = opening(&args, host);
 
     let scope = Scope {
         roots: &args.roots,
@@ -155,7 +131,10 @@ fn main() -> ProcExit {
     };
 
     let closing = scan::result(&v);
-    print!("{out}{}{closing}", scan::render(&v, Target::Console));
+    emit(&ui.paint(&format!(
+        "{out}{}{closing}",
+        scan::render(&v, Target::Console)
+    )));
     if let Some(path) = &args.report {
         let body = format!("{out}{}{closing}", scan::render(&v, Target::Report));
         if let Err(e) = write_report(path, &body) {
@@ -163,6 +142,64 @@ fn main() -> ProcExit {
         }
     }
     ProcExit::from(v.exit_code().code() as u8)
+}
+
+/// The name people call the system this binary was built for.
+fn system_name() -> &'static str {
+    match std::env::consts::OS {
+        "linux" => "Linux",
+        "macos" => "macOS",
+        "windows" => "Windows",
+        other => other,
+    }
+}
+
+/// The opening of a report, in sentences: what was detected, what kind of run
+/// this is, and whether anything will be changed. Said before the first
+/// finding, because "did that just move my files" is the wrong thing to be
+/// wondering while reading a result. The same text opens the report file.
+fn opening(args: &cli::Args, host: Option<&dyn Host>) -> String {
+    let clean = args.command == Command::Clean;
+    let mut out = format!("PolinRider local {}\n\n", args.command.name());
+
+    out.push_str(&format!("  Detected a {} system.\n", system_name()));
+    out.push_str(match (clean, host) {
+        (true, _) => "  A clean of the directories below and nothing else. This machine is not examined.\n",
+        (false, Some(h)) if h.is_live() => "  A local check: this machine, and the directories below.\n",
+        (false, Some(_)) => "  A check of supplied host state, and the directories below. NOT this machine.\n",
+        (false, None) => "  A check of files only (--fs-only). Processes, sockets and login items are not read.\n",
+    });
+    out.push_str(&match (args.apply, clean) {
+        (false, _) => {
+            "  DRY RUN, read-only. No changes will be made at this stage.\n".to_string()
+        }
+        (true, false) => format!(
+            "  APPLY. Confirmed artifacts will be moved to quarantine. Nothing is deleted.\n  Originals go to {}\n",
+            args.quarantine.display()
+        ),
+        (true, true) => format!(
+            "  APPLY. Appended payloads will be stripped in place and other confirmed artifacts moved to quarantine. Nothing is deleted.\n  Originals go to {}\n",
+            args.quarantine.display()
+        ),
+    });
+
+    out.push_str(&format!(
+        "\n  directories  {}\n",
+        args.roots
+            .iter()
+            .map(|r| r.display().to_string())
+            .collect::<Vec<_>>()
+            .join("\n               ")
+    ));
+    out.push_str(&format!(
+        "  host state   {}\n",
+        match host {
+            Some(h) => h.describe(),
+            None if clean => "not read".to_string(),
+            None => "not read, --fs-only".to_string(),
+        }
+    ));
+    out
 }
 
 fn write_report(path: &Path, body: &str) -> std::io::Result<()> {
@@ -174,23 +211,69 @@ fn write_report(path: &Path, body: &str) -> std::io::Result<()> {
     std::fs::write(path, body)
 }
 
+/// What `--version` prints: the banner, then which build this is and what it
+/// can match. Counts, not paths: where the indicator files live is of no use
+/// to somebody checking what they have, and how many there are is.
+fn about(ui: &Ui) -> String {
+    let mut out = ui.banner(&cli::version());
+    out.push('\n');
+    out.push_str(&ui.fact("version", &ui.accent(cli::VERSION)));
+    out.push_str(&ui.fact(
+        "build",
+        &match cli::commit() {
+            Some(commit) => ui.bold(commit),
+            None => ui.dim("not recorded"),
+        },
+    ));
+    out.push_str(&ui.fact("platform", std::env::consts::OS));
+    match Indicators::load(&cli::default_ioc()) {
+        Ok(i) => {
+            let sep = if ui.unicode { " · " } else { ", " };
+            let count = |n: usize, what: &str| format!("{} {what}", ui.accent(&n.to_string()));
+            // `strong` is held with the package names merged in, because a
+            // package name found in a file counts. Shown apart here.
+            let counts = [
+                count(
+                    i.strong.len().saturating_sub(i.bad_packages.len()),
+                    "strong",
+                ),
+                count(i.bad_packages.len(), "packages"),
+                count(i.network.len(), "network"),
+                count(i.implant_names.len(), "implant names"),
+                count(i.weak.len(), "weak"),
+            ];
+            out.push_str(&ui.fact("indicators", &counts.join(sep)));
+        }
+        // The one case where the location matters: it is what has to be fixed.
+        Err(e) => {
+            out.push_str(&ui.fact(
+                "indicators",
+                &ui.alarm("NOT USABLE. Every scan will be refused."),
+            ));
+            out.push_str(&ui.fact("", &e.to_string()));
+        }
+    }
+    out
+}
+
 /// The terminal, as the guided flow sees it.
-struct Terminal;
+struct Terminal {
+    ui: Ui,
+}
 
 impl Console for Terminal {
     fn say(&mut self, text: &str) {
-        println!("{text}");
+        emit(&format!("{}\n", self.ui.paint(text)));
     }
 
     fn ask(&mut self, prompt: &str) -> Option<String> {
-        print!("{prompt} ");
-        let _ = std::io::stdout().flush();
+        emit(&format!("{} ", self.ui.bold(prompt)));
         let mut line = String::new();
         match std::io::stdin().lock().read_line(&mut line) {
             // Zero bytes is the end of input, which is not the same as an
             // empty line and must not be read as one.
             Ok(0) | Err(_) => {
-                println!();
+                emit("\n");
                 None
             }
             Ok(_) => Some(line.trim().to_string()),
@@ -198,7 +281,7 @@ impl Console for Terminal {
     }
 }
 
-fn guided(args: &cli::Args, ind: &Indicators, host: Option<&dyn Host>) -> ProcExit {
+fn guided(args: &cli::Args, ind: &Indicators, host: Option<&dyn Host>, ui: Ui) -> ProcExit {
     let session = Session {
         ind,
         ioc_dir: &args.ioc,
@@ -206,11 +289,16 @@ fn guided(args: &cli::Args, ind: &Indicators, host: Option<&dyn Host>) -> ProcEx
         host,
         quarantine: &args.quarantine,
     };
-    let outcome = guide::run(&session, &mut Terminal);
+    let mut terminal = Terminal { ui };
+    terminal.say(&format!(
+        "PolinRider guided check\n\n  Detected a {} system.\n  DRY RUN until you type yes. No changes will be made before that.\n",
+        system_name()
+    ));
+    let outcome = guide::run(&session, &mut terminal);
     if let Some(path) = &args.report {
         if !outcome.report.is_empty() {
             match write_report(path, &outcome.report) {
-                Ok(()) => println!("The full report is in {}", path.display()),
+                Ok(()) => emit(&format!("The full report is in {}\n", path.display())),
                 Err(e) => eprintln!("polinrider: could not write {}: {e}", path.display()),
             }
         }

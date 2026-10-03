@@ -54,7 +54,7 @@ reflog if they are ever wanted.
 Full detail in [`HACKING.md`](./HACKING.md). The three commands:
 
 ```bash
-./polinrider-sandbox --all     # lint, 9 self-tests, 62 conformance cases, clippy, 103 Rust tests
+./polinrider-sandbox --all     # lint, 9 self-tests, 64 conformance cases, clippy, 109 Rust tests
 ./polinrider-sandbox --demo    # build an infected sample and scan it with 1.x
 ./polinrider-sandbox --beta    # 2.0 installed in the container, on the PATH, with a sample
 ./ci/docs-serve.sh             # the documentation site, with live reload
@@ -101,7 +101,7 @@ argument for running unknown code on a machine you believe is compromised.
 ## What is done
 
 **The corpus** — `conformance/`, 13 filesystem cases, 20 host cases, 7 clean
-cases, 6 guide cases and 16 refusal cases. The filesystem cases are green
+cases, 6 guide cases, 16 refusal cases and 2 closed-pipe checks. The filesystem cases are green
 against both implementations. The host, clean and guide cases run against the
 Rust engine only and print `skip` under the
 shell, which cannot be handed a machine that does not exist. Running in CI and
@@ -131,6 +131,7 @@ that this reversed an earlier mdBook decision and what the Node dependency costs
 | `checks.rs` | Implants, tasks.json, build configs, fonts, packages, git hooks, extensions, propagation |
 | `scan.rs` | One scan: the walk, every check that applies, and rendering. In the library so a session can run more than one |
 | `guide.rs` | The guided flow. Six steps, every prompt through one `Console` trait so a test can drive a session |
+| `ui.rs` | The wordmark and the colours, and nothing else. Runs no command, reads no file. Colour never changes a character: ADR-0033 |
 | `strip.rs` | Plans the cut for `clean`: what to keep of an infected build config, or why not to touch it. Pure, no I/O |
 | `host.rs` | The boundary. `Host`, with `LiveHost` (asks the machine) and `Snapshot` (holds the answers as data). The only module that runs a command |
 | `host_checks.rs` | Implant processes, persistence, shell startup files, global git config, npm config, resident interpreters, live connections |
@@ -266,6 +267,12 @@ The Dockerfile installs them now. If the image predates 2026-10-03, rebuild it:
 host (it rewrites source and executes nothing), then check in the sandbox.
 Compiling on the host with `cargo clippy` or `cargo build` is tolerated for
 the same reason. Running what was built is not.
+
+**`println!` panics on a closed pipe.** `polinrider --version | head -1`
+crashed with a Rust panic, and that was the first thing the beta printed for
+Mandeep. All output goes through `emit()` in `main.rs` now, `print_stdout` is
+denied by clippy, and two corpus checks pin it. Do not pipe the binary through
+`head` in a script and assume that is harmless.
 
 **An installed binary could not find its indicators on macOS.** It looked for
 `ioc/` beside the path it was started from, which through a link on the PATH

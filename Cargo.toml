@@ -33,3 +33,6 @@ unwrap_used = "deny"
 expect_used = "deny"
 panic = "deny"
 indexing_slicing = "deny"
+# println! panics when the reader has gone away, and `polinrider | head` is an
+# ordinary thing to type. Everything goes through emit() in main.rs.
+print_stdout = "deny"

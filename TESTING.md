@@ -64,7 +64,7 @@ Things worth trying, and what should happen:
 Without the prompts:
 
 ```bash
-polinrider --version              # which build, and where its indicators are
+polinrider --version              # which build, and how many indicators it has
 polinrider check ~/code           # read-only check of the container and that folder
 polinrider clean ~/code/shop      # what it would strip and move. --apply does it
 echo $?                           # the exit code of the last command

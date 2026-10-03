@@ -364,6 +364,27 @@ refusals() {
   check_refusal "the guided flow told to --apply"    guide --apply
   check_refusal "the guided flow handed a directory" guide "$tmp"
   check_refusal "clean with no directory"            clean
+
+  # A reader that goes away. `polinrider | head` is an ordinary thing to type,
+  # and Rust's println! panics on a closed pipe. The run must end without a
+  # word on stderr and with the exit code it would have had anyway. The
+  # reader here closes its end at once and stays alive, so the write that
+  # fails is the binary's and not a race the binary usually wins.
+  check_closed_pipe() {
+    local why="$1" want="$2"; shift 2
+    local err rc
+    err="$( { "$bin" "$@" | { exec 0<&-; sleep 1; }; exit "${PIPESTATUS[0]}"; } 2>&1 >/dev/null )"; rc=$?
+    if [[ -z "$err" && $rc -eq $want ]]; then
+      PASS=$((PASS+1)); printf '  \033[32mpass\033[0m  %-38s %s\n' "closed pipe" "$why"
+    else
+      FAIL=$((FAIL+1)); FAILED_CASES+=("pipe:$why")
+      printf '  \033[31mFAIL\033[0m  %-38s %s\n' "closed pipe" "$why"
+      printf '        exit %s, expected %s\n        %s\n' "$rc" "$want" "${err%%$'\n'*}"
+    fi
+  }
+  mkdir -p "$tmp/empty"
+  check_closed_pipe "--version, nobody reading"       0 --version
+  check_closed_pipe "a clean scan, nobody reading"    0 check --fs-only "$tmp/empty"
   check_refusal "clean handed host state"            clean --host-state "$tmp" "$tmp"
   check_refusal "clean handed --fs-only"             clean --fs-only "$tmp"
   rm -rf "$tmp"

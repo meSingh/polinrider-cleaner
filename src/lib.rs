@@ -15,6 +15,7 @@ pub mod quarantine;
 pub mod scan;
 pub mod sha256;
 pub mod strip;
+pub mod ui;
 pub mod verdict;
 pub mod walk;
 

@@ -50,7 +50,10 @@ pub const ACCEPTED: &[(&str, &str)] = &[
         "--host-state DIR",
         "read processes, sockets and crontab from DIR, not this machine",
     ),
-    ("-V, --version", "the version, and where its indicators are"),
+    (
+        "-V, --version",
+        "the version, the build and the indicator counts",
+    ),
     ("-h, --help", "this"),
 ];
 
@@ -422,13 +425,19 @@ pub fn default_ioc() -> PathBuf {
     PathBuf::from("ioc")
 }
 
-/// The version, and the commit it was built from when the build recorded one.
+/// The version number.
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+/// The commit this binary was built from, when the build recorded one.
+pub fn commit() -> Option<&'static str> {
+    option_env!("POLINRIDER_COMMIT").filter(|c| !c.is_empty())
+}
+
+/// The version with its commit, as the banner shows it on every run.
 pub fn version() -> String {
-    match option_env!("POLINRIDER_COMMIT") {
-        Some(commit) if !commit.is_empty() => {
-            format!("polinrider {} ({commit})", env!("CARGO_PKG_VERSION"))
-        }
-        _ => format!("polinrider {}", env!("CARGO_PKG_VERSION")),
+    match commit() {
+        Some(commit) => format!("{VERSION} ({commit})"),
+        None => VERSION.to_string(),
     }
 }
 
@@ -634,7 +643,7 @@ mod tests {
             parse(args(&["--version"]).into_iter(), ioc),
             Err(Rejection::VersionRequested)
         ));
-        assert!(version().starts_with("polinrider 2."));
+        assert!(version().starts_with("2."));
     }
 
     #[test]
