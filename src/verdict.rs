@@ -39,6 +39,46 @@ impl Level {
     }
 }
 
+/// What a confirmed finding is, in the one sense that matters afterwards:
+/// what can be done about it and what it proves.
+///
+/// Every `[HIT]` has one. It is an argument to [`Finding::hit`] and not a
+/// field to remember, so a finding that the "what to do next" block cannot
+/// account for does not compile.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Kind {
+    /// A build config carrying a payload. `clean` can cut it out, or the
+    /// shape is not one it will touch.
+    Config { strippable: bool },
+    /// A file inside a project that `--apply` moves whole: a font that is
+    /// not a font, a `tasks.json` carrying an indicator.
+    InProject,
+    /// A campaign package named in a manifest. Removed by hand.
+    Package,
+    /// Outside the projects, and `--apply` moves it: an implant, a login
+    /// item, a git hook, an editor extension, the propagation script.
+    OnMachine,
+    /// Outside the projects, and only a person can fix it: a shell startup
+    /// file, a crontab, an npm registry.
+    ByHand,
+    /// Happening now: a process, a connection.
+    Running,
+}
+
+impl Kind {
+    /// Does this prove the payload ran on this machine, as opposed to sitting
+    /// in a file that was cloned onto it? The difference between "rebuild"
+    /// and "decide whether to rebuild".
+    pub const fn ran_here(self) -> bool {
+        matches!(self, Kind::OnMachine | Kind::ByHand | Kind::Running)
+    }
+
+    /// Can `--apply` move it into quarantine?
+    pub const fn movable(self) -> bool {
+        matches!(self, Kind::InProject | Kind::OnMachine)
+    }
+}
+
 /// One thing the scan concluded, about one place.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Finding {
@@ -48,6 +88,9 @@ pub struct Finding {
     /// What to do about it, printed indented under the message. `None` when
     /// the message is self-explanatory.
     pub remedy: Option<String>,
+    /// What kind of confirmed finding this is. `None` for everything that is
+    /// not a `[HIT]`.
+    pub kind: Option<Kind>,
 }
 
 impl Finding {
@@ -56,11 +99,15 @@ impl Finding {
             level,
             message: message.into(),
             remedy: None,
+            kind: None,
         }
     }
 
-    pub fn hit(message: impl Into<String>) -> Self {
-        Self::new(Level::Hit, message)
+    pub fn hit(kind: Kind, message: impl Into<String>) -> Self {
+        Self {
+            kind: Some(kind),
+            ..Self::new(Level::Hit, message)
+        }
     }
 
     pub fn review(message: impl Into<String>) -> Self {
@@ -207,6 +254,11 @@ impl Verdict {
         self.count(Level::Review)
     }
 
+    /// The kind of every confirmed finding.
+    pub fn kinds(&self) -> impl Iterator<Item = Kind> + '_ {
+        self.findings().filter_map(|f| f.kind)
+    }
+
     /// The exit code this verdict implies.
     ///
     /// `CouldNotRun` is never produced here: it means the scan did not happen,
@@ -257,7 +309,10 @@ mod tests {
         for _ in 0..10 {
             v.push(Finding::review("something to look at"));
         }
-        v.push(Finding::hit("config file contains an indicator"));
+        v.push(Finding::hit(
+            Kind::InProject,
+            "config file contains an indicator",
+        ));
         assert_eq!(v.exit_code(), ExitCode::Confirmed);
     }
 
@@ -272,7 +327,7 @@ mod tests {
 
     #[test]
     fn a_second_remedy_is_added_not_swapped_in() {
-        let f = Finding::hit("launch item contains an indicator")
+        let f = Finding::hit(Kind::OnMachine, "launch item contains an indicator")
             .with_remedy("unload it first")
             .with_remedy("would quarantine: /x");
         assert_eq!(

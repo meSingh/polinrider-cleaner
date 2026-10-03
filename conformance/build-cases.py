@@ -394,6 +394,10 @@ host_case(
             "path": "updater.service",
         }],
         "must_not_report": ["backup.timer", "quarantined ->"],
+        # A login item is outside the projects: the payload ran here, and the
+        # next steps must say rebuild and give the command that contains it.
+        "must_print": ["WHAT TO DO NEXT", "The payload ran on this machine",
+                       "polinrider check --apply", "Rebuild this machine from a clean install"],
     },
 )
 
@@ -450,6 +454,8 @@ host_case(
         "exit": 1,
         "findings": [{"level": "review", "match": "user crontab is not empty"}],
         "must_not_report": ["[HIT]"],
+        "must_print": ["WHAT TO DO NEXT", "Nothing is confirmed"],
+        "must_not_print": ["Rebuild this machine"],
     },
 )
 
@@ -662,7 +668,9 @@ case(
             "match": "config file contains an indicator",
             "path": "postcss.config.mjs",
         }],
-        "must_print": ["would strip", "keeps through line 1"],
+        "must_print": ["would strip", "keeps through line 1",
+                       "WHAT TO DO NEXT", "polinrider clean --apply",
+                       "Decide whether this machine needs rebuilding"],
         "must_not_print": ["original kept ->"],
     },
 )

@@ -111,7 +111,9 @@ impl Ui {
     /// Printed at the top of every run, so a screenshot or a pasted log says
     /// what produced it.
     pub fn banner(&self, version: &str) -> String {
-        let mut out = String::new();
+        // A blank line first, so the wordmark does not sit flush against the
+        // command that was typed.
+        let mut out = String::from("\n");
         if self.unicode {
             for line in WORDMARK_TOP {
                 out.push_str(&self.wrap(&[CYAN], line));
@@ -122,7 +124,7 @@ impl Ui {
                 out.push('\n');
             }
         } else {
-            out.push_str(&format!("\n  {}\n", self.accent("POLINRIDER")));
+            out.push_str(&format!("  {}\n", self.accent("POLINRIDER")));
         }
 
         // The credit, right-aligned to the wordmark's edge so it reads as a
@@ -220,6 +222,10 @@ impl Ui {
         {
             return self.wrap(&[BOLD], line);
         }
+        // A command to run next, on a line of its own.
+        if line.starts_with("       polinrider ") {
+            return self.wrap(&[CYAN, BOLD], line);
+        }
         if line.contains("QUARANTINE FAILED") || line.contains("STRIP FAILED") {
             // Not red: red is the finding. This is the tool failing to deal
             // with one, which needs a person.
@@ -310,10 +316,11 @@ mod tests {
         let banner = strip(&COLOUR.banner("2.0.0-beta.1 (abc1234)"));
         assert!(banner.contains("cleaner 2.0.0-beta.1 (abc1234)"));
         assert!(banner.contains("by Mandeep Singh"));
-        for line in banner.lines().take(6) {
+        assert_eq!(banner.lines().next(), Some(""), "a blank line above it");
+        for line in banner.lines().skip(1).take(6) {
             assert_eq!(line.chars().count(), BANNER_WIDTH, "{line}");
         }
-        let credit = banner.lines().nth(6).expect("the credit line");
+        let credit = banner.lines().nth(7).expect("the credit line");
         assert_eq!(
             credit.chars().count(),
             BANNER_WIDTH,

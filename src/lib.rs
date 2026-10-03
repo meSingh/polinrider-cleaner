@@ -22,4 +22,4 @@ pub mod walk;
 pub use host::{Host, LiveHost, Platform, Probe, Snapshot};
 pub use indicators::Indicators;
 pub use quarantine::{Apply, DryRun, Outcome, Quarantine};
-pub use verdict::{Entry, ExitCode, Finding, Level, Verdict};
+pub use verdict::{Entry, ExitCode, Finding, Kind, Level, Verdict};

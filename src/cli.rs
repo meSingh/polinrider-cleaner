@@ -217,6 +217,10 @@ pub struct Args {
     pub home: PathBuf,
     /// Host state supplied as files, instead of read from this machine.
     pub host_state: Option<PathBuf>,
+    /// The flags that decide what is looked at, as they were given, with
+    /// their values. Kept so the report can print the exact command to run
+    /// next and never one with a blank to fill in.
+    pub scope_flags: Vec<(String, Option<String>)>,
 }
 
 /// Parse and validate. Returns only arguments it is safe to act on.
@@ -226,6 +230,7 @@ pub fn parse<I: Iterator<Item = String>>(argv: I, default_ioc: PathBuf) -> Resul
     let (mut fs_only, mut apply) = (false, false);
     let (mut quarantine, mut report, mut ioc, mut home) = (None, None, None, None);
     let mut host_state = None;
+    let mut scope_flags: Vec<(String, Option<String>)> = Vec::new();
 
     // The subcommand, when present. `check` is the default.
     let command = match args.peek().map(String::as_str) {
@@ -269,6 +274,7 @@ pub fn parse<I: Iterator<Item = String>>(argv: I, default_ioc: PathBuf) -> Resul
             "--fs-only" => {
                 not_for("--fs-only", &[Command::Clean, Command::Guide])?;
                 fs_only = true;
+                scope_flags.push(("--fs-only".into(), None));
             }
             "--apply" => {
                 not_for("--apply", &[Command::Guide])?;
@@ -276,14 +282,22 @@ pub fn parse<I: Iterator<Item = String>>(argv: I, default_ioc: PathBuf) -> Resul
             }
             "--quarantine" => quarantine = Some(PathBuf::from(value("--quarantine")?)),
             "--report" => report = Some(PathBuf::from(value("--report")?)),
-            "--ioc" => ioc = Some(PathBuf::from(value("--ioc")?)),
+            "--ioc" => {
+                let dir = value("--ioc")?;
+                scope_flags.push(("--ioc".into(), Some(dir.clone())));
+                ioc = Some(PathBuf::from(dir));
+            }
             "--home" => {
                 not_for_clean("--home")?;
-                home = Some(PathBuf::from(value("--home")?));
+                let dir = value("--home")?;
+                scope_flags.push(("--home".into(), Some(dir.clone())));
+                home = Some(PathBuf::from(dir));
             }
             "--host-state" => {
                 not_for_clean("--host-state")?;
-                host_state = Some(PathBuf::from(value("--host-state")?));
+                let dir = value("--host-state")?;
+                scope_flags.push(("--host-state".into(), Some(dir.clone())));
+                host_state = Some(PathBuf::from(dir));
             }
             "-h" | "--help" => return Err(Rejection::HelpRequested),
             "-V" | "--version" => return Err(Rejection::VersionRequested),
@@ -402,6 +416,7 @@ pub fn parse<I: Iterator<Item = String>>(argv: I, default_ioc: PathBuf) -> Resul
         ioc,
         home,
         host_state,
+        scope_flags,
     })
 }
 

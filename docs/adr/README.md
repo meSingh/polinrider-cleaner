@@ -49,6 +49,7 @@ If you disagree with one, open an issue and quote its number.
 | [0031](./0031-clean-strips-an-appended-payload-in-place-and-never-touches-git.md) | clean strips an appended payload in place, and never touches git | Accepted |
 | [0032](./0032-the-guided-flow-changes-something-only-on-a-typed-yes.md) | The guided flow changes something only on a typed yes | Accepted |
 | [0033](./0033-every-run-opens-with-the-banner-and-colour-changes-no-character.md) | Every run opens with the banner, and colour changes no character | Accepted |
+| [0034](./0034-the-verdict-is-followed-by-what-to-do-and-rebuild-is-said-only-on-proof.md) | The verdict is followed by what to do, and "rebuild" is said only on proof | Accepted |
 
 ## Adding one
 

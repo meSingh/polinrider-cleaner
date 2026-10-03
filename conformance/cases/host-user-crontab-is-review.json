@@ -25,6 +25,13 @@
     ],
     "must_not_report": [
       "[HIT]"
+    ],
+    "must_print": [
+      "WHAT TO DO NEXT",
+      "Nothing is confirmed"
+    ],
+    "must_not_print": [
+      "Rebuild this machine"
     ]
   }
 }

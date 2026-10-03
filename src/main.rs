@@ -10,7 +10,7 @@ use polinrider::guide::{self, Console, Session};
 use polinrider::host::{Host, LiveHost, Snapshot};
 use polinrider::indicators::Indicators;
 use polinrider::quarantine::{Apply, DryRun, Quarantine};
-use polinrider::scan::{self, Scope, Target};
+use polinrider::scan::{self, Run, Scope, Target};
 use polinrider::ui::Ui;
 use polinrider::verdict::ExitCode;
 
@@ -130,7 +130,20 @@ fn main() -> ProcExit {
         scan::run(&scope, &mut Sink::Dry(&q))
     };
 
-    let closing = scan::result(&v);
+    let closing = format!(
+        "{}{}",
+        scan::result(&v),
+        scan::next_steps(
+            &v,
+            &Run {
+                command: args.command.name(),
+                scope_flags: &args.scope_flags,
+                roots: &args.roots,
+                applied: args.apply,
+                quarantine: &args.quarantine,
+            }
+        )
+    );
     emit(&ui.paint(&format!(
         "{out}{}{closing}",
         scan::render(&v, Target::Console)

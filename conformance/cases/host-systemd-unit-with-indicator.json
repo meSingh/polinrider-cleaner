@@ -31,6 +31,12 @@
     "must_not_report": [
       "backup.timer",
       "quarantined ->"
+    ],
+    "must_print": [
+      "WHAT TO DO NEXT",
+      "The payload ran on this machine",
+      "polinrider check --apply",
+      "Rebuild this machine from a clean install"
     ]
   }
 }

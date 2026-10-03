@@ -7,8 +7,9 @@
 use crate::checks::{self, OnInfectedConfig, Sink};
 use crate::host::Host;
 use crate::host_checks;
+use crate::host_checks::sh_quote;
 use crate::indicators::Indicators;
-use crate::verdict::{clean, Entry, Finding, Level, Verdict};
+use crate::verdict::{clean, Entry, Finding, Kind, Level, Verdict};
 use crate::walk;
 use std::path::{Path, PathBuf};
 
@@ -199,7 +200,13 @@ pub fn result(v: &Verdict) -> String {
         result.push_str(&row("VERDICT: COMPROMISED"));
         result.push_str(&row(""));
         result.push_str(&row(&format!("{hits} confirmed {word} found.")));
-        result.push_str(&row("This machine cannot be trusted until it is rebuilt."));
+        // "Rebuild" is said only when something proves the payload ran here.
+        // A payload sitting in a cloned file is a finding, not that proof.
+        result.push_str(&row(if v.kinds().any(Kind::ran_here) {
+            "This machine cannot be trusted until it is rebuilt."
+        } else {
+            "The payload is in your project files. See below."
+        }));
         result.push_str(&row(""));
         result.push_str(&format!("  {bar}\n"));
     } else if reviews > 0 {
@@ -208,4 +215,532 @@ pub fn result(v: &Verdict) -> String {
         result.push_str("VERDICT: clean against the current indicator set.\n");
     }
     result
+}
+
+/// The run that produced a verdict, as far as the next command depends on it.
+pub struct Run<'a> {
+    /// `check` or `clean`.
+    pub command: &'a str,
+    /// The flags that decide what is looked at, as they were given.
+    pub scope_flags: &'a [(String, Option<String>)],
+    pub roots: &'a [PathBuf],
+    /// Whether this run was allowed to move and strip.
+    pub applied: bool,
+    pub quarantine: &'a Path,
+}
+
+/// One argument as it has to be typed. Left bare when it is plainly safe,
+/// because a command full of quotes is harder to read and to trust.
+fn arg(text: &str) -> String {
+    let plain = !text.is_empty()
+        && text
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || "_@%+=:,./-".contains(c));
+    if plain {
+        text.to_string()
+    } else {
+        sh_quote(text)
+    }
+}
+
+impl Run<'_> {
+    /// The exact command for `verb`, over the same directories. Never a
+    /// placeholder: a line that fails when pasted is worse than no line.
+    fn line(&self, verb: &str, apply: bool) -> String {
+        let mut parts = vec!["polinrider".to_string(), verb.to_string()];
+        if apply {
+            parts.push("--apply".into());
+        }
+        for (flag, value) in self.scope_flags {
+            // clean reads the directories it is given and refuses the flags
+            // that say otherwise. Only the indicator set carries over.
+            if verb == "clean" && flag != "--ioc" {
+                continue;
+            }
+            parts.push(flag.clone());
+            if let Some(value) = value {
+                parts.push(arg(value));
+            }
+        }
+        parts.extend(self.roots.iter().map(|r| arg(&r.display().to_string())));
+        format!("       {}\n", parts.join(" "))
+    }
+}
+
+/// Wrap prose to a readable width. `first` opens the first line, a step
+/// number for instance, and `rest` indents the lines under it.
+fn prose(first: &str, rest: &str, text: &str) -> String {
+    const WIDTH: usize = 78;
+    let mut out = String::new();
+    let mut line = first.to_string();
+    let mut started = false;
+    for word in text.split_whitespace() {
+        if started && line.chars().count() + 1 + word.chars().count() > WIDTH {
+            out.push_str(&line);
+            out.push('\n');
+            line = rest.to_string();
+            started = false;
+        }
+        if started {
+            line.push(' ');
+        }
+        line.push_str(word);
+        started = true;
+    }
+    out.push_str(&line);
+    out.push('\n');
+    out
+}
+
+fn plural(n: usize, one: &str, many: &str) -> String {
+    format!("{n} {}", if n == 1 { one } else { many })
+}
+
+/// What to do about a verdict, worked out from what was found.
+///
+/// The verdict says what is true. This says what to do, in order, with the
+/// exact command wherever there is one. Short on purpose: somebody reading
+/// it has just been told their machine is compromised.
+pub fn next_steps(v: &Verdict, run: &Run) -> String {
+    let mut out = String::new();
+    if v.hits() == 0 {
+        if v.reviews() == 0 {
+            out.push_str(&prose(
+                "  ",
+                "  ",
+                "Clean against today's indicators is not proof that nothing was ever here. If you had a reason to check, rotate your credentials anyway: they may have been taken from another machine or a shared secret store.",
+            ));
+            return out;
+        }
+        out.push_str("\n== WHAT TO DO NEXT ==\n");
+        out.push_str(&prose(
+            "  ",
+            "  ",
+            &format!(
+                "Nothing is confirmed. {} marked [review] above {} a person, because this tool cannot judge {} for you.",
+                plural(v.reviews(), "line", "lines"),
+                if v.reviews() == 1 { "needs" } else { "need" },
+                if v.reviews() == 1 { "it" } else { "them" },
+            ),
+        ));
+        for (n, step) in [
+            "Read each [review] line. It names a file, a process or a setting. Ask whether you put it there.",
+            "A [review] line that says a check could not run, or was skipped, means that part was not looked at.",
+            "If one of them is not yours, treat it as confirmed: disconnect from the network, and rotate your credentials from a different machine.",
+        ]
+        .iter()
+        .enumerate()
+        {
+            out.push_str(&prose(&format!("  {}. ", n + 1), "     ", step));
+        }
+        out.push_str(&prose(
+            "  ",
+            "  ",
+            "The [info] lines are inventory and hardening advice, not findings.",
+        ));
+        return out;
+    }
+
+    let kinds: Vec<Kind> = v.kinds().collect();
+    let count = |want: fn(&Kind) -> bool| kinds.iter().filter(|k| want(k)).count();
+    let ran_here = kinds.iter().any(|k| k.ran_here());
+    let running = count(|k| matches!(k, Kind::Running));
+    let movable = count(|k| k.movable());
+    let strippable = count(|k| matches!(k, Kind::Config { strippable: true }));
+    let not_strippable = count(|k| matches!(k, Kind::Config { strippable: false }));
+    let packages = count(|k| matches!(k, Kind::Package));
+    let by_hand = count(|k| matches!(k, Kind::ByHand));
+    let cleaning = run.command == "clean";
+
+    out.push_str("\n== WHAT TO DO NEXT ==\n");
+    out.push_str(&prose(
+        "  ",
+        "  ",
+        if ran_here {
+            "The payload ran on this machine: something was found outside your project files."
+        } else {
+            "The payload is in your project files. Nothing was found outside them."
+        },
+    ));
+    out.push('\n');
+
+    let mut n = 0usize;
+    let mut step = |out: &mut String, text: &str, command: Option<String>| {
+        n += 1;
+        out.push_str(&prose(&format!("  {n}. "), "     ", text));
+        if let Some(command) = command {
+            out.push_str(&command);
+        }
+    };
+
+    if running > 0 {
+        step(
+            &mut out,
+            "Disconnect this machine from the network now. Something is running or connected: the [HIT] lines above say what to stop.",
+            None,
+        );
+    }
+
+    if run.applied {
+        if movable > 0 || (cleaning && strippable > 0) {
+            step(
+                &mut out,
+                &format!(
+                    "Done in this run: the originals are in {}. RESTORE.txt there says how to put one back.",
+                    run.quarantine.display()
+                ),
+                None,
+            );
+        }
+    } else if cleaning && movable + strippable > 0 {
+        step(
+            &mut out,
+            &format!(
+                "Strip {} and move {} into quarantine. Nothing is deleted and every original is kept:",
+                plural(strippable, "config file", "config files"),
+                plural(movable, "confirmed artifact", "confirmed artifacts")
+            ),
+            Some(run.line("clean", true)),
+        );
+    } else if movable > 0 {
+        step(
+            &mut out,
+            &format!(
+                "Move {} into quarantine. Nothing is deleted:",
+                plural(movable, "confirmed artifact", "confirmed artifacts")
+            ),
+            Some(run.line(run.command, true)),
+        );
+    }
+    if !cleaning && strippable > 0 {
+        step(
+            &mut out,
+            &format!(
+                "Cut the payload out of {} in place. The originals are kept:",
+                plural(strippable, "config file", "config files")
+            ),
+            Some(run.line("clean", true)),
+        );
+    }
+    if not_strippable > 0 {
+        step(
+            &mut out,
+            &format!(
+                "{} could not be stripped safely. Delete those clones and clone again once the remote is clean.",
+                plural(not_strippable, "config file", "config files")
+            ),
+            None,
+        );
+    }
+    if packages > 0 {
+        step(
+            &mut out,
+            &format!(
+                "Remove the campaign package from {} named above, delete node_modules and reinstall.",
+                if packages == 1 {
+                    "the manifest"
+                } else {
+                    "the manifests"
+                }
+            ),
+            None,
+        );
+    }
+    if by_hand > 0 {
+        step(
+            &mut out,
+            &format!(
+                "{} to be edited by hand: a startup file, a crontab or an npm setting. The line under each [HIT] says what to remove.",
+                if by_hand == 1 {
+                    "1 finding has".to_string()
+                } else {
+                    format!("{by_hand} findings have")
+                }
+            ),
+            None,
+        );
+    }
+    step(
+        &mut out,
+        "Check again. It should come back with no [HIT]:",
+        Some(run.line(run.command, false)),
+    );
+    step(
+        &mut out,
+        "Rotate every credential this account could reach, from a DIFFERENT machine: GitHub tokens and SSH keys, npm tokens, cloud keys and anything in a .env file.",
+        None,
+    );
+    if ran_here {
+        step(
+            &mut out,
+            "Rebuild this machine from a clean install. Quarantine does not make it trustworthy again. Do not restore a backup taken after the infection.",
+            None,
+        );
+    } else {
+        step(
+            &mut out,
+            "Decide whether this machine needs rebuilding. The payload runs when an infected project is built or opened in an editor. If that happened after the infection arrived, or you are not sure, treat the machine as compromised and rebuild it.",
+            None,
+        );
+    }
+    step(
+        &mut out,
+        "Clean the remote. The infected commit may still be in each repository's history and on GitHub. This beta does not do that yet; the released tool on the main branch does.",
+        None,
+    );
+    out
+}
+
+#[cfg(test)]
+#[allow(clippy::expect_used, clippy::unwrap_used, clippy::indexing_slicing)]
+mod tests {
+    use super::*;
+
+    fn steps(findings: Vec<Finding>, command: &str, applied: bool, roots: &[&str]) -> String {
+        let mut v = Verdict::new();
+        for f in findings {
+            v.push(f);
+        }
+        let roots: Vec<PathBuf> = roots.iter().map(PathBuf::from).collect();
+        let flags = if command == "check" {
+            vec![("--fs-only".to_string(), None)]
+        } else {
+            Vec::new()
+        };
+        next_steps(
+            &v,
+            &Run {
+                command,
+                scope_flags: &flags,
+                roots: &roots,
+                applied,
+                quarantine: Path::new("/home/x/polinrider-quarantine-20261003T000000Z"),
+            },
+        )
+    }
+
+    /// The same words on one line, for asserting on a sentence without caring
+    /// where it happened to wrap.
+    fn flat(text: &str) -> String {
+        text.split_whitespace().collect::<Vec<_>>().join(" ")
+    }
+
+    fn config() -> Finding {
+        Finding::hit(
+            Kind::Config { strippable: true },
+            "config file contains an indicator",
+        )
+    }
+
+    #[test]
+    fn something_outside_the_projects_means_rebuild() {
+        let text = steps(
+            vec![
+                config(),
+                Finding::hit(Kind::OnMachine, "systemd unit contains an indicator"),
+            ],
+            "check",
+            false,
+            &["/home/x/code"],
+        );
+        assert!(text.contains("The payload ran on this machine"), "{text}");
+        assert!(
+            text.contains("Rebuild this machine from a clean install"),
+            "{text}"
+        );
+        assert!(
+            text.contains("       polinrider check --apply --fs-only /home/x/code\n"),
+            "{text}"
+        );
+        // clean refuses --fs-only, so the line for it must not carry it.
+        assert!(
+            text.contains("       polinrider clean --apply /home/x/code\n"),
+            "{text}"
+        );
+        assert!(
+            text.contains("       polinrider check --fs-only /home/x/code\n"),
+            "{text}"
+        );
+    }
+
+    #[test]
+    fn a_payload_only_in_project_files_does_not_claim_the_machine_is_lost() {
+        // Nothing proves it ran. Saying "rebuild" for a cloned file is the
+        // same false alarm the rest of this tool works to avoid, and saying
+        // "you are fine" would be worse. It says how to decide.
+        let text = steps(
+            vec![
+                config(),
+                Finding::hit(Kind::InProject, "font file is not a font"),
+            ],
+            "check",
+            false,
+            &["/home/x/code"],
+        );
+        assert!(
+            text.contains("The payload is in your project files"),
+            "{text}"
+        );
+        assert!(
+            text.contains("Decide whether this machine needs rebuilding"),
+            "{text}"
+        );
+        assert!(!text.contains("Rebuild this machine from"), "{text}");
+        assert!(!text.contains("Disconnect"), "{text}");
+
+        let mut v = Verdict::new();
+        v.push(config());
+        assert!(result(&v).contains("The payload is in your project files. See below."));
+        v.push(Finding::hit(
+            Kind::Running,
+            "an implant process is running now",
+        ));
+        assert!(result(&v).contains("This machine cannot be trusted until it is rebuilt."));
+    }
+
+    #[test]
+    fn a_running_implant_puts_the_network_first() {
+        let text = steps(
+            vec![Finding::hit(
+                Kind::Running,
+                "an implant process is running now",
+            )],
+            "check",
+            false,
+            &["/home/x/code"],
+        );
+        assert!(
+            text.contains("  1. Disconnect this machine from the network now."),
+            "{text}"
+        );
+        assert!(
+            !text.contains("--apply"),
+            "nothing here can be moved: {text}"
+        );
+    }
+
+    #[test]
+    fn a_path_with_a_space_is_printed_so_that_it_pastes() {
+        let text = steps(
+            vec![config()],
+            "clean",
+            false,
+            &["/home/x/my code", "/srv/it's"],
+        );
+        assert!(
+            text.contains("       polinrider clean --apply '/home/x/my code' '/srv/it'\\''s'\n"),
+            "{text}"
+        );
+        // No command line ever carries a blank to fill in.
+        for line in text.lines().filter(|l| l.starts_with("       polinrider ")) {
+            assert!(!line.contains('<') && !line.contains("..."), "{line}");
+        }
+    }
+
+    #[test]
+    fn after_an_apply_it_does_not_say_to_apply_again() {
+        let text = steps(
+            vec![
+                config(),
+                Finding::hit(Kind::InProject, "font file is not a font"),
+            ],
+            "clean",
+            true,
+            &["/home/x/code"],
+        );
+        assert!(!text.contains("--apply"), "{text}");
+        assert!(
+            flat(&text).contains("the originals are in /home/x/polinrider-quarantine-"),
+            "{text}"
+        );
+        assert!(
+            text.contains("       polinrider clean /home/x/code\n"),
+            "{text}"
+        );
+    }
+
+    #[test]
+    fn each_thing_only_a_person_can_do_gets_a_step() {
+        let text = steps(
+            vec![
+                Finding::hit(
+                    Kind::Config { strippable: false },
+                    "config file contains an indicator",
+                ),
+                Finding::hit(Kind::Package, "known-bad package referenced"),
+                Finding::hit(Kind::ByHand, "shell startup file contains an indicator"),
+            ],
+            "check",
+            false,
+            &["/home/x/code"],
+        );
+        assert!(
+            text.contains("1 config file could not be stripped safely"),
+            "{text}"
+        );
+        assert!(
+            text.contains("Remove the campaign package from the manifest"),
+            "{text}"
+        );
+        assert!(
+            text.contains("1 finding has to be edited by hand"),
+            "{text}"
+        );
+        // Steps are numbered without a gap.
+        let numbers: Vec<&str> = text
+            .lines()
+            .filter_map(|l| {
+                l.strip_prefix("  ")
+                    .and_then(|l| l.split_once(". "))
+                    .map(|(n, _)| n)
+            })
+            .filter(|n| n.chars().all(|c| c.is_ascii_digit()))
+            .collect();
+        let expected: Vec<String> = (1..=numbers.len()).map(|n| n.to_string()).collect();
+        assert_eq!(numbers, expected, "{text}");
+    }
+
+    #[test]
+    fn review_only_says_what_a_person_should_look_at_and_never_rebuild() {
+        let text = steps(
+            vec![Finding::review("user crontab is not empty")],
+            "check",
+            false,
+            &["/x"],
+        );
+        assert!(
+            flat(&text)
+                .contains("Nothing is confirmed. 1 line marked [review] above needs a person"),
+            "{text}"
+        );
+        assert!(
+            flat(&text).contains("Ask whether you put it there"),
+            "{text}"
+        );
+        assert!(!text.contains("Rebuild"), "{text}");
+        assert!(
+            !text.contains("polinrider "),
+            "no command to run for a review: {text}"
+        );
+    }
+
+    #[test]
+    fn a_clean_result_is_one_sentence_and_no_list() {
+        let text = steps(vec![Finding::ok("all clear")], "check", false, &["/x"]);
+        assert!(!text.contains("WHAT TO DO NEXT"));
+        assert!(text.contains("rotate your credentials anyway"), "{text}");
+    }
+
+    #[test]
+    fn prose_wraps_under_its_number_and_never_past_the_width() {
+        let wrapped = prose("  1. ", "     ", &"word ".repeat(40));
+        assert!(wrapped.lines().count() > 1);
+        assert!(wrapped.starts_with("  1. word word"));
+        for (i, line) in wrapped.lines().enumerate() {
+            assert!(line.chars().count() <= 78, "{line}");
+            if i > 0 {
+                assert!(line.starts_with("     word"), "{line}");
+            }
+        }
+    }
 }

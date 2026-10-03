@@ -18,7 +18,7 @@
 use crate::checks::Sink;
 use crate::host::{system_path, Host, Platform, Probe, Process};
 use crate::indicators::Indicators;
-use crate::verdict::{Finding, Verdict};
+use crate::verdict::{Finding, Kind, Verdict};
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -72,8 +72,10 @@ pub fn implant_processes(host: &dyn Host, ind: &Indicators, v: &mut Verdict) -> 
     for p in &running {
         v.detail(format!("{} {}", p.pid, p.name));
     }
-    let mut finding =
-        Finding::hit("an implant process is running now. Kill it before anything else:");
+    let mut finding = Finding::hit(
+        Kind::Running,
+        "an implant process is running now. Kill it before anything else:",
+    );
     if host.is_live() {
         for p in &running {
             finding = finding.with_remedy(format!("kill -9 {}", p.pid));
@@ -239,10 +241,10 @@ fn systemd_units(dir: &Path, user_scope: bool, ind: &Indicators, v: &mut Verdict
             };
             let quarantined = sink.take(unit, "systemd-unit");
             v.push(
-                Finding::hit(format!(
-                    "systemd unit contains an indicator: {}",
-                    unit.display()
-                ))
+                Finding::hit(
+                    Kind::OnMachine,
+                    format!("systemd unit contains an indicator: {}", unit.display()),
+                )
                 .with_remedy(format!(
                     "after quarantine, disable it: {scope} disable --now {}",
                     sh_quote(&file_name(unit))
@@ -278,10 +280,10 @@ fn autostart(home: &Path, ind: &Indicators, v: &mut Verdict, sink: &mut Sink) {
         if ind.has_strong(&text) {
             let quarantined = sink.take(entry, "autostart-entry");
             v.push(
-                Finding::hit(format!(
-                    "autostart entry contains an indicator: {}",
-                    entry.display()
-                ))
+                Finding::hit(
+                    Kind::OnMachine,
+                    format!("autostart entry contains an indicator: {}", entry.display()),
+                )
                 .with_remedy(quarantined),
             );
         } else {
@@ -307,10 +309,13 @@ fn system_cron(dir: &Path, ind: &Indicators, v: &mut Verdict, sink: &mut Sink) {
         if ind.has_strong(&text) {
             let quarantined = sink.take(entry, "system-cron");
             v.push(
-                Finding::hit(format!(
-                    "system cron entry contains an indicator: {}",
-                    entry.display()
-                ))
+                Finding::hit(
+                    Kind::OnMachine,
+                    format!(
+                        "system cron entry contains an indicator: {}",
+                        entry.display()
+                    ),
+                )
                 .with_remedy(quarantined),
             );
         }
@@ -330,10 +335,10 @@ fn launch_items(dir: &Path, ind: &Indicators, v: &mut Verdict, sink: &mut Sink) 
             hits += 1;
             let quarantined = sink.take(item, "launch-item");
             v.push(
-                Finding::hit(format!(
-                    "launch item contains an indicator: {}",
-                    item.display()
-                ))
+                Finding::hit(
+                    Kind::OnMachine,
+                    format!("launch item contains an indicator: {}", item.display()),
+                )
                 .with_remedy(format!(
                     "after quarantine, unload it: launchctl unload {}",
                     sh_quote(&item.display().to_string())
@@ -364,7 +369,7 @@ fn crontab(host: &dyn Host, ind: &Indicators, v: &mut Verdict) {
             // entry with the same content was already a hit.
             if ind.has_strong(&text) || ind.infrastructure_in(&text).is_some() {
                 v.push(
-                    Finding::hit("user crontab contains an indicator:").with_remedy(
+                    Finding::hit(Kind::ByHand, "user crontab contains an indicator:").with_remedy(
                         "remove the line with: crontab -e. A crontab is never quarantined.",
                     ),
                 );
@@ -432,20 +437,26 @@ pub fn shell_startup(home: &Path, platform: Platform, ind: &Indicators, v: &mut 
         };
         if ind.has_strong(&text) {
             v.push(
-                Finding::hit(format!(
-                    "shell startup file contains an indicator: {}",
-                    file.display()
-                ))
+                Finding::hit(
+                    Kind::ByHand,
+                    format!(
+                        "shell startup file contains an indicator: {}",
+                        file.display()
+                    ),
+                )
                 .with_remedy(
                     "edit it by hand and remove the line. This file is never quarantined.",
                 ),
             );
         } else if text.lines().any(pipes_a_download_into_an_interpreter) {
             v.push(
-                Finding::hit(format!(
-                    "shell startup file pipes a download into an interpreter: {}",
-                    file.display()
-                ))
+                Finding::hit(
+                    Kind::ByHand,
+                    format!(
+                        "shell startup file pipes a download into an interpreter: {}",
+                        file.display()
+                    ),
+                )
                 .with_remedy("edit it by hand and remove the line."),
             );
         } else if text.lines().any(|l| l.len() > 2000) {
@@ -559,10 +570,13 @@ pub fn npm_config(home: &Path, ind: &Indicators, v: &mut Verdict) {
             // reports every company with a private registry as compromised.
             // It is confirmed only when it is the campaign's own host.
             if ind.has_strong(registry) || ind.infrastructure_in(registry).is_some() {
-                v.push(Finding::hit(format!(
-                    "the npm registry is set to known campaign infrastructure: {}",
-                    redact_userinfo(registry)
-                )));
+                v.push(Finding::hit(
+                    Kind::ByHand,
+                    format!(
+                        "the npm registry is set to known campaign infrastructure: {}",
+                        redact_userinfo(registry)
+                    ),
+                ));
             } else {
                 v.push(Finding::review(format!(
                     "a non-default npm registry is configured, confirm it is yours: {}",
@@ -629,6 +643,7 @@ pub fn interpreters(host: &dyn Host, ind: &Indicators, v: &mut Verdict) {
     });
     if implant {
         v.push(Finding::hit(
+            Kind::Running,
             "an interpreter is running implant code right now",
         ));
     } else {
@@ -675,6 +690,7 @@ pub fn connections(host: &dyn Host, ind: &Indicators, v: &mut Verdict) {
             v.detail(line.as_str());
         }
         v.push(Finding::hit(
+            Kind::Running,
             "live connection to known campaign infrastructure",
         ));
         return;
@@ -796,7 +812,7 @@ fn runs_inline_code(command: &str) -> bool {
 /// The name of a planted file is chosen by whoever planted it. Wrapped in
 /// plain single quotes, a name containing one closes the quote and the rest
 /// runs as a command, in the terminal of the person cleaning up.
-fn sh_quote(value: &str) -> String {
+pub(crate) fn sh_quote(value: &str) -> String {
     format!("'{}'", value.replace('\'', "'\\''"))
 }
 
