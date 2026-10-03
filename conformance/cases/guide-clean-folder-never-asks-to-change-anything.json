@@ -1,0 +1,29 @@
+{
+  "why": "With nothing found there is nothing to consent to, so the question is never put. A clean folder goes straight to the prevention advice and exits 0.",
+  "command": "guide",
+  "roots": [
+    "code"
+  ],
+  "stdin": [
+    "2",
+    "{{TREE}}/code",
+    ""
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "expect": {
+    "exit": 0,
+    "tree_may_change": false,
+    "must_print": [
+      "Step 6 of 6"
+    ],
+    "must_not_print": [
+      "Type yes"
+    ],
+    "must_not_report": [
+      "[HIT]",
+      "[review]"
+    ]
+  }
+}

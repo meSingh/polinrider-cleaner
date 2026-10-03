@@ -25,6 +25,10 @@
 # Rust engine can be handed a machine that does not exist, so under the shell
 # implementation these print "skip" and are counted, never silently dropped.
 #
+# GUIDE CASES. A case with "command": "guide" runs the guided flow and feeds it
+# the case's "stdin", one answer per line. {{TREE}} in an answer is the
+# fixture tree, so a case can type a path it could not know in advance.
+#
 # CLEAN CASES. A case with "command": "clean" runs the clean command, which
 # strips an appended payload out of a build config in place. The shell has no
 # such command, so these skip under it too, the same way.
@@ -99,6 +103,15 @@ impl_rust() {
   # engine refuses the flag rather than ignoring it. --home is explicit so the scan reads
   # the fixture's home rather than the runner's.
   local args
+  if [[ "$COMMAND" == "guide" ]]; then
+    # The guided flow takes no roots and no --apply: it asks. The answers come
+    # from the case. The quarantine is always named, because whether anything
+    # goes into it is decided by an answer and not by a flag.
+    args=(guide --home "$FAKE_HOME" --report "$report" --quarantine "$(dirname "$report")/quarantine")
+    [[ -n "$HOST_STATE" ]] && args+=(--host-state "$HOST_STATE")
+    jq -r '.stdin // [] | .[]' "$CASE_FILE" | sed -e "s|{{TREE}}|$TREE|g" | "$bin" "${args[@]}" 2>&1
+    return "${PIPESTATUS[2]}"
+  fi
   if [[ "$COMMAND" == "clean" ]]; then
     # clean reads the roots and nothing else: no home, no host, and it refuses
     # the flags that would say otherwise.
@@ -146,6 +159,8 @@ build_files() {
 PASS=0; FAIL=0; SKIP=0; FAILED_CASES=()
 HOST_STATE=""
 COMMAND="check"
+CASE_FILE=""
+TREE=""
 
 run_case() {
   local cf="$1" name; name="$(basename "$cf" .json)"
@@ -163,14 +178,16 @@ run_case() {
   fi
 
   COMMAND="$(jq -r '.command // "check"' "$cf")"
-  if [[ "$COMMAND" == "clean" && "$IMPL" != "rust" ]]; then
+  if [[ "$COMMAND" != "check" && "$IMPL" != "rust" ]]; then
     SKIP=$((SKIP+1))
-    printf '  \033[33mskip\033[0m  %-38s %s\n' "$name" "runs the clean command, which only the Rust engine has"
+    printf '  \033[33mskip\033[0m  %-38s %s\n' "$name" "runs the $COMMAND command, which only the Rust engine has"
     return 0
   fi
 
   local tmp; tmp="$(mktemp -d)"
   FAKE_HOME="$tmp/home"; mkdir -p "$FAKE_HOME" "$tmp/tree" "$tmp/out"
+
+  CASE_FILE="$cf"; TREE="$tmp/tree"
 
   # build the fixture: the tree to scan, the home directory, and for a host
   # case the machine's state
@@ -344,6 +361,8 @@ refusals() {
   check_refusal "host state that is not there"       check --host-state "$tmp/no-state-here" "$tmp"
   check_refusal "host state alongside --fs-only"     check --fs-only --host-state "$tmp" "$tmp"
   check_refusal "host state that names no platform"  check --host-state "$tmp" "$tmp"
+  check_refusal "the guided flow told to --apply"    guide --apply
+  check_refusal "the guided flow handed a directory" guide "$tmp"
   check_refusal "clean with no directory"            clean
   check_refusal "clean handed host state"            clean --host-state "$tmp" "$tmp"
   check_refusal "clean handed --fs-only"             clean --fs-only "$tmp"

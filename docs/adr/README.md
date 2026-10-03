@@ -47,6 +47,7 @@ If you disagree with one, open an issue and quote its number.
 | [0029](./0029-host-state-is-read-through-one-boundary-and-can-be-supplied.md) | Host state is read through one boundary, and can be supplied | Accepted |
 | [0030](./0030-2-0-does-not-checkpoint-a-scan.md) | 2.0 does not checkpoint a scan | Accepted |
 | [0031](./0031-clean-strips-an-appended-payload-in-place-and-never-touches-git.md) | clean strips an appended payload in place, and never touches git | Accepted |
+| [0032](./0032-the-guided-flow-changes-something-only-on-a-typed-yes.md) | The guided flow changes something only on a typed yes | Accepted |
 
 ## Adding one
 

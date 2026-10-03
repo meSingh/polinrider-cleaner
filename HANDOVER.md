@@ -16,8 +16,9 @@ a rewrite in progress: one Rust binary replacing seventeen shell scripts, a
 documentation site, a container sandbox, and a conformance corpus that both
 implementations answer to. **`v2` has never been pushed.** The Rust engine
 passes every conformance case, for the filesystem checks and now for the
-host-state checks too, and the local-repo cleaner is built. What remains is
-the guided flow. `v2` is pushed to GitHub as a backup from 2026-10-03 and is **not** to be
+host-state checks too, and the local-repo cleaner and the guided flow are
+built. What remains is the GitHub tracks, which are still shell only, and a
+test on real machines. `v2` is pushed to GitHub as a backup from 2026-10-03 and is **not** to be
 merged to `main` until Mandeep has tested it on his three machines.
 
 ---
@@ -50,7 +51,7 @@ reflog if they are ever wanted.
 Full detail in [`HACKING.md`](./HACKING.md). The three commands:
 
 ```bash
-./polinrider-sandbox --all     # lint, 9 self-tests, 54 conformance cases, clippy, 84 Rust tests
+./polinrider-sandbox --all     # lint, 9 self-tests, 62 conformance cases, clippy, 96 Rust tests
 ./polinrider-sandbox --demo    # build an infected sample and scan it
 ./ci/docs-serve.sh             # the documentation site, with live reload
 ```
@@ -96,8 +97,9 @@ argument for running unknown code on a machine you believe is compromised.
 ## What is done
 
 **The corpus** — `conformance/`, 13 filesystem cases, 20 host cases, 7 clean
-cases and 14 refusal cases. The filesystem cases are green against both
-implementations. The host and clean cases run against the Rust engine only and print `skip` under the
+cases, 6 guide cases and 16 refusal cases. The filesystem cases are green
+against both implementations. The host, clean and guide cases run against the
+Rust engine only and print `skip` under the
 shell, which cannot be handed a machine that does not exist. Running in CI and
 in `--all`. Fixtures contain no
 payload: cases write `{{STRONG}}` and the runner substitutes from `ioc/` at build
@@ -123,6 +125,8 @@ that this reversed an earlier mdBook decision and what the Node dependency costs
 | `walk.rs` | One pruned filesystem walk, shared by every check |
 | `indicators.rs` | Loading `ioc/` |
 | `checks.rs` | Implants, tasks.json, build configs, fonts, packages, git hooks, extensions, propagation |
+| `scan.rs` | One scan: the walk, every check that applies, and rendering. In the library so a session can run more than one |
+| `guide.rs` | The guided flow. Six steps, every prompt through one `Console` trait so a test can drive a session |
 | `strip.rs` | Plans the cut for `clean`: what to keep of an infected build config, or why not to touch it. Pure, no I/O |
 | `host.rs` | The boundary. `Host`, with `LiveHost` (asks the machine) and `Snapshot` (holds the answers as data). The only module that runs a command |
 | `host_checks.rs` | Implant processes, persistence, shell startup files, global git config, npm config, resident interpreters, live connections |
@@ -153,6 +157,14 @@ place, keeping the infected original in quarantine. Dry run by default. It
 cuts one shape and refuses the rest, and it never runs or touches git.
 `check --apply` means what it always did.
 
+**The guided flow** —
+[ADR-0032](./docs/adr/0032-the-guided-flow-changes-something-only-on-a-typed-yes.md).
+`polinrider` with no arguments. Asks what to check, scans, shows what it would
+move or strip, does it only on a typed `yes`, checks again. Only `q` leaves, a
+blank line never chooses, and input that ends stops the session with nothing
+further changed. It stops at the machine: the remote step tells the operator
+to use 1.x.
+
 ---
 
 ## What is next, in order
@@ -173,9 +185,12 @@ cuts one shape and refuses the rest, and it never runs or touches git.
 4. **Reword "only moves files" wherever 1.x documentation says it**, before
    2.0 is released. `clean` edits source, and ADR-0031 says the claim has to be
    corrected and not left to mislead. The README on `v2` is still the 1.x one.
-5. **The guided flow** — one CLI session walking triage, machine, credentials,
-   remote, verify, prevent, without leaving the tool. This is the "fully
-   automated flow" Mandeep described.
+5. **The GitHub tracks in Rust.** Scanning an organization or an account,
+   the push ledger, restore and remote cleaning are about 1,500 lines of shell
+   in `lib/gh-*.sh` and were never on this list. They are the largest piece
+   left: until they are ported the 2.0 guided flow does less than the 1.x one,
+   and "delete the shell" cannot happen. Needs a decision from Mandeep on
+   whether 2.0 ships without them, with 1.x kept for GitHub, or waits.
 6. **A full test on Mandeep's three machines.** Only after that does 2.0.0
    merge to `main` and get released. No backport of the ADR-0029 fixes to 1.x:
    Mandeep decided 2.0 carries them.

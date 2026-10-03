@@ -7,10 +7,12 @@
 
 pub mod checks;
 pub mod cli;
+pub mod guide;
 pub mod host;
 pub mod host_checks;
 pub mod indicators;
 pub mod quarantine;
+pub mod scan;
 pub mod sha256;
 pub mod strip;
 pub mod verdict;

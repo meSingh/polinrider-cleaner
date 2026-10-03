@@ -136,7 +136,7 @@ impl fmt::Display for Rejection {
             }
             Rejection::NotForCommand { flag, command } => write!(
                 f,
-                "{flag} does not apply to {command}.\n\nNothing was scanned. {command} reads the directories it is given and\nnothing else, so there is nothing for {flag} to change."
+                "{flag} does not apply to {command}.\n\nNothing was scanned. Refused rather than ignored: a flag that is accepted\nand then does nothing leaves you believing it did something."
             ),
             Rejection::MissingValue(flag) => write!(f, "{flag} needs a value"),
             Rejection::NoRoots => write!(
@@ -182,6 +182,9 @@ pub enum Command {
     /// payload out of a build config in place. Reads nothing outside the
     /// roots and never touches git. ADR-0031.
     Clean,
+    /// The guided flow: asks what to check, scans, and changes something only
+    /// on an explicit yes. What running with no arguments does. ADR-0032.
+    Guide,
 }
 
 impl Command {
@@ -189,6 +192,7 @@ impl Command {
         match self {
             Command::Check => "check",
             Command::Clean => "clean",
+            Command::Guide => "guide",
         }
     }
 }
@@ -225,12 +229,20 @@ pub fn parse<I: Iterator<Item = String>>(argv: I, default_ioc: PathBuf) -> Resul
             args.next();
             Command::Clean
         }
+        Some("guide") => {
+            args.next();
+            Command::Guide
+        }
+        // Nothing at all: the guided flow, which asks. Anything else without
+        // a command is a check, as it always was.
+        None => Command::Guide,
         _ => Command::Check,
     };
-    // Flags that mean nothing to `clean`, which reads the directories it is
-    // given and nothing else. Refused, not ignored.
-    let not_for_clean = |flag: &str| -> Result<(), Rejection> {
-        if command == Command::Clean {
+    // A flag that means nothing to the command it was given with is refused,
+    // not ignored. `clean` reads the directories it is given and nothing
+    // else; `guide` asks for its directories and for a yes before it writes.
+    let not_for = |flag: &str, commands: &[Command]| -> Result<(), Rejection> {
+        if commands.contains(&command) {
             return Err(Rejection::NotForCommand {
                 flag: flag.to_string(),
                 command: command.name(),
@@ -238,6 +250,7 @@ pub fn parse<I: Iterator<Item = String>>(argv: I, default_ioc: PathBuf) -> Resul
         }
         Ok(())
     };
+    let not_for_clean = |flag: &str| not_for(flag, &[Command::Clean]);
 
     while let Some(arg) = args.next() {
         let mut value = |flag: &str| {
@@ -246,10 +259,13 @@ pub fn parse<I: Iterator<Item = String>>(argv: I, default_ioc: PathBuf) -> Resul
         };
         match arg.as_str() {
             "--fs-only" => {
-                not_for_clean("--fs-only")?;
+                not_for("--fs-only", &[Command::Clean, Command::Guide])?;
                 fs_only = true;
             }
-            "--apply" => apply = true,
+            "--apply" => {
+                not_for("--apply", &[Command::Guide])?;
+                apply = true;
+            }
             "--quarantine" => quarantine = Some(PathBuf::from(value("--quarantine")?)),
             "--report" => report = Some(PathBuf::from(value("--report")?)),
             "--ioc" => ioc = Some(PathBuf::from(value("--ioc")?)),
@@ -280,12 +296,15 @@ pub fn parse<I: Iterator<Item = String>>(argv: I, default_ioc: PathBuf) -> Resul
                 }
                 return Err(Rejection::Unknown(other.to_string()));
             }
-            root => roots.push(PathBuf::from(root)),
+            root => {
+                not_for("a directory on the command line", &[Command::Guide])?;
+                roots.push(PathBuf::from(root));
+            }
         }
     }
 
     // --- preflight. Nothing above this point touched the filesystem. -------
-    if roots.is_empty() {
+    if roots.is_empty() && command != Command::Guide {
         return Err(Rejection::NoRoots);
     }
     for root in &roots {
@@ -379,7 +398,7 @@ pub fn default_ioc() -> PathBuf {
 
 pub fn usage() -> String {
     let mut s = String::from(
-        "polinrider - detect and clean up after the PolinRider supply-chain campaign.\n\n  polinrider check [options] ROOT...   scan and report\n  polinrider clean [options] REPO...   scan working trees, and with --apply\n                                       strip an appended payload in place\n\nOptions:\n",
+        "polinrider - detect and clean up after the PolinRider supply-chain campaign.\n\n  polinrider                           the guided flow. Asks, scans, and changes\n                                       something only when you type yes\n  polinrider check [options] ROOT...   scan and report\n  polinrider clean [options] REPO...   scan working trees, and with --apply\n                                       strip an appended payload in place\n\nOptions:\n",
     );
     for (flag, help) in ACCEPTED {
         s.push_str(&format!("  {flag:<18} {help}\n"));
@@ -529,6 +548,28 @@ mod tests {
                 matches!(e, Rejection::NotForCommand { flag: ref f, .. } if f == flag),
                 "{flag}: {e}"
             );
+        }
+    }
+
+    #[test]
+    fn no_arguments_at_all_is_the_guided_flow() {
+        let ioc = ioc_fixture("guide");
+        let a = parse(args(&[]).into_iter(), ioc).expect("valid");
+        assert_eq!(a.command, Command::Guide);
+        assert!(a.roots.is_empty());
+    }
+
+    #[test]
+    fn the_guided_flow_refuses_to_be_told_to_apply() {
+        // It asks before it writes. A flag that answers for the operator
+        // would make "nothing is changed unless you type yes" untrue.
+        for extra in ["--apply", "--fs-only", "/tmp"] {
+            let e = parse(
+                args(&["guide", extra]).into_iter(),
+                ioc_fixture("guide-flags"),
+            )
+            .expect_err("must refuse");
+            assert!(matches!(e, Rejection::NotForCommand { .. }), "{extra}: {e}");
         }
     }
 

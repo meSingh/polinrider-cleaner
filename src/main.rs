@@ -4,16 +4,17 @@
 //! recognise before a single file is read. This binary moves things; a typo
 //! must not get as far as doing work.
 
-use polinrider::checks::{self, OnInfectedConfig, Sink};
+use polinrider::checks::{OnInfectedConfig, Sink};
 use polinrider::cli::{self, Command, Rejection};
+use polinrider::guide::{self, Console, Session};
 use polinrider::host::{Host, LiveHost, Snapshot};
-use polinrider::host_checks;
 use polinrider::indicators::Indicators;
 use polinrider::quarantine::{Apply, DryRun, Quarantine};
-use polinrider::verdict::{clean, Entry, ExitCode, Level, Verdict};
-use polinrider::walk;
+use polinrider::scan::{self, Scope, Target};
+use polinrider::verdict::ExitCode;
 
-use std::path::{Path, PathBuf};
+use std::io::{BufRead, Write};
+use std::path::Path;
 use std::process::ExitCode as ProcExit;
 
 fn main() -> ProcExit {
@@ -53,6 +54,9 @@ fn main() -> ProcExit {
     } else {
         match LiveHost::new(&args.home) {
             Ok(h) => Some(Box::new(h)),
+            // The guided flow can still check directories, and says that
+            // "this computer" is not on offer.
+            Err(_) if args.command == Command::Guide => None,
             Err(e) => {
                 eprintln!("polinrider: {e}");
                 return ProcExit::from(ExitCode::CouldNotRun.code() as u8);
@@ -60,6 +64,10 @@ fn main() -> ProcExit {
         }
     };
     let host = host.as_deref();
+
+    if args.command == Command::Guide {
+        return guided(&args, &ind, host);
+    }
 
     let clean = args.command == Command::Clean;
     let mut out = String::new();
@@ -95,24 +103,20 @@ fn main() -> ProcExit {
         }
     ));
 
-    let mut v = Verdict::new();
-    v.section("Filesystem walk");
-    let w = walk::walk(&args.roots);
-    v.push(polinrider::Finding::info(format!(
-        "{} files listed. Not walked: {}",
-        w.files.len(),
-        walk::PRUNED.join(", ")
-    )));
-    // Roots were validated before this point, so anything unreadable here is a
-    // subdirectory the current user cannot open. Reported, never silent.
-    for bad in &w.unreadable {
-        v.push(polinrider::Finding::review(format!(
-            "could not read, so it was not scanned: {}",
-            bad.display()
-        )));
-    }
+    let scope = Scope {
+        roots: &args.roots,
+        ioc_dir: &args.ioc,
+        ind: &ind,
+        home: if clean { None } else { Some(&args.home) },
+        host,
+        on_infected_config: if clean {
+            OnInfectedConfig::Strip
+        } else {
+            OnInfectedConfig::Report
+        },
+    };
 
-    let code = if args.apply {
+    let v = if args.apply {
         let mut q = match Quarantine::<Apply>::create(&args.quarantine) {
             Ok(q) => q,
             Err(e) => {
@@ -123,196 +127,25 @@ fn main() -> ProcExit {
                 return ProcExit::from(ExitCode::CouldNotRun.code() as u8);
             }
         };
-        {
-            let mut sink = Sink::Apply(&mut q);
-            run_checks(&w, &ind, &args, host, &mut v, &mut sink);
-        }
+        let v = scan::run(&scope, &mut Sink::Apply(&mut q));
         if let Err(e) = q.write_manifest() {
             eprintln!("polinrider: could not write the quarantine manifest: {e}");
         }
-        finish(&v, &out, &args.report)
+        v
     } else {
         let q = Quarantine::<DryRun>::new(&args.quarantine);
-        let mut sink = Sink::Dry(&q);
-        run_checks(&w, &ind, &args, host, &mut v, &mut sink);
-        finish(&v, &out, &args.report)
+        scan::run(&scope, &mut Sink::Dry(&q))
     };
 
-    ProcExit::from(code.code() as u8)
-}
-
-fn extension_dirs(home: &Path) -> Vec<PathBuf> {
-    [
-        ".vscode/extensions",
-        ".vscode-insiders/extensions",
-        ".cursor/extensions",
-        ".windsurf/extensions",
-        ".vscode-oss/extensions",
-        ".var/app/com.visualstudio.code/data/vscode/extensions",
-    ]
-    .iter()
-    .map(|p| home.join(p))
-    .collect()
-}
-
-fn run_checks(
-    w: &walk::Walk,
-    ind: &Indicators,
-    args: &cli::Args,
-    host: Option<&dyn Host>,
-    v: &mut Verdict,
-    sink: &mut Sink,
-) {
-    if args.command == Command::Clean {
-        return run_clean(w, ind, args, v, sink);
-    }
-
-    // One line per host check that did not run, so a section that was skipped
-    // can never be mistaken for one that found nothing.
-    let skipped = |v: &mut Verdict, name: &str| {
-        v.section(format!("{name}: skipped, --fs-only"));
-    };
-
-    checks::implants(w, ind, Some(&args.home), &args.ioc, host, v, sink);
-
-    if host.is_some() {
-        checks::extensions(&extension_dirs(&args.home), ind, v, sink);
-    } else {
-        skipped(v, "IDE extensions");
-    }
-
-    checks::tasks_json(w, ind, v, sink);
-    checks::build_configs(w, ind, OnInfectedConfig::Report, v, sink);
-    checks::fonts(w, v, sink);
-
-    if host.is_some() {
-        checks::propagation(w, v, sink);
-    } else {
-        skipped(v, "Propagation artifact");
-    }
-
-    checks::packages(w, ind, v);
-
-    match host {
-        Some(host) => {
-            host_checks::persistence(host, &args.home, ind, v, sink);
-            host_checks::shell_startup(&args.home, host.platform(), ind, v);
-        }
-        None => {
-            skipped(v, "Persistence");
-            skipped(v, "Shell startup files");
-        }
-    }
-
-    checks::git_hooks(w, ind, host, v, sink);
-
-    match host {
-        Some(host) => {
-            host_checks::npm_config(&args.home, ind, v);
-            host_checks::interpreters(host, ind, v);
-            host_checks::connections(host, ind, v);
-        }
-        None => {
-            skipped(v, "npm configuration");
-            skipped(v, "Resident interpreters");
-            skipped(v, "Live connections");
-        }
-    }
-}
-
-/// `clean`: every check that reads the working trees it was given, and none
-/// that read anything else. No home directory, no host. The difference from
-/// `check` is one argument: an infected build config is stripped, not just
-/// reported.
-fn run_clean(w: &walk::Walk, ind: &Indicators, args: &cli::Args, v: &mut Verdict, sink: &mut Sink) {
-    checks::implants(w, ind, None, &args.ioc, None, v, sink);
-    checks::tasks_json(w, ind, v, sink);
-    checks::build_configs(w, ind, OnInfectedConfig::Strip, v, sink);
-    checks::fonts(w, v, sink);
-    checks::propagation(w, v, sink);
-    checks::packages(w, ind, v);
-    checks::git_hooks(w, ind, None, v, sink);
-}
-
-/// Where a rendering is going. The console gets evidence cut to a readable
-/// width and no inventory; the report file gets all of it.
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum Target {
-    Console,
-    Report,
-}
-
-/// How much of one evidence line the console shows. The report has the rest.
-const CONSOLE_WIDTH: usize = 110;
-
-fn render(v: &Verdict, target: Target) -> String {
-    let mut out = String::new();
-    // Everything below can carry bytes chosen by whoever planted what is
-    // being reported, so every line goes through `clean` on its way out.
-    for entry in v.entries() {
-        match entry {
-            Entry::Section(title) => out.push_str(&format!("\n== {} ==\n", clean(title))),
-            Entry::Finding(f) => {
-                out.push_str(&format!("  {} {}\n", f.level.tag(), clean(&f.message)));
-                for line in f.remedy.iter().flat_map(|r| r.lines()) {
-                    out.push_str(&format!("           {}\n", clean(line)));
-                }
-            }
-            Entry::Detail(line) => {
-                let line = clean(line);
-                if target == Target::Console && line.chars().count() > CONSOLE_WIDTH {
-                    let cut: String = line.chars().take(CONSOLE_WIDTH).collect();
-                    out.push_str(&format!("    {cut} ...\n"));
-                } else {
-                    out.push_str(&format!("    {line}\n"));
-                }
-            }
-            Entry::Note(line) => {
-                if target == Target::Report {
-                    out.push_str(&format!("    {}\n", clean(line)));
-                }
-            }
-        }
-    }
-    out
-}
-
-fn finish(v: &Verdict, header: &str, report: &Option<PathBuf>) -> ExitCode {
-    let hits = v.count(Level::Hit);
-    let reviews = v.count(Level::Review);
-    let mut result = String::from("\n== RESULT ==\n");
-    result.push_str(&format!("  confirmed indicator hits : {hits}\n"));
-    result.push_str(&format!("  items needing a human    : {reviews}\n"));
-    result.push('\n');
-
-    let code = v.exit_code();
-    if hits > 0 {
-        let word = if hits == 1 { "indicator" } else { "indicators" };
-        let w = 54usize;
-        let bar = "#".repeat(w + 7);
-        let row = |s: &str| format!("  ##   {s:<w$}##\n");
-        result.push_str(&format!("  {bar}\n"));
-        result.push_str(&row(""));
-        result.push_str(&row("VERDICT: COMPROMISED"));
-        result.push_str(&row(""));
-        result.push_str(&row(&format!("{hits} confirmed {word} found.")));
-        result.push_str(&row("This machine cannot be trusted until it is rebuilt."));
-        result.push_str(&row(""));
-        result.push_str(&format!("  {bar}\n"));
-    } else if reviews > 0 {
-        result.push_str("VERDICT: no confirmed indicator.\n");
-    } else {
-        result.push_str("VERDICT: clean against the current indicator set.\n");
-    }
-
-    print!("{header}{}{result}", render(v, Target::Console));
-    if let Some(path) = report {
-        let body = format!("{header}{}{result}", render(v, Target::Report));
+    let closing = scan::result(&v);
+    print!("{out}{}{closing}", scan::render(&v, Target::Console));
+    if let Some(path) = &args.report {
+        let body = format!("{out}{}{closing}", scan::render(&v, Target::Report));
         if let Err(e) = write_report(path, &body) {
             eprintln!("polinrider: could not write {}: {e}", path.display());
         }
     }
-    code
+    ProcExit::from(v.exit_code().code() as u8)
 }
 
 fn write_report(path: &Path, body: &str) -> std::io::Result<()> {
@@ -322,4 +155,48 @@ fn write_report(path: &Path, body: &str) -> std::io::Result<()> {
         }
     }
     std::fs::write(path, body)
+}
+
+/// The terminal, as the guided flow sees it.
+struct Terminal;
+
+impl Console for Terminal {
+    fn say(&mut self, text: &str) {
+        println!("{text}");
+    }
+
+    fn ask(&mut self, prompt: &str) -> Option<String> {
+        print!("{prompt} ");
+        let _ = std::io::stdout().flush();
+        let mut line = String::new();
+        match std::io::stdin().lock().read_line(&mut line) {
+            // Zero bytes is the end of input, which is not the same as an
+            // empty line and must not be read as one.
+            Ok(0) | Err(_) => {
+                println!();
+                None
+            }
+            Ok(_) => Some(line.trim().to_string()),
+        }
+    }
+}
+
+fn guided(args: &cli::Args, ind: &Indicators, host: Option<&dyn Host>) -> ProcExit {
+    let session = Session {
+        ind,
+        ioc_dir: &args.ioc,
+        home: &args.home,
+        host,
+        quarantine: &args.quarantine,
+    };
+    let outcome = guide::run(&session, &mut Terminal);
+    if let Some(path) = &args.report {
+        if !outcome.report.is_empty() {
+            match write_report(path, &outcome.report) {
+                Ok(()) => println!("The full report is in {}", path.display()),
+                Err(e) => eprintln!("polinrider: could not write {}: {e}", path.display()),
+            }
+        }
+    }
+    ProcExit::from(outcome.exit.code() as u8)
 }

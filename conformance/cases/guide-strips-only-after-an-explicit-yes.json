@@ -1,0 +1,33 @@
+{
+  "why": "The whole flow in one session: choose a folder, scan, see what would be cut, type yes, and it is cut with the original kept, then checked again. Exit 2 although the files end clean, because the session found a confirmed indicator and a script reading the exit code must not be told nothing happened.",
+  "command": "guide",
+  "apply": true,
+  "roots": [
+    "code"
+  ],
+  "stdin": [
+    "2",
+    "{{TREE}}/code",
+    "",
+    "yes",
+    ""
+  ],
+  "files": {
+    "code/proj/postcss.config.mjs": "export default { plugins: {} }\n{{PAD}}{{STRONG}}\n"
+  },
+  "expect": {
+    "exit": 2,
+    "tree_may_change": true,
+    "stripped": [
+      "code/proj/postcss.config.mjs"
+    ],
+    "file_after": {
+      "code/proj/postcss.config.mjs": "export default { plugins: {} }\n"
+    },
+    "must_print": [
+      "Step 4 of 6",
+      "Checking again",
+      "a DIFFERENT machine"
+    ]
+  }
+}

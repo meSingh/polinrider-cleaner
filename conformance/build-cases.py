@@ -839,6 +839,126 @@ case(
     },
 )
 
+
+# ---------------------------------------------------------------------------
+# Guide cases. A whole session, driven by its answers.
+#
+# `stdin` is what the operator types, one answer per line. {{TREE}} is the
+# fixture tree. What these pin is the promise on the first screen: nothing is
+# changed unless you type yes.
+# ---------------------------------------------------------------------------
+
+FOLDER = ["2", "{{TREE}}/code", ""]     # a folder, this one, start
+
+case(
+    "guide-strips-only-after-an-explicit-yes",
+    why="The whole flow in one session: choose a folder, scan, see what would "
+        "be cut, type yes, and it is cut with the original kept, then checked "
+        "again. Exit 2 although the files end clean, because the session "
+        "found a confirmed indicator and a script reading the exit code must "
+        "not be told nothing happened.",
+    command="guide",
+    apply=True,
+    roots=["code"],
+    stdin=FOLDER + ["yes", ""],
+    files={"code/proj/postcss.config.mjs": INFECTED_CONFIG},
+    expect={
+        "exit": 2,
+        "tree_may_change": True,
+        "stripped": ["code/proj/postcss.config.mjs"],
+        "file_after": {"code/proj/postcss.config.mjs": CLEAN_CONFIG},
+        "must_print": ["Step 4 of 6", "Checking again", "a DIFFERENT machine"],
+    },
+)
+
+case(
+    "guide-changes-nothing-without-a-yes",
+    why="Enter is not yes. 'sure' is not yes. Each asks again, and no leaves "
+        "the tree byte for byte as it was. A prompt that treats anything "
+        "short of no as consent will one day be answered by a stray keypress.",
+    command="guide",
+    roots=["code"],
+    stdin=FOLDER + ["", "sure", "no", ""],
+    files={"code/proj/postcss.config.mjs": INFECTED_CONFIG},
+    expect={
+        "exit": 2,
+        "tree_may_change": False,
+        "must_print": ["Type yes or no", "Left as it is"],
+        "must_not_print": ["original kept ->", "Checking again"],
+    },
+)
+
+case(
+    "guide-stops-safely-when-input-ends",
+    why="Input can end mid-session: a closed terminal, a pipe that ran dry. "
+        "The end of input is not an empty line and is certainly not a yes. "
+        "The session stops where it is, changes nothing further and says so. "
+        "The shell version once read its own scan data as the answer to a "
+        "prompt (ADR-0024); here running out of answers can only ever stop.",
+    command="guide",
+    roots=["code"],
+    stdin=FOLDER,
+    files={"code/proj/postcss.config.mjs": INFECTED_CONFIG},
+    expect={
+        "exit": 2,
+        "tree_may_change": False,
+        "must_print": ["Input ended"],
+        "must_not_print": ["original kept ->"],
+    },
+)
+
+case(
+    "guide-quit-before-a-scan-is-not-a-clean-result",
+    why="Leaving at the first question scanned nothing. Exit 0 would tell a "
+        "script the machine is clean; exit 3 says the scan did not run, which "
+        "is what happened.",
+    command="guide",
+    roots=["code"],
+    stdin=["q"],
+    files={"code/proj/postcss.config.mjs": INFECTED_CONFIG},
+    expect={
+        "exit": 3,
+        "tree_may_change": False,
+        "must_print": ["Nothing was scanned"],
+    },
+)
+
+case(
+    "guide-clean-folder-never-asks-to-change-anything",
+    why="With nothing found there is nothing to consent to, so the question "
+        "is never put. A clean folder goes straight to the prevention advice "
+        "and exits 0.",
+    command="guide",
+    roots=["code"],
+    stdin=FOLDER,
+    files=ORDINARY_TREE,
+    expect={
+        "exit": 0,
+        "tree_may_change": False,
+        "must_print": ["Step 6 of 6"],
+        "must_not_print": ["Type yes"],
+        "must_not_report": NOTHING_FOUND,
+    },
+)
+
+host_case(
+    "guide-this-computer-offers-only-what-it-can-do",
+    why="A running implant cannot be moved into quarantine. The flow reports "
+        "it, says plainly that nothing here can be done for you, and does not "
+        "put a yes/no question that has no yes. It still walks the credential "
+        "step, which is the part that matters most after a hit.",
+    command="guide",
+    stdin=["1", "{{TREE}}/code", "", ""],
+    host=host_state(processes="4242\t{{IMPLANT_CUT}}\t/home/x/.local/share/{{IMPLANT}}\n"),
+    expect={
+        "exit": 2,
+        "tree_may_change": False,
+        "findings": [{"level": "HIT", "match": "an implant process is running now"}],
+        "must_print": ["Nothing found here can be moved or stripped", "a DIFFERENT machine"],
+        "must_not_print": ["Type yes"],
+    },
+)
+
 for name, body in CASES.items():
     with open(os.path.join(D, name + ".json"), "w") as f:
         json.dump(body, f, indent=2)

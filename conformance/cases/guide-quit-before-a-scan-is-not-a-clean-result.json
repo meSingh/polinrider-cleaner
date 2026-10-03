@@ -1,0 +1,20 @@
+{
+  "why": "Leaving at the first question scanned nothing. Exit 0 would tell a script the machine is clean; exit 3 says the scan did not run, which is what happened.",
+  "command": "guide",
+  "roots": [
+    "code"
+  ],
+  "stdin": [
+    "q"
+  ],
+  "files": {
+    "code/proj/postcss.config.mjs": "export default { plugins: {} }\n{{PAD}}{{STRONG}}\n"
+  },
+  "expect": {
+    "exit": 3,
+    "tree_may_change": false,
+    "must_print": [
+      "Nothing was scanned"
+    ]
+  }
+}

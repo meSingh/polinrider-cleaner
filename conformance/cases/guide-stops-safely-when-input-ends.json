@@ -1,0 +1,25 @@
+{
+  "why": "Input can end mid-session: a closed terminal, a pipe that ran dry. The end of input is not an empty line and is certainly not a yes. The session stops where it is, changes nothing further and says so. The shell version once read its own scan data as the answer to a prompt (ADR-0024); here running out of answers can only ever stop.",
+  "command": "guide",
+  "roots": [
+    "code"
+  ],
+  "stdin": [
+    "2",
+    "{{TREE}}/code",
+    ""
+  ],
+  "files": {
+    "code/proj/postcss.config.mjs": "export default { plugins: {} }\n{{PAD}}{{STRONG}}\n"
+  },
+  "expect": {
+    "exit": 2,
+    "tree_may_change": false,
+    "must_print": [
+      "Input ended"
+    ],
+    "must_not_print": [
+      "original kept ->"
+    ]
+  }
+}
