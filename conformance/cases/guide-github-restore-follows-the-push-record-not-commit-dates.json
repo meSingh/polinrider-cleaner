@@ -1,0 +1,79 @@
+{
+  "why": "The cleanest fix moves a branch back to where it was before the attack and edits nothing. Where that was cannot be read from the commits: this campaign backdates them, and here the infected commit claims to be from 2019, older than the clean one it replaced. It is read from GitHub's own record of each push, which holds the commit the branch pointed to before. The commit before bob's push carries the payload, so it is an earlier wave and is skipped; the one before alice's is reachable from no branch, is fetched by ID, checks clean, and is the target. Nothing moves before the dry run and a typed yes, and the result is said from what GitHub shows.",
+  "command": "guide",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "stdin": [
+    "organization",
+    "acme",
+    "fix",
+    "restore",
+    "yes",
+    ""
+  ],
+  "forge_files": {
+    "whoami": "tester\n",
+    "orgs": "acme\t2\nacme-labs\t7\n"
+  },
+  "forge": {
+    "acme": {
+      "shop": {
+        "branches": {
+          "main": {
+            "postcss.config.mjs": "export default { plugins: {} }\n",
+            "README.md": "# Shop\n\nnpm install, then npm start.\n"
+          }
+        },
+        "attacks": [
+          {
+            "branch": "main",
+            "force": true,
+            "date": "2019-03-01T12:00:00Z",
+            "actor": "alice",
+            "at": "2026-09-11T09:14:00Z",
+            "files": {
+              "postcss.config.mjs": "export default { plugins: {} }\n{{PAD}}{{STRONG}}\n"
+            }
+          },
+          {
+            "branch": "main",
+            "actor": "bob",
+            "at": "2026-09-12T16:40:00Z",
+            "files": {
+              "src/feature.js": "export const feature = true\n"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "tree_may_change": false,
+    "must_print": [
+      "Record found. Commit",
+      "This would change, on GitHub:",
+      "undoes the push of 11 September by alice",
+      "2 commits pushed since then stop being reachable.",
+      "Nothing has been pushed yet.",
+      "Done. 1 branch of acme/shop put back.",
+      "Checked on GitHub afterwards: it matches.",
+      "The repository is fixed.",
+      "Delete old clones and clone again"
+    ],
+    "forge_after": {
+      "acme/shop": {
+        "clean": [
+          "main"
+        ],
+        "file": {
+          "refs/heads/main:postcss.config.mjs": "export default { plugins: {} }\n"
+        }
+      }
+    }
+  }
+}

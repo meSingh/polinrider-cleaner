@@ -8,6 +8,7 @@
 pub mod checks;
 pub mod cli;
 pub mod guide;
+mod guide_fix;
 mod guide_github;
 pub mod host;
 pub mod host_checks;

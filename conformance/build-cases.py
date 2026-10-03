@@ -1027,8 +1027,8 @@ host_case(
 #
 # `forge` is owners, their repositories, branches and files; the runner builds
 # real git repositories from it. `forge_files` holds who is signed in and the
-# list of organizations. These pin the first stage: checking and reporting,
-# which changes nothing on GitHub.
+# list of organizations. The first group pins checking and reporting, which
+# changes nothing on GitHub. The second pins the fixes, which do.
 # ---------------------------------------------------------------------------
 
 SIGNED_IN = {"whoami": "tester\n", "orgs": "acme\t2\nacme-labs\t7\n"}
@@ -1044,7 +1044,7 @@ case(
     command="guide",
     roots=["code"],
     files=ORDINARY_TREE,
-    stdin=["organization", "ACME", "", ""],
+    stdin=["organization", "ACME", "none"],
     forge_files=SIGNED_IN,
     forge={"acme": {
         "blog": {"branches": {"main": {"index.md": "hello\n"}}},
@@ -1137,7 +1137,7 @@ case(
     command="guide",
     roots=["code"],
     files=ORDINARY_TREE,
-    stdin=["organization", "acme", "details", ""],
+    stdin=["organization", "acme", "details", "none"],
     forge_files=SIGNED_IN,
     forge={"acme": {
         "infra": {"branches": {"main": {
@@ -1155,6 +1155,357 @@ case(
             "acme/api   main",
             "lib/vendor.js",
         ],
+    },
+)
+
+# ---------------------------------------------------------------------------
+# GitHub fixes. These push, to the pretend GitHub.
+#
+# `attacks` are pushes made after a repository existed: the runner makes each
+# one for real and records it as GitHub would, with the commit the branch
+# pointed to before. `forge_after` says what a repository must hold when the
+# run is over. A repository it does not name must be exactly as it was.
+# ---------------------------------------------------------------------------
+
+# shop was clean. alice's push replaced the newest commit with one carrying
+# the payload and CLAIMING an old date, then bob pushed from an infected clone.
+ATTACKED_SHOP = {
+    "branches": {"main": {"postcss.config.mjs": CLEAN_CONFIG,
+                          "README.md": "# Shop\n\nnpm install, then npm start.\n"}},
+    "attacks": [
+        {"branch": "main", "force": True, "date": "2019-03-01T12:00:00Z",
+         "actor": "alice", "at": "2026-09-11T09:14:00Z",
+         "files": {"postcss.config.mjs": INFECTED_CONFIG}},
+        {"branch": "main", "actor": "bob", "at": "2026-09-12T16:40:00Z",
+         "files": {"src/feature.js": "export const feature = true\n"}},
+    ],
+}
+
+case(
+    "guide-github-restore-follows-the-push-record-not-commit-dates",
+    why="The cleanest fix moves a branch back to where it was before the "
+        "attack and edits nothing. Where that was cannot be read from the "
+        "commits: this campaign backdates them, and here the infected commit "
+        "claims to be from 2019, older than the clean one it replaced. It is "
+        "read from GitHub's own record of each push, which holds the commit "
+        "the branch pointed to before. The commit before bob's push carries "
+        "the payload, so it is an earlier wave and is skipped; the one "
+        "before alice's is reachable from no branch, is fetched by ID, "
+        "checks clean, and is the target. Nothing moves before the dry run "
+        "and a typed yes, and the result is said from what GitHub shows.",
+    command="guide",
+    roots=["code"],
+    files=ORDINARY_TREE,
+    stdin=["organization", "acme", "fix", "restore", "yes", ""],
+    forge_files=SIGNED_IN,
+    forge={"acme": {"shop": ATTACKED_SHOP}},
+    expect={
+        "exit": 2,
+        "tree_may_change": False,
+        "must_print": [
+            "Record found. Commit",
+            "This would change, on GitHub:",
+            "undoes the push of 11 September by alice",
+            "2 commits pushed since then stop being reachable.",
+            "Nothing has been pushed yet.",
+            "Done. 1 branch of acme/shop put back.",
+            "Checked on GitHub afterwards: it matches.",
+            "The repository is fixed.",
+            "Delete old clones and clone again",
+        ],
+        "forge_after": {"acme/shop": {
+            "clean": ["main"],
+            "file": {"refs/heads/main:postcss.config.mjs": CLEAN_CONFIG},
+        }},
+    },
+)
+
+case(
+    "guide-github-nothing-is-pushed-without-a-typed-yes",
+    why="The rule of the whole flow, where it matters most: this half "
+        "rewrites other people's repositories. Enter is not yes, a near miss "
+        "is not yes, and no backs out to the choice of fix. After three "
+        "dry runs and a skip, every branch on GitHub is exactly where it "
+        "was. The runner checks that for any repository a case does not "
+        "say may change.",
+    command="guide",
+    roots=["code"],
+    files=ORDINARY_TREE,
+    stdin=["organization", "acme", "fix",
+           "restore", "", "sure", "no",
+           "erase", "y", "no",
+           "archive", "YES please", "no",
+           "skip"],
+    forge_files=SIGNED_IN,
+    forge={"acme": {"shop": ATTACKED_SHOP}},
+    expect={
+        "exit": 2,
+        "tree_may_change": False,
+        "must_print": [
+            "Nothing has been pushed yet.",
+            "Type yes or no. Enter is not yes. q quits.",
+            "Nothing was changed.",
+            "1 repository on GitHub carries the payload.",
+            "Fix acme/shop, which still carries the payload",
+        ],
+        "must_not_print": ["Pushing to GitHub", "Done."],
+    },
+)
+
+case(
+    "guide-github-input-that-ends-is-not-a-yes",
+    why="A terminal that closes, or a pipe that runs dry, at the question "
+        "that would rewrite a repository's whole history. Input ending is "
+        "never read as an answer, least of all as yes.",
+    command="guide",
+    roots=["code"],
+    files=ORDINARY_TREE,
+    stdin=["organization", "acme", "fix", "erase"],
+    forge_files=SIGNED_IN,
+    forge={"acme": {"shop": ATTACKED_SHOP}},
+    expect={
+        "exit": 2,
+        "tree_may_change": False,
+        "must_print": ["Nothing has been pushed yet."],
+        "must_not_print": ["Rewriting the history", "Done."],
+    },
+)
+
+case(
+    "guide-github-restore-is-not-offered-onto-an-earlier-wave",
+    why="The commit before the newest hostile push is often the previous "
+        "wave of the same attack. Here every state GitHub remembers carries "
+        "the payload, so there is nothing clean to go back to. restore is "
+        "left off the screen with the reason, typing it anyway is refused, "
+        "and the repository is not touched. Restoring to the commit before "
+        "the last push, as a tool that trusted the record blindly would, "
+        "puts the payload straight back and reports a fix.",
+    command="guide",
+    roots=["code"],
+    files=ORDINARY_TREE,
+    stdin=["organization", "acme", "fix", "restore", "skip"],
+    forge_files=SIGNED_IN,
+    forge={"acme": {"site": {
+        "branches": {"main": {"vite.config.js": INFECTED_CONFIG}},
+        "attacks": [{"branch": "main", "actor": "alice", "at": "2026-09-12T10:00:00Z",
+                     "files": {"next.config.js": INFECTED_CONFIG}}],
+    }}},
+    expect={
+        "exit": 2,
+        "tree_may_change": False,
+        "must_print": [
+            "restore is not possible here:",
+            "every earlier state GitHub remembers carries the payload",
+            "restore is not possible for this repository.",
+        ],
+        "must_not_print": ["Record found", "Done."],
+    },
+)
+
+case(
+    "guide-github-erase-takes-the-payload-out-of-every-commit",
+    why="When there is no record to restore from, the history is rewritten "
+        "without the payload. Every commit means every commit: the payload "
+        "here also sat in old/vendor.js, a file since overwritten, so it is "
+        "in the history and not in the newest commit, and a rewrite that "
+        "only removed what the newest commit shows would leave it there "
+        "and say it was gone. The build config is not lost with the "
+        "payload: its clean part is put back. Afterwards the screen says "
+        "how to bring an existing clone into line, because a pull from an "
+        "old clone pushes the payload back.",
+    command="guide",
+    roots=["code"],
+    files=ORDINARY_TREE,
+    stdin=["organization", "acme", "fix", "erase", "yes", ""],
+    forge_files=SIGNED_IN,
+    forge={"acme": {"shop": {
+        "branches": {"main": {"postcss.config.mjs": CLEAN_CONFIG}},
+        "attacks": [
+            {"branch": "main", "files": {"old/vendor.js": "var a = '{{STRONG}}'\n"}},
+            {"branch": "main", "files": {"old/vendor.js": "var a = 1\n"}},
+            {"branch": "main", "files": {"postcss.config.mjs": INFECTED_CONFIG}},
+        ],
+    }}},
+    expect={
+        "exit": 2,
+        "tree_may_change": False,
+        "must_print": [
+            "restore is not possible here:",
+            "2 files are taken out of every commit:",
+            "old/vendor.js",
+            "Every commit gets a new ID: 5 in all.",
+            "The clean part of each build config is put back,",
+            "Done. The payload is out of the history of acme/shop.",
+            "Every existing clone of acme/shop now needs updating.",
+            "git reset --hard origin/main",
+            "Do not git pull, merge or push from the old history",
+            "Ask GitHub Support to clear the old commits",
+        ],
+        "forge_after": {"acme/shop": {
+            "clean": ["main"],
+            "history": "clean",
+            "file": {"refs/heads/main:postcss.config.mjs": CLEAN_CONFIG,
+                     "refs/heads/main:BASE.txt": "base\n"},
+        }},
+    },
+)
+
+case(
+    "guide-github-remove-adds-a-commit-and-rewrites-nothing",
+    why="The gentlest fix: one ordinary commit per branch, which can be "
+        "reverted. The payload is cut out of the build config and the "
+        "config stays, where 1.x deleted the whole file and left a project "
+        "that no longer built. What it does not do is said before the "
+        "question and not after: the payload is still in older commits, "
+        "and the case holds the tool to that by requiring the history to "
+        "still carry it.",
+    command="guide",
+    roots=["code"],
+    files=ORDINARY_TREE,
+    stdin=["organization", "acme", "fix", "remove", "yes", ""],
+    forge_files=SIGNED_IN,
+    forge={"acme": {"shop": ATTACKED_SHOP}},
+    expect={
+        "exit": 2,
+        "tree_may_change": False,
+        "must_print": [
+            "one new commit",
+            "cuts the payload out of postcss.config.mjs",
+            "The payload stays in older commits: anyone who checks",
+            "Done. The payload is out of 1 branch of acme/shop.",
+            "Pull the fix into every clone, once its computer is checked",
+        ],
+        "forge_after": {"acme/shop": {
+            "clean": ["main"],
+            "history": "infected",
+            "file": {"refs/heads/main:postcss.config.mjs": CLEAN_CONFIG,
+                     "refs/heads/main:src/feature.js": "export const feature = true\n"},
+        }},
+    },
+)
+
+case(
+    "guide-github-archive-puts-the-notice-on-top-and-removes-nothing",
+    why="For a repository nobody uses any more. The notice goes at the very "
+        "top of the README, as a heading so that it is the largest thing on "
+        "the page, and everything the README held before is still there "
+        "beneath it. The description is replaced and the repository is made "
+        "read-only. It does not clean anything, and the screen says so "
+        "before the question: the payload stays, which the case checks.",
+    command="guide",
+    roots=["code"],
+    files=ORDINARY_TREE,
+    stdin=["organization", "acme", "fix", "archive", "yes", ""],
+    forge_files=SIGNED_IN,
+    forge={"acme": {"shop": ATTACKED_SHOP}},
+    expect={
+        "exit": 2,
+        "tree_may_change": False,
+        "must_print": [
+            "A notice is added to the top of README.md, as one",
+            "Nothing in the file is removed.",
+            "INFECTED with PolinRider malware. Do not clone or use.",
+            "The payload stays inside it. Anyone who clones it still",
+            "# INFECTED WITH MALWARE. DO NOT CLONE, OPEN OR BUILD THIS REPOSITORY.",
+            "> [!CAUTION]",
+            "September 2026**,",
+            "Type yes to archive acme/shop.",
+            "Done. acme/shop is archived,",
+            "No repository is fixed yet. 1 archived.",
+        ],
+        "forge_after": {"acme/shop": {
+            "infected": ["main"],
+            "archived": True,
+            "readme_top": "# INFECTED WITH MALWARE. DO NOT CLONE, OPEN OR BUILD THIS REPOSITORY.",
+            "readme_keeps": "npm install, then npm start.",
+        }},
+    },
+)
+
+TWO_ATTACKED = {
+    "shop": ATTACKED_SHOP,
+    "website": {"branches": {"main": {"vite.config.js": INFECTED_CONFIG}}},
+}
+
+case(
+    "guide-github-all-at-once-needs-the-owners-name",
+    why="One fix for every repository is the largest thing this tool does, "
+        "so it is the one question yes does not answer: yes is what a hand "
+        "types by habit. Only the organization's name goes ahead. Here yes "
+        "and Enter are both turned away, the name is typed, and both "
+        "repositories get their commit.",
+    command="guide",
+    roots=["code"],
+    files=ORDINARY_TREE,
+    stdin=["organization", "acme", "all", "remove", "yes", "", "acme", ""],
+    forge_files=SIGNED_IN,
+    forge={"acme": TWO_ATTACKED},
+    expect={
+        "exit": 2,
+        "tree_may_change": False,
+        "must_print": [
+            "ALL 2 REPOSITORIES   acme",
+            "This is a big step. Read this before you answer.",
+            "one after another, without asking again.",
+            "Type acme to go ahead, or no. yes is not enough here.",
+            "Both repositories are fixed.",
+        ],
+        "forge_after": {
+            "acme/shop": {"clean": ["main"], "history": "infected"},
+            "acme/website": {"clean": ["main"], "history": "infected"},
+        },
+    },
+)
+
+case(
+    "guide-github-all-at-once-leaves-alone-what-cannot-take-the-fix",
+    why="restore for all, where only one of two has a push record. The "
+        "warning names which can and which cannot before the name is asked "
+        "for, the one that cannot is not touched, and the last screen does "
+        "not call the organization fixed: it says one of two, and names "
+        "the other as still carrying the payload.",
+    command="guide",
+    roots=["code"],
+    files=ORDINARY_TREE,
+    stdin=["organization", "acme", "all", "restore", "acme", ""],
+    forge_files=SIGNED_IN,
+    forge={"acme": TWO_ATTACKED},
+    expect={
+        "exit": 2,
+        "tree_may_change": False,
+        "must_print": [
+            "1 can take restore:",
+            "1 cannot, and will be left alone:",
+            "GitHub no longer has the push record",
+            "left alone",
+            "1 of 2 repositories is fixed.",
+            "Fix acme/website, which still carries the payload",
+            "Do not open or pull what is not fixed",
+        ],
+        "forge_after": {"acme/shop": {"clean": ["main"]}},
+    },
+)
+
+case(
+    "guide-github-backing-out-of-all-at-once-changes-nothing",
+    why="At the warning, no goes back to the choice and nothing has been "
+        "pushed. Neither does none after it. Both repositories are exactly "
+        "as they were.",
+    command="guide",
+    roots=["code"],
+    files=ORDINARY_TREE,
+    stdin=["organization", "acme", "all", "erase", "no", "none"],
+    forge_files=SIGNED_IN,
+    forge={"acme": TWO_ATTACKED},
+    expect={
+        "exit": 2,
+        "tree_may_change": False,
+        "must_print": [
+            "This is a big step. Read this before you answer.",
+            "Left as it is. Nothing on GitHub was changed.",
+            "2 repositories on GitHub carry the payload.",
+        ],
+        "must_not_print": ["Rewriting the history", "done,"],
     },
 )
 

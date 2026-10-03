@@ -34,6 +34,10 @@
 # them as real git repositories and hands the directory to the guided flow
 # with --forge-state. "forge_files" adds plain files beside them: who is
 # signed in, the list of organizations, a marker that gh is not installed.
+# A repository's "attacks" are pushes made after it existed, each recorded as
+# GitHub would record it. Afterwards every repository must be exactly as it
+# was, unless "expect.forge_after" names it and says what it should hold: a
+# case that pushes has to say so, and say what the push should have done.
 #
 # CLEAN CASES. A case with "command": "clean" runs the clean command, which
 # strips an appended payload out of a build config in place. The shell has no
@@ -170,6 +174,7 @@ build_files() {
 # the command line, so this works on a machine with no git configuration.
 build_forge() {
   local cf="$1" dest="$2" owner repo branch path content work
+  local bare n i a claimed amend size before head actor
   local g=(git -c user.name=fixture -c user.email=fixture@localhost -c commit.gpgsign=false)
   mkdir -p "$dest/repos" "$dest/git" "$dest/pushes"
   build_files "$cf" forge_files "$dest"
@@ -195,13 +200,63 @@ build_forge() {
         "${g[@]}" -C "$work" add -A; "${g[@]}" -C "$work" commit -q -m change
       done < <(jq -r --arg o "$owner" --arg r "$repo" '.forge[$o][$r].branches // {} | keys[]' "$cf")
       mkdir -p "$dest/git/$owner" "$dest/pushes/$owner"
+      "${g[@]}" -C "$work" checkout -q main
       "${g[@]}" clone -q --bare "$work" "$dest/git/$owner/$repo.git"
+      bare="$dest/git/$owner/$repo.git"
+      # GitHub serves a commit by its ID whether or not a branch still
+      # reaches it. A plain git repository has to be told to.
+      "${g[@]}" -C "$bare" config uploadpack.allowAnySHA1InWant true
       content="$(jq -r --arg o "$owner" --arg r "$repo" '.forge[$o][$r].pushes // empty' "$cf")"
       [[ -n "$content" ]] && printf '%s\n' "$content" > "$dest/pushes/$owner/$repo.tsv"
+      # Pushes made after the repository existed, each a real push to the
+      # pretend GitHub. "force" replaces the newest commit, which leaves the
+      # one it replaced reachable from nothing, as a force-push does. With
+      # an "actor" the push goes on the record, holding the commit the
+      # branch pointed to before it. "date" is what the commit CLAIMS as
+      # its date, which is the attacker's to choose.
+      n="$(jq -r --arg o "$owner" --arg r "$repo" '.forge[$o][$r].attacks // [] | length' "$cf")"
+      for ((i=0; i<n; i++)); do
+        a=".forge[\$o][\$r].attacks[$i]"
+        branch="$(jq -r --arg o "$owner" --arg r "$repo" "$a.branch" "$cf")"
+        "${g[@]}" -C "$work" checkout -q "$branch"
+        while IFS= read -r path; do
+          content="$(jq -r --arg o "$owner" --arg r "$repo" --arg p "$path" "$a.files[\$p]" "$cf")"
+          mkdir -p "$work/$(dirname "$path")"
+          subst "$content" > "$work/$path"
+        done < <(jq -r --arg o "$owner" --arg r "$repo" "$a.files | keys[]" "$cf")
+        "${g[@]}" -C "$work" add -A
+        claimed="$(jq -r --arg o "$owner" --arg r "$repo" "$a.date // empty" "$cf")"
+        amend=(); size=1
+        if [[ "$(jq -r --arg o "$owner" --arg r "$repo" "$a.force // false" "$cf")" == "true" ]]; then
+          amend=(--amend); size=0
+        fi
+        if [[ -n "$claimed" ]]; then
+          GIT_AUTHOR_DATE="$claimed" GIT_COMMITTER_DATE="$claimed" \
+            "${g[@]}" -C "$work" commit -q ${amend[@]+"${amend[@]}"} -m "update config"
+        else
+          "${g[@]}" -C "$work" commit -q ${amend[@]+"${amend[@]}"} -m "update config"
+        fi
+        before="$("${g[@]}" -C "$bare" rev-parse "refs/heads/$branch")"
+        "${g[@]}" -C "$work" push -q --force "$bare" "$branch:$branch"
+        head="$("${g[@]}" -C "$bare" rev-parse "refs/heads/$branch")"
+        actor="$(jq -r --arg o "$owner" --arg r "$repo" "$a.actor // empty" "$cf")"
+        [[ -n "$actor" ]] && printf 'refs/heads/%s\t%s\t%s\t%s\t%s\t%s\n' "$branch" "$before" "$head" "$actor" \
+          "$(jq -r --arg o "$owner" --arg r "$repo" "$a.at" "$cf")" "$size" >> "$dest/pushes/$owner/$repo.tsv"
+      done
     done < <(jq -r --arg o "$owner" '.forge[$o] | keys[]' "$cf")
   done < <(jq -r '.forge // {} | keys[]' "$cf")
   rm -rf "$dest/.work"
 }
+
+# forge_refs <forge> <owner/repo>: where every branch and tag of one
+# repository points, and what was set on it. Empty for one that is not there.
+forge_refs() {
+  git -C "$1/git/$2.git" for-each-ref --format='%(refname) %(objectname)' 2>/dev/null || true
+  ls "$1/changed/$2".* 2>/dev/null || true
+}
+
+# forge_repos <case file>: owner/repo for every repository of the case.
+forge_repos() { jq -r '.forge // {} | to_entries[] | .key as $o | .value | keys[] | "\($o)/\(.)"' "$1"; }
 
 PASS=0; FAIL=0; SKIP=0; FAILED_CASES=()
 FORGE_STATE=""
@@ -262,7 +317,13 @@ run_case() {
 
   # For a host case the home directory and the supplied state are part of what
   # a read-only run must leave alone: that is where persistence lives.
-  local before after out rc
+  local before after out rc nwo
+  if [[ -n "$FORGE_STATE" ]]; then
+    mkdir -p "$tmp/forge-before"
+    while IFS= read -r nwo; do
+      forge_refs "$FORGE_STATE" "$nwo" > "$tmp/forge-before/${nwo//\//__}"
+    done < <(forge_repos "$cf")
+  fi
   before="$(snapshot "$tmp/tree")"
   [[ -n "$HOST_STATE" ]] && before+="$(snapshot "$FAKE_HOME")$(snapshot "$HOST_STATE")"
   out="$("impl_$IMPL" "$tmp/out/report.txt" "$tmp/out/state" "$qdir" "${roots[@]}")"
@@ -337,6 +398,64 @@ run_case() {
   local may_change; may_change="$(jq -r '.expect.tree_may_change // false' "$cf")"
   if [[ "$may_change" != "true" && "$before" != "$after" ]]; then
     errs+=("the scanned tree changed during a read-only run")
+  fi
+
+  # The pretend GitHub. A repository the case does not name under
+  # "forge_after" must be exactly as it was: every branch, every tag, its
+  # description and whether it is archived. This is the guard on the half of
+  # the tool that pushes, and it is on by default.
+  if [[ -n "$FORGE_STATE" ]]; then
+    local fa bare want got
+    while IFS= read -r nwo; do
+      fa="$(jq -c --arg n "$nwo" '.expect.forge_after[$n] // empty' "$cf")"
+      bare="$FORGE_STATE/git/$nwo.git"
+      if [[ -z "$fa" || "$(jq -r '.unchanged // false' <<<"$fa")" == "true" ]]; then
+        [[ "$(forge_refs "$FORGE_STATE" "$nwo")" == "$(cat "$tmp/forge-before/${nwo//\//__}")" ]] \
+          || errs+=("$nwo was changed on the pretend GitHub, and must not be")
+        continue
+      fi
+      while IFS= read -r want; do
+        git -C "$bare" grep -qF "$STRONG" "refs/heads/$want" 2>/dev/null \
+          && errs+=("$nwo: $want still carries the indicator")
+      done < <(jq -r '.clean[]? // empty' <<<"$fa")
+      while IFS= read -r want; do
+        git -C "$bare" grep -qF "$STRONG" "refs/heads/$want" 2>/dev/null \
+          || errs+=("$nwo: $want no longer carries the indicator, and the case says it stays")
+      done < <(jq -r '.infected[]? // empty' <<<"$fa")
+      # Read whole and then searched: with pipefail on, a grep -q that stops
+      # at its first match fails the pipe, and found would read as not found.
+      got="$(git -C "$bare" log --branches --tags -p --format=%H 2>/dev/null)"
+      case "$(jq -r '.history // empty' <<<"$fa")" in
+        clean)    grep -qF "$STRONG" <<<"$got" \
+                    && errs+=("$nwo: the indicator is still in the history") ;;
+        infected) grep -qF "$STRONG" <<<"$got" \
+                    || errs+=("$nwo: the history was rewritten, and the case says it is not") ;;
+      esac
+      while IFS= read -r want; do
+        got="$(git -C "$bare" cat-file blob "$want" 2>/dev/null)" \
+          || { errs+=("$nwo: missing afterwards: $want"); continue; }
+        [[ "$got" == "$(subst "$(jq -r --arg k "$want" '.file[$k]' <<<"$fa")")" ]] \
+          || errs+=("$nwo: not what it should be afterwards: $want")
+      done < <(jq -r '.file // {} | keys[]' <<<"$fa")
+      want="$(jq -r '.readme_top // empty' <<<"$fa")"
+      if [[ -n "$want" ]]; then
+        got="$(git -C "$bare" cat-file blob HEAD:README.md 2>/dev/null | sed -n 1p)"
+        [[ "$got" == "$want" ]] || errs+=("$nwo: the README does not open with the notice")
+      fi
+      want="$(jq -r '.readme_keeps // empty' <<<"$fa")"
+      if [[ -n "$want" ]]; then
+        got="$(git -C "$bare" cat-file blob HEAD:README.md 2>/dev/null)"
+        grep -qF "$want" <<<"$got" \
+          || errs+=("$nwo: the README lost what it held before: $want")
+      fi
+      if [[ "$(jq -r '.archived // false' <<<"$fa")" == "true" ]]; then
+        [[ -f "$FORGE_STATE/changed/$nwo.archived" ]] || errs+=("$nwo: was not archived")
+        grep -qF "INFECTED" "$FORGE_STATE/changed/$nwo.description" 2>/dev/null \
+          || errs+=("$nwo: the description was not replaced")
+      else
+        [[ -e "$FORGE_STATE/changed/$nwo.archived" ]] && errs+=("$nwo: was archived, and must not be")
+      fi
+    done < <(forge_repos "$cf")
   fi
 
   # --apply moves into quarantine and never deletes

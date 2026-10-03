@@ -13,13 +13,14 @@
 //!   organization takes as long as it takes, and a screen that says nothing
 //!   for ten minutes reads as a hang.
 //!
-//! This stage reads and reports. It changes nothing on GitHub. The fixes
-//! arrive after it, each put on the screen only when it works.
+//! Everything here reads and reports. What changes GitHub is in `guide_fix`,
+//! which this hands over to once the summary is on the screen.
 
 use crate::guide::{
     bad, blank, count, dim, good, header, line, numbered, p, read, strong, thousands, tilde, todo,
     warn, word, Console, Session, Stop, Todo,
 };
+use crate::guide_fix::{Context, Fix, Outcome, What};
 use crate::host::Probe;
 use crate::remote::{self, Check, Findings, OwnerKind, Progress, RefFinding};
 use crate::ui::{text_of, Span};
@@ -99,7 +100,22 @@ pub(crate) fn run(
     header(io, session, 3, "What I found", false);
     summary(io, session, &owner, &evidence, &found);
 
-    if !found.confirmed.is_empty() || !found.review.is_empty() {
+    let mut outcomes: Vec<Outcome> = Vec::new();
+    if !found.confirmed.is_empty() {
+        // The fixes. Each shows what it would change and waits for a yes.
+        outcomes = crate::guide_fix::run(
+            &Context {
+                session,
+                owner: &owner,
+                kind,
+                login: &login,
+                evidence: &evidence,
+                found: &found,
+            },
+            io,
+            report,
+        )?;
+    } else if !found.review.is_empty() {
         blank(io, 2);
         io.say(&[p("  Press "), word("Enter"), p(" to continue.")]);
         io.say(&[
@@ -124,7 +140,7 @@ pub(crate) fn run(
     }
 
     header(io, session, 4, "What to do now", false);
-    for spans in what_now(&owner, kind, &found) {
+    for spans in what_now(&found, &outcomes) {
         report.push_str(&text_of(&spans));
         report.push('\n');
         io.say(&spans);
@@ -494,7 +510,7 @@ fn summary(
 
 /// Every confirmed and review finding: the repository and branch, then each
 /// path on its own line.
-fn details(io: &mut dyn Console, found: &Findings) {
+pub(crate) fn details(io: &mut dyn Console, found: &Findings) {
     let mut show = |title: Span, findings: &[RefFinding], confirmed: bool| {
         if findings.is_empty() {
             return;
@@ -550,7 +566,8 @@ fn names(list: &[&str]) -> String {
     }
 }
 
-fn what_now(owner: &str, kind: OwnerKind, found: &Findings) -> Vec<Vec<Span>> {
+/// The last screen, written from what was found and what was done about it.
+fn what_now(found: &Findings, outcomes: &[Outcome]) -> Vec<Vec<Span>> {
     let mut out: Vec<Vec<Span>> = Vec::new();
     let affected = found.affected();
     let unchecked = || -> Todo {
@@ -612,76 +629,165 @@ fn what_now(owner: &str, kind: OwnerKind, found: &Findings) -> Vec<Vec<Span>> {
         return out;
     }
 
-    out.push(vec![
-        bad(format!(
-            "  {} on GitHub {} the payload.",
-            count(affected.len(), "repository", "repositories"),
-            if affected.len() == 1 {
-                "carries"
-            } else {
-                "carry"
-            }
-        )),
-        p(" Do these in order."),
-    ]);
+    let fixed = outcomes.iter().filter(|o| o.is_fixed()).count();
+    let archived: Vec<&str> = outcomes
+        .iter()
+        .filter(|o| o.what == What::Archived)
+        .map(|o| o.repository.as_str())
+        .collect();
+    // Everything that is neither fixed nor archived still carries the
+    // payload and is still in use.
+    let open: Vec<&str> = affected
+        .iter()
+        .map(|(repository, _)| *repository)
+        .filter(|repository| {
+            !outcomes
+                .iter()
+                .any(|o| o.repository == *repository && (o.is_fixed() || o.what == What::Archived))
+        })
+        .collect();
+    let repositories = |n: usize| count(n, "repository", "repositories");
 
-    let pushers = found.pushers();
-    let mut todos = vec![
-        todo(
-            "Do not open or pull these repositories",
+    out.push(if fixed == 0 && archived.is_empty() {
+        vec![
+            bad(format!(
+                "  {} on GitHub {} the payload.",
+                repositories(affected.len()),
+                if affected.len() == 1 {
+                    "carries"
+                } else {
+                    "carry"
+                }
+            )),
+            p(" Do these in order."),
+        ]
+    } else if open.is_empty() && archived.is_empty() {
+        vec![
+            good(match affected.len() {
+                1 => "  The repository is fixed.".to_string(),
+                2 => "  Both repositories are fixed.".to_string(),
+                n => format!("  All {n} repositories are fixed."),
+            }),
+            p(" Do these next, in order."),
+        ]
+    } else {
+        let mut said = if fixed == 0 {
+            "  No repository is fixed yet.".to_string()
+        } else {
+            format!(
+                "  {fixed} of {} {} fixed.",
+                repositories(affected.len()),
+                if fixed == 1 { "is" } else { "are" }
+            )
+        };
+        if !archived.is_empty() {
+            said.push_str(&format!(" {} archived.", archived.len()));
+        }
+        vec![
+            if open.is_empty() {
+                good(said)
+            } else {
+                warn(said)
+            },
+            p(" Do these in order."),
+        ]
+    });
+
+    let mut todos: Vec<Todo> = Vec::new();
+    if !open.is_empty() {
+        let mut t = todo(
+            "Do not open or pull what is not fixed",
             &[
                 "Opening one in an editor can run the payload. A pull or",
                 "a push from an old clone spreads it.",
             ],
-        ),
-        if pushers.is_empty() {
-            todo(
-                "Check every computer that pushes to these repositories",
-                &[
-                    "Run polinrider on each and choose computer. A clean",
-                    "GitHub and an infected laptop is clean for as long as",
-                    "the next push takes.",
-                ],
-            )
-        } else {
-            todo(
-                format!("Check the computers of {}", clean(&names(&pushers))),
-                &[
-                    "Run polinrider on each and choose computer. A clean",
-                    "GitHub and an infected laptop is clean for as long as",
-                    "the next push takes.",
-                ],
-            )
-        },
-        todo(
-            "Change passwords and keys, from a clean computer",
-            &["GitHub tokens and SSH keys, npm tokens, cloud keys."],
-        ),
+        );
+        t.paths = open.iter().map(|r| clean(r)).collect();
+        todos.push(t);
+    }
+    let pushers = found.pushers();
+    let how = [
+        "Run polinrider on each and choose computer. A clean",
+        "GitHub and an infected laptop is clean for as long as",
+        "the next push takes.",
     ];
-    // Until the fixes are built, say so plainly and name what does work.
-    let released = format!(
-        "Until then the released tool does it: ./polinrider.sh {} {}",
-        if kind == OwnerKind::Organization {
-            "--org"
-        } else {
-            "--user"
-        },
-        clean(owner)
-    );
+    todos.push(if pushers.is_empty() {
+        todo(
+            "Check every computer that pushes to these repositories",
+            &how,
+        )
+    } else {
+        todo(
+            format!("Check the computers of {}", clean(&names(&pushers))),
+            &how,
+        )
+    });
     todos.push(todo(
-        format!(
-            "Fix the {}",
-            if affected.len() == 1 {
-                "repository".to_string()
-            } else {
-                format!("{} repositories", affected.len())
-            }
-        ),
-        &[
-            "Fixing them from this screen is the next part of this beta.",
-            released.as_str(),
-        ],
+        "Change passwords and keys, from a clean computer",
+        &["GitHub tokens and SSH keys, npm tokens, cloud keys."],
     ));
+    if !open.is_empty() {
+        let mut t = todo(
+            match open.as_slice() {
+                [one] => format!("Fix {}, which still carries the payload", clean(one)),
+                many => format!(
+                    "Fix the {} that still carry the payload",
+                    repositories(many.len())
+                ),
+            },
+            &["Run polinrider again and choose a fix for each."],
+        );
+        if open.len() > 1 {
+            t.paths = open.iter().map(|r| clean(r)).collect();
+        }
+        for o in outcomes {
+            if let What::Failed(why) = &o.what {
+                t.how
+                    .push(format!("{}: {}", clean(&o.repository), clean(why)));
+            }
+        }
+        todos.push(t);
+    }
+
+    let used = |fix: Fix| {
+        outcomes
+            .iter()
+            .any(|o| matches!(o.what, What::Fixed { fix: f, moved, .. } if f == fix && moved > 0))
+    };
+    if used(Fix::Restore) || used(Fix::Erase) {
+        todos.push(todo(
+            "Delete old clones and clone again",
+            &[
+                "A push from an old clone puts the payload back. To",
+                "update a clone and keep it, the steps are in the report.",
+            ],
+        ));
+        todos.push(todo(
+            "Ask GitHub Support to clear the old commits",
+            &[
+                "GitHub keeps the commits a fix moved away from. For a",
+                "while they can still be fetched by ID, and from a pull",
+                "request. Ask Support for a garbage collection of each",
+                "repository that was fixed.",
+            ],
+        ));
+    } else if used(Fix::Remove) {
+        todos.push(todo(
+            "Pull the fix into every clone, once its computer is checked",
+            &[
+                "The payload is still in older commits. Do not check",
+                "one out.",
+            ],
+        ));
+    }
+    if !archived.is_empty() {
+        let mut t = todo(
+            "Tell people the archived repositories are not to be used",
+            &["The payload is still inside. The README says so."],
+        );
+        t.paths = archived.iter().map(|r| clean(r)).collect();
+        todos.push(t);
+    }
     if !found.not_checked.is_empty() {
         todos.push(unchecked());
     }
@@ -811,6 +917,7 @@ mod tests {
             unicode: false,
             forge: &forge,
             evidence: &w.dir.join("evidence"),
+            stamp: "20261003T120000Z",
         };
         let mut io = Script {
             answers: answers.iter().map(|a| (*a).to_string()).collect(),
@@ -857,7 +964,7 @@ mod tests {
     #[test]
     fn an_organization_is_chosen_from_a_list_checked_and_summarised() {
         let w = acme();
-        let (outcome, io) = session_run(&w, &["organization", "ACME", "", ""]);
+        let (outcome, io) = session_run(&w, &["organization", "ACME", "none"]);
         assert_eq!(outcome.exit, ExitCode::Confirmed, "{}", io.said);
         // The list, and a name typed in the wrong case still finds it.
         assert!(io.said.contains("Signed in to GitHub as tester."));
@@ -879,7 +986,12 @@ mod tests {
         assert!(!io.said.contains("vite.config.js"), "no path until details");
         // The last screen.
         assert!(io.said.contains("Check the computers of alice and bob"));
-        assert!(io.said.contains("./polinrider.sh --org acme"));
+        assert!(io
+            .said
+            .contains("Left as it is. Nothing on GitHub was changed."));
+        assert!(io
+            .said
+            .contains("Fix acme/shop, which still carries the payload"));
         // The report has what the screens left out.
         assert!(outcome.report.contains("acme/shop  refs/heads/release"));
         assert!(outcome.report.contains("vite.config.js"));
@@ -889,7 +1001,7 @@ mod tests {
     #[test]
     fn details_lists_every_branch_and_file_and_changes_nothing() {
         let w = acme();
-        let (_, io) = session_run(&w, &["org", "acme", "details", ""]);
+        let (_, io) = session_run(&w, &["org", "acme", "details", "none"]);
         assert!(io.said.contains("  CONFIRMED\n"));
         assert!(io.said.contains("      acme/shop   release\n"));
         assert!(io.said.contains("      vite.config.js\n"));
@@ -969,6 +1081,325 @@ mod tests {
         assert!(io.said.contains("Nothing found in what could be checked."));
         assert!(io.said.contains("     acme/ghost\n"), "{}", io.said);
         assert_eq!(outcome.exit, ExitCode::CouldNotRun);
+    }
+
+    /// An organization with real history behind it. shop was clean, was
+    /// force-pushed with the payload by alice, and was pushed to again by
+    /// bob. website has carried the payload for longer than GitHub remembers.
+    fn attacked(name: &str) -> World {
+        let w = World::new(name);
+        w.repo(
+            "shop",
+            &[(
+                "main",
+                &[("postcss.config.mjs", b"export default {}\n" as &[u8])],
+            )],
+        );
+        w.push(
+            "shop",
+            "main",
+            &[("postcss.config.mjs", &infected())],
+            true,
+            Some(("alice", "2026-09-11T09:14:00Z")),
+        );
+        w.push(
+            "shop",
+            "main",
+            &[("public/fonts/inter.woff2", b"var _0x=1;\n")],
+            false,
+            Some(("bob", "2026-09-12T16:40:00Z")),
+        );
+        w.repo(
+            "website",
+            &[(
+                "main",
+                &[
+                    ("vite.config.js", &infected() as &[u8]),
+                    ("README.md", b"# Website\n"),
+                ],
+            )],
+        );
+        fs::write(w.dir.join("forge/orgs"), "acme\t2\n").expect("write");
+        w
+    }
+
+    fn carries(w: &World, name: &str) -> bool {
+        let log = crate::remote::fixture::git_out(
+            &w.bare(name),
+            &["log", "--branches", "--tags", "-p", "--format=%H"],
+        );
+        log.contains(STRONG) || log.contains("inter.woff2")
+    }
+
+    #[test]
+    fn each_repository_is_fixed_only_after_its_own_dry_run_and_a_yes() {
+        let w = attacked("guide-each");
+        let (outcome, io) = session_run(
+            &w,
+            &[
+                "organization",
+                "acme",
+                "each",
+                // shop: restore is offered, shown, and done on a yes.
+                "restore",
+                "yes",
+                "",
+                // website: no record, so restore is not on the screen.
+                "restore",
+                "erase",
+                "yes",
+                "",
+            ],
+        );
+        assert!(
+            io.said.contains("  REPOSITORY 1 OF 2   acme/shop"),
+            "{}",
+            io.said
+        );
+        assert!(io.said.contains("Record found. Commit "));
+        assert!(io.said.contains("checked clean."));
+        assert!(io.said.contains("  acme/shop   restore"));
+        assert!(io.said.contains("undoes the push of 11 September by alice"));
+        assert!(io
+            .said
+            .contains("2 commits pushed since then stop being reachable."));
+        assert!(io.said.contains("  Done. 1 branch of acme/shop put back."));
+        assert!(io
+            .said
+            .contains("  Checked on GitHub afterwards: it matches."));
+        assert_eq!(
+            w.file("shop", "main", "postcss.config.mjs").as_deref(),
+            Some("export default {}\n")
+        );
+
+        assert!(io.said.contains("  REPOSITORY 2 OF 2   acme/website"));
+        assert!(io.said.contains("  restore is not possible here:"));
+        assert!(io.said.contains("  GitHub no longer has the push record."));
+        assert!(io
+            .said
+            .contains("  restore is not possible for this repository."));
+        assert!(io.said.contains("1 file is taken out of every commit:"));
+        assert!(io.said.contains("Every commit gets a new ID: 2 in all."));
+        assert!(io.said.contains("1 of them changes these files."));
+        assert!(io
+            .said
+            .contains("  Done. The payload is out of the history of acme/website."));
+        assert!(io
+            .said
+            .contains("  Every existing clone of acme/website now needs updating."));
+        assert!(io.said.contains("         git reset --hard origin/main"));
+        assert!(!carries(&w, "website"));
+        // The config came back clean, as one commit.
+        assert_eq!(
+            w.file("website", "main", "vite.config.js").as_deref(),
+            Some("export default {}\n")
+        );
+
+        assert!(io.said.contains("  Both repositories are fixed."));
+        assert!(io.said.contains("Delete old clones and clone again"));
+        assert!(io
+            .said
+            .contains("Ask GitHub Support to clear the old commits"));
+        assert!(!io.said.contains("Do not open or pull what is not fixed"));
+        // The check found the payload, and the exit says so whatever was
+        // done about it afterwards.
+        assert_eq!(outcome.exit, ExitCode::Confirmed);
+        assert!(outcome.report.contains("FIX  acme/shop  restore"));
+        assert!(outcome
+            .report
+            .contains("done, checked on GitHub: refs/heads/main"));
+        assert!(outcome.report.contains("FIX  acme/website  erase"));
+        assert!(outcome
+            .report
+            .contains("removed from every commit: vite.config.js"));
+        assert!(outcome.report.contains("git reset --hard origin/main"));
+    }
+
+    #[test]
+    fn nothing_but_yes_pushes_and_no_or_skip_leave_github_alone() {
+        let w = attacked("guide-no");
+        let before = (
+            w.tip("shop", "refs/heads/main"),
+            w.tip("website", "refs/heads/main"),
+        );
+        let (_, io) = session_run(
+            &w,
+            &[
+                "organization",
+                "acme",
+                "fix",
+                // Enter, a near miss, then no: each asks again or backs out.
+                "restore",
+                "",
+                "sure",
+                "no",
+                "skip",
+                "remove",
+                "y",
+                "no",
+                "skip",
+            ],
+        );
+        assert_eq!(
+            io.said
+                .matches("  Type yes or no. Enter is not yes. q quits.")
+                .count(),
+            3
+        );
+        assert_eq!(io.said.matches("  Nothing was changed.").count(), 2);
+        assert!(!io.said.contains("Pushing to GitHub"));
+        assert!(!io.said.contains("  Done."));
+        assert_eq!(
+            before,
+            (
+                w.tip("shop", "refs/heads/main"),
+                w.tip("website", "refs/heads/main"),
+            )
+        );
+        assert!(io
+            .said
+            .contains("2 repositories on GitHub carry the payload."));
+        assert!(io
+            .said
+            .contains("Fix the 2 repositories that still carry the payload"));
+    }
+
+    #[test]
+    fn quitting_at_the_yes_question_pushes_nothing() {
+        let w = attacked("guide-quit");
+        let before = w.tip("shop", "refs/heads/main");
+        let (_, io) = session_run(&w, &["organization", "acme", "each", "erase", "q"]);
+        assert!(io.said.contains("Nothing has been pushed yet."));
+        assert_eq!(before, w.tip("shop", "refs/heads/main"));
+        // Input that simply ends is not a yes either.
+        let (_, _) = session_run(&w, &["organization", "acme", "each", "erase"]);
+        assert_eq!(before, w.tip("shop", "refs/heads/main"));
+    }
+
+    #[test]
+    fn all_at_once_needs_the_owners_name_and_yes_is_not_enough() {
+        let w = attacked("guide-all");
+        let (_, io) = session_run(
+            &w,
+            &[
+                "organization",
+                "acme",
+                "all",
+                "remove",
+                "yes",
+                "",
+                "acme",
+                "",
+            ],
+        );
+        assert!(io.said.contains("  ALL 2 REPOSITORIES   acme"));
+        assert!(io
+            .said
+            .contains("  This is a big step. Read this before you answer."));
+        assert!(io
+            .said
+            .contains("It changes 2 repositories and 2 branches and tags on GitHub,"));
+        assert!(io
+            .said
+            .contains("  Type the organization's name to go ahead:  acme"));
+        assert_eq!(
+            io.said
+                .matches("  Type acme to go ahead, or no. yes is not enough here.")
+                .count(),
+            2
+        );
+        assert!(io
+            .said
+            .contains("      acme/shop      done, 1 branch or tag checked on GitHub"));
+        assert_eq!(
+            w.file("shop", "main", "postcss.config.mjs").as_deref(),
+            Some("export default {}\n")
+        );
+        assert_eq!(w.file("shop", "main", "public/fonts/inter.woff2"), None);
+        assert_eq!(
+            w.file("website", "main", "vite.config.js").as_deref(),
+            Some("export default {}\n")
+        );
+        assert!(io.said.contains("  Both repositories are fixed."));
+        assert!(io
+            .said
+            .contains("Pull the fix into every clone, once its computer is checked"));
+    }
+
+    #[test]
+    fn all_at_once_leaves_alone_what_cannot_take_the_fix_and_says_which() {
+        let w = attacked("guide-all-restore");
+        let website = w.tip("website", "refs/heads/main");
+        let (_, io) = session_run(&w, &["organization", "acme", "all", "restore", "ACME", ""]);
+        assert!(io.said.contains("      1 can take restore:"));
+        assert!(io.said.contains("      1 cannot, and will be left alone:"));
+        assert!(io.said.contains("          acme/website"));
+        assert!(io
+            .said
+            .contains("          GitHub no longer has the push record"));
+        assert!(io.said.contains("      acme/website   left alone"));
+        assert_eq!(website, w.tip("website", "refs/heads/main"));
+        assert!(!carries(&w, "shop"));
+        assert!(io.said.contains("  1 of 2 repositories is fixed."));
+        assert!(io
+            .said
+            .contains("Fix acme/website, which still carries the payload"));
+        assert!(io.said.contains("Do not open or pull what is not fixed"));
+
+        // Backing out at the name changes nothing and returns to the choice.
+        let w = attacked("guide-all-back");
+        let shop = w.tip("shop", "refs/heads/main");
+        let (_, io) = session_run(&w, &["organization", "acme", "all", "erase", "no", "none"]);
+        assert_eq!(
+            io.said
+                .matches("  Type each, all, details or none.")
+                .count(),
+            2
+        );
+        assert_eq!(shop, w.tip("shop", "refs/heads/main"));
+    }
+
+    #[test]
+    fn archive_shows_the_notice_before_the_question_and_says_the_payload_stays() {
+        let w = attacked("guide-archive");
+        let (_, io) = session_run(
+            &w,
+            &["organization", "acme", "each", "skip", "archive", "yes", ""],
+        );
+        assert!(io.said.contains("  acme/website   archive"));
+        assert!(io
+            .said
+            .contains("A notice is added to the top of README.md, as one"));
+        assert!(io
+            .said
+            .contains("new commit on main. Nothing in the file is removed."));
+        assert!(io
+            .said
+            .contains("\"INFECTED with PolinRider malware. Do not clone or use.\""));
+        assert!(io
+            .said
+            .contains("  The payload stays inside it. Anyone who clones it still"));
+        assert!(io.said.contains(
+            "      # INFECTED WITH MALWARE. DO NOT CLONE, OPEN OR BUILD THIS REPOSITORY."
+        ));
+        assert!(io.said.contains("      > [!CAUTION]"));
+        assert!(io.said.contains("  Type yes to archive acme/website."));
+        assert!(io.said.contains("  Done. acme/website is archived,"));
+
+        let readme = w.file("website", "main", "README.md").expect("readme");
+        assert!(readme.starts_with("# INFECTED WITH MALWARE."));
+        assert!(readme.ends_with("\n---\n\n# Website\n"));
+        assert!(w.dir.join("forge/changed/acme/website.archived").exists());
+
+        assert!(io
+            .said
+            .contains("  No repository is fixed yet. 1 archived."));
+        assert!(io
+            .said
+            .contains("Tell people the archived repositories are not to be used"));
+        assert!(io
+            .said
+            .contains("Fix acme/shop, which still carries the payload"));
     }
 
     #[test]

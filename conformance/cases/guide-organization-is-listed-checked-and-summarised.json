@@ -10,8 +10,7 @@
   "stdin": [
     "organization",
     "ACME",
-    "",
-    ""
+    "none"
   ],
   "forge_files": {
     "whoami": "tester\n",

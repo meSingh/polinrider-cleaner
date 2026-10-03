@@ -1,0 +1,77 @@
+{
+  "why": "The gentlest fix: one ordinary commit per branch, which can be reverted. The payload is cut out of the build config and the config stays, where 1.x deleted the whole file and left a project that no longer built. What it does not do is said before the question and not after: the payload is still in older commits, and the case holds the tool to that by requiring the history to still carry it.",
+  "command": "guide",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "stdin": [
+    "organization",
+    "acme",
+    "fix",
+    "remove",
+    "yes",
+    ""
+  ],
+  "forge_files": {
+    "whoami": "tester\n",
+    "orgs": "acme\t2\nacme-labs\t7\n"
+  },
+  "forge": {
+    "acme": {
+      "shop": {
+        "branches": {
+          "main": {
+            "postcss.config.mjs": "export default { plugins: {} }\n",
+            "README.md": "# Shop\n\nnpm install, then npm start.\n"
+          }
+        },
+        "attacks": [
+          {
+            "branch": "main",
+            "force": true,
+            "date": "2019-03-01T12:00:00Z",
+            "actor": "alice",
+            "at": "2026-09-11T09:14:00Z",
+            "files": {
+              "postcss.config.mjs": "export default { plugins: {} }\n{{PAD}}{{STRONG}}\n"
+            }
+          },
+          {
+            "branch": "main",
+            "actor": "bob",
+            "at": "2026-09-12T16:40:00Z",
+            "files": {
+              "src/feature.js": "export const feature = true\n"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "tree_may_change": false,
+    "must_print": [
+      "one new commit",
+      "cuts the payload out of postcss.config.mjs",
+      "The payload stays in older commits: anyone who checks",
+      "Done. The payload is out of 1 branch of acme/shop.",
+      "Pull the fix into every clone, once its computer is checked"
+    ],
+    "forge_after": {
+      "acme/shop": {
+        "clean": [
+          "main"
+        ],
+        "history": "infected",
+        "file": {
+          "refs/heads/main:postcss.config.mjs": "export default { plugins: {} }\n",
+          "refs/heads/main:src/feature.js": "export const feature = true\n"
+        }
+      }
+    }
+  }
+}

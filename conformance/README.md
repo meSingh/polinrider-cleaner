@@ -124,6 +124,41 @@ the promise on the first screen: nothing will be changed unless you type yes.
 Not on Enter, not on "sure", not for asking to see the details, and not when
 the input runs out.
 
+## GitHub cases
+
+A guide case with a `forge` key describes a pretend GitHub: owners, their
+repositories, branches and files. The runner builds each as a real git
+repository and hands the directory to the session
+([ADR-0036](../docs/adr/0036-github-is-checked-through-one-boundary-and-fixed-one-agreed-way-at-a-time.md)).
+`forge_files` adds who is signed in and the list of organizations.
+
+| Under a repository | Means |
+|---|---|
+| `branches` | each branch and its files, as one commit on top of a shared base |
+| `pushes` | the push record, written as given, for a case that needs IDs GitHub would not serve |
+| `attacks` | pushes made after the repository existed, each a real push. `force` replaces the newest commit, which leaves the old one reachable from nothing. With an `actor` and `at` the push goes on the record with the commit the branch pointed to before. `date` is what the commit claims as its date |
+| `missing` | listed, and not there to copy |
+
+The fixes push
+([ADR-0037](../docs/adr/0037-a-github-fix-is-planned-on-the-copy-pushed-on-a-yes-and-believed-when-github-shows-it.md)),
+so a GitHub case is also held to what the pretend GitHub looks like when the
+session is over. **A repository the case does not name under
+`expect.forge_after` must be exactly as it was**: every branch, every tag, its
+description and whether it is archived. A case that pushes has to say so:
+
+| `forge_after` key | Asserts |
+|---|---|
+| `clean` | these branches no longer hold the indicator |
+| `infected` | these branches still do, for a fix that says it leaves the payload in place |
+| `history` | `clean`: the indicator is in no commit a branch or tag reaches. `infected`: it still is, for a fix that says it rewrites nothing |
+| `file` | `<ref>:<path>` holds exactly this |
+| `readme_top`, `readme_keeps` | the first line of the README, and text from before the fix that must still be in it |
+| `archived` | the repository was made read-only and its description replaced |
+| `unchanged` | named, and still must be exactly as it was |
+
+What these do not cover is GitHub. `gh`, a protected branch, a ruleset and a
+real force-push are on the far side of the boundary, and no case reaches them.
+
 What the host cases do not cover is the thin layer that actually runs `ps`,
 `ss`, `lsof`, `crontab` and `git` on a real machine. The cases start on the far
 side of it.

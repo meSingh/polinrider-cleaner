@@ -1,0 +1,74 @@
+{
+  "why": "At the warning, no goes back to the choice and nothing has been pushed. Neither does none after it. Both repositories are exactly as they were.",
+  "command": "guide",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "stdin": [
+    "organization",
+    "acme",
+    "all",
+    "erase",
+    "no",
+    "none"
+  ],
+  "forge_files": {
+    "whoami": "tester\n",
+    "orgs": "acme\t2\nacme-labs\t7\n"
+  },
+  "forge": {
+    "acme": {
+      "shop": {
+        "branches": {
+          "main": {
+            "postcss.config.mjs": "export default { plugins: {} }\n",
+            "README.md": "# Shop\n\nnpm install, then npm start.\n"
+          }
+        },
+        "attacks": [
+          {
+            "branch": "main",
+            "force": true,
+            "date": "2019-03-01T12:00:00Z",
+            "actor": "alice",
+            "at": "2026-09-11T09:14:00Z",
+            "files": {
+              "postcss.config.mjs": "export default { plugins: {} }\n{{PAD}}{{STRONG}}\n"
+            }
+          },
+          {
+            "branch": "main",
+            "actor": "bob",
+            "at": "2026-09-12T16:40:00Z",
+            "files": {
+              "src/feature.js": "export const feature = true\n"
+            }
+          }
+        ]
+      },
+      "website": {
+        "branches": {
+          "main": {
+            "vite.config.js": "export default { plugins: {} }\n{{PAD}}{{STRONG}}\n"
+          }
+        }
+      }
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "tree_may_change": false,
+    "must_print": [
+      "This is a big step. Read this before you answer.",
+      "Left as it is. Nothing on GitHub was changed.",
+      "2 repositories on GitHub carry the payload."
+    ],
+    "must_not_print": [
+      "Rewriting the history",
+      "done,"
+    ]
+  }
+}

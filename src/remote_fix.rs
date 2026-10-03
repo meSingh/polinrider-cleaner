@@ -837,12 +837,37 @@ fn notice(repo: &Repo, facts: &NoticeFacts) -> String {
     ));
 
     let mut out = format!("{NOTICE_HEADING}\n\n> [!CAUTION]\n");
-    for line in body {
-        out.push_str(if line.is_empty() { ">" } else { "> " });
-        out.push_str(&line);
-        out.push('\n');
+    for paragraph in body {
+        if paragraph.is_empty() {
+            out.push_str(">\n");
+        }
+        for line in wrap(&paragraph, 70) {
+            out.push_str("> ");
+            out.push_str(&line);
+            out.push('\n');
+        }
     }
     out
+}
+
+/// `text` broken at spaces into lines of at most `width` characters. A word
+/// longer than that, such as a link, gets a line to itself.
+pub fn wrap(text: &str, width: usize) -> Vec<String> {
+    let mut lines: Vec<String> = Vec::new();
+    let mut line = String::new();
+    for word in text.split_whitespace() {
+        if !line.is_empty() && line.chars().count() + 1 + word.chars().count() > width {
+            lines.push(std::mem::take(&mut line));
+        }
+        if !line.is_empty() {
+            line.push(' ');
+        }
+        line.push_str(word);
+    }
+    if !line.is_empty() {
+        lines.push(line);
+    }
+    lines
 }
 
 pub fn plan_archive(repo: &Repo, facts: &NoticeFacts) -> Result<Archive, String> {
@@ -934,6 +959,15 @@ mod tests {
             filenames: vec![Pattern::parse(r"(^|/)temp_helper\.bat$").expect("parses")],
             ..Indicators::default()
         }
+    }
+
+    /// The notice with its line breaks and quote marks folded away.
+    fn flat(notice: &str) -> String {
+        notice
+            .lines()
+            .map(|l| l.trim_start_matches('>').trim())
+            .collect::<Vec<_>>()
+            .join(" ")
     }
 
     fn infected_config() -> Vec<u8> {
@@ -1273,12 +1307,12 @@ mod tests {
         assert!(plan.readme_exists);
         assert!(!plan.already_noticed);
         assert!(plan.notice.starts_with(NOTICE_HEADING));
-        assert!(plan.notice.contains("> [!CAUTION]"));
-        assert!(plan.notice.contains(
+        assert!(plan.notice.contains("\n> [!CAUTION]\n"));
+        assert!(flat(&plan.notice).contains(
             "found on 3 October 2026 in `postcss.config.mjs` and 2 other files, on 2 branches"
         ));
-        assert!(plan.notice.contains("on or after 11 September 2026**"));
-        assert!(plan.notice.contains("the owners of the acme organization"));
+        assert!(flat(&plan.notice).contains("on or after 11 September 2026**"));
+        assert!(flat(&plan.notice).contains("the owners of the acme organization"));
 
         archive(&repo, &plan).expect("archives");
         let readme = c.w.file("shop", "main", "README.md").expect("readme");
@@ -1328,13 +1362,11 @@ mod tests {
         .expect("plans");
         assert!(!plan.readme_exists);
         assert_eq!(plan.readme, "README.md");
-        assert!(plan.notice.contains("in `vite.config.js`, on 1 branch."));
-        assert!(plan
-            .notice
-            .contains("**If you ever cloned, opened or built this repository**"));
-        assert!(plan
-            .notice
-            .contains("ask its owner, tester, for a clean copy"));
+        assert!(flat(&plan.notice).contains("in `vite.config.js`, on 1 branch."));
+        assert!(
+            flat(&plan.notice).contains("**If you ever cloned, opened or built this repository**")
+        );
+        assert!(flat(&plan.notice).contains("ask its owner, tester, for a clean copy"));
         archive(&repo, &plan).expect("archives");
         assert!(c
             .w

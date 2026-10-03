@@ -1,0 +1,88 @@
+{
+  "why": "One fix for every repository is the largest thing this tool does, so it is the one question yes does not answer: yes is what a hand types by habit. Only the organization's name goes ahead. Here yes and Enter are both turned away, the name is typed, and both repositories get their commit.",
+  "command": "guide",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "stdin": [
+    "organization",
+    "acme",
+    "all",
+    "remove",
+    "yes",
+    "",
+    "acme",
+    ""
+  ],
+  "forge_files": {
+    "whoami": "tester\n",
+    "orgs": "acme\t2\nacme-labs\t7\n"
+  },
+  "forge": {
+    "acme": {
+      "shop": {
+        "branches": {
+          "main": {
+            "postcss.config.mjs": "export default { plugins: {} }\n",
+            "README.md": "# Shop\n\nnpm install, then npm start.\n"
+          }
+        },
+        "attacks": [
+          {
+            "branch": "main",
+            "force": true,
+            "date": "2019-03-01T12:00:00Z",
+            "actor": "alice",
+            "at": "2026-09-11T09:14:00Z",
+            "files": {
+              "postcss.config.mjs": "export default { plugins: {} }\n{{PAD}}{{STRONG}}\n"
+            }
+          },
+          {
+            "branch": "main",
+            "actor": "bob",
+            "at": "2026-09-12T16:40:00Z",
+            "files": {
+              "src/feature.js": "export const feature = true\n"
+            }
+          }
+        ]
+      },
+      "website": {
+        "branches": {
+          "main": {
+            "vite.config.js": "export default { plugins: {} }\n{{PAD}}{{STRONG}}\n"
+          }
+        }
+      }
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "tree_may_change": false,
+    "must_print": [
+      "ALL 2 REPOSITORIES   acme",
+      "This is a big step. Read this before you answer.",
+      "one after another, without asking again.",
+      "Type acme to go ahead, or no. yes is not enough here.",
+      "Both repositories are fixed."
+    ],
+    "forge_after": {
+      "acme/shop": {
+        "clean": [
+          "main"
+        ],
+        "history": "infected"
+      },
+      "acme/website": {
+        "clean": [
+          "main"
+        ],
+        "history": "infected"
+      }
+    }
+  }
+}

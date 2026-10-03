@@ -1,0 +1,63 @@
+{
+  "why": "A terminal that closes, or a pipe that runs dry, at the question that would rewrite a repository's whole history. Input ending is never read as an answer, least of all as yes.",
+  "command": "guide",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "stdin": [
+    "organization",
+    "acme",
+    "fix",
+    "erase"
+  ],
+  "forge_files": {
+    "whoami": "tester\n",
+    "orgs": "acme\t2\nacme-labs\t7\n"
+  },
+  "forge": {
+    "acme": {
+      "shop": {
+        "branches": {
+          "main": {
+            "postcss.config.mjs": "export default { plugins: {} }\n",
+            "README.md": "# Shop\n\nnpm install, then npm start.\n"
+          }
+        },
+        "attacks": [
+          {
+            "branch": "main",
+            "force": true,
+            "date": "2019-03-01T12:00:00Z",
+            "actor": "alice",
+            "at": "2026-09-11T09:14:00Z",
+            "files": {
+              "postcss.config.mjs": "export default { plugins: {} }\n{{PAD}}{{STRONG}}\n"
+            }
+          },
+          {
+            "branch": "main",
+            "actor": "bob",
+            "at": "2026-09-12T16:40:00Z",
+            "files": {
+              "src/feature.js": "export const feature = true\n"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "tree_may_change": false,
+    "must_print": [
+      "Nothing has been pushed yet."
+    ],
+    "must_not_print": [
+      "Rewriting the history",
+      "Done."
+    ]
+  }
+}

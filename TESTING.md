@@ -67,16 +67,46 @@ Every guided run saves a full report in the home directory and names it on
 the last screen.
 
 **The GitHub screens**, on a pretend organization with no network and no
-sign-in. GitHub is never contacted:
+sign-in. GitHub is never contacted, and the fixes push to repositories that
+live inside the container:
 
 ```bash
 polinrider guide --forge-state ~/demo-github
 ```
 
 Type `organization`, then `acme`. It checks five pretend repositories and
-finds the payload in three. Type `details` at the end of the summary to see
-every branch and file. This stage reads and reports; the fixes are not built
-yet.
+finds the payload in three:
+
+| Repository | What happened to it | What can fix it |
+|---|---|---|
+| `acme/shop` | two branches attacked after they were clean, both on GitHub's push record | `restore`, or any other |
+| `acme/website` | `main` pushed to, on record | `restore`, or any other |
+| `acme/old-site` | infected for longer than GitHub remembers | `erase`, `remove` or `archive`. `restore` is not offered |
+
+Then it asks how to go through them. Things worth trying, and what should
+happen:
+
+1. `details` lists every branch and file, and asks again.
+2. `each`, then at a repository type a fix. A screen says exactly what would
+   change on GitHub. Press Enter, then type `sure`: it asks again each time
+   and pushes nothing. `no` goes back to the choice of fix. `skip` moves on.
+3. `yes` does it, and the next lines say what GitHub shows afterwards.
+   After an `erase` there is a screen on how to update an existing clone.
+   `archive` shows the notice it will put on top of the README before it
+   asks.
+4. `all`, then a fix. It warns, says which repositories can take the fix and
+   which will be left alone, and goes ahead only when you type `acme`. `yes`
+   is not enough there.
+5. `none` leaves GitHub as it is and goes to the last screen.
+6. `./ci/beta.sh` puts the pretend organization back, to go again.
+
+To look at what a fix did to a pretend repository:
+
+```bash
+git -C ~/demo-github/git/acme/shop.git log --oneline --all
+git -C ~/demo-github/git/acme/old-site.git show main:README.md
+cat ~/demo-github/changed/acme/old-site.description
+```
 
 Without the prompts:
 
@@ -163,8 +193,9 @@ extensions, as opposed to a clean runner.
   directories given is read once to compare against known implant hashes. On a
   directory full of media or disk images that takes a while, and there is no
   progress line yet.
-- **No GitHub.** This build does not scan or clean a remote. That is ported
-  after this test.
+- **Real GitHub is untried.** The GitHub screens and fixes have only ever
+  run against the pretend organization. Do not point this build at a real
+  organization yet.
 - **"This machine cannot be trusted"** is printed under any `[HIT]`, including
   for a scan of one folder. The wording is carried over from 1.x and is wrong
   for a folder.

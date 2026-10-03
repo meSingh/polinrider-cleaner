@@ -1,0 +1,81 @@
+{
+  "why": "restore for all, where only one of two has a push record. The warning names which can and which cannot before the name is asked for, the one that cannot is not touched, and the last screen does not call the organization fixed: it says one of two, and names the other as still carrying the payload.",
+  "command": "guide",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "stdin": [
+    "organization",
+    "acme",
+    "all",
+    "restore",
+    "acme",
+    ""
+  ],
+  "forge_files": {
+    "whoami": "tester\n",
+    "orgs": "acme\t2\nacme-labs\t7\n"
+  },
+  "forge": {
+    "acme": {
+      "shop": {
+        "branches": {
+          "main": {
+            "postcss.config.mjs": "export default { plugins: {} }\n",
+            "README.md": "# Shop\n\nnpm install, then npm start.\n"
+          }
+        },
+        "attacks": [
+          {
+            "branch": "main",
+            "force": true,
+            "date": "2019-03-01T12:00:00Z",
+            "actor": "alice",
+            "at": "2026-09-11T09:14:00Z",
+            "files": {
+              "postcss.config.mjs": "export default { plugins: {} }\n{{PAD}}{{STRONG}}\n"
+            }
+          },
+          {
+            "branch": "main",
+            "actor": "bob",
+            "at": "2026-09-12T16:40:00Z",
+            "files": {
+              "src/feature.js": "export const feature = true\n"
+            }
+          }
+        ]
+      },
+      "website": {
+        "branches": {
+          "main": {
+            "vite.config.js": "export default { plugins: {} }\n{{PAD}}{{STRONG}}\n"
+          }
+        }
+      }
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "tree_may_change": false,
+    "must_print": [
+      "1 can take restore:",
+      "1 cannot, and will be left alone:",
+      "GitHub no longer has the push record",
+      "left alone",
+      "1 of 2 repositories is fixed.",
+      "Fix acme/website, which still carries the payload",
+      "Do not open or pull what is not fixed"
+    ],
+    "forge_after": {
+      "acme/shop": {
+        "clean": [
+          "main"
+        ]
+      }
+    }
+  }
+}

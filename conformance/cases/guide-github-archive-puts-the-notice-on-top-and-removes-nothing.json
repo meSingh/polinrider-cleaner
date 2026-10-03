@@ -1,0 +1,80 @@
+{
+  "why": "For a repository nobody uses any more. The notice goes at the very top of the README, as a heading so that it is the largest thing on the page, and everything the README held before is still there beneath it. The description is replaced and the repository is made read-only. It does not clean anything, and the screen says so before the question: the payload stays, which the case checks.",
+  "command": "guide",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "stdin": [
+    "organization",
+    "acme",
+    "fix",
+    "archive",
+    "yes",
+    ""
+  ],
+  "forge_files": {
+    "whoami": "tester\n",
+    "orgs": "acme\t2\nacme-labs\t7\n"
+  },
+  "forge": {
+    "acme": {
+      "shop": {
+        "branches": {
+          "main": {
+            "postcss.config.mjs": "export default { plugins: {} }\n",
+            "README.md": "# Shop\n\nnpm install, then npm start.\n"
+          }
+        },
+        "attacks": [
+          {
+            "branch": "main",
+            "force": true,
+            "date": "2019-03-01T12:00:00Z",
+            "actor": "alice",
+            "at": "2026-09-11T09:14:00Z",
+            "files": {
+              "postcss.config.mjs": "export default { plugins: {} }\n{{PAD}}{{STRONG}}\n"
+            }
+          },
+          {
+            "branch": "main",
+            "actor": "bob",
+            "at": "2026-09-12T16:40:00Z",
+            "files": {
+              "src/feature.js": "export const feature = true\n"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "tree_may_change": false,
+    "must_print": [
+      "A notice is added to the top of README.md, as one",
+      "Nothing in the file is removed.",
+      "INFECTED with PolinRider malware. Do not clone or use.",
+      "The payload stays inside it. Anyone who clones it still",
+      "# INFECTED WITH MALWARE. DO NOT CLONE, OPEN OR BUILD THIS REPOSITORY.",
+      "> [!CAUTION]",
+      "September 2026**,",
+      "Type yes to archive acme/shop.",
+      "Done. acme/shop is archived,",
+      "No repository is fixed yet. 1 archived."
+    ],
+    "forge_after": {
+      "acme/shop": {
+        "infected": [
+          "main"
+        ],
+        "archived": true,
+        "readme_top": "# INFECTED WITH MALWARE. DO NOT CLONE, OPEN OR BUILD THIS REPOSITORY.",
+        "readme_keeps": "npm install, then npm start."
+      }
+    }
+  }
+}

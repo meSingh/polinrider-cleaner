@@ -324,15 +324,14 @@ fn guided(args: &cli::Args, ind: &Indicators, host: Option<&dyn Host>, ui: Ui) -
     // The screens show a summary, so the whole of it has to be somewhere.
     // A guided run always saves a report, in the home directory unless told
     // where.
-    let report = args.report.clone().unwrap_or_else(|| {
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map_or(0, |d| d.as_secs());
-        args.home.join(format!(
-            "polinrider-report-{}.txt",
-            polinrider::quarantine::stamp(now)
-        ))
-    });
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs());
+    let stamp = polinrider::quarantine::stamp(now);
+    let report = args
+        .report
+        .clone()
+        .unwrap_or_else(|| args.home.join(format!("polinrider-report-{stamp}.txt")));
     let forge: Box<dyn Forge> = match &args.forge_state {
         Some(dir) => Box::new(Supplied::new(dir)),
         None => Box::new(GitHub),
@@ -352,6 +351,7 @@ fn guided(args: &cli::Args, ind: &Indicators, host: Option<&dyn Host>, ui: Ui) -
         unicode: ui.unicode,
         forge: forge.as_ref(),
         evidence: &evidence,
+        stamp: &stamp,
     };
     let outcome = guide::run(&session, &mut Terminal { ui, drawn: 0 });
     if let Err(e) = write_report(&report, &outcome.report) {

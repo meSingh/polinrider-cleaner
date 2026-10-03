@@ -11,7 +11,7 @@
     "organization",
     "acme",
     "details",
-    ""
+    "none"
   ],
   "forge_files": {
     "whoami": "tester\n",

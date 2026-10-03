@@ -69,6 +69,9 @@ pub struct Session<'a> {
     pub forge: &'a dyn Forge,
     /// Where copies of repositories are kept while they are checked.
     pub evidence: &'a Path,
+    /// When this run started, as `YYYYMMDDTHHMMSSZ`: the date a notice
+    /// states, and the name under which a fix keeps what it replaced.
+    pub stamp: &'a str,
 }
 
 /// What a finished session leaves behind.
@@ -1129,6 +1132,7 @@ mod tests {
                 unicode: false,
                 forge: &crate::remote::Supplied::new(self.dir.join("forge")),
                 evidence: &self.dir.join("evidence"),
+                stamp: "20261003T120000Z",
             };
             let mut io = Script::new(answers);
             let outcome = run(&session, &mut io);

@@ -54,7 +54,7 @@ reflog if they are ever wanted.
 Full detail in [`HACKING.md`](./HACKING.md). The three commands:
 
 ```bash
-./polinrider-sandbox --all     # lint, 9 self-tests, 70 conformance cases, clippy, 148 Rust tests
+./polinrider-sandbox --all     # lint, 9 self-tests, 80 conformance cases, clippy, 163 Rust tests
 ./polinrider-sandbox --demo    # build an infected sample and scan it with 1.x
 ./polinrider-sandbox --beta    # 2.0 installed in the container, on the PATH, with a sample
 ./ci/docs-serve.sh             # the documentation site, with live reload
@@ -101,7 +101,7 @@ argument for running unknown code on a machine you believe is compromised.
 ## What is done
 
 **The corpus** — `conformance/`, 13 filesystem cases, 20 host cases, 7 clean
-cases, 12 guide cases (4 of them GitHub), 16 refusal cases and 2 closed-pipe checks. The filesystem cases are green
+cases, 22 guide cases (14 of them GitHub, 10 of those the fixes), 16 refusal cases and 2 closed-pipe checks. A GitHub case must name any repository it expects to change; every other one must be exactly as it was afterwards. The filesystem cases are green
 against both implementations. The host, clean and guide cases run against the
 Rust engine only and print `skip` under the
 shell, which cannot be handed a machine that does not exist. Running in CI and
@@ -131,8 +131,10 @@ that this reversed an earlier mdBook decision and what the Node dependency costs
 | `checks.rs` | Implants, tasks.json, build configs, fonts, packages, git hooks, extensions, propagation |
 | `scan.rs` | One scan: the walk, every check that applies, and rendering. In the library so a session can run more than one |
 | `guide.rs` | The guided flow. Four screens, one question on each, answered in words. A summary first, the full list on `details`. Every prompt goes through one `Console` trait so a test can drive a session: ADR-0035 |
-| `remote.rs` | Checking GitHub: the `Forge` boundary (`GitHub` through `gh` and `git`, or `Supplied` from a directory of bare repositories), mirroring into an evidence directory, and checking every branch and tag through git plumbing. Read-only |
-| `guide_github.rs` | The GitHub screens of the guided flow: sign-in help, the organization list, the progress screen, the summary and the last screen. ADR-0036 |
+| `remote.rs` | GitHub through one boundary: `Forge` (`GitHub` through `gh` and `git`, or `Supplied` from a directory of bare repositories). Mirrors into an evidence directory and checks every branch and tag through git plumbing. Also the only four things that change GitHub: `push`, `set_description`, `archive` |
+| `remote_fix.rs` | The four fixes, each as a plan and the function that does it: `restore`, `erase`, `remove`, `archive`. Nothing is checked out, every push carries a lease, and GitHub is asked afterwards what it shows. ADR-0037 |
+| `guide_github.rs` | The GitHub screens that read: sign-in help, the organization list, the progress screen, the summary and the last screen. ADR-0036 |
+| `guide_fix.rs` | The GitHub screens that change something: `each`, `all`, one repository at a time, the dry run, the yes, and what was done |
 | `pattern.rs` | A small regular-expression matcher for `ioc/filenames.txt`, which is data written as patterns. A pattern it cannot honour stops the scan |
 | `ui.rs` | The wordmark and the colours, and nothing else. Runs no command, reads no file. Colour never changes a character: ADR-0033 |
 | `strip.rs` | Plans the cut for `clean`: what to keep of an infected build config, or why not to touch it. Pure, no I/O |
@@ -177,9 +179,8 @@ on a typed `yes`, only `q` leaves, and input that ends stops the session. A
 report is saved on every run. Mandeep rejected the first version as too dense
 for somebody under stress and approved a mock of this one before it was built:
 **show him a mock before changing how it looks again.** `computer` checks
-the whole home folder; `folder` suggests the code folders it finds. It stops
-at the machine for now: the last screen says GitHub is for the released tool
-until the port in item 6 lands.
+the whole home folder; `folder` suggests the code folders it finds.
+`organization` and `account` check GitHub and fix it: item 6.
 
 ---
 
@@ -220,21 +221,46 @@ until the port in item 6 lands.
    GitHub can only be tried from the sandbox with a network, a sign-in and a
    throwaway repository, all of which are Mandeep's to give.
 
-   **Where it stands:** stage 1 is built and in the guided flow.
+   **Where it stands:** both stages are built and in the guided flow.
    `organization` and `account` are on the first screen. It checks that `gh`
    is installed and signed in and says what to run if not, lists the
    organizations, shows a progress screen, checks every branch and tag of
-   every repository read-only, and summarises: which repositories, how many
-   branches, who pushed. `./polinrider-sandbox --beta` builds a pretend
-   organization, and `polinrider guide --forge-state ~/demo-github` runs the
-   screens against it with no network. **Next, in this order:** `restore`,
-   `erase`, `remove` and `archive`, each with a dry run and a typed yes;
-   the all-at-once path; `everything` (this computer, then GitHub); the
-   progress screen for machine checks too. Mandeep approved the mock of all of
-   it on 2026-10-03 ("The rest all looks great. Go ahead."), with one
-   instruction for `archive`: the README notice goes at the very top, big and
-   bold, and removes nothing that is already there. ADR-0036 has the agreed
-   behaviour of each fix.
+   every repository, and summarises: which repositories, how many branches,
+   who pushed. Then `each`, `all`, `details` or `none`. One repository at a
+   time offers `restore` (only where GitHub's push record gives a clean
+   state), `erase`, `remove`, `archive` and `skip`; each shows a dry run and
+   pushes only on a typed `yes`. `all` takes one fix for every repository
+   and goes ahead only on the owner's name. The last screen is written from
+   what was done. Mandeep approved the mock of all of it on 2026-10-03 ("The
+   rest all looks great. Go ahead."), with one instruction for `archive`:
+   the README notice goes at the very top, big and bold, and removes nothing
+   that is already there.
+
+   `./polinrider-sandbox --beta` builds a pretend organization with real
+   attack history, and `polinrider guide --forge-state ~/demo-github` runs
+   every screen and every fix against it with no network. `./ci/beta.sh`
+   puts it back.
+
+   **Not built:** `everything` (this computer, then GitHub); the progress
+   screen for machine checks; the push-event sweep that narrows the list
+   before copying every repository.
+
+   **Nothing here has touched real GitHub.** Every test pushes to local bare
+   repositories. The first real run is
+   `./polinrider-sandbox --net --beta`, `gh auth login` inside it, and a
+   throwaway repository, all of which are Mandeep's to give. Worth trying
+   there first: a protected branch, a repository with a pull request open,
+   and whether GitHub still serves the commit a branch was forced off.
+
+   **Choices made while building the fixes that Mandeep has not ruled on**,
+   all in ADR-0037: `restore` goes to the newest clean state on record, where
+   1.x went to the earliest or to one before a time the operator gave;
+   `remove` cuts the payload out of a build config and keeps the file, where
+   1.x and the mock deleted it; `erase` takes its paths from the whole
+   history, uses `git filter-branch` only, keeps empty commits and puts the
+   clean config back as a commit; a push carries a lease so one that landed
+   since the check is never overwritten; `none` and `fix` were added to the
+   choices after the summary; the exit code stays 2 after a fix.
 
    **What Mandeep asked of the GitHub screens (2026-10-03), all agreed:** check that `gh` is installed and signed in
    first, and walk the operator through it if not; list their organizations

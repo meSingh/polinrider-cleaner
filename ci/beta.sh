@@ -48,11 +48,17 @@ printf '[Unit]\nDescription=System update helper\n\n[Service]\nExecStart=/bin/sh
 # sign-in: an organization called acme with real git repositories behind it.
 # polinrider is pointed at it with --forge-state and never talks to GitHub.
 #
-#   shop       the payload on two branches, pushed by alice and bob
-#   website    the payload on main, pushed by bob
-#   old-site   the payload on a branch, and no push record left
+#   shop       two branches attacked after they were clean: one force-pushed
+#              by alice, one pushed to by bob. GitHub's record has both, so
+#              both can be restored
+#   website    main pushed to by bob, on record
+#   old-site   the payload on a branch for longer than GitHub remembers: no
+#              push record, so it cannot be restored
 #   infra      only the organization's own detection workflow: not a finding
 #   blog       clean
+#
+# The history is real: each attack is a push to the pretend GitHub, and the
+# record holds the commit the branch pointed to before it, as GitHub's does.
 FORGE="$HOME/demo-github"
 PAD="$(printf '%280s' '')"
 G=(git -c user.name=demo -c user.email=demo@localhost -c commit.gpgsign=false)
@@ -62,21 +68,26 @@ printf 'you\n' > "$FORGE/whoami"
 printf 'acme\t5\nacme-labs\t0\n' > "$FORGE/orgs"
 : > "$FORGE/repos/acme"; : > "$FORGE/repos/acme-labs"; : > "$FORGE/repos/you"
 
-demo_repo() {   # demo_repo <name>, then demo_branch for each branch, then demo_done
-  DEMO_WORK="/tmp/demo-work/$1"; DEMO_NAME="$1"
+demo_repo() {   # demo_repo <name> [branch...]: a clean repository with those branches
+  DEMO_WORK="/tmp/demo-work/$1"; DEMO_NAME="$1"; DEMO_BARE="$FORGE/git/acme/$1.git"
   mkdir -p "$DEMO_WORK"
   "${G[@]}" -C "$DEMO_WORK" init -q -b main
-  printf '# %s\n' "$1" > "$DEMO_WORK/README.md"
+  printf '# %s\n\nHow to run it: npm install, then npm start.\n' "$1" > "$DEMO_WORK/README.md"
   printf 'export const version = 1\n' > "$DEMO_WORK/index.js"
+  printf 'export default { plugins: {} }\n' > "$DEMO_WORK/postcss.config.mjs"
   "${G[@]}" -C "$DEMO_WORK" add -A; "${G[@]}" -C "$DEMO_WORK" commit -q -m "first commit"
-}
-demo_branch() { # demo_branch <branch>   (files are written by the caller afterwards)
-  if [[ "$1" == "main" ]]; then "${G[@]}" -C "$DEMO_WORK" checkout -q main
-  else "${G[@]}" -C "$DEMO_WORK" checkout -q -b "$1" main; fi
-}
-demo_commit() { "${G[@]}" -C "$DEMO_WORK" add -A; "${G[@]}" -C "$DEMO_WORK" commit -q -m "$1"; }
-demo_done() {
-  "${G[@]}" clone -q --bare "$DEMO_WORK" "$FORGE/git/acme/$DEMO_NAME.git"
+  shift
+  local b
+  for b in "$@"; do
+    "${G[@]}" -C "$DEMO_WORK" checkout -q -b "$b" main
+    printf 'export const version = 2\n' > "$DEMO_WORK/index.js"
+    "${G[@]}" -C "$DEMO_WORK" commit -q -am "work on $b"
+  done
+  "${G[@]}" -C "$DEMO_WORK" checkout -q main
+  "${G[@]}" clone -q --bare "$DEMO_WORK" "$DEMO_BARE"
+  # GitHub serves a commit by its ID whether or not a branch still reaches
+  # it. A plain git repository has to be told to.
+  "${G[@]}" -C "$DEMO_BARE" config uploadpack.allowAnySHA1InWant true
   printf 'acme/%s\n' "$DEMO_NAME" >> "$FORGE/repos/acme"
 }
 infect() {      # the canonical shape: a payload appended behind padding, and a fake font
@@ -84,32 +95,44 @@ infect() {      # the canonical shape: a payload appended behind padding, and a 
   mkdir -p "$DEMO_WORK/public/fonts"
   printf 'var _0x3f=function(){return 1};\n' > "$DEMO_WORK/public/fonts/inter-var.woff2"
 }
+# demo_attack <branch> <how> [actor time]: push the payload to a branch.
+# how is "force" (the newest commit is replaced) or "push" (one is added).
+# With an actor and a time the push goes on the record; without, GitHub has
+# forgotten it.
+demo_attack() {
+  local branch="$1" how="$2" actor="${3:-}" at="${4:-}" before head size=1
+  "${G[@]}" -C "$DEMO_WORK" checkout -q "$branch"
+  infect
+  "${G[@]}" -C "$DEMO_WORK" add -A
+  if [[ "$how" == "force" ]]; then size=0; "${G[@]}" -C "$DEMO_WORK" commit -q --amend -m "update config"
+  else "${G[@]}" -C "$DEMO_WORK" commit -q -m "update config"; fi
+  before="$("${G[@]}" -C "$DEMO_BARE" rev-parse "refs/heads/$branch")"
+  "${G[@]}" -C "$DEMO_WORK" push -q --force "$DEMO_BARE" "$branch:$branch"
+  head="$("${G[@]}" -C "$DEMO_BARE" rev-parse "refs/heads/$branch")"
+  [[ -n "$actor" ]] && printf 'refs/heads/%s\t%s\t%s\t%s\t%s\t%s\n' "$branch" "$before" "$head" "$actor" "$at" "$size" \
+    >> "$FORGE/pushes/acme/$DEMO_NAME.tsv"
+  return 0
+}
 
-demo_repo blog; demo_done
+demo_repo blog
 
-demo_repo shop
-demo_branch release; infect; demo_commit "update config"
-demo_branch staging; infect; demo_commit "update config"
-demo_done
-printf 'refs/heads/release\t4f2a91c0de\t9c01d7e2ab\talice\t2026-09-11T09:14:00Z\t0\nrefs/heads/staging\t4f2a91c0de\t71b3f0a9c4\tbob\t2026-09-12T16:40:00Z\t0\n' \
-  > "$FORGE/pushes/acme/shop.tsv"
+demo_repo shop release staging
+demo_attack release force alice 2026-09-11T09:14:00Z
+demo_attack staging push  bob   2026-09-12T16:40:00Z
 
 demo_repo website
-demo_branch main; infect; demo_commit "update config"
-demo_done
-printf 'refs/heads/main\t1a2b3c4d5e\t6f7a8b9c0d\tbob\t2026-09-12T16:52:00Z\t0\n' > "$FORGE/pushes/acme/website.tsv"
+demo_attack main push bob 2026-09-12T16:52:00Z
 
-demo_repo old-site
-demo_branch legacy; infect; demo_commit "update config"
-demo_done        # no push record: GitHub forgets after about ninety days
+demo_repo old-site legacy
+demo_attack legacy push       # no push record: GitHub forgets after about ninety days
 
 demo_repo infra
-demo_branch main
+"${G[@]}" -C "$DEMO_WORK" checkout -q main
 mkdir -p "$DEMO_WORK/.github/workflows"
 printf 'name: scan\non: push\njobs:\n  scan:\n    runs-on: ubuntu-latest\n    steps:\n      - run: grep -rF "%s" . && exit 1 || true\n' "$STRONG" \
   > "$DEMO_WORK/.github/workflows/polinrider-scan.yml"
-demo_commit "scan every push"
-demo_done
+"${G[@]}" -C "$DEMO_WORK" add -A; "${G[@]}" -C "$DEMO_WORK" commit -q -m "scan every push"
+"${G[@]}" -C "$DEMO_WORK" push -q "$DEMO_BARE" main:main
 rm -rf /tmp/demo-work
 
 # Shown whole and not cut down to a line with head: the first version of this
