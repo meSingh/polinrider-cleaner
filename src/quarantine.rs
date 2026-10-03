@@ -12,7 +12,7 @@
 
 use std::fs;
 use std::io;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 /// Whether a scan may change the filesystem. Sealed: the only two
 /// implementations are [`DryRun`] and [`Apply`], and code outside this module
@@ -100,15 +100,50 @@ impl<M: Mode> Quarantine<M> {
         &self.root
     }
 
-    /// The destination a given source would map to. Pure: computes a path,
-    /// touches nothing. Shared by both modes so a dry run reports exactly the
-    /// path an apply would use.
+    /// The destination a given source would map to. Reads the filesystem to
+    /// resolve the source and writes nothing. Shared by both modes so a dry
+    /// run reports exactly the path an apply would use.
     fn destination(&self, src: &Path) -> PathBuf {
-        // Strip the leading separator so an absolute source nests under the
-        // quarantine root rather than escaping it.
-        let rel = src.strip_prefix("/").unwrap_or(src);
-        self.root.join("files").join(rel)
+        // Resolved first, so `../code/x` and a symlinked root map to where the
+        // file really is. A source that cannot be resolved is nested as given.
+        let resolved = fs::canonicalize(src).unwrap_or_else(|_| src.to_path_buf());
+        self.root.join("files").join(nested(&resolved))
     }
+}
+
+/// A path with everything removed that could carry it out of the directory
+/// it is joined to.
+///
+/// Joining an absolute path replaces what it is joined to. Stripping a leading
+/// `/` dealt with that on Unix and with nothing else: on Windows `C:\code\x`
+/// is absolute without one, so the destination came out as the source itself.
+/// A move onto itself does nothing and was reported as quarantined, and a
+/// strip wrote the cleaned file over the only copy of the original. A `..` did
+/// the same on any platform. So the path is rebuilt from its parts: a drive
+/// becomes a directory named after its letter, a root is dropped, and a `..`
+/// that survived resolving becomes a directory called `_parent_`.
+fn nested(path: &Path) -> PathBuf {
+    let mut out = PathBuf::new();
+    for part in path.components() {
+        match part {
+            Component::Prefix(prefix) => {
+                // `C:` and the verbatim `\\?\C:` both become `C`.
+                let drive: String = prefix
+                    .as_os_str()
+                    .to_string_lossy()
+                    .chars()
+                    .filter(char::is_ascii_alphanumeric)
+                    .collect();
+                if !drive.is_empty() {
+                    out.push(drive);
+                }
+            }
+            Component::RootDir | Component::CurDir => {}
+            Component::ParentDir => out.push("_parent_"),
+            Component::Normal(name) => out.push(name),
+        }
+    }
+    out
 }
 
 impl Quarantine<DryRun> {
@@ -247,6 +282,33 @@ impl Quarantine<Apply> {
     }
 }
 
+/// `YYYYMMDDTHHMMSSZ` for a number of seconds since the Unix epoch, in UTC.
+///
+/// Every run gets a quarantine directory of its own, named with this. A
+/// shared directory would let a second run overwrite the first one's manifest
+/// and, worse, write a second file over a first with the same path. Written
+/// out because the crate has no dependencies; the date arithmetic is the
+/// standard days-to-civil conversion.
+pub fn stamp(seconds: u64) -> String {
+    let days = seconds / 86_400;
+    let rest = seconds % 86_400;
+    let z = days + 719_468;
+    let era = z / 146_097;
+    let doe = z % 146_097;
+    let yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let day = doy - (153 * mp + 2) / 5 + 1;
+    let month = if mp < 10 { mp + 3 } else { mp - 9 };
+    let year = yoe + era * 400 + u64::from(month <= 2);
+    format!(
+        "{year:04}{month:02}{day:02}T{:02}{:02}{:02}Z",
+        rest / 3_600,
+        rest % 3_600 / 60,
+        rest % 60
+    )
+}
+
 const RESTORE_TXT: &str = "\
 Nothing here was deleted. To put a file back:
 
@@ -367,6 +429,80 @@ mod tests {
 
         fs::remove_dir_all(&tmp)?;
         Ok(())
+    }
+
+    #[test]
+    fn no_source_path_can_carry_a_file_out_of_the_quarantine() {
+        // Each of these used to land outside files/, and two of them landed
+        // on the source itself.
+        let inside = |p: &str| {
+            let n = nested(Path::new(p));
+            assert!(n.is_relative(), "{p} -> {}", n.display());
+            assert!(
+                n.components().all(|c| matches!(c, Component::Normal(_))),
+                "{p} -> {}",
+                n.display()
+            );
+            n
+        };
+        assert_eq!(inside("/home/x/bad.woff2"), Path::new("home/x/bad.woff2"));
+        assert_eq!(
+            inside("../../etc/passwd"),
+            Path::new("_parent_/_parent_/etc/passwd")
+        );
+        assert_eq!(inside("./code/x.js"), Path::new("code/x.js"));
+        assert_eq!(inside("code/../x.js"), Path::new("code/_parent_/x.js"));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn a_windows_drive_becomes_a_directory_not_a_new_root() {
+        assert_eq!(
+            nested(Path::new(r"C:\code\x.js")),
+            Path::new(r"C\code\x.js")
+        );
+        assert_eq!(
+            nested(Path::new(r"\\?\C:\code\x.js")),
+            Path::new(r"C\code\x.js")
+        );
+    }
+
+    #[test]
+    fn a_source_given_with_dot_dot_is_quarantined_under_the_root() -> io::Result<()> {
+        // `polinrider check ../code` hands the walk paths that begin with `..`.
+        let tmp = std::env::temp_dir().join(format!("prc-q-dotdot-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&tmp);
+        fs::create_dir_all(tmp.join("tree/sub"))?;
+        let src = tmp.join("tree/sub/../fake.woff2");
+        fs::write(&src, b"var x=1")?;
+
+        let mut q = Quarantine::<Apply>::create(tmp.join("q"))?;
+        let Outcome::Moved { to, .. } = q.take(&src, "font-masquerade")? else {
+            unreachable!()
+        };
+        assert!(
+            !tmp.join("tree/fake.woff2").exists(),
+            "moved out of the tree"
+        );
+        assert!(to.exists());
+        let files = fs::canonicalize(tmp.join("q/files"))?;
+        assert!(
+            fs::canonicalize(&to)?.starts_with(&files),
+            "landed at {}, outside {}",
+            to.display(),
+            files.display()
+        );
+        fs::remove_dir_all(&tmp)?;
+        Ok(())
+    }
+
+    #[test]
+    fn a_timestamp_is_the_right_day_including_a_leap_day() {
+        assert_eq!(stamp(0), "19700101T000000Z");
+        assert_eq!(stamp(951_782_400), "20000229T000000Z");
+        assert_eq!(stamp(1_000_000_000), "20010909T014640Z");
+        assert_eq!(stamp(1_709_251_199), "20240229T235959Z");
+        assert_eq!(stamp(1_709_251_200), "20240301T000000Z");
     }
 
     #[test]

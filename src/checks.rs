@@ -26,6 +26,14 @@ pub enum Sink<'a> {
 }
 
 impl Sink<'_> {
+    /// Where this run's quarantine is, or would be.
+    pub fn root(&self) -> &Path {
+        match self {
+            Sink::Dry(q) => q.root(),
+            Sink::Apply(q) => q.root(),
+        }
+    }
+
     /// Record a confirmed artifact. Returns the line to print under it.
     pub(crate) fn take(&mut self, path: &Path, reason: &str) -> String {
         match self {
@@ -537,7 +545,16 @@ pub fn extensions(dirs: &[PathBuf], ind: &Indicators, v: &mut Verdict, sink: &mu
             continue;
         }
         any_dir = true;
-        let w = crate::walk::walk(std::slice::from_ref(dir));
+        // Nothing is pruned here. An extension ships its dependencies inside
+        // its own node_modules, and that is as good a place for a payload as
+        // any. The project walk prunes node_modules because a project's
+        // dependencies are caught by name from its lockfile; an installed
+        // extension has no lockfile to catch them from.
+        let everything = crate::walk::Options {
+            prune: &[],
+            skip: None,
+        };
+        let w = crate::walk::walk_with(std::slice::from_ref(dir), &everything);
         let mut flagged: Vec<PathBuf> = Vec::new();
 
         for file in w.by_name(|n| {
@@ -585,6 +602,45 @@ pub fn extensions(dirs: &[PathBuf], ind: &Indicators, v: &mut Verdict, sink: &mu
 #[allow(clippy::expect_used, clippy::unwrap_used, clippy::indexing_slicing)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_payload_in_an_extension_s_own_node_modules_is_found() {
+        // The shell greps the whole extension directory. The first Rust
+        // version reused the project walk, which never enters node_modules,
+        // and so could not see a payload in an extension's bundled dependency.
+        let dir = std::env::temp_dir().join(format!("prc-ext-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        let exts = dir.join("extensions");
+        let dep = exts.join("publisher.helper-1.0.0/node_modules/dep");
+        fs::create_dir_all(&dep).expect("mkdir");
+        fs::write(dep.join("index.js"), "module.exports = 'MARKER-ALPHA'\n").expect("write");
+        fs::create_dir_all(exts.join("publisher.fine-2.0.0")).expect("mkdir");
+        fs::write(
+            exts.join("publisher.fine-2.0.0/extension.js"),
+            "exports.activate = () => {}\n",
+        )
+        .expect("write");
+
+        let ind = Indicators {
+            strong: vec!["MARKER-ALPHA".into()],
+            ..Indicators::default()
+        };
+        let q = Quarantine::<DryRun>::new(dir.join("q"));
+        let mut v = Verdict::new();
+        extensions(&[exts], &ind, &mut v, &mut Sink::Dry(&q));
+
+        let hits: Vec<&str> = v
+            .findings()
+            .filter(|f| f.level == crate::verdict::Level::Hit)
+            .map(|f| f.message.as_str())
+            .collect();
+        assert_eq!(hits.len(), 1, "{hits:?}");
+        assert!(
+            hits[0].ends_with("publisher.helper-1.0.0"),
+            "the extension, not the file: {hits:?}"
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
 
     #[test]
     fn build_config_names_match_the_shell_glob() {

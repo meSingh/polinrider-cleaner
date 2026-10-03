@@ -475,6 +475,7 @@ mod tests {
 
     struct World {
         dir: PathBuf,
+        quarantine: PathBuf,
     }
 
     impl World {
@@ -489,7 +490,10 @@ mod tests {
                 fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
                 fs::write(path, body).expect("write");
             }
-            Self { dir }
+            Self {
+                quarantine: dir.join("q"),
+                dir,
+            }
         }
 
         fn repo(&self) -> String {
@@ -503,7 +507,7 @@ mod tests {
                 ioc_dir: &self.dir.join("ioc"),
                 home: &self.dir.join("home"),
                 host,
-                quarantine: &self.dir.join("q"),
+                quarantine: &self.quarantine,
             };
             let mut io = Script::new(answers);
             let outcome = run(&session, &mut io);
@@ -562,6 +566,30 @@ mod tests {
         // What was found is still what the session reports.
         assert_eq!(outcome.exit, ExitCode::Confirmed);
         assert!(outcome.report.contains("second scan"));
+    }
+
+    #[test]
+    fn a_quarantine_inside_the_scanned_folder_is_not_found_again() {
+        // The session's second scan must not walk into the evidence the
+        // first one just set aside and call the folder still infected.
+        let mut w = World::new(
+            "inside",
+            &[
+                ("repo/postcss.config.mjs", &infected()),
+                ("repo/public/fake.woff2", "var a = 1\n"),
+            ],
+        );
+        w.quarantine = w.dir.join("repo/set-aside");
+        let (_, io) = w.run(&["2", &w.repo(), "", "yes", ""]);
+        assert!(w.quarantine.join("manifest.tsv").is_file());
+        assert!(io.said.contains("Checking again"));
+        assert!(
+            io.said
+                .contains("The files are clean against the current indicator set"),
+            "{}",
+            io.said
+        );
+        assert!(!io.said.contains("Some findings remain"));
     }
 
     #[test]

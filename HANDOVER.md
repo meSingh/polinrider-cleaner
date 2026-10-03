@@ -17,8 +17,9 @@ documentation site, a container sandbox, and a conformance corpus that both
 implementations answer to. **`v2` has never been pushed.** The Rust engine
 passes every conformance case, for the filesystem checks and now for the
 host-state checks too, and the local-repo cleaner and the guided flow are
-built. What remains is the GitHub tracks, which are still shell only, and a
-test on real machines. `v2` is pushed to GitHub as a backup from 2026-10-03 and is **not** to be
+built. On 2026-10-03 Mandeep chose to test the machine side on his three
+machines now, with [`TESTING.md`](./TESTING.md) as the guide, and to have the
+GitHub tracks ported to Rust after that test, not before it. `v2` is pushed to GitHub as a backup from 2026-10-03 and is **not** to be
 merged to `main` until Mandeep has tested it on his three machines.
 
 ---
@@ -51,7 +52,7 @@ reflog if they are ever wanted.
 Full detail in [`HACKING.md`](./HACKING.md). The three commands:
 
 ```bash
-./polinrider-sandbox --all     # lint, 9 self-tests, 62 conformance cases, clippy, 96 Rust tests
+./polinrider-sandbox --all     # lint, 9 self-tests, 62 conformance cases, clippy, 103 Rust tests
 ./polinrider-sandbox --demo    # build an infected sample and scan it
 ./ci/docs-serve.sh             # the documentation site, with live reload
 ```
@@ -185,15 +186,18 @@ to use 1.x.
 4. **Reword "only moves files" wherever 1.x documentation says it**, before
    2.0 is released. `clean` edits source, and ADR-0031 says the claim has to be
    corrected and not left to mislead. The README on `v2` is still the 1.x one.
-5. **The GitHub tracks in Rust.** Scanning an organization or an account,
-   the push ledger, restore and remote cleaning are about 1,500 lines of shell
-   in `lib/gh-*.sh` and were never on this list. They are the largest piece
-   left: until they are ported the 2.0 guided flow does less than the 1.x one,
-   and "delete the shell" cannot happen. Needs a decision from Mandeep on
-   whether 2.0 ships without them, with 1.x kept for GitHub, or waits.
-6. **A full test on Mandeep's three machines.** Only after that does 2.0.0
-   merge to `main` and get released. No backport of the ADR-0029 fixes to 1.x:
-   Mandeep decided 2.0 carries them.
+5. **The three-machine test, now.** [`TESTING.md`](./TESTING.md) is the guide:
+   build, a read-only check, a sample to clean, and what to send back. The
+   results come back in the project thread. Expect fixes from it: the macOS
+   live checks have never been run, and Windows has only been type-checked.
+6. **The GitHub tracks in Rust, after the test.** Scanning an organization or
+   an account, the push ledger, restore and remote cleaning are about 1,500
+   lines of shell in `lib/gh-*.sh`. Until they are ported the 2.0 guided flow
+   does less than the 1.x one, and "delete the shell" cannot happen. Decided
+   2026-10-03: not started until the machine side has been tested. Do not
+   start it early.
+7. **Release.** Only after 5 and 6, and only on Mandeep's word. 2.0.0 merges to
+   `main` then. No backport of the ADR-0029 fixes to 1.x: 2.0 carries them.
 
 `TASKS.md` in the repository root has the running list, including promotion work.
 **It is git-ignored**, so it exists only on this machine; it carries outreach
@@ -230,6 +234,22 @@ requests before.
 `MicrosoftSystem`, not `MicrosoftSystem64`. Comparing whole names never
 matches. Found by running a binary under the implant's name in the sandbox and
 reading what `ps` printed; nothing else would have shown it.
+
+**Joining an absolute path replaces what it is joined to.** The quarantine
+destination was `root/files` joined with the source path minus a leading `/`.
+On Windows `C:\code\x` has no leading `/`, so the destination was the source:
+a move onto itself that reported success, and a strip that wrote the cleaned
+file over the only copy of the original. A root given as `../code` escaped the
+same way on any platform. Found by reading, the day before the first run on a
+real machine, and it is the kind of thing the Linux sandbox cannot show.
+Destinations are rebuilt from path components now.
+
+**A quarantine under a scanned root was scanned.** The default used to be
+`./polinrider-quarantine` in the working directory. Run from inside a project,
+that put live malware in a git checkout, and the next scan walked it and
+reported the machine still infected by its own evidence. The default is now a
+new timestamped directory in the home directory, and the walk never enters a
+quarantine.
 
 **The sandbox image lacked `rustfmt` and `clippy`.** `rust-toolchain.toml` asks
 for both and the slim image carries neither, so rustup tried to download them

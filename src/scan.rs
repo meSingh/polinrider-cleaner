@@ -46,7 +46,7 @@ fn extension_dirs(home: &Path) -> Vec<PathBuf> {
 pub fn run(scope: &Scope, sink: &mut Sink) -> Verdict {
     let mut v = Verdict::new();
     v.section("Filesystem walk");
-    let w = walk::walk(scope.roots);
+    let w = walk::walk_with(scope.roots, &walk::Options::skipping(sink.root()));
     v.push(Finding::info(format!(
         "{} files listed. Not walked: {}",
         w.files.len(),

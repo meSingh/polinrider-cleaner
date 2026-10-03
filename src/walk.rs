@@ -44,20 +44,69 @@ pub struct Walk {
     pub unreadable: Vec<PathBuf>,
 }
 
-fn is_pruned(path: &Path) -> bool {
-    path.file_name()
-        .and_then(|n| n.to_str())
-        .is_some_and(|n| PRUNED.contains(&n))
+/// What a walk leaves out.
+#[derive(Debug, Clone)]
+pub struct Options<'a> {
+    /// Directory names never entered.
+    pub prune: &'a [&'a str],
+    /// One directory never entered, wherever it is: the quarantine. Without
+    /// this, a quarantine placed under a scanned root is walked by the next
+    /// scan, which finds every artifact it holds and reports the machine as
+    /// still infected by its own evidence.
+    pub skip: Option<PathBuf>,
+}
+
+impl Default for Options<'_> {
+    fn default() -> Self {
+        Self {
+            prune: PRUNED,
+            skip: None,
+        }
+    }
+}
+
+impl<'a> Options<'a> {
+    /// The usual prune list, and never enter `quarantine`. Resolved once here
+    /// so that a relative path and the absolute one the walk meets compare
+    /// equal. A quarantine that does not exist yet has nothing in it to skip.
+    pub fn skipping(quarantine: &Path) -> Self {
+        Self {
+            prune: PRUNED,
+            skip: fs::canonicalize(quarantine).ok(),
+        }
+    }
+
+    fn excludes(&self, dir: &Path) -> bool {
+        let Some(name) = dir.file_name() else {
+            return false;
+        };
+        if name.to_str().is_some_and(|n| {
+            // Any quarantine, this run's or an earlier one's: 1.x and 2.0
+            // both name them this way.
+            self.prune.contains(&n) || n.starts_with("polinrider-quarantine")
+        }) {
+            return true;
+        }
+        // The name is compared first because it is free; resolving every
+        // directory on the disk to compare paths is not.
+        self.skip.as_deref().is_some_and(|skip| {
+            skip.file_name() == Some(name) && fs::canonicalize(dir).is_ok_and(|d| d == skip)
+        })
+    }
 }
 
 /// Walk every root once. Never follows symlinks: a link into `/` would
 /// otherwise turn a project scan into a whole-disk scan, and a link pointing
 /// outside the tree is not part of what the caller asked to scan.
 pub fn walk(roots: &[PathBuf]) -> Walk {
+    walk_with(roots, &Options::default())
+}
+
+pub fn walk_with(roots: &[PathBuf], options: &Options) -> Walk {
     let mut out = Walk::default();
     for root in roots {
         match fs::symlink_metadata(root) {
-            Ok(m) if m.is_dir() => descend(root, &mut out),
+            Ok(m) if m.is_dir() => descend(root, &mut out, options),
             Ok(_) => out.files.push(root.clone()),
             Err(_) => out.unreadable.push(root.clone()),
         }
@@ -67,7 +116,7 @@ pub fn walk(roots: &[PathBuf]) -> Walk {
     out
 }
 
-fn descend(dir: &Path, out: &mut Walk) {
+fn descend(dir: &Path, out: &mut Walk, options: &Options) {
     let entries = match fs::read_dir(dir) {
         Ok(e) => e,
         // An unreadable subdirectory is noted, not fatal: a scan of a backup
@@ -93,10 +142,10 @@ fn descend(dir: &Path, out: &mut Walk) {
                 out.git_dirs.push(path);
                 continue;
             }
-            if is_pruned(&path) {
+            if options.excludes(&path) {
                 continue;
             }
-            descend(&path, out);
+            descend(&path, out, options);
         } else if meta.is_file() {
             out.files.push(path);
         }
@@ -195,6 +244,32 @@ mod tests {
             "{names:?}"
         );
         assert!(!names.iter().any(|n| n.contains(".cache")), "{names:?}");
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn a_quarantine_under_a_scanned_root_is_never_walked() {
+        // The second scan of a guided session used to find the artifacts the
+        // first one had just quarantined, and report them as still present.
+        let root = tree(
+            "quarantine",
+            &[
+                "proj/a.js",
+                "proj/evidence-here/files/proj/fake.woff2",
+                "polinrider-quarantine-20260101T000000Z/files/proj/fake.woff2",
+            ],
+        );
+        let w = walk_with(
+            std::slice::from_ref(&root),
+            &Options::skipping(&root.join("proj/evidence-here")),
+        );
+        let names: Vec<String> = w.files.iter().map(|p| p.display().to_string()).collect();
+        assert_eq!(names.len(), 1, "{names:?}");
+        assert!(names[0].ends_with("proj/a.js"));
+
+        // Without being told, the oddly named one is walked like anything else.
+        let w = walk(std::slice::from_ref(&root));
+        assert_eq!(w.files.len(), 2);
         let _ = fs::remove_dir_all(&root);
     }
 

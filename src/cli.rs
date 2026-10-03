@@ -33,7 +33,10 @@ pub const ACCEPTED: &[(&str, &str)] = &[
         "--apply",
         "move confirmed artifacts into quarantine. Never deletes",
     ),
-    ("--quarantine DIR", "where quarantined files go"),
+    (
+        "--quarantine DIR",
+        "where quarantined files go. Default: a new directory in ~",
+    ),
     ("--report FILE", "write the full report here"),
     (
         "--ioc DIR",
@@ -330,7 +333,24 @@ pub fn parse<I: Iterator<Item = String>>(argv: I, default_ioc: PathBuf) -> Resul
         return Err(Rejection::BadIoc { path: ioc });
     }
 
-    let quarantine = quarantine.unwrap_or_else(|| PathBuf::from("polinrider-quarantine"));
+    let home = home
+        .or_else(|| std::env::var_os("HOME").map(PathBuf::from))
+        .or_else(|| std::env::var_os("USERPROFILE").map(PathBuf::from))
+        .unwrap_or_else(|| PathBuf::from("/"));
+
+    // A directory of its own for every run, in the home directory. Not the
+    // working directory: run from inside a project, that put live malware in
+    // a git checkout, one `git add -A` away from being published, and under a
+    // root the next scan would walk.
+    let quarantine = quarantine.unwrap_or_else(|| {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.as_secs());
+        home.join(format!(
+            "polinrider-quarantine-{}",
+            crate::quarantine::stamp(now)
+        ))
+    });
     if apply {
         // Check now, not after a scan has already found something.
         let probe = quarantine.parent().filter(|p| !p.as_os_str().is_empty());
@@ -365,10 +385,6 @@ pub fn parse<I: Iterator<Item = String>>(argv: I, default_ioc: PathBuf) -> Resul
             });
         }
     }
-
-    let home = home
-        .or_else(|| std::env::var_os("HOME").map(PathBuf::from))
-        .unwrap_or_else(|| PathBuf::from("/"));
 
     Ok(Args {
         command,
@@ -571,6 +587,24 @@ mod tests {
             .expect_err("must refuse");
             assert!(matches!(e, Rejection::NotForCommand { .. }), "{extra}: {e}");
         }
+    }
+
+    #[test]
+    fn the_default_quarantine_is_a_new_directory_in_the_home_directory() {
+        // Never the working directory, which may be the project being cleaned.
+        let ioc = ioc_fixture("defaultq");
+        let a = parse(
+            args(&["check", "--fs-only", "--home", "/somewhere/home", "/tmp"]).into_iter(),
+            ioc,
+        )
+        .expect("valid");
+        let name = a.quarantine.file_name().unwrap().to_str().unwrap();
+        assert_eq!(
+            a.quarantine.parent().unwrap(),
+            std::path::Path::new("/somewhere/home")
+        );
+        assert!(name.starts_with("polinrider-quarantine-20"), "{name}");
+        assert!(name.ends_with('Z'), "{name}");
     }
 
     #[test]
