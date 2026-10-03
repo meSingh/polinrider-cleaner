@@ -353,12 +353,17 @@ fn scheduled_tasks(host: &dyn Host, ind: &Indicators, v: &mut Verdict) {
             )));
         }
     }
-    if flagged == 0 {
-        v.push(Finding::ok(format!(
-            "{} scheduled tasks outside Windows' own, none containing an indicator",
-            tasks.len() - own
-        )));
-    }
+    // Always said, so that a list that came back empty is visible as one.
+    let read = format!(
+        "{} scheduled tasks read, {} outside Windows' own",
+        tasks.len(),
+        tasks.len() - own
+    );
+    v.push(if flagged == 0 {
+        Finding::ok(format!("{read}, none containing an indicator"))
+    } else {
+        Finding::info(read)
+    });
 }
 
 /// Windows ships hundreds of tasks under `\Microsoft\`, many of which run

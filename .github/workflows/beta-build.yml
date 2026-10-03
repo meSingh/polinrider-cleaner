@@ -93,6 +93,14 @@ jobs:
           if grep -qE 'could not (read the process table|read the registry Run keys|list the scheduled tasks)' check.txt; then
             echo "a probe of this machine did not work"; exit 1
           fi
+          if [[ "${RUNNER_OS}" == "Windows" ]]; then
+            # Answered is not enough: a script that printed nothing would
+            # read as a machine with nothing on it. A Windows machine always
+            # has scheduled tasks, so none read means the probe is broken.
+            grep -E 'Run key|scheduled tasks' check.txt || true
+            grep -qE '[1-9][0-9]* scheduled tasks read' check.txt \
+              || { echo "no scheduled task was read from a Windows machine"; exit 1; }
+          fi
 
           rc=0
           "$bin" clean --apply --quarantine "${RUNNER_TEMP}/q" --report clean.txt "$DEMO_DIR/shop" >/dev/null || rc=$?
