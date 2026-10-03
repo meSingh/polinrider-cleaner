@@ -45,12 +45,52 @@ pub struct Push {
     pub size: u64,
 }
 
+/// An organization the signed-in account can choose.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Organization {
+    pub login: String,
+    pub repositories: Option<usize>,
+}
+
+/// `login<TAB>count` per line. The count may be missing.
+fn parse_organizations(text: &str) -> Vec<Organization> {
+    text.lines()
+        .filter_map(|line| {
+            let mut fields = line.split('\t');
+            let login = fields.next()?.trim();
+            (!login.is_empty()).then(|| Organization {
+                login: login.to_string(),
+                repositories: fields.next().and_then(|n| n.trim().parse().ok()),
+            })
+        })
+        .collect()
+}
+
+/// How far a long job has come. The same shape for every job, so that one
+/// progress screen serves all of them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Progress<'a> {
+    /// Things finished, and things in all.
+    pub done: usize,
+    pub total: usize,
+    /// What is being worked on now.
+    pub now: &'a str,
+    /// Branches and tags checked so far.
+    pub refs: usize,
+    /// Repositories found carrying the payload so far.
+    pub affected: usize,
+}
+
 /// Everything asked of GitHub.
 pub trait Forge {
     /// One line for the report: where the answers came from.
     fn describe(&self) -> String;
     /// The account whose access is being used.
     fn signed_in_as(&self) -> Probe<String>;
+    /// The organizations the signed-in account belongs to, each with how
+    /// many repositories it has when that is known. Offered as a list, so
+    /// nobody has to type an organization's name from memory.
+    fn organizations(&self) -> Probe<Vec<Organization>>;
     /// `owner/name` for every repository of the owner.
     fn repositories(&self, owner: &str, kind: OwnerKind) -> Probe<Vec<String>>;
     /// Mirror-clone `owner/name` into `dest`, which does not exist yet.
@@ -162,6 +202,26 @@ impl Forge for GitHub {
         }
     }
 
+    fn organizations(&self) -> Probe<Vec<Organization>> {
+        match text(
+            "gh",
+            &[
+                "api",
+                "graphql",
+                "--paginate",
+                "-f",
+                "query=query($endCursor: String) { viewer { organizations(first: 100, after: $endCursor) { nodes { login repositories { totalCount } } pageInfo { hasNextPage endCursor } } } }",
+                "--jq",
+                r#".data.viewer.organizations.nodes[] | [.login, (.repositories.totalCount|tostring)] | @tsv"#,
+            ],
+            None,
+        ) {
+            Probe::Read(out) => Probe::Read(parse_organizations(&out)),
+            Probe::NoTool(why) => Probe::NoTool(why),
+            Probe::Failed(why) => Probe::Failed(why),
+        }
+    }
+
     fn repositories(&self, owner: &str, _kind: OwnerKind) -> Probe<Vec<String>> {
         // gh does the JSON. This crate has no parser for it and does not need
         // one: --jq turns the answer into lines.
@@ -240,7 +300,8 @@ impl Forge for GitHub {
 ///
 /// | In the directory | Holds |
 /// |---|---|
-/// | `whoami` | the login that is signed in |
+/// | `whoami` | the login that is signed in. `whoami.absent` means gh is not installed |
+/// | `orgs` | `login<TAB>repository count`, one organization per line |
 /// | `repos/<owner>` | `owner/name`, one per line |
 /// | `git/<owner>/<name>.git` | a bare repository to mirror from |
 /// | `pushes/<owner>/<name>.tsv` | ref, before, head, actor, time, size, tab-separated |
@@ -274,9 +335,23 @@ impl Forge for Supplied {
     }
 
     fn signed_in_as(&self) -> Probe<String> {
+        if self.dir.join("whoami.absent").exists() {
+            return Probe::NoTool("gh is not installed".into());
+        }
         match self.read(&self.dir.join("whoami"), "whoami") {
+            Probe::Read(login) if login.trim().is_empty() => {
+                Probe::Failed("gh is not signed in. Run: gh auth login".into())
+            }
             Probe::Read(login) => Probe::Read(login.trim().to_string()),
             other => other,
+        }
+    }
+
+    fn organizations(&self) -> Probe<Vec<Organization>> {
+        match self.read(&self.dir.join("orgs"), "the organization list") {
+            Probe::Read(out) => Probe::Read(parse_organizations(&out)),
+            Probe::NoTool(why) => Probe::NoTool(why),
+            Probe::Failed(why) => Probe::Failed(why),
         }
     }
 
@@ -626,11 +701,12 @@ pub struct Check<'a> {
 }
 
 /// Mirror every repository of the owner and check every branch and tag.
-/// `progress` is told the name of each repository as it is started.
+/// `progress` is told how far it has come before each repository is started
+/// and once more when the last one is done.
 pub fn check(
     forge: &dyn Forge,
     request: &Check,
-    progress: &mut dyn FnMut(&str),
+    progress: &mut dyn FnMut(Progress),
 ) -> Result<Findings, String> {
     let repositories = match forge.repositories(request.owner, request.kind) {
         Probe::Read(list) => list,
@@ -649,8 +725,14 @@ pub fn check(
         ..Findings::default()
     };
 
-    for repository in &repositories {
-        progress(repository);
+    for (done, repository) in repositories.iter().enumerate() {
+        progress(Progress {
+            done,
+            total: repositories.len(),
+            now: repository,
+            refs: findings.refs,
+            affected: findings.affected().len(),
+        });
         let dest = request
             .evidence
             .join(format!("{}.git", repository.replace('/', "__")));
@@ -698,6 +780,13 @@ pub fn check(
             }
         }
     }
+    progress(Progress {
+        done: repositories.len(),
+        total: repositories.len(),
+        now: "",
+        refs: findings.refs,
+        affected: findings.affected().len(),
+    });
     Ok(findings)
 }
 
@@ -1061,6 +1150,66 @@ mod tests {
         assert_eq!(found.not_checked[0].0, "acme/ghost");
         assert_eq!(found.no_push_record, vec!["acme/shop"]);
         assert!(found.pushers().is_empty());
+    }
+
+    #[test]
+    fn progress_counts_up_to_the_total_and_says_what_it_is_on() {
+        let w = World::new("progress");
+        w.repo("blog", &[("main", &[("a.md", b"hello\n" as &[u8])])]);
+        w.repo(
+            "shop",
+            &[("main", &[("vite.config.js", &infected_config())])],
+        );
+        w.repo("site", &[("main", &[("b.js", b"ok\n" as &[u8])])]);
+        let forge = Supplied::new(w.dir.join("forge"));
+        let evidence = prepare_evidence(&w.dir.join("evidence")).expect("evidence");
+        let ind = ind();
+        let mut seen: Vec<(usize, usize, String, usize)> = Vec::new();
+        check(
+            &forge,
+            &Check {
+                owner: "acme",
+                kind: OwnerKind::Organization,
+                evidence: &evidence,
+                ind: &ind,
+            },
+            &mut |p| seen.push((p.done, p.total, p.now.to_string(), p.affected)),
+        )
+        .expect("check runs");
+        assert_eq!(
+            seen,
+            vec![
+                (0, 3, "acme/blog".to_string(), 0),
+                (1, 3, "acme/shop".to_string(), 0),
+                (2, 3, "acme/site".to_string(), 1),
+                (3, 3, String::new(), 1),
+            ]
+        );
+    }
+
+    #[test]
+    fn organizations_are_listed_and_a_missing_gh_is_not_a_signed_out_one() {
+        let w = World::new("orgs");
+        fs::write(
+            w.dir.join("forge/orgs"),
+            "acme\t42\nacme-labs\t7\nno-count\n",
+        )
+        .expect("write");
+        let forge = Supplied::new(w.dir.join("forge"));
+        assert_eq!(forge.signed_in_as(), Probe::Read("tester".to_string()));
+        let Probe::Read(orgs) = forge.organizations() else {
+            unreachable!("the list was supplied")
+        };
+        assert_eq!(orgs.len(), 3);
+        assert_eq!(orgs[0].login, "acme");
+        assert_eq!(orgs[0].repositories, Some(42));
+        assert_eq!(orgs[2].repositories, None);
+
+        // The sign-in screen says different things for these two.
+        fs::write(w.dir.join("forge/whoami"), "\n").expect("write");
+        assert!(matches!(forge.signed_in_as(), Probe::Failed(_)));
+        fs::write(w.dir.join("forge/whoami.absent"), "").expect("write");
+        assert!(matches!(forge.signed_in_as(), Probe::NoTool(_)));
     }
 
     #[test]

@@ -54,7 +54,7 @@ reflog if they are ever wanted.
 Full detail in [`HACKING.md`](./HACKING.md). The three commands:
 
 ```bash
-./polinrider-sandbox --all     # lint, 9 self-tests, 66 conformance cases, clippy, 138 Rust tests
+./polinrider-sandbox --all     # lint, 9 self-tests, 66 conformance cases, clippy, 140 Rust tests
 ./polinrider-sandbox --demo    # build an infected sample and scan it with 1.x
 ./polinrider-sandbox --beta    # 2.0 installed in the container, on the PATH, with a sample
 ./ci/docs-serve.sh             # the documentation site, with live reload
@@ -225,6 +225,17 @@ until the port in item 6 lands.
    confirmed branches. It is not reachable from the command line or the
    guided flow yet. Next: the screens, once the mock is agreed; conformance
    cases that build repositories; then `remove`.
+
+   **What Mandeep asked of the GitHub screens (2026-10-03), drawn in a second
+   mock and waiting for his yes:** check that `gh` is installed and signed in
+   first, and walk the operator through it if not; list their organizations
+   to choose from; a progress screen while it works, the same one for every
+   long job including machine checks; an "all at once" choice behind a warning
+   and a second confirmation; `restore` only ever from GitHub's push record,
+   never "the last commit", because this malware forges commit dates and
+   scrambles history; `erase` from every commit as the alternative; and a new
+   `archive` choice that marks an unused repository as infected and makes it
+   read-only. The boundary already lists organizations and reports progress.
 
    **Two more differences from 1.x, for Mandeep's list** (with the eight in
    ADR-0029): a `tasks.json` that runs on folder open but carries no indicator
