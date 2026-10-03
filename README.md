@@ -903,19 +903,16 @@ weeks that found nothing. Each review keeps its own dated entry, and entries are
 never edited or removed:
 [`docs/indicator-reviews/`](docs/indicator-reviews/).
 
-**Last reviewed: [14 September 2026](docs/indicator-reviews/2026-09-14.md).**
+**Last reviewed: [21 September 2026](docs/indicator-reviews/2026-09-21.md).**
 
-The published analysis that earlier reviews could not reach became readable, and
-the review added 19 indicators out of that backlog: the ChainVeil and ViteVenom
-npm clusters, which OpenSourceMalware attributes to this campaign on wallets and
-XOR keys `ioc/` already carried, plus the third-generation NullReceiver marker,
-sending wallet and C2 address. Nothing was published in the seven days to that
-date; this is older work catching up, not new activity.
+Eight indicators added: the `A8-` campaign marker as it is written into a poisoned
+config file, the five public Ethereum RPC endpoints the loader walks to read its
+blockchain dead drop, and the two C2 addresses that drop published between 30
+August and 15 September, read off the chain rather than taken on trust.
 
-Two things the review found and did **not** change. Three known-malicious package
-names are deliberately unmatched, because each is a strict substring of a real,
-maintained package and this set is matched as fixed strings — carrying them would
-report healthy projects as infected. And the campaign now persists by overwriting
-npm's own `cli.js`, which defeats the cleanup order below: every remediation step
-can succeed and the next `npm install` reinfects the machine. Detecting that
-needs a new check, so it is written up for a decision rather than implemented.
+Most of what the review read, it turned away. CloudSEK's GHAPPIER report
+describes a separate loader family that merely shares victims with this campaign,
+and adopting its indicators would make this scanner report the wrong thing; the
+current `A9-` marker exists only after deobfuscation, so a fixed string for it
+could never match. Both are written up in the entry so the next review does not
+re-derive them.

@@ -30,3 +30,12 @@ copilot-ai.whisdev.org
 # Ethereum transfer. The trailing bytes of the same address spell "helloipbot!!".
 # Source: OpenSourceMalware, August 2026.
 166.88.134.62
+
+# --- NullReceiver C2, the two configurations published to the dead-drop wallet
+# between 2026-08-30 and 2026-09-15, decoded from the recipient bytes by reading
+# the Ethereum ledger directly. 166.88.73.46 sits in the same /16 as the
+# 166.88.134.62 already listed above. The wallet rotates roughly every 1,000
+# blocks, so expect these to be stale and read the chain for the current one.
+# Source: CloudSEK, "GHAPPIER", September 2026.
+193.247.144.38
+166.88.73.46

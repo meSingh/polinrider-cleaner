@@ -30,6 +30,17 @@ node-env-resolve
 # finding for these.
 #   @common-stack/generate-plugin  9.0.2-alpha.21, 9.0.2-alpha.22
 #
+#   Maintainer accounts compromised on GitHub, whose release automation then
+#   published the payload to npm. As of the source's publication the
+#   fetch-page-assets versions below were still live and unflagged on the
+#   registry, and 1.2.14 was the latest dist-tag: pin to <= 1.2.8 or remove.
+#   Sources: OpenSourceMalware, "NPM Isn't Prepared For North Korean
+#   PolinRider Attack", August 2026; JFrog Security Research, June 2026.
+#     fetch-page-assets            1.2.9 through 1.2.14
+#     html-to-gutenberg            4.2.11
+#     @lambda-platform/lambda-vue  3.3.24 (pulled from npm; the GitHub
+#                                  repository that builds it is still infected)
+#
 #   Packagist packages compromised through their backing GitHub repositories in
 #   the July 2026 expansion. Packagist resolves from the git repo, so the tagged
 #   commit IS the published artifact — check the commit, never the name. Listed
