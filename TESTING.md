@@ -153,13 +153,14 @@ changes nothing there. That is the point.
 ## 6. What this cannot test, and where that is tested instead
 
 The container is Linux. **The macOS and Windows live checks, which read the
-real machine's processes, sockets and login items, cannot run in it and are
-never run on your machine.** They run on GitHub's own disposable machines: the
-"Beta binaries" workflow builds the beta for Linux, macOS and Windows on every
-push to `v2`, and on each one runs a check of that machine, cleans the sample
-and verifies the original was kept. On macOS it also runs the unit tests and
-the conformance corpus. The `[review]` lines a real macOS machine produces are
-in that run's log.
+real machine's processes, sockets, login items, registry Run keys and
+scheduled tasks, cannot run in it and are never run on your machine.** They
+run on GitHub's own disposable machines: the "Beta binaries" workflow builds
+the beta for Linux, macOS and Windows on every push to `v2`, and on each one
+runs a full check of that machine, cleans the sample and verifies the original
+was kept. It fails if a probe of the machine does not answer. On macOS it also
+runs the unit tests and the conformance corpus. The `[review]` lines a real
+macOS or Windows machine produces are in that run's log.
 
 The same workflow publishes each build as a download, for use inside any other
 disposable container:

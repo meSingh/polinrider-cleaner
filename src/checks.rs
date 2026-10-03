@@ -422,6 +422,25 @@ pub fn git_hooks(
 /// `~` in `implant-paths.txt` expands against the home directory given here,
 /// not the process environment, so a scan of a mounted backup can point at the
 /// backup's home rather than the running user's.
+/// `%LOCALAPPDATA%\X` as a path under a home directory. `None` for a
+/// variable that does not live under one.
+fn windows_path(home: &Path, line: &str) -> Option<PathBuf> {
+    let rest = line.strip_prefix('%')?;
+    let (variable, tail) = rest.split_once('%')?;
+    let base = match variable.to_ascii_uppercase().as_str() {
+        "USERPROFILE" => home.to_path_buf(),
+        "LOCALAPPDATA" => home.join("AppData").join("Local"),
+        "APPDATA" => home.join("AppData").join("Roaming"),
+        "TEMP" | "TMP" => home.join("AppData").join("Local").join("Temp"),
+        _ => return None,
+    };
+    Some(
+        tail.split(['\\', '/'])
+            .filter(|part| !part.is_empty())
+            .fold(base, |path, part| path.join(part)),
+    )
+}
+
 /// What to run before quarantining a file that is how the implant starts
 /// itself. Read from where the file is: a launch agent, a systemd user unit
 /// or an autostart entry.
@@ -484,13 +503,21 @@ pub fn implants(
             .map(str::trim)
             .filter(|l| !l.is_empty() && !l.starts_with('#'))
         {
-            // A Windows path; check-windows.ps1 owns those.
-            if line.starts_with('%') {
-                continue;
-            }
-            let path = match line.strip_prefix("~/") {
-                Some(rest) => home.join(rest),
-                None => Path::new(line).to_path_buf(),
+            let path = if line.starts_with('%') {
+                // A Windows path. Read against the home directory given, so
+                // that a Windows profile on a backup drive is checked too.
+                match windows_path(home, line) {
+                    Some(path) => path,
+                    None => continue,
+                }
+            } else {
+                match line.strip_prefix("~/") {
+                    Some(rest) => home.join(rest),
+                    // A path from the root of a Unix system means nothing on
+                    // Windows, where it would be read against the current drive.
+                    None if cfg!(windows) => continue,
+                    None => Path::new(line).to_path_buf(),
+                }
             };
             if !path.exists() {
                 continue;
@@ -775,6 +802,7 @@ pub fn credentials(walk: &Walk, home: Option<&Path>, v: &mut Verdict) {
                 ".docker/config.json",
                 ".kube/config",
                 ".netrc",
+                "_netrc",
             ]
             .iter()
             .map(|p| home.join(p))
@@ -971,6 +999,26 @@ mod tests {
             vec!["stop it first: launchctl bootout gui/$(id -u) '/Users/x/Library/LaunchAgents/com.helper.plist' 2>/dev/null || launchctl unload '/Users/x/Library/LaunchAgents/com.helper.plist'"]
         );
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_windows_implant_path_is_read_under_the_home_directory_given() {
+        let home = Path::new("/mnt/backup/Users/x");
+        assert_eq!(
+            windows_path(home, "%LOCALAPPDATA%\\Helper\\helper.exe"),
+            Some(home.join("AppData/Local/Helper/helper.exe"))
+        );
+        assert_eq!(
+            windows_path(home, "%AppData%\\Helper"),
+            Some(home.join("AppData/Roaming/Helper"))
+        );
+        assert_eq!(
+            windows_path(home, "%USERPROFILE%\\.x"),
+            Some(home.join(".x"))
+        );
+        // Not under a home directory: not guessed at.
+        assert_eq!(windows_path(home, "%PROGRAMDATA%\\Helper"), None);
+        assert_eq!(windows_path(home, "%broken"), None);
     }
 
     #[test]

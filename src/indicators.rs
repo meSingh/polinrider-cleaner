@@ -162,6 +162,45 @@ impl Indicators {
             .collect()
     }
 
+    /// Windows: is this the image name of the implant, or does this command
+    /// run it? Compared without regard to case and with or without `.exe`,
+    /// as Windows itself compares them.
+    pub fn is_implant_image(&self, name: &str) -> bool {
+        let bare = |s: &str| {
+            let lower = s.to_ascii_lowercase();
+            lower
+                .strip_suffix(".exe")
+                .map_or(lower.clone(), str::to_owned)
+        };
+        let base = bare(name.rsplit(['/', '\\']).next().unwrap_or(name));
+        !base.is_empty() && self.implant_names.iter().any(|i| bare(i) == base)
+    }
+
+    /// Windows: the implant named anywhere in a command line or a registry
+    /// value. Whole names only: a longer name that merely begins with the
+    /// implant's is somebody else's program.
+    pub fn names_implant(&self, command: &str) -> bool {
+        let lower = command.to_ascii_lowercase();
+        self.implant_names.iter().any(|implant| {
+            let implant = implant.to_ascii_lowercase();
+            let implant = implant.strip_suffix(".exe").unwrap_or(&implant);
+            !implant.is_empty()
+                && lower.match_indices(implant).any(|(at, found)| {
+                    let before = lower.get(..at).and_then(|b| b.chars().next_back());
+                    let after = lower
+                        .get(at + found.len()..)
+                        .unwrap_or_default()
+                        .trim_start_matches(".exe")
+                        .chars()
+                        .next();
+                    let word = |c: Option<char>| {
+                        c.is_some_and(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+                    };
+                    !word(before) && !word(after)
+                })
+        })
+    }
+
     /// Is this the name of the implant process?
     ///
     /// The name only, compared whole, never a command line: anything that

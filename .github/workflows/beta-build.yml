@@ -73,10 +73,11 @@ jobs:
 
       - name: Find, strip and quarantine on this machine
         # The runner is the disposable machine. The sample is the one the
-        # sandbox demo uses. On Windows the live checks are not built, so the
-        # check is of the files only; everywhere else it is a full check of
-        # the runner itself, and its [review] lines are printed because they
-        # are the first look at what a real machine of that kind produces.
+        # sandbox demo uses. It is a full check of the runner itself on every
+        # platform, Windows included, and its [review] lines are printed
+        # because they are the first look at what a real machine of that kind
+        # produces. A "could not" line here is a probe that does not work on
+        # a real machine, which no test against supplied state can show.
         run: |
           bin="$PWD/dist/polinrider-beta-${{ matrix.name }}/${{ matrix.exe }}"
           strong="$(sed -e '/^#/d' -e '/^$/d' ioc/strong.txt | head -1)"
@@ -84,13 +85,14 @@ jobs:
           ./ci/demo.sh --tree-only
           cd "${RUNNER_TEMP}"
 
-          fs_only=""
-          [[ "${RUNNER_OS}" == "Windows" ]] && fs_only="--fs-only"
           rc=0
-          # shellcheck disable=SC2086  # empty or one flag, on purpose
-          "$bin" check $fs_only --report check.txt "$DEMO_DIR" >/dev/null || rc=$?
+          "$bin" check --report check.txt "$DEMO_DIR" >/dev/null || rc=$?
           grep -E '\[(HIT|review)\]|could not' check.txt || true
           [[ $rc -eq 2 ]] || { echo "an infected sample must exit 2, got $rc"; exit 1; }
+          # The machine's own state has to have been read, not skipped.
+          if grep -qE 'could not (read the process table|read the registry Run keys|list the scheduled tasks)' check.txt; then
+            echo "a probe of this machine did not work"; exit 1
+          fi
 
           rc=0
           "$bin" clean --apply --quarantine "${RUNNER_TEMP}/q" --report clean.txt "$DEMO_DIR/shop" >/dev/null || rc=$?

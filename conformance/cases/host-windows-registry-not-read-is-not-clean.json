@@ -1,0 +1,33 @@
+{
+  "why": "If PowerShell cannot be run, the Run keys and the scheduled tasks were not read. That is not the same as there being none, and the run must not exit 0 on the strength of two questions nobody answered.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "home": {},
+  "host": {
+    "platform": "windows\n",
+    "processes": "",
+    "connections": "",
+    "git-config": "",
+    "root/.keep": ""
+  },
+  "expect": {
+    "exit": 1,
+    "findings": [
+      {
+        "level": "review",
+        "match": "could not read the registry Run keys"
+      },
+      {
+        "level": "review",
+        "match": "could not list the scheduled tasks"
+      }
+    ],
+    "must_not_report": [
+      "[HIT]"
+    ]
+  }
+}

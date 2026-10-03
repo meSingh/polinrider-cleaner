@@ -73,6 +73,9 @@ pub enum Kind {
     StartupFile,
     /// The npm registry setting.
     Registry,
+    /// Windows: a registry Run entry or a scheduled task. Not a file, so it
+    /// cannot be moved; a command removes it.
+    Autostart,
     /// A process running now.
     Process,
     /// A connection open now.
@@ -106,7 +109,10 @@ impl Kind {
 
     /// Does only a person editing a file fix it?
     pub const fn by_hand(self) -> bool {
-        matches!(self, Kind::Crontab | Kind::StartupFile | Kind::Registry)
+        matches!(
+            self,
+            Kind::Crontab | Kind::StartupFile | Kind::Registry | Kind::Autostart
+        )
     }
 
     /// Is it happening now?
@@ -166,6 +172,10 @@ impl Kind {
                 "npm setting pointing at the campaign",
                 "npm settings pointing at the campaign",
             ),
+            Kind::Autostart => (
+                "entry that starts the payload when Windows starts",
+                "entries that start the payload when Windows starts",
+            ),
             Kind::Process => (
                 "program from the payload running right now",
                 "programs from the payload running right now",
@@ -190,6 +200,7 @@ impl Kind {
             Kind::Crontab => "A scheduled job",
             Kind::StartupFile => "A shell startup file",
             Kind::Registry => "An npm setting",
+            Kind::Autostart => "An entry that starts with Windows",
             Kind::Process => "A running program",
             Kind::Connection => "A live connection",
             Kind::Config { .. } | Kind::FakeFont | Kind::TasksJson | Kind::Package => {

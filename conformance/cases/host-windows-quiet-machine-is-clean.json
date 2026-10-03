@@ -1,0 +1,36 @@
+{
+  "why": "A Windows machine with nothing in its Run keys, no scheduled task of its own and nothing running is clean, and every section says it looked. Before this, the Rust engine refused Windows outright unless told to read files only, and the machine check was a separate PowerShell script nothing could test.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "home": {},
+  "host": {
+    "platform": "windows\n",
+    "processes": "",
+    "connections": "",
+    "git-config": "",
+    "root/.keep": "",
+    "run-keys": "",
+    "scheduled-tasks": ""
+  },
+  "expect": {
+    "exit": 0,
+    "findings": [
+      {
+        "level": "ok",
+        "match": "0 Run key entries, none containing an indicator"
+      },
+      {
+        "level": "ok",
+        "match": "no PowerShell profile in the home directory"
+      }
+    ],
+    "must_not_report": [
+      "[HIT]",
+      "[review]"
+    ]
+  }
+}

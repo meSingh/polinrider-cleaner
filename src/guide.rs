@@ -1188,6 +1188,15 @@ fn what_now(
             &["Run crontab -e and remove the line that calls the campaign."],
         ));
     }
+    if kinds_now.contains(&Kind::Autostart) {
+        todos.push(todo(
+            "Remove what starts the payload with Windows",
+            &[
+                "The command for each entry is under it in the report.",
+                "Run it in PowerShell.",
+            ],
+        ));
+    }
     if kinds_now.contains(&Kind::Registry) {
         let mut t = todo(
             "Fix your npm registry setting",

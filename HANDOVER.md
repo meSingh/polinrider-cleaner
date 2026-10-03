@@ -54,7 +54,7 @@ reflog if they are ever wanted.
 Full detail in [`HACKING.md`](./HACKING.md). The three commands:
 
 ```bash
-./polinrider-sandbox --all     # lint, 9 self-tests, 84 conformance cases, clippy, 170 Rust tests
+./polinrider-sandbox --all     # lint, 9 self-tests, 89 conformance cases, clippy, 178 Rust tests
 ./polinrider-sandbox --demo    # build an infected sample and scan it with 1.x
 ./polinrider-sandbox --beta    # 2.0 installed in the container, on the PATH, with a sample
 ./ci/docs-serve.sh             # the documentation site, with live reload
@@ -100,7 +100,7 @@ argument for running unknown code on a machine you believe is compromised.
 
 ## What is done
 
-**The corpus** — `conformance/`, 13 filesystem cases, 22 host cases, 7 clean
+**The corpus** — `conformance/`, 13 filesystem cases, 27 host cases (5 of them a Windows machine), 7 clean
 cases, 24 guide cases (15 of them GitHub, 10 of those the fixes), 16 refusal cases and 2 closed-pipe checks. A GitHub case must name any repository it expects to change; every other one must be exactly as it was afterwards. The filesystem cases are green
 against both implementations. The host, clean and guide cases run against the
 Rust engine only and print `skip` under the
@@ -191,19 +191,23 @@ the whole home folder; `folder` suggests the code folders it finds.
    where people are running it today: the Linux process name, the npm registry
    false positive and the `| shasum` false positive. Whether to fix those in
    the shell or let 2.0.0 carry them is Mandeep's call.
-2. **What the host checks still do not have: Windows.** The three checks
-   that were shell only are ported as of 2026-10-03: the credential
-   inventory (`checks::credentials`, counted on screen, named in the report,
-   nothing read), the "stop it first" advice under an implant that starts
-   itself, and the review of an extension that names campaign
-   infrastructure, with the count of recently changed extensions. `LiveHost`
-   on macOS runs on the CI runner on every push and has never run on a
-   developer's Mac. **Windows is still refused without `--fs-only`**:
-   `machine-cleanup/check-windows.ps1` has no Rust version, and it is the one
-   thing left between here and deleting the shell machine check.
-3. **Delete the shell machine check** once 2 lands and the corpus is green on
-   all three platforms. `--state` and `--resume` are not coming:
-   [ADR-0030](./docs/adr/0030-2-0-does-not-checkpoint-a-scan.md).
+2. **The host checks are all in Rust, on three platforms.** The three that
+   were shell only were ported on 2026-10-03: the credential inventory, the
+   "stop it first" advice under an implant that starts itself, and the review
+   of an extension that names campaign infrastructure. Windows was ported the
+   same day (ADR-0038): Run keys, the Startup folders, scheduled tasks,
+   PowerShell profiles, processes and connections, through the same `Host`
+   boundary, with a Windows machine handed to the corpus as data. `LiveHost`
+   on macOS and on Windows runs on the CI runner on every push, and on no
+   developer's machine yet. **What has not been seen is a real Windows 11**:
+   a non-English locale, a restricted execution policy, years of startup
+   items.
+3. **Delete the shell machine check.** Nothing in it is missing from Rust
+   any more. Asked of Mandeep on 2026-10-03 and not yet answered: delete it
+   now, or after a run on a real Windows machine. It is also the other half
+   of the corpus, so deleting it means the corpus has one implementation, and
+   the eight differences in item 1 stop being differences. That is why it
+   waits for his word and not only for the code.
 4. **Reword "only moves files" wherever 1.x documentation says it**, before
    2.0 is released. `clean` edits source, and ADR-0031 says the claim has to be
    corrected and not left to mislead. The README on `v2` is still the 1.x one.
