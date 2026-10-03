@@ -18,7 +18,7 @@
     "exit": 0,
     "tree_may_change": false,
     "must_print": [
-      "Type computer, folder, organization or account",
+      "Type computer, folder, organization, account or everything",
       "NOTHING FOUND"
     ],
     "must_not_print": [

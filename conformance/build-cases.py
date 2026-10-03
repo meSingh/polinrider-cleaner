@@ -992,7 +992,7 @@ case(
     expect={
         "exit": 0,
         "tree_may_change": False,
-        "must_print": ["Type computer, folder, organization or account", "NOTHING FOUND"],
+        "must_print": ["Type computer, folder, organization, account or everything", "NOTHING FOUND"],
         "must_not_print": ["Type 1 or 2"],
     },
 )
@@ -1506,6 +1506,66 @@ case(
             "2 repositories on GitHub carry the payload.",
         ],
         "must_not_print": ["Rewriting the history", "done,"],
+    },
+)
+
+# ---------------------------------------------------------------------------
+# The whole flow: one progress screen for every long job, and everything.
+# ---------------------------------------------------------------------------
+
+case(
+    "guide-a-folder-check-says-how-far-it-has-come",
+    why="A check that prints nothing while it works reads as a hang, and "
+        "somebody who thinks the tool has hung stops it. Checking a folder "
+        "shows the same progress screen as checking GitHub: how many stages "
+        "are done, what it is on, how many files it has listed and what it "
+        "has found. Into a pipe it is printed once, finished, and not as a "
+        "frame per file.",
+    command="guide",
+    roots=["code"],
+    files={"code/proj/postcss.config.mjs": INFECTED_CONFIG,
+           "code/proj/src/index.js": "export const a = 1\n"},
+    stdin=["folder", "{{TREE}}/code", "", "no", ""],
+    expect={
+        "exit": 2,
+        "tree_may_change": False,
+        "must_print": [
+            "Checking the folder",
+            "This only reads. Nothing is changed.",
+            "8 of 8",
+            "now        finished",
+            "so far     2 files listed",
+            "1 finding confirmed",
+        ],
+        "must_not_print": ["0 of 8", "listing files"],
+    },
+)
+
+host_case(
+    "guide-everything-is-this-computer-and-then-github",
+    why="The choice for somebody who thinks they were hit: this computer "
+        "first, then GitHub, in one session. The computer here is clean and "
+        "the organization is not. The exit code is 2: a clean result for one "
+        "half must never be written over a payload found in the other, in "
+        "either order. A word that is not on the screen asks again, and done "
+        "ends it with GitHub left exactly as it was.",
+    command="guide",
+    stdin=["everything", "", "github", "organization", "acme", "none", "done"],
+    host=host_state(),
+    forge_files=SIGNED_IN,
+    forge={"acme": {"shop": ATTACKED_SHOP}},
+    expect={
+        "exit": 2,
+        "tree_may_change": False,
+        "must_print": [
+            "everything     This computer first, then GitHub.",
+            "Checking this computer",
+            "11 of 11",
+            "This computer is done. GitHub is next.",
+            "Type organization, account or done. q quits.",
+            "Checked 1 repository and 1 branch of acme.",
+            "More on GitHub?",
+        ],
     },
 )
 

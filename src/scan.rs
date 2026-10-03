@@ -4,7 +4,7 @@
 //! scan, read its verdict and run another without starting a second process,
 //! and so that a test can do the same.
 
-use crate::checks::{self, OnInfectedConfig, Sink};
+use crate::checks::{self, ImplantScope, OnInfectedConfig, Sink};
 use crate::host::Host;
 use crate::host_checks;
 use crate::host_checks::sh_quote;
@@ -42,12 +42,90 @@ fn extension_dirs(home: &Path) -> Vec<PathBuf> {
     .collect()
 }
 
+/// How far a scan has come. The same shape for every scan, so that one
+/// progress screen serves all of them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Step<'a> {
+    /// Stages finished, and stages in all.
+    pub done: usize,
+    pub total: usize,
+    /// What is being worked on now. Empty when the scan is finished.
+    pub now: &'a str,
+    /// Files listed so far.
+    pub files: usize,
+    /// Confirmed findings so far.
+    pub found: usize,
+}
+
+/// Counts the stages of a scan and tells whoever is watching.
+struct Watch<'a> {
+    done: usize,
+    total: usize,
+    files: usize,
+    found: usize,
+    tell: &'a mut dyn FnMut(Step),
+}
+
+impl Watch<'_> {
+    fn say(&mut self, now: &str) {
+        (self.tell)(Step {
+            done: self.done,
+            total: self.total,
+            now,
+            files: self.files,
+            found: self.found,
+        });
+    }
+
+    /// The next stage is starting.
+    fn stage(&mut self, now: &str, v: &Verdict) {
+        self.found = v.hits();
+        self.say(now);
+        self.done += 1;
+    }
+
+    /// Within the implant stage: one large file out of how many.
+    fn hashing(&mut self, n: usize, of: usize) {
+        // `stage` has already counted this stage as started.
+        self.done -= 1;
+        self.say(&format!(
+            "large files against known hashes, {} of {of}",
+            n + 1
+        ));
+        self.done += 1;
+    }
+}
+
 /// Walk the roots once and run the checks. Whether anything is moved or
 /// stripped is decided by the sink, which is a type: see `quarantine`.
 pub fn run(scope: &Scope, sink: &mut Sink) -> Verdict {
+    run_watched(scope, sink, &mut |_| {})
+}
+
+/// The same scan, telling `tell` how far it has come: while files are being
+/// listed, before each check, and once more when it is finished.
+pub fn run_watched(scope: &Scope, sink: &mut Sink, tell: &mut dyn FnMut(Step)) -> Verdict {
+    let mut watch = Watch {
+        done: 0,
+        // The walk, then the checks.
+        total: if scope.home.is_some() { 11 } else { 8 },
+        files: 0,
+        found: 0,
+        tell,
+    };
     let mut v = Verdict::new();
     v.section("Filesystem walk");
-    let w = walk::walk_with(scope.roots, &walk::Options::skipping(sink.root()));
+    watch.say("listing files");
+    let w = walk::walk_watched(
+        scope.roots,
+        &walk::Options::skipping(sink.root()),
+        &mut |files| {
+            watch.files = files;
+            watch.say("listing files");
+        },
+    );
+    watch.files = w.files.len();
+    watch.done = 1;
     v.set_files(w.files.len());
     v.push(Finding::info(format!(
         "{} files listed. Not walked: {}",
@@ -64,14 +142,24 @@ pub fn run(scope: &Scope, sink: &mut Sink) -> Verdict {
     }
 
     match scope.home {
-        Some(home) => machine(&w, scope, home, &mut v, sink),
-        None => directories(&w, scope, &mut v, sink),
+        Some(home) => machine(&w, scope, home, &mut v, sink, &mut watch),
+        None => directories(&w, scope, &mut v, sink, &mut watch),
     }
+    watch.found = v.hits();
+    watch.done = watch.total;
+    watch.say("");
     v
 }
 
 /// A machine, or a disk with a home directory on it.
-fn machine(w: &walk::Walk, scope: &Scope, home: &Path, v: &mut Verdict, sink: &mut Sink) {
+fn machine(
+    w: &walk::Walk,
+    scope: &Scope,
+    home: &Path,
+    v: &mut Verdict,
+    sink: &mut Sink,
+    watch: &mut Watch,
+) {
     let (ind, host) = (scope.ind, scope.host);
     // One line per host check that did not run, so a section that was skipped
     // can never be mistaken for one that found nothing.
@@ -79,26 +167,45 @@ fn machine(w: &walk::Walk, scope: &Scope, home: &Path, v: &mut Verdict, sink: &m
         v.section(format!("{name}: skipped, --fs-only"));
     };
 
-    checks::implants(w, ind, Some(home), scope.ioc_dir, host, v, sink);
+    watch.stage("implant files and processes", v);
+    checks::implants(
+        w,
+        ind,
+        &ImplantScope {
+            home: Some(home),
+            ioc_dir: scope.ioc_dir,
+            host,
+        },
+        v,
+        sink,
+        &mut |n, of| watch.hashing(n, of),
+    );
 
+    watch.stage("editor extensions", v);
     if host.is_some() {
         checks::extensions(&extension_dirs(home), ind, v, sink);
     } else {
         skipped(v, "IDE extensions");
     }
 
+    watch.stage("editor tasks", v);
     checks::tasks_json(w, ind, v, sink);
+    watch.stage("build configs", v);
     checks::build_configs(w, ind, scope.on_infected_config, v, sink);
+    watch.stage("fonts", v);
     checks::fonts(w, v, sink);
 
+    watch.stage("the scripts the payload spreads with", v);
     if host.is_some() {
         checks::propagation(w, v, sink);
     } else {
         skipped(v, "Propagation artifact");
     }
 
+    watch.stage("packages", v);
     checks::packages(w, ind, v);
 
+    watch.stage("login items and startup files", v);
     match host {
         Some(host) => {
             host_checks::persistence(host, home, ind, v, sink);
@@ -110,8 +217,10 @@ fn machine(w: &walk::Walk, scope: &Scope, home: &Path, v: &mut Verdict, sink: &m
         }
     }
 
+    watch.stage("git hooks", v);
     checks::git_hooks(w, ind, host, v, sink);
 
+    watch.stage("npm settings, running programs and connections", v);
     match host {
         Some(host) => {
             host_checks::npm_config(home, ind, v);
@@ -128,14 +237,32 @@ fn machine(w: &walk::Walk, scope: &Scope, home: &Path, v: &mut Verdict, sink: &m
 
 /// The given directories and nothing else: every check that reads them, and
 /// none that read a home directory or a host.
-fn directories(w: &walk::Walk, scope: &Scope, v: &mut Verdict, sink: &mut Sink) {
+fn directories(w: &walk::Walk, scope: &Scope, v: &mut Verdict, sink: &mut Sink, watch: &mut Watch) {
     let ind = scope.ind;
-    checks::implants(w, ind, None, scope.ioc_dir, None, v, sink);
+    watch.stage("implant files", v);
+    checks::implants(
+        w,
+        ind,
+        &ImplantScope {
+            home: None,
+            ioc_dir: scope.ioc_dir,
+            host: None,
+        },
+        v,
+        sink,
+        &mut |n, of| watch.hashing(n, of),
+    );
+    watch.stage("editor tasks", v);
     checks::tasks_json(w, ind, v, sink);
+    watch.stage("build configs", v);
     checks::build_configs(w, ind, scope.on_infected_config, v, sink);
+    watch.stage("fonts", v);
     checks::fonts(w, v, sink);
+    watch.stage("the scripts the payload spreads with", v);
     checks::propagation(w, v, sink);
+    watch.stage("packages", v);
     checks::packages(w, ind, v);
+    watch.stage("git hooks", v);
     checks::git_hooks(w, ind, None, v, sink);
 }
 

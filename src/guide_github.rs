@@ -17,8 +17,8 @@
 //! which this hands over to once the summary is on the screen.
 
 use crate::guide::{
-    bad, blank, count, dim, good, header, line, numbered, p, read, strong, thousands, tilde, todo,
-    warn, word, Console, Session, Stop, Todo,
+    bad, blank, count, dim, good, header, line, meter, numbered, p, read, strong, thousands, tilde,
+    todo, warn, word, Console, Meter, Session, Stop, Todo,
 };
 use crate::guide_fix::{Context, Fix, Outcome, What};
 use crate::host::Probe;
@@ -353,49 +353,22 @@ fn choose_owner(
 /// far and how long it has run. Always the same number of lines, so a
 /// terminal can redraw it in place.
 fn progress_lines(progress: &Progress, seconds: u64, unicode: bool) -> Vec<Vec<Span>> {
-    const WIDTH: usize = 36;
-    // Nothing to do is a full bar, not a division by zero.
-    let filled = (progress.done * WIDTH)
-        .checked_div(progress.total)
-        .map_or(WIDTH, |cells| cells.min(WIDTH));
-    let (full, empty) = if unicode { ("█", "░") } else { ("#", ".") };
-    let running = match seconds / 60 {
-        0 => "less than a minute".to_string(),
-        m => count(m as usize, "minute", "minutes"),
-    };
-    vec![
-        vec![
-            p("      "),
-            word(full.repeat(filled)),
-            dim(empty.repeat(WIDTH - filled)),
-            p(format!("   {} of {}", progress.done, progress.total)),
-        ],
-        vec![],
-        vec![p(format!(
-            "      now        {}",
-            if progress.done == progress.total {
-                "finished".to_string()
-            } else {
-                clean(progress.now)
-            }
-        ))],
-        vec![p(format!(
-            "      so far     {} checked",
-            count(progress.refs, "branch", "branches")
-        ))],
-        vec![
-            p("                 "),
-            if progress.affected == 0 {
-                dim("nothing found yet")
-            } else {
-                bad(format!(
+    meter(
+        &Meter {
+            done: progress.done,
+            total: progress.total,
+            now: progress.now,
+            so_far: format!("{} checked", count(progress.refs, "branch", "branches")),
+            found: (progress.affected > 0).then(|| {
+                format!(
                     "{} with the payload",
                     count(progress.affected, "repository", "repositories")
-                ))
-            },
-        ],
-        vec![p(format!("      running    {running}"))],
-    ]
+                )
+            }),
+        },
+        seconds,
+        unicode,
+    )
 }
 
 fn summary(
@@ -899,6 +872,14 @@ mod tests {
     }
 
     fn session_run(w: &World, answers: &[&str]) -> (Outcome, Script) {
+        session_on(w, None, answers)
+    }
+
+    fn session_on(
+        w: &World,
+        host: Option<&dyn crate::host::Host>,
+        answers: &[&str],
+    ) -> (Outcome, Script) {
         let ind = Indicators {
             strong: vec![STRONG.into()],
             ..Indicators::default()
@@ -910,7 +891,7 @@ mod tests {
             ind: &ind,
             ioc_dir: &w.dir.join("ioc"),
             home: &home,
-            host: None,
+            host,
             quarantine: &w.dir.join("q"),
             report: &home.join("polinrider-report.txt"),
             system: "Linux",
@@ -1400,6 +1381,79 @@ mod tests {
         assert!(io
             .said
             .contains("Fix acme/shop, which still carries the payload"));
+    }
+
+    #[test]
+    fn everything_checks_this_computer_and_then_github_and_keeps_the_worse_result() {
+        use crate::host::{Platform, Snapshot};
+        let w = attacked("guide-everything");
+        fs::write(w.dir.join("forge/repos/tester"), "").expect("write");
+        let host = Snapshot::quiet(Platform::Linux, w.dir.join("root"));
+        let (outcome, io) = session_on(
+            &w,
+            Some(&host),
+            &[
+                "everything",
+                "",
+                // The computer is clean. Then GitHub: a wrong word, the
+                // organization, then the account, then done.
+                "github",
+                "organization",
+                "acme",
+                "none",
+                "account",
+                "",
+                "done",
+            ],
+        );
+        assert!(io
+            .said
+            .contains("      everything     This computer first, then GitHub."));
+        assert!(
+            io.said.contains("STEP 3 OF 4   Checking this computer"),
+            "{}",
+            io.said
+        );
+        assert!(io.said.contains("11 of 11"));
+        assert!(io.said.contains("  NEXT   GitHub"));
+        assert!(io.said.contains("  This computer is done. GitHub is next."));
+        assert!(io
+            .said
+            .contains("  Type organization, account or done. q quits."));
+        assert!(io
+            .said
+            .contains("Checked 2 repositories and 2 branches of acme."));
+        assert!(io.said.contains("  NEXT   More on GitHub?"));
+        assert!(io
+            .said
+            .contains("Checked 0 repositories and 0 branches of tester."));
+        // Clean computer, clean account, infected organization: the session
+        // found a payload, and a later clean check does not take that back.
+        assert_eq!(outcome.exit, ExitCode::Confirmed);
+        assert!(outcome.report.contains("first check, read-only"));
+        assert!(outcome.report.contains("GitHub check of acme"));
+        assert!(outcome.report.contains("GitHub check of tester"));
+    }
+
+    #[test]
+    fn everything_can_stop_after_the_computer_and_is_not_offered_without_one() {
+        use crate::host::{Platform, Snapshot};
+        let w = attacked("guide-everything-done");
+        let host = Snapshot::quiet(Platform::Linux, w.dir.join("root"));
+        let (outcome, io) = session_on(&w, Some(&host), &["everything", "", "done"]);
+        assert!(io
+            .said
+            .contains("      done           Stop here. GitHub is not checked."));
+        assert!(!io.said.contains("Signed in to GitHub"));
+        assert_eq!(outcome.exit, ExitCode::Clean);
+
+        // A build that cannot read this computer does not offer to.
+        let (outcome, io) = session_run(&w, &["everything", "q"]);
+        assert!(!io.said.contains("      everything"));
+        assert!(io
+            .said
+            .contains("That is not available here. Type one of the others."));
+        assert_eq!(outcome.exit, ExitCode::CouldNotRun);
     }
 
     #[test]

@@ -422,16 +422,27 @@ pub fn git_hooks(
 /// `~` in `implant-paths.txt` expands against the home directory given here,
 /// not the process environment, so a scan of a mounted backup can point at the
 /// backup's home rather than the running user's.
+/// Where the implant check looks beyond the files of the walk.
+pub struct ImplantScope<'a> {
+    /// The home directory its install paths are under, when there is one.
+    pub home: Option<&'a Path>,
+    pub ioc_dir: &'a Path,
+    /// The machine, for its process table.
+    pub host: Option<&'a dyn Host>,
+}
+
 pub fn implants(
     walk: &Walk,
     ind: &Indicators,
-    home: Option<&Path>,
-    ioc_dir: &Path,
-    host: Option<&dyn Host>,
+    scope: &ImplantScope,
     v: &mut Verdict,
     sink: &mut Sink,
+    // Told (done, of) before each large file is hashed: this is the one
+    // check that can take minutes, and it should not take them in silence.
+    hashing: &mut dyn FnMut(usize, usize),
 ) {
     v.section("Second-stage implant");
+    let (home, ioc_dir, host) = (scope.home, scope.ioc_dir, scope.host);
     let mut found = false;
 
     // 1. the paths the implant installs itself to. They are under the home
@@ -472,14 +483,16 @@ pub fn implants(
     //    does not read every file on the disk.
     let known = load_hashes(ioc_dir);
     if !known.is_empty() {
-        for path in &walk.files {
-            let Ok(meta) = fs::metadata(path) else {
-                continue;
-            };
-            let len = meta.len();
-            if !(10 * 1024 * 1024..=300 * 1024 * 1024).contains(&len) {
-                continue;
-            }
+        let large: Vec<&PathBuf> = walk
+            .files
+            .iter()
+            .filter(|path| {
+                fs::metadata(path)
+                    .is_ok_and(|m| (10 * 1024 * 1024..=300 * 1024 * 1024).contains(&m.len()))
+            })
+            .collect();
+        for (n, path) in large.iter().copied().enumerate() {
+            hashing(n, large.len());
             let Ok(digest) = crate::sha256::file(path) else {
                 continue;
             };

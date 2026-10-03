@@ -54,7 +54,7 @@ reflog if they are ever wanted.
 Full detail in [`HACKING.md`](./HACKING.md). The three commands:
 
 ```bash
-./polinrider-sandbox --all     # lint, 9 self-tests, 80 conformance cases, clippy, 163 Rust tests
+./polinrider-sandbox --all     # lint, 9 self-tests, 82 conformance cases, clippy, 167 Rust tests
 ./polinrider-sandbox --demo    # build an infected sample and scan it with 1.x
 ./polinrider-sandbox --beta    # 2.0 installed in the container, on the PATH, with a sample
 ./ci/docs-serve.sh             # the documentation site, with live reload
@@ -101,7 +101,7 @@ argument for running unknown code on a machine you believe is compromised.
 ## What is done
 
 **The corpus** — `conformance/`, 13 filesystem cases, 20 host cases, 7 clean
-cases, 22 guide cases (14 of them GitHub, 10 of those the fixes), 16 refusal cases and 2 closed-pipe checks. A GitHub case must name any repository it expects to change; every other one must be exactly as it was afterwards. The filesystem cases are green
+cases, 24 guide cases (15 of them GitHub, 10 of those the fixes), 16 refusal cases and 2 closed-pipe checks. A GitHub case must name any repository it expects to change; every other one must be exactly as it was afterwards. The filesystem cases are green
 against both implementations. The host, clean and guide cases run against the
 Rust engine only and print `skip` under the
 shell, which cannot be handed a machine that does not exist. Running in CI and
@@ -241,9 +241,14 @@ the whole home folder; `folder` suggests the code folders it finds.
    every screen and every fix against it with no network. `./ci/beta.sh`
    puts it back.
 
-   **Not built:** `everything` (this computer, then GitHub); the progress
-   screen for machine checks; the push-event sweep that narrows the list
-   before copying every repository.
+   `everything` on the first screen does this computer and then offers
+   GitHub, an organization or an account, one after the other until `done`.
+   The exit code is the more serious of the results. Computer and folder
+   checks show the same progress screen as GitHub: stages done, what it is
+   on, files listed, findings so far.
+
+   **Not built:** the push-event sweep that narrows the list before copying
+   every repository.
 
    **Nothing here has touched real GitHub.** Every test pushes to local bare
    repositories. The first real run is

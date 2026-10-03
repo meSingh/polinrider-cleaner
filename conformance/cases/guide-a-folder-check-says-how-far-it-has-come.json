@@ -1,0 +1,34 @@
+{
+  "why": "A check that prints nothing while it works reads as a hang, and somebody who thinks the tool has hung stops it. Checking a folder shows the same progress screen as checking GitHub: how many stages are done, what it is on, how many files it has listed and what it has found. Into a pipe it is printed once, finished, and not as a frame per file.",
+  "command": "guide",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/postcss.config.mjs": "export default { plugins: {} }\n{{PAD}}{{STRONG}}\n",
+    "code/proj/src/index.js": "export const a = 1\n"
+  },
+  "stdin": [
+    "folder",
+    "{{TREE}}/code",
+    "",
+    "no",
+    ""
+  ],
+  "expect": {
+    "exit": 2,
+    "tree_may_change": false,
+    "must_print": [
+      "Checking the folder",
+      "This only reads. Nothing is changed.",
+      "8 of 8",
+      "now        finished",
+      "so far     2 files listed",
+      "1 finding confirmed"
+    ],
+    "must_not_print": [
+      "0 of 8",
+      "listing files"
+    ]
+  }
+}

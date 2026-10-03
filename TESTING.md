@@ -38,8 +38,10 @@ polinrider
 That is the guided flow: four screens, one question on each, answered in
 words. Type `computer`, which in here is the container, and press Enter to
 check its whole home folder. (`folder` offers the code folders it finds, such
-as `~/code`.) It checks, then shows a short summary of what it found and
-asks one question.
+as `~/code`.) It checks, showing how far it has come, then shows a short
+summary of what it found and asks one question. `everything` does the
+computer first and then offers GitHub, which in here needs
+`--forge-state ~/demo-github` as below.
 
 The sample it finds:
 
@@ -191,8 +193,8 @@ extensions, as opposed to a clean runner.
 
 - **Large files are hashed.** Every file between 10 MB and 300 MB under the
   directories given is read once to compare against known implant hashes. On a
-  directory full of media or disk images that takes a while, and there is no
-  progress line yet.
+  directory full of media or disk images that takes a while. The progress
+  screen counts them as it goes.
 - **Real GitHub is untried.** The GitHub screens and fixes have only ever
   run against the pretend organization. Do not point this build at a real
   organization yet.

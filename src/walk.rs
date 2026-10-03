@@ -103,10 +103,20 @@ pub fn walk(roots: &[PathBuf]) -> Walk {
 }
 
 pub fn walk_with(roots: &[PathBuf], options: &Options) -> Walk {
+    walk_watched(roots, options, &mut |_| {})
+}
+
+/// How many files are listed between two calls to a walk's watcher.
+const TICK: usize = 1024;
+
+/// The same walk, telling `watch` how many files it has listed so far, every
+/// thousand or so. A home folder is hundreds of thousands of files, and a
+/// walk that says nothing until it is done reads as a hang.
+pub fn walk_watched(roots: &[PathBuf], options: &Options, watch: &mut dyn FnMut(usize)) -> Walk {
     let mut out = Walk::default();
     for root in roots {
         match fs::symlink_metadata(root) {
-            Ok(m) if m.is_dir() => descend(root, &mut out, options),
+            Ok(m) if m.is_dir() => descend(root, &mut out, options, watch),
             Ok(_) => out.files.push(root.clone()),
             Err(_) => out.unreadable.push(root.clone()),
         }
@@ -116,7 +126,7 @@ pub fn walk_with(roots: &[PathBuf], options: &Options) -> Walk {
     out
 }
 
-fn descend(dir: &Path, out: &mut Walk, options: &Options) {
+fn descend(dir: &Path, out: &mut Walk, options: &Options, watch: &mut dyn FnMut(usize)) {
     let entries = match fs::read_dir(dir) {
         Ok(e) => e,
         // An unreadable subdirectory is noted, not fatal: a scan of a backup
@@ -145,9 +155,12 @@ fn descend(dir: &Path, out: &mut Walk, options: &Options) {
             if options.excludes(&path) {
                 continue;
             }
-            descend(&path, out, options);
+            descend(&path, out, options, watch);
         } else if meta.is_file() {
             out.files.push(path);
+            if out.files.len().is_multiple_of(TICK) {
+                watch(out.files.len());
+            }
         }
     }
 }

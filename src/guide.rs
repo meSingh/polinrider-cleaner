@@ -35,6 +35,7 @@ use crate::scan::{self, Scope, Target};
 use crate::ui::{text_of, Span, Tone};
 use crate::verdict::{clean, ExitCode, Finding, Kind, Level, Verdict};
 use std::path::{Path, PathBuf};
+use std::time::Instant;
 
 /// Where the session talks and listens.
 pub trait Console {
@@ -97,6 +98,8 @@ enum What {
     Folders,
     Organization,
     Account,
+    /// This computer first, then GitHub.
+    Everything,
 }
 
 // --- saying things -----------------------------------------------------------
@@ -200,6 +203,64 @@ pub(crate) fn count(n: usize, one: &str, many: &str) -> String {
     format!("{n} {}", if n == 1 { one } else { many })
 }
 
+/// How far a long job has come, in the words the progress screen uses.
+pub(crate) struct Meter<'a> {
+    pub(crate) done: usize,
+    pub(crate) total: usize,
+    /// What is being worked on now.
+    pub(crate) now: &'a str,
+    /// What has been got through so far: "96 branches checked".
+    pub(crate) so_far: String,
+    /// What has been found so far, when anything has.
+    pub(crate) found: Option<String>,
+}
+
+/// The standard progress screen, the same for every long job: a bar, what it
+/// is on, what it has found so far and how long it has run. Always the same
+/// number of lines, so a terminal can redraw it in place.
+pub(crate) fn meter(m: &Meter, seconds: u64, unicode: bool) -> Vec<Vec<Span>> {
+    const WIDTH: usize = 36;
+    // Nothing to do is a full bar, not a division by zero.
+    let filled = (m.done * WIDTH)
+        .checked_div(m.total)
+        .map_or(WIDTH, |cells| cells.min(WIDTH));
+    let (full, empty) = if unicode { ("█", "░") } else { ("#", ".") };
+    let running = match seconds / 60 {
+        0 => "less than a minute".to_string(),
+        minutes => count(
+            usize::try_from(minutes).unwrap_or(usize::MAX),
+            "minute",
+            "minutes",
+        ),
+    };
+    vec![
+        vec![
+            p("      "),
+            word(full.repeat(filled)),
+            dim(empty.repeat(WIDTH - filled)),
+            p(format!("   {} of {}", m.done, m.total)),
+        ],
+        vec![],
+        vec![p(format!(
+            "      now        {}",
+            if m.done == m.total {
+                "finished".to_string()
+            } else {
+                clean(m.now)
+            }
+        ))],
+        vec![p(format!("      so far     {}", m.so_far))],
+        vec![
+            p("                 "),
+            match &m.found {
+                None => dim("nothing found yet"),
+                Some(found) => bad(found.clone()),
+            },
+        ],
+        vec![p(format!("      running    {running}"))],
+    ]
+}
+
 // --- the session -------------------------------------------------------------
 
 /// Run a session. Never panics on bad input and never writes without a yes.
@@ -250,6 +311,7 @@ fn steps(
         let what = choose_what(session, io)?;
         let outcome = match what {
             What::Computer | What::Folders => local(session, what, io, report, worst),
+            What::Everything => everything(session, io, report, worst),
             What::Organization => {
                 crate::guide_github::run(session, OwnerKind::Organization, io, report, worst)
             }
@@ -260,6 +322,96 @@ fn steps(
         match outcome {
             Err(Stop::Back) => continue,
             other => return other,
+        }
+    }
+}
+
+/// The more serious of two results. Confirmed outranks everything: a check
+/// that could not finish does not take back a payload that was found.
+fn worse(a: Option<ExitCode>, b: Option<ExitCode>) -> Option<ExitCode> {
+    let rank = |code: ExitCode| match code {
+        ExitCode::Clean => 0,
+        ExitCode::Review => 1,
+        ExitCode::CouldNotRun => 2,
+        ExitCode::Confirmed => 3,
+    };
+    match (a, b) {
+        (Some(a), Some(b)) => Some(if rank(b) > rank(a) { b } else { a }),
+        (a, b) => a.or(b),
+    }
+}
+
+/// This computer first, then GitHub: an organization, an account, or one
+/// after the other, until the operator says done.
+fn everything(
+    session: &Session,
+    io: &mut dyn Console,
+    report: &mut String,
+    worst: &mut Option<ExitCode>,
+) -> Result<(), Stop> {
+    local(session, What::Computer, io, report, worst)?;
+    let mut checked = false;
+    loop {
+        let rule = if session.unicode { "─" } else { "-" }.repeat(56);
+        blank(io, 2);
+        io.say(&[dim(format!("  {rule}"))]);
+        io.say(&[
+            strong("  NEXT"),
+            p(if checked {
+                "   More on GitHub?"
+            } else {
+                "   GitHub"
+            }),
+        ]);
+        io.say(&[dim(format!("  {rule}"))]);
+        blank(io, 1);
+        io.say(&[dim("  Nothing is changed in this step.")]);
+        blank(io, 2);
+        if !checked {
+            line(io, "  This computer is done. GitHub is next.");
+            blank(io, 1);
+        }
+        io.say(&[
+            word("      organization"),
+            p("   Every repository and branch of a"),
+        ]);
+        line(io, "                     GitHub organization.");
+        blank(io, 1);
+        io.say(&[
+            word("      account"),
+            p("        Every repository you own on GitHub."),
+        ]);
+        blank(io, 1);
+        io.say(&[
+            word("      done"),
+            p(if checked {
+                "           Nothing more to check."
+            } else {
+                "           Stop here. GitHub is not checked."
+            }),
+        ]);
+        blank(io, 2);
+        line(io, "  Type organization, account or done.");
+        let kind = loop {
+            match read(io)?.as_str() {
+                "organization" | "organisation" | "org" | "o" => break OwnerKind::Organization,
+                "account" | "a" => break OwnerKind::Account,
+                "done" | "d" => return Ok(()),
+                _ => {
+                    blank(io, 1);
+                    io.say(&[warn("  Type organization, account or done. q quits.")]);
+                }
+            }
+        };
+        // Its result is weighed against the computer's, never written over it.
+        let mut theirs: Option<ExitCode> = None;
+        let outcome = crate::guide_github::run(session, kind, io, report, &mut theirs);
+        *worst = worse(*worst, theirs);
+        match outcome {
+            // back, from a GitHub screen, returns to this question.
+            Err(Stop::Back) => {}
+            Err(stop) => return Err(stop),
+            Ok(()) => checked = true,
         }
     }
 }
@@ -290,14 +442,45 @@ fn local(
     };
 
     // --- 3: check, and say what was found -----------------------------------
+    header(
+        io,
+        session,
+        3,
+        if what == What::Computer {
+            "Checking this computer"
+        } else if roots.len() == 1 {
+            "Checking the folder"
+        } else {
+            "Checking the folders"
+        },
+        false,
+    );
+    io.say(&[good("  This only reads. Nothing is changed.")]);
+    if what == What::Computer {
+        blank(io, 1);
+        io.say(&[dim("  A whole home folder can take a few minutes.")]);
+    }
     blank(io, 2);
-    io.say(&[dim(if what == What::Computer {
-        "  Checking now. This only reads. A whole home folder can take a few minutes."
-    } else {
-        "  Checking now. This only reads."
-    })]);
     let dry = Quarantine::<DryRun>::new(session.quarantine);
-    let found = scan::run(&scope, &mut Sink::Dry(&dry));
+    let started = Instant::now();
+    let unicode = session.unicode;
+    let found = scan::run_watched(&scope, &mut Sink::Dry(&dry), &mut |step| {
+        io.progress(
+            &meter(
+                &Meter {
+                    done: step.done,
+                    total: step.total,
+                    now: step.now,
+                    so_far: format!("{} listed", count(step.files, "file", "files")),
+                    found: (step.found > 0)
+                        .then(|| format!("{} confirmed", count(step.found, "finding", "findings"))),
+                },
+                started.elapsed().as_secs(),
+                unicode,
+            ),
+            step.done == step.total,
+        );
+    });
     report.push_str(&format!(
         "\nfirst check, read-only\n{}{}",
         scan::render(&found, Target::Report),
@@ -404,6 +587,17 @@ fn choose_what(session: &Session, io: &mut dyn Console) -> Result<What, Stop> {
         word("      account"),
         p("        Every repository you own on GitHub."),
     ]);
+    if session.host.is_some() {
+        blank(io, 1);
+        io.say(&[
+            word("      everything"),
+            p("     This computer first, then GitHub."),
+        ]);
+        line(
+            io,
+            "                     Choose this if you think you were hit.",
+        );
+    }
     blank(io, 2);
     line(io, "  Type one of the words above, then press Enter.");
     io.say(&[dim("  q quits. Nothing has been changed.")]);
@@ -420,11 +614,20 @@ fn choose_what(session: &Session, io: &mut dyn Console) -> Result<What, Stop> {
             "folder" | "f" => return Ok(What::Folders),
             "organization" | "organisation" | "org" | "o" => return Ok(What::Organization),
             "account" | "a" => return Ok(What::Account),
-            _ => {
+            "everything" | "e" if session.host.is_some() => return Ok(What::Everything),
+            "everything" | "e" => {
                 blank(io, 1);
                 io.say(&[warn(
-                    "  Type computer, folder, organization or account. q quits.",
+                    "  That is not available here. Type one of the others.",
                 )]);
+            }
+            _ => {
+                blank(io, 1);
+                io.say(&[warn(if session.host.is_some() {
+                    "  Type computer, folder, organization, account or everything. q quits."
+                } else {
+                    "  Type folder, organization or account. q quits."
+                })]);
             }
         }
     }
@@ -1080,7 +1283,14 @@ mod tests {
             self.said.push_str("  > \n");
             self.answers.pop_front()
         }
-        fn progress(&mut self, _lines: &[Vec<Span>], _last: bool) {}
+        fn progress(&mut self, lines: &[Vec<Span>], last: bool) {
+            // What a pipe gets: the finished state, once.
+            if last {
+                for line in lines {
+                    self.say(line);
+                }
+            }
+        }
     }
 
     fn ind() -> Indicators {
@@ -1199,7 +1409,7 @@ mod tests {
             ],
         );
         let (_, io) = w.run(&["folder", &w.repo(), ""]);
-        let step3 = io.said.split("STEP 3 OF 4").nth(1).expect("step 3");
+        let step3 = io.said.split("What I found").nth(1).expect("step 3");
         assert!(step3.contains("Checked 3 files in 1 folder."), "{step3}");
         assert!(step3.contains("CONFIRMED   3"), "{step3}");
         assert!(step3.contains("1 config file with the payload hidden in it"));
@@ -1208,6 +1418,50 @@ mod tests {
         assert!(step3.contains("I can deal with 2 of the 3 now:"), "{step3}");
         assert!(!step3.contains("postcss.config.mjs"), "{step3}");
         assert!(!step3.contains("[HIT]"), "{step3}");
+    }
+
+    #[test]
+    fn a_folder_check_shows_the_same_progress_screen_as_every_long_job() {
+        let w = World::new(
+            "progress",
+            &[
+                ("repo/postcss.config.mjs", &infected()),
+                ("repo/src/index.js", "export const a = 1\n"),
+            ],
+        );
+        let (_, io) = w.run(&["folder", &w.repo(), "", "no", ""]);
+        assert!(io.said.contains("STEP 3 OF 4   Checking the folder"));
+        assert!(io.said.contains("  This only reads. Nothing is changed."));
+        assert!(io.said.contains("8 of 8"), "{}", io.said);
+        assert!(io.said.contains("      now        finished"));
+        assert!(io.said.contains("      so far     2 files listed"));
+        assert!(io.said.contains("                 1 finding confirmed"));
+    }
+
+    #[test]
+    fn a_scan_says_how_far_it_has_come_before_each_check_and_at_the_end() {
+        let w = World::new("stages", &[("repo/postcss.config.mjs", &infected())]);
+        let ind = ind();
+        let roots = vec![w.dir.join("repo")];
+        let scope = Scope {
+            roots: &roots,
+            ioc_dir: &w.dir.join("ioc"),
+            ind: &ind,
+            home: None,
+            host: None,
+            on_infected_config: OnInfectedConfig::Report,
+        };
+        let dry = Quarantine::<DryRun>::new(&w.quarantine);
+        let mut seen: Vec<(usize, usize, String, usize)> = Vec::new();
+        scan::run_watched(&scope, &mut Sink::Dry(&dry), &mut |step| {
+            seen.push((step.done, step.total, step.now.to_string(), step.found));
+        });
+        assert_eq!(seen.first(), Some(&(0, 8, "listing files".to_string(), 0)));
+        assert_eq!(seen.last(), Some(&(8, 8, String::new(), 1)));
+        // Never backwards, and the finding shows up as soon as it is made.
+        assert!(seen.windows(2).all(|w| w[0].0 <= w[1].0));
+        let fonts = seen.iter().find(|s| s.2 == "fonts").expect("fonts stage");
+        assert_eq!((fonts.0, fonts.3), (4, 1));
     }
 
     #[test]
@@ -1304,9 +1558,7 @@ mod tests {
         let w = World::new("retry", &[("repo/index.js", "export const a = 1\n")]);
         let (outcome, io) = w.run(&["1", "", "FOLDER", "/definitely/not/here", "", &w.repo(), ""]);
         assert_eq!(outcome.exit, ExitCode::Clean);
-        assert!(io
-            .said
-            .contains("Type computer, folder, organization or account."));
+        assert!(io.said.contains("Type folder, organization or account."));
         assert!(io.said.contains("That folder does not exist"));
         assert!(io.said.contains("I need a folder to check"));
         assert!(!io.said.contains("Type 1 or 2"));
