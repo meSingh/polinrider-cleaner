@@ -852,19 +852,19 @@ case(
 # Guide cases. A whole session, driven by its answers.
 #
 # `stdin` is what the operator types, one answer per line. {{TREE}} is the
-# fixture tree. What these pin is the promise on the first screen: nothing is
-# changed unless you type yes.
+# fixture tree. Answers are words, never numbers. What these pin is the promise
+# on the first screen: nothing will be changed unless you type yes.
 # ---------------------------------------------------------------------------
 
-FOLDER = ["2", "{{TREE}}/code", ""]     # a folder, this one, start
+FOLDER = ["folder", "{{TREE}}/code", ""]     # a folder, this one, start
 
 case(
     "guide-strips-only-after-an-explicit-yes",
-    why="The whole flow in one session: choose a folder, scan, see what would "
-        "be cut, type yes, and it is cut with the original kept, then checked "
-        "again. Exit 2 although the files end clean, because the session "
-        "found a confirmed indicator and a script reading the exit code must "
-        "not be told nothing happened.",
+    why="The whole flow in one session: choose a folder, see a summary of "
+        "what was found, type yes, and it is stripped with the original kept, "
+        "then checked again. Exit 2 although the files end clean, because the "
+        "session found a confirmed indicator and a script reading the exit "
+        "code must not be told nothing happened.",
     command="guide",
     apply=True,
     roots=["code"],
@@ -875,7 +875,8 @@ case(
         "tree_may_change": True,
         "stripped": ["code/proj/postcss.config.mjs"],
         "file_after": {"code/proj/postcss.config.mjs": CLEAN_CONFIG},
-        "must_print": ["Step 4 of 6", "Checking again", "a DIFFERENT machine"],
+        "must_print": ["STEP 3 OF 4", "Done.", "stripped   ", "Checked again.",
+                       "STEP 4 OF 4", "from a DIFFERENT computer"],
     },
 )
 
@@ -891,8 +892,37 @@ case(
     expect={
         "exit": 2,
         "tree_may_change": False,
-        "must_print": ["Type yes or no", "Left as it is"],
-        "must_not_print": ["original kept ->", "Checking again"],
+        "must_print": ["Type yes, no or details", "Left as it is",
+                       "you left in place"],
+        "must_not_print": ["Done.", "stripped   ", "Checked again."],
+    },
+)
+
+case(
+    "guide-summary-first-and-details-on-request",
+    why="Somebody who has just been told they are infected is not reading a "
+        "list of sections. The screen says how many, what kind and what it "
+        "means, in plain words and with no path. The full list is one word "
+        "away, and asking for it changes nothing.",
+    command="guide",
+    roots=["code"],
+    stdin=FOLDER + ["details", "no", ""],
+    files={
+        "code/proj/postcss.config.mjs": INFECTED_CONFIG,
+        "code/proj/public/fake.woff2": FAKE_FONT,
+    },
+    expect={
+        "exit": 2,
+        "tree_may_change": False,
+        "must_print": [
+            "CONFIRMED   2",
+            "1 config file with the payload hidden in it",
+            "1 font file that is really a script",
+            "I can deal with 2 of the 2 now:",
+            "config file contains an indicator",
+            "font file is not a font",
+        ],
+        "must_not_report": NOTHING_FOUND,
     },
 )
 
@@ -911,15 +941,15 @@ case(
         "exit": 2,
         "tree_may_change": False,
         "must_print": ["Input ended"],
-        "must_not_print": ["original kept ->"],
+        "must_not_print": ["Done.", "stripped   "],
     },
 )
 
 case(
-    "guide-quit-before-a-scan-is-not-a-clean-result",
-    why="Leaving at the first question scanned nothing. Exit 0 would tell a "
-        "script the machine is clean; exit 3 says the scan did not run, which "
-        "is what happened.",
+    "guide-quit-before-a-check-is-not-a-clean-result",
+    why="Leaving at the first question checked nothing. Exit 0 would tell a "
+        "script the machine is clean; exit 3 says the check did not run, "
+        "which is what happened.",
     command="guide",
     roots=["code"],
     stdin=["q"],
@@ -927,15 +957,15 @@ case(
     expect={
         "exit": 3,
         "tree_may_change": False,
-        "must_print": ["Nothing was scanned"],
+        "must_print": ["Nothing was checked"],
     },
 )
 
 case(
     "guide-clean-folder-never-asks-to-change-anything",
     why="With nothing found there is nothing to consent to, so the question "
-        "is never put. A clean folder goes straight to the prevention advice "
-        "and exits 0.",
+        "is never put. A clean folder goes straight to the last screen and "
+        "exits 0.",
     command="guide",
     roots=["code"],
     stdin=FOLDER,
@@ -943,26 +973,50 @@ case(
     expect={
         "exit": 0,
         "tree_may_change": False,
-        "must_print": ["Step 6 of 6"],
+        "must_print": ["NOTHING FOUND", "STEP 4 OF 4"],
         "must_not_print": ["Type yes"],
         "must_not_report": NOTHING_FOUND,
     },
 )
 
+case(
+    "guide-a-number-is-not-an-answer",
+    why="The first version asked people to type 1 or 2. A digit is easy to "
+        "mistype and says nothing about what was chosen. Answers are the "
+        "words on the screen, in any case, and anything else asks again "
+        "without doing anything.",
+    command="guide",
+    roots=["code"],
+    stdin=["1", "2", "FOLDER", "{{TREE}}/code", ""],
+    files=ORDINARY_TREE,
+    expect={
+        "exit": 0,
+        "tree_may_change": False,
+        "must_print": ["Type the word computer or folder", "NOTHING FOUND"],
+        "must_not_print": ["Type 1 or 2"],
+    },
+)
+
 host_case(
     "guide-this-computer-offers-only-what-it-can-do",
-    why="A running implant cannot be moved into quarantine. The flow reports "
-        "it, says plainly that nothing here can be done for you, and does not "
-        "put a yes/no question that has no yes. It still walks the credential "
-        "step, which is the part that matters most after a hit.",
+    why="A running implant cannot be moved into quarantine. The flow names "
+        "it in plain words, says that nothing here can be fixed for you, and "
+        "does not put a yes or no question that has no yes. The last screen "
+        "puts the network first and says to rebuild, because a running "
+        "program is proof the payload ran.",
     command="guide",
-    stdin=["1", "{{TREE}}/code", "", ""],
+    stdin=["computer", "{{TREE}}/code", "", ""],
     host=host_state(processes="4242\t{{IMPLANT_CUT}}\t/home/x/.local/share/{{IMPLANT}}\n"),
     expect={
         "exit": 2,
         "tree_may_change": False,
-        "findings": [{"level": "HIT", "match": "an implant process is running now"}],
-        "must_print": ["Nothing found here can be moved or stripped", "a DIFFERENT machine"],
+        "must_print": [
+            "1 program from the payload running right now",
+            "A running program means the payload has run on this computer.",
+            "None of these can be fixed for you.",
+            "Disconnect from the network, now",
+            "Rebuild this computer from a clean install",
+        ],
         "must_not_print": ["Type yes"],
     },
 )

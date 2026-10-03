@@ -1,11 +1,11 @@
 {
-  "why": "With nothing found there is nothing to consent to, so the question is never put. A clean folder goes straight to the prevention advice and exits 0.",
+  "why": "With nothing found there is nothing to consent to, so the question is never put. A clean folder goes straight to the last screen and exits 0.",
   "command": "guide",
   "roots": [
     "code"
   ],
   "stdin": [
-    "2",
+    "folder",
     "{{TREE}}/code",
     ""
   ],
@@ -16,7 +16,8 @@
     "exit": 0,
     "tree_may_change": false,
     "must_print": [
-      "Step 6 of 6"
+      "NOTHING FOUND",
+      "STEP 4 OF 4"
     ],
     "must_not_print": [
       "Type yes"

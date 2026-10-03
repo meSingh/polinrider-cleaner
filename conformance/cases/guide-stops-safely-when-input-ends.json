@@ -5,7 +5,7 @@
     "code"
   ],
   "stdin": [
-    "2",
+    "folder",
     "{{TREE}}/code",
     ""
   ],
@@ -19,7 +19,8 @@
       "Input ended"
     ],
     "must_not_print": [
-      "original kept ->"
+      "Done.",
+      "stripped   "
     ]
   }
 }

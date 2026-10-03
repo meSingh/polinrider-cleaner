@@ -1,37 +1,47 @@
-//! The guided flow: one session from "something is wrong" to "here is what
-//! was found, what was done about it and what is left for you".
+//! The guided flow: one calm session from "something is wrong" to "here is
+//! what was found, what was done about it and what is left for you".
 //!
-//! Running `polinrider` with no arguments lands here. It asks what to check,
-//! scans, shows exactly what it would move or strip, does it only on an
-//! explicit yes, checks again, and says what it cannot do for you. The same
-//! session, no second command.
+//! Running `polinrider` with no arguments lands here. The person using it has
+//! just learned they may have malware on every machine they own, so the flow
+//! is built for somebody who is not reading carefully (ADR-0035):
+//!
+//! - **One question per screen**, with room around it and the answer on a
+//!   line of its own.
+//! - **Answers are words**: `computer`, `folder`, `yes`, `no`, `details`.
+//!   Never a number to match against a list.
+//! - **Every step says where you are** and whether it changes anything.
+//! - **A summary first**, in plain words. The full list is shown only when
+//!   asked for, and is always in the report file.
 //!
 //! Three rules govern every prompt, each of which exists because the shell
-//! version got it wrong once (ADR-0021, ADR-0022, ADR-0024):
+//! version got it wrong once (ADR-0021, ADR-0022, ADR-0024, ADR-0032):
 //!
-//! - **Only `yes` changes anything.** Not Enter, not a default, not anything
-//!   that merely is not `no`.
-//! - **Only `q` leaves.** A blank line asks again. It never quits and never
-//!   picks an option that writes.
+//! - **Only `yes` changes anything.** Enter only ever picks a choice that
+//!   reads and never one that writes.
+//! - **Only `q` leaves.** A blank line never quits.
 //! - **Input that ends, stops.** If stdin closes, the session ends where it
 //!   is with nothing further changed, and says so.
 //!
 //! All reading and printing goes through [`Console`], so a test drives a
-//! whole session from a list of answers. See ADR-0032.
+//! whole session from a list of answers. Lines are built from [`Span`]s and
+//! never from marked-up strings, so a path found on disk is only ever text.
 
 use crate::checks::{OnInfectedConfig, Sink};
 use crate::host::Host;
 use crate::indicators::Indicators;
 use crate::quarantine::{Apply, DryRun, Quarantine};
 use crate::scan::{self, Scope, Target};
-use crate::verdict::{clean, Entry, ExitCode, Level, Verdict};
+use crate::ui::{text_of, Span, Tone};
+use crate::verdict::{clean, ExitCode, Finding, Kind, Level, Verdict};
 use std::path::{Path, PathBuf};
 
 /// Where the session talks and listens.
 pub trait Console {
-    fn say(&mut self, text: &str);
-    /// Show a prompt and read one line, trimmed. `None` when input has ended.
-    fn ask(&mut self, prompt: &str) -> Option<String>;
+    /// Print one line.
+    fn say(&mut self, line: &[Span]);
+    /// Show the prompt mark on a line of its own and read one line, trimmed.
+    /// `None` when input has ended.
+    fn ask(&mut self) -> Option<String>;
 }
 
 /// Everything a session needs that was decided before it started.
@@ -40,9 +50,16 @@ pub struct Session<'a> {
     pub ioc_dir: &'a Path,
     pub home: &'a Path,
     /// This machine's live state, when it can be read. Without it the session
-    /// can still check directories.
+    /// can still check folders.
     pub host: Option<&'a dyn Host>,
     pub quarantine: &'a Path,
+    /// Where the full report will be saved. Named on the last screen, because
+    /// the screens themselves deliberately do not show everything.
+    pub report: &'a Path,
+    /// What to call the system this is running on: "Linux", "macOS".
+    pub system: &'a str,
+    /// Whether the terminal can draw a rule with box characters.
+    pub unicode: bool,
 }
 
 /// What a finished session leaves behind.
@@ -58,36 +75,132 @@ enum Stop {
     Quit,
     /// Input ended.
     Ended,
-    /// The operator typed `b`.
+    /// The operator typed `back`.
     Back,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum What {
     Computer,
-    Directories,
+    Folders,
 }
 
-fn read(io: &mut dyn Console, prompt: &str) -> Result<String, Stop> {
-    match io.ask(prompt) {
-        None => Err(Stop::Ended),
-        Some(line) if line.eq_ignore_ascii_case("q") => Err(Stop::Quit),
-        Some(line) => Ok(line),
+// --- saying things -----------------------------------------------------------
+
+fn p(text: impl Into<String>) -> Span {
+    Span::new(Tone::Plain, text)
+}
+fn word(text: impl Into<String>) -> Span {
+    Span::new(Tone::Accent, text)
+}
+fn good(text: impl Into<String>) -> Span {
+    Span::new(Tone::Good, text)
+}
+fn warn(text: impl Into<String>) -> Span {
+    Span::new(Tone::Warn, text)
+}
+fn bad(text: impl Into<String>) -> Span {
+    Span::new(Tone::Bad, text)
+}
+fn dim(text: impl Into<String>) -> Span {
+    Span::new(Tone::Dim, text)
+}
+fn strong(text: impl Into<String>) -> Span {
+    Span::new(Tone::Strong, text)
+}
+
+fn blank(io: &mut dyn Console, lines: usize) {
+    for _ in 0..lines {
+        io.say(&[]);
     }
 }
 
+fn line(io: &mut dyn Console, text: &str) {
+    io.say(&[p(text)]);
+}
+
+fn read(io: &mut dyn Console) -> Result<String, Stop> {
+    blank(io, 1);
+    match io.ask() {
+        None => Err(Stop::Ended),
+        Some(answer) => {
+            let answer = answer.to_ascii_lowercase();
+            if answer == "q" || answer == "quit" {
+                Err(Stop::Quit)
+            } else {
+                Ok(answer)
+            }
+        }
+    }
+}
+
+/// The top of a step: where you are, what it is, and whether it changes
+/// anything.
+fn header(io: &mut dyn Console, session: &Session, step: usize, title: &str, reads_only: bool) {
+    let rule = if session.unicode { "─" } else { "-" }.repeat(56);
+    blank(io, 2);
+    io.say(&[dim(format!("  {rule}"))]);
+    io.say(&[
+        strong(format!("  STEP {step} OF 4")),
+        p(format!("   {title}")),
+    ]);
+    io.say(&[dim(format!("  {rule}"))]);
+    if reads_only {
+        blank(io, 1);
+        io.say(&[dim("  Nothing is changed in this step.")]);
+    }
+    blank(io, 2);
+}
+
+/// A path as somebody would say it: under the home directory it starts `~`.
+/// Cleaned, because it came off a disk.
+fn tilde(path: &Path, home: &Path) -> String {
+    let shown = match path.strip_prefix(home) {
+        Ok(rest) if rest.as_os_str().is_empty() => "~".to_string(),
+        Ok(rest) => format!("~/{}", rest.display()),
+        Err(_) => path.display().to_string(),
+    };
+    clean(&shown)
+}
+
+/// 48210 as 48,210.
+fn thousands(n: usize) -> String {
+    let digits = n.to_string();
+    let mut out = String::new();
+    for (i, c) in digits.chars().enumerate() {
+        if i > 0 && (digits.len() - i).is_multiple_of(3) {
+            out.push(',');
+        }
+        out.push(c);
+    }
+    out
+}
+
+fn count(n: usize, one: &str, many: &str) -> String {
+    format!("{n} {}", if n == 1 { one } else { many })
+}
+
+// --- the session -------------------------------------------------------------
+
 /// Run a session. Never panics on bad input and never writes without a yes.
 pub fn run(session: &Session, io: &mut dyn Console) -> Outcome {
-    let mut report = String::new();
-    io.say("This is a beta build of 2.0.");
-    io.say("Type q at any prompt to stop. Nothing is changed unless you type yes.");
+    let mut report = String::from("PolinRider guided check\n");
+    io.say(&[word(format!("  {} detected.", session.system))]);
+    io.say(&[good("  Nothing will be changed unless you type yes.")]);
 
     let mut worst: Option<ExitCode> = None;
-    let stopped = steps(session, io, &mut report, &mut worst);
-
-    match stopped {
-        Err(Stop::Quit) => io.say("\nStopped. Nothing further was changed."),
-        Err(Stop::Ended) => io.say("\nInput ended. Stopped here, and nothing further was changed."),
+    match steps(session, io, &mut report, &mut worst) {
+        Err(Stop::Quit) => {
+            blank(io, 2);
+            line(io, "  Stopped. Nothing further was changed.");
+        }
+        Err(Stop::Ended) => {
+            blank(io, 2);
+            line(
+                io,
+                "  Input ended. Stopped here, and nothing further was changed.",
+            );
+        }
         Err(Stop::Back) | Ok(()) => {}
     }
 
@@ -95,13 +208,14 @@ pub fn run(session: &Session, io: &mut dyn Console) -> Outcome {
         Some(code) => code,
         None => {
             // An incomplete run is not a clean one.
-            io.say("Nothing was scanned, so this says nothing about whether you are infected.");
+            line(
+                io,
+                "  Nothing was checked, so this says nothing about whether you are infected.",
+            );
             ExitCode::CouldNotRun
         }
     };
-    if exit == ExitCode::Confirmed {
-        io.say("\nExit code 2: a confirmed indicator was found during this session, whatever was done about it afterwards.");
-    }
+    blank(io, 1);
     Outcome { exit, report }
 }
 
@@ -121,7 +235,7 @@ fn steps(
         }
     };
 
-    let scope = |on_infected_config| Scope {
+    let scope = Scope {
         roots: &roots,
         ioc_dir: session.ioc_dir,
         ind: session.ind,
@@ -131,115 +245,139 @@ fn steps(
         } else {
             None
         },
-        on_infected_config,
+        // The dry run is asked what a strip would do, so that the number
+        // shown before the question is the number done after it.
+        on_infected_config: OnInfectedConfig::Strip,
     };
 
-    // --- 3: scan. A dry run, and it shows what an apply would do. -----------
-    io.say("\nStep 3 of 6. Scanning. This reads only.");
+    // --- 3: check, and say what was found -----------------------------------
+    blank(io, 2);
+    io.say(&[dim("  Checking now. This only reads.")]);
     let dry = Quarantine::<DryRun>::new(session.quarantine);
-    let found = scan::run(&scope(OnInfectedConfig::Strip), &mut Sink::Dry(&dry));
-    io.say(&format!(
-        "{}{}",
-        scan::render(&found, Target::Console),
-        scan::result(&found)
-    ));
+    let found = scan::run(&scope, &mut Sink::Dry(&dry));
     report.push_str(&format!(
-        "first scan, dry run\n{}{}",
+        "\nfirst check, read-only\n{}{}",
         scan::render(&found, Target::Report),
         scan::result(&found)
     ));
     *worst = Some(found.exit_code());
 
+    header(io, session, 3, "What I found", false);
+    io.say(&[p(format!(
+        "  Checked {} {} in {}{}.",
+        thousands(found.files()),
+        if found.files() == 1 { "file" } else { "files" },
+        count(roots.len(), "folder", "folders"),
+        if what == What::Computer {
+            ", and this computer"
+        } else {
+            ""
+        }
+    ))]);
+    blank(io, 2);
+    tally(io, &found);
+
+    let mut current: Vec<Finding> = found.findings().cloned().collect();
+    let mut declined = 0usize;
     if found.hits() == 0 {
         if found.reviews() > 0 {
-            io.say("\nNothing confirmed. The [review] lines above need your eyes: they are things this tool cannot judge for you.");
+            blank(io, 2);
+            listing(io, session, &found, Level::Review);
         }
-        prevent(io);
-        return Ok(());
-    }
-
-    // --- 4: contain ---------------------------------------------------------
-    io.say("\nStep 4 of 6. Containing what was found.");
-    let (movable, strippable) = actionable(&found);
-    let mut applied = false;
-    if movable + strippable == 0 {
-        io.say("Nothing found here can be moved or stripped for you. Each [HIT] above says what to do by hand.");
     } else {
-        io.say(&format!(
-            "{movable} artifact(s) can be moved into quarantine and {strippable} file(s) can have an appended payload stripped in place."
-        ));
-        io.say(&format!(
-            "Nothing is deleted. Every original is kept under {}",
-            session.quarantine.display()
-        ));
-        if confirm(io, "Type yes to do it, or no to leave everything as it is:")? {
-            applied = contain(session, &scope(OnInfectedConfig::Strip), io, report);
+        blank(io, 2);
+        summary(io, &found, what);
+        let fixable = fixable(&found);
+        blank(io, 2);
+        if fixable.total() == 0 {
+            line(io, "  None of these can be fixed for you.");
+            line(io, "  The next step says what to do.");
+            blank(io, 2);
+            io.say(&[p("  Press "), word("Enter"), p(" to continue.")]);
+            read(io)?;
+        } else if offer(io, session, &found, &fixable)? {
+            let after = contain(session, &scope, io, report, &fixable);
+            current = after.findings().cloned().collect();
+            blank(io, 2);
+            io.say(&[p("  Press "), word("Enter"), p(" to continue.")]);
+            read(io)?;
         } else {
-            io.say("Left as it is. Nothing was moved or stripped.");
+            declined = fixable.total();
+            blank(io, 2);
+            line(io, "  Left as it is. Nothing was moved or stripped.");
+            blank(io, 2);
+            io.say(&[p("  Press "), word("Enter"), p(" to continue.")]);
+            read(io)?;
         }
     }
 
-    // --- 5: credentials, and what this build cannot reach -------------------
-    io.say("\nStep 5 of 6. Credentials and remotes. This part is yours.");
-    io.say("  The payload is a remote access trojan and an infostealer. Assume every");
-    io.say("  credential this user account could reach has been taken.");
-    io.say("  1. Rotate them from a DIFFERENT machine: GitHub tokens and SSH keys, npm");
-    io.say("     tokens, cloud keys, and anything in a .env file under the scanned paths.");
-    io.say("  2. Clean the remote only after that. This beta does not scan or clean");
-    io.say("     GitHub yet. The released tool on the main branch does: ./polinrider.sh");
-    io.say("  3. An infected commit may still be in each repository's history and on");
-    io.say("     its remote. Stripping a file does not change that.");
-    read(
-        io,
-        "Press Enter to go on to the final check, or q to stop here:",
-    )?;
-
-    // --- verify, only if something was changed ------------------------------
-    if applied {
-        io.say("\nChecking again, now that the artifacts are out of the way.");
-        let after = scan::run(&scope(OnInfectedConfig::Strip), &mut Sink::Dry(&dry));
-        let remaining = scan::render(&only_findings(&after), Target::Console);
-        if !remaining.trim().is_empty() {
-            io.say(&remaining);
-        }
-        io.say(&scan::result(&after));
-        report.push_str(&format!(
-            "\nsecond scan, after containing\n{}{}",
-            scan::render(&after, Target::Report),
-            scan::result(&after)
-        ));
-        if after.hits() == 0 {
-            io.say("The files are clean against the current indicator set. That is the files, not the machine: see step 5.");
-        } else {
-            io.say("Some findings remain. They are the ones that cannot be moved for you.");
-        }
+    // --- 4: what to do now --------------------------------------------------
+    header(io, session, 4, "What to do now", false);
+    let last = what_now(session, &found, &current, declined, what);
+    for spans in &last {
+        io.say(spans);
+        report.push_str(&text_of(spans));
+        report.push('\n');
     }
-
-    prevent(io);
+    blank(io, 2);
+    line(io, "  The full report, with every finding:");
+    io.say(&[p(format!("  {}", tilde(session.report, session.home)))]);
+    blank(io, 1);
+    io.say(&[p("  To check again:   "), word("polinrider")]);
     Ok(())
 }
 
 fn choose_what(session: &Session, io: &mut dyn Console) -> Result<What, Stop> {
-    io.say("\nStep 1 of 6. What do you want to check?");
+    header(io, session, 1, "What should I check?", true);
     if session.host.is_some() {
-        io.say("  1  This computer                      files, persistence, running processes, live connections");
+        io.say(&[
+            word("      computer"),
+            p("     This computer: your code, login items"),
+        ]);
+        line(io, "                   and what is running right now.");
     } else {
-        io.say(
-            "  1  This computer                      not available in this build on this platform",
-        );
+        io.say(&[
+            dim("      computer"),
+            dim("     Not available in this build on this system."),
+        ]);
     }
-    io.say("  2  A folder, a repository or a drive  files only");
+    blank(io, 1);
+    io.say(&[
+        word("      folder"),
+        p("       One folder, repository or drive."),
+    ]);
+    line(io, "                   Files only.");
+    blank(io, 2);
+    if session.host.is_some() {
+        io.say(&[
+            p("  Type "),
+            word("computer"),
+            p(" or "),
+            word("folder"),
+            p(", then press Enter."),
+        ]);
+    } else {
+        io.say(&[p("  Type "), word("folder"), p(", then press Enter.")]);
+    }
+    io.say(&[dim("  q quits. Nothing has been changed.")]);
+
     loop {
-        match read(io, "Type 1 or 2:")?.as_str() {
-            "1" if session.host.is_some() => return Ok(What::Computer),
-            "1" => io.say("That is not available here. Type 2 to check directories."),
-            "2" => return Ok(What::Directories),
-            _ => io.say("Type 1 or 2, or q to stop."),
+        match read(io)?.as_str() {
+            "computer" | "c" if session.host.is_some() => return Ok(What::Computer),
+            "computer" | "c" => {
+                blank(io, 1);
+                io.say(&[warn("  That is not available here. Type folder.")]);
+            }
+            "folder" | "f" => return Ok(What::Folders),
+            _ => {
+                blank(io, 1);
+                io.say(&[warn("  Type the word computer or folder. q quits.")]);
+            }
         }
     }
 }
 
-/// The directories people usually keep code in, that exist under this home.
+/// The folders people usually keep code in, that exist under this home.
 fn usual_roots(home: &Path) -> Vec<PathBuf> {
     [
         "Sites",
@@ -267,8 +405,16 @@ fn expand(home: &Path, typed: &str) -> PathBuf {
 }
 
 fn choose_roots(session: &Session, what: What, io: &mut dyn Console) -> Result<Vec<PathBuf>, Stop> {
-    io.say(
-        "\nStep 2 of 6. Where to look. The scan is only as good as the directories it is given.",
+    header(
+        io,
+        session,
+        2,
+        if what == What::Computer {
+            "Where is your code?"
+        } else {
+            "Which folder?"
+        },
+        true,
     );
     let usual = if what == What::Computer {
         usual_roots(session.home)
@@ -276,152 +422,560 @@ fn choose_roots(session: &Session, what: What, io: &mut dyn Console) -> Result<V
         Vec::new()
     };
     if usual.is_empty() {
-        io.say("Type one directory per line, then an empty line to start. b goes back.");
+        line(io, "  Type the folder to check, then press Enter.");
     } else {
-        io.say("Found these under your home directory:");
+        line(io, "  I found these in your home folder:");
+        blank(io, 1);
         for dir in &usual {
-            io.say(&format!("    {}", dir.display()));
+            io.say(&[p(format!("      {}", tilde(dir, session.home)))]);
         }
-        io.say("Press Enter to scan them, or type your own, one directory per line, then an empty line. b goes back.");
+        blank(io, 2);
+        io.say(&[p("  Press "), word("Enter"), p(" to check these.")]);
+        line(io, "  Or type a different folder, then press Enter.");
     }
 
     let mut roots: Vec<PathBuf> = Vec::new();
     loop {
-        let line = read(io, "Directory:")?;
-        if line.eq_ignore_ascii_case("b") {
-            return Err(Stop::Back);
-        }
-        if line.is_empty() {
-            if !roots.is_empty() {
-                return Ok(roots);
+        // Not lowercased like other answers: this one is a path.
+        blank(io, 1);
+        let typed = match io.ask() {
+            None => return Err(Stop::Ended),
+            Some(typed) => typed,
+        };
+        match typed.to_ascii_lowercase().as_str() {
+            "q" | "quit" => return Err(Stop::Quit),
+            "back" | "b" => return Err(Stop::Back),
+            "" => {
+                if !roots.is_empty() {
+                    return Ok(roots);
+                }
+                if !usual.is_empty() {
+                    return Ok(usual);
+                }
+                // A blank line with nothing chosen asks again. It does not
+                // check nothing and call it clean.
+                blank(io, 1);
+                io.say(&[warn("  I need a folder to check. Type one, or q to quit.")]);
             }
-            if !usual.is_empty() {
-                return Ok(usual);
+            _ => {
+                let dir = expand(session.home, &typed);
+                blank(io, 1);
+                if dir.is_dir() {
+                    if !roots.contains(&dir) {
+                        roots.push(dir.clone());
+                    }
+                    io.say(&[good("      added  "), p(tilde(&dir, session.home))]);
+                    blank(io, 1);
+                    io.say(&[
+                        p("  Press "),
+                        word("Enter"),
+                        p(" to start, or type another folder."),
+                    ]);
+                } else {
+                    io.say(&[
+                        warn("  That folder does not exist: "),
+                        p(tilde(&dir, session.home)),
+                    ]);
+                    io.say(&[dim("  Type it again. back returns to the first question.")]);
+                }
             }
-            // A blank line with nothing chosen asks again. It does not scan
-            // nothing and call it clean.
-            io.say("No directory yet. Type one, or q to stop.");
-            continue;
-        }
-        let dir = expand(session.home, &line);
-        if dir.is_dir() {
-            io.say(&format!("    added {}", dir.display()));
-            if !roots.contains(&dir) {
-                roots.push(dir);
-            }
-        } else {
-            io.say(&format!(
-                "    no such directory: {}",
-                clean(&dir.display().to_string())
-            ));
         }
     }
 }
 
-/// How many findings an apply would move, and how many it would strip. Read
-/// from the dry run's own lines, so the number shown is the number done.
-fn actionable(v: &Verdict) -> (usize, usize) {
-    let lines: Vec<&str> = v
-        .findings()
-        .filter(|f| f.level == Level::Hit)
-        .filter_map(|f| f.remedy.as_deref())
-        .flat_map(str::lines)
-        .collect();
-    (
-        lines
-            .iter()
-            .filter(|l| l.starts_with("would quarantine:"))
-            .count(),
-        lines
-            .iter()
-            .filter(|l| l.starts_with("would strip "))
-            .count(),
-    )
+// --- step 3: what was found ---------------------------------------------------
+
+/// The two numbers that matter, each with what it means.
+fn tally(io: &mut dyn Console, v: &Verdict) {
+    if v.hits() == 0 && v.reviews() == 0 {
+        io.say(&[
+            good("      NOTHING FOUND"),
+            p("     clean against today's indicators"),
+        ]);
+        return;
+    }
+    if v.hits() > 0 {
+        io.say(&[
+            bad(format!("      CONFIRMED   {}", v.hits())),
+            p("     the PolinRider payload is here"),
+        ]);
+    } else {
+        io.say(&[good("      CONFIRMED   0"), p("     nothing confirmed")]);
+    }
+    if v.reviews() > 0 {
+        io.say(&[
+            warn(format!("      TO REVIEW   {}", v.reviews())),
+            p("     needs your eyes, may be nothing"),
+        ]);
+    }
 }
 
-/// Yes or no. Anything else, a blank line included, asks again.
-fn confirm(io: &mut dyn Console, prompt: &str) -> Result<bool, Stop> {
+/// The same kind however it will be dealt with: two configs are two configs.
+fn family(kind: Kind) -> Kind {
+    match kind {
+        Kind::Config { .. } => Kind::Config { strippable: true },
+        other => other,
+    }
+}
+
+/// Confirmed findings as counts of plain things, in the order first seen.
+fn grouped(v: &Verdict, ran_here: bool) -> Vec<(Kind, usize)> {
+    let mut groups: Vec<(Kind, usize)> = Vec::new();
+    for kind in v.kinds().filter(|k| k.ran_here() == ran_here).map(family) {
+        match groups.iter_mut().find(|(k, _)| *k == kind) {
+            Some((_, n)) => *n += 1,
+            None => groups.push((kind, 1)),
+        }
+    }
+    groups
+}
+
+/// What was confirmed, in plain words and without a single path, and the one
+/// sentence that says what it means.
+fn summary(io: &mut dyn Console, v: &Verdict, what: What) {
+    let projects = grouped(v, false);
+    let beyond = grouped(v, true);
+    if !projects.is_empty() {
+        io.say(&[strong("  In your projects")]);
+        for (kind, n) in &projects {
+            io.say(&[p(format!("      {}", kind.plain(*n)))]);
+        }
+    }
+    if !beyond.is_empty() {
+        if !projects.is_empty() {
+            blank(io, 1);
+        }
+        io.say(&[strong(if what == What::Computer {
+            "  On this computer"
+        } else {
+            "  Signs that it has run"
+        })]);
+        for (kind, n) in &beyond {
+            io.say(&[p(format!("      {}", kind.plain(*n)))]);
+        }
+    }
+    blank(io, 1);
+    match beyond.first() {
+        Some((kind, _)) => io.say(&[bad(format!(
+            "  {} means the payload has run {}.",
+            kind.evidence(),
+            if what == What::Computer {
+                "on this computer"
+            } else {
+                "where these files came from"
+            }
+        ))]),
+        None => {
+            line(io, "  The payload is in project files.");
+            line(io, "  Nothing here shows that it has run.");
+        }
+    }
+}
+
+/// What a yes would do.
+struct Fixable {
+    strip: usize,
+    moves: usize,
+}
+
+impl Fixable {
+    fn total(&self) -> usize {
+        self.strip + self.moves
+    }
+}
+
+fn fixable(v: &Verdict) -> Fixable {
+    Fixable {
+        strip: v
+            .kinds()
+            .filter(|k| matches!(k, Kind::Config { strippable: true }))
+            .count(),
+        moves: v.kinds().filter(|k| k.movable()).count(),
+    }
+}
+
+/// The one question that can change anything. Returns whether the answer was
+/// yes. Anything that is not yes, no or details asks again.
+fn offer(
+    io: &mut dyn Console,
+    session: &Session,
+    found: &Verdict,
+    fixable: &Fixable,
+) -> Result<bool, Stop> {
+    let of = format!("{} of the {}", fixable.total(), found.hits());
+    io.say(&[p(format!("  I can deal with {of} now:"))]);
+    blank(io, 1);
+    if fixable.strip > 0 {
+        io.say(&[p(format!(
+            "      strip the payload out of {}",
+            count(fixable.strip, "config file", "config files")
+        ))]);
+    }
+    if fixable.moves > 0 {
+        io.say(&[p(format!(
+            "      move {} into quarantine",
+            count(fixable.moves, "file", "files")
+        ))]);
+    }
+    blank(io, 1);
+    io.say(&[
+        good("  Nothing is deleted."),
+        p(" Every original is kept in"),
+    ]);
+    io.say(&[p(format!("  {}", tilde(session.quarantine, session.home)))]);
+    blank(io, 2);
+    io.say(&[p("  Type "), word("yes"), p(" to do it.")]);
+    io.say(&[
+        p("  Type "),
+        word("no"),
+        p(" to leave everything as it is."),
+    ]);
+    io.say(&[
+        p("  Type "),
+        word("details"),
+        p(" to see every finding first."),
+    ]);
+
     loop {
-        let answer = read(io, prompt)?.to_ascii_lowercase();
-        match answer.as_str() {
+        match read(io)?.as_str() {
             "yes" | "y" => return Ok(true),
             "no" | "n" => return Ok(false),
-            _ => io.say("Type yes or no. Nothing happens until you do."),
+            "details" | "d" => {
+                blank(io, 2);
+                listing(io, session, found, Level::Hit);
+                if found.reviews() > 0 {
+                    blank(io, 2);
+                    listing(io, session, found, Level::Review);
+                }
+                blank(io, 2);
+                io.say(&[
+                    p("  Type "),
+                    word("yes"),
+                    p(format!(" to deal with {of}, or ")),
+                    word("no"),
+                    p(" to leave them."),
+                ]);
+            }
+            _ => {
+                blank(io, 1);
+                io.say(&[warn(
+                    "  Type yes, no or details. Nothing happens until you do.",
+                )]);
+            }
         }
     }
 }
 
-/// Move and strip. Returns whether anything was actually changed.
-fn contain(session: &Session, scope: &Scope, io: &mut dyn Console, report: &mut String) -> bool {
+/// Every finding of one level: what it is, then where, on two lines.
+fn listing(io: &mut dyn Console, session: &Session, v: &Verdict, level: Level) {
+    io.say(&[if level == Level::Hit {
+        bad("  CONFIRMED")
+    } else {
+        warn("  TO REVIEW")
+    }]);
+    for finding in v.findings().filter(|f| f.level == level) {
+        blank(io, 1);
+        io.say(&[p(format!("      {}", clean(finding.what())))]);
+        if let Some(path) = &finding.path {
+            io.say(&[dim(format!("      {}", tilde(path, session.home)))]);
+        }
+    }
+}
+
+/// Move and strip, say what was done, and check again. Returns the second
+/// check, which is what the last screen is written from.
+fn contain(
+    session: &Session,
+    scope: &Scope,
+    io: &mut dyn Console,
+    report: &mut String,
+    fixable: &Fixable,
+) -> Verdict {
+    blank(io, 2);
     let mut quarantine = match Quarantine::<Apply>::create(session.quarantine) {
         Ok(q) => q,
         Err(e) => {
-            io.say(&format!(
-                "Could not create {}: {e}. Nothing was changed.",
-                session.quarantine.display()
-            ));
-            return false;
+            io.say(&[warn(format!(
+                "  Could not create {}: {e}",
+                tilde(session.quarantine, session.home)
+            ))]);
+            line(io, "  Nothing was changed.");
+            let dry = Quarantine::<DryRun>::new(session.quarantine);
+            return scan::run(scope, &mut Sink::Dry(&dry));
         }
     };
     let done = scan::run(scope, &mut Sink::Apply(&mut quarantine));
     if let Err(e) = quarantine.write_manifest() {
-        io.say(&format!("Could not write the quarantine manifest: {e}"));
+        io.say(&[warn(format!(
+            "  Could not write the quarantine manifest: {e}"
+        ))]);
     }
-    let lines = scan::render(&only_findings(&done), Target::Console);
-    io.say(&lines);
-    io.say(&format!(
-        "{} original(s) are in {}. RESTORE.txt there says how to put one back.",
-        quarantine.taken(),
-        session.quarantine.display()
-    ));
     report.push_str(&format!(
-        "\ncontaining, with --apply semantics\n{}",
+        "\ncontaining what was found\n{}",
         scan::render(&done, Target::Report)
     ));
-    quarantine.taken() > 0
+
+    io.say(&[good("  Done.")]);
+    blank(io, 1);
+    for (from, reason) in quarantine.receipts() {
+        io.say(&[
+            p(if reason == "stripped-config" {
+                "      stripped   "
+            } else {
+                "      moved      "
+            }),
+            p(tilde(from, session.home)),
+        ]);
+    }
+    if quarantine.taken() < fixable.total() {
+        blank(io, 1);
+        io.say(&[warn(format!(
+            "  {} could not be moved or stripped. The report says why.",
+            fixable.total() - quarantine.taken()
+        ))]);
+    }
+
+    let dry = Quarantine::<DryRun>::new(session.quarantine);
+    let after = scan::run(scope, &mut Sink::Dry(&dry));
+    report.push_str(&format!(
+        "\nsecond check, after containing\n{}{}",
+        scan::render(&after, Target::Report),
+        scan::result(&after)
+    ));
+    blank(io, 2);
+    if after.hits() == 0 {
+        io.say(&[
+            p("  Checked again. "),
+            good("No confirmed finding is left in what was checked."),
+        ]);
+    } else {
+        io.say(&[
+            p("  Checked again. "),
+            bad(format!(
+                "{} left.",
+                if after.hits() == 1 {
+                    "1 confirmed finding is".to_string()
+                } else {
+                    format!("{} confirmed findings are", after.hits())
+                }
+            )),
+        ]);
+        line(
+            io,
+            if after.hits() == 1 {
+                "  It needs you, and the next step says how."
+            } else {
+                "  They need you, and the next step says how."
+            },
+        );
+    }
+    after
 }
 
-/// The hits and review items of a scan with their evidence, without the
-/// sections that found nothing. For the second look, where the full report
-/// would bury the two lines that matter.
-fn only_findings(v: &Verdict) -> Verdict {
-    let mut out = Verdict::new();
-    // Evidence is printed before some findings and after others. Lines seen
-    // before a finding wait here until it is known whether the finding stays.
-    let mut waiting: Vec<&String> = Vec::new();
-    let mut after_kept = false;
-    for entry in v.entries() {
-        match entry {
-            Entry::Section(_) => {
-                waiting.clear();
-                after_kept = false;
-            }
-            Entry::Detail(line) if after_kept => out.detail(line.clone()),
-            Entry::Detail(line) => waiting.push(line),
-            Entry::Note(_) => {}
-            Entry::Finding(f) if f.level >= Level::Review => {
-                for line in waiting.drain(..) {
-                    out.detail(line.clone());
-                }
-                out.push(f.clone());
-                after_kept = true;
-            }
-            Entry::Finding(_) => {
-                waiting.clear();
-                after_kept = false;
-            }
-        }
+// --- step 4: what to do now ---------------------------------------------------
+
+/// One thing to do: a title, the files it is about, and a line or two of how.
+struct Todo {
+    title: String,
+    paths: Vec<String>,
+    how: Vec<&'static str>,
+}
+
+fn todo(title: impl Into<String>, how: &[&'static str]) -> Todo {
+    Todo {
+        title: title.into(),
+        paths: Vec::new(),
+        how: how.to_vec(),
     }
+}
+
+/// The paths of the findings of some kinds, as they would be said.
+fn paths_of(findings: &[Finding], home: &Path, want: fn(Kind) -> bool) -> Vec<String> {
+    findings
+        .iter()
+        .filter(|f| f.kind.is_some_and(want))
+        .filter_map(|f| f.path.as_deref())
+        .map(|path| tilde(path, home))
+        .collect()
+}
+
+/// The last screen, as lines. Written from what was found at the start and
+/// what is still there now.
+fn what_now(
+    session: &Session,
+    found: &Verdict,
+    current: &[Finding],
+    declined: usize,
+    what: What,
+) -> Vec<Vec<Span>> {
+    let mut out: Vec<Vec<Span>> = Vec::new();
+
+    if found.hits() == 0 {
+        if found.reviews() == 0 {
+            out.push(vec![good("  Nothing found.")]);
+            out.push(vec![]);
+            for text in [
+                "  Clean against today's indicators is not proof that nothing",
+                "  was ever here. If you had a reason to check, change your",
+                "  passwords anyway.",
+            ] {
+                out.push(vec![dim(text)]);
+            }
+            return out;
+        }
+        out.push(vec![
+            warn("  Nothing is confirmed."),
+            p(format!(
+                " {} your eyes.",
+                if found.reviews() == 1 {
+                    "1 thing needs".to_string()
+                } else {
+                    format!("{} things need", found.reviews())
+                }
+            )),
+        ]);
+        let todos = [
+            todo(
+                "Look at each item listed above",
+                &["Ask whether you put it there."],
+            ),
+            todo(
+                "If one of them is not yours, treat it as confirmed",
+                &[
+                    "Disconnect from the network, and change your passwords",
+                    "from a different computer.",
+                ],
+            ),
+        ];
+        numbered(&mut out, &todos);
+        return out;
+    }
+
+    let ran_here = found.kinds().any(Kind::ran_here);
+    let here = if what == What::Computer {
+        "This computer is"
+    } else {
+        "These folders are"
+    };
+    out.push(if ran_here {
+        vec![
+            bad(format!("  {here} not safe yet.")),
+            p(" Do these in order."),
+        ]
+    } else {
+        vec![
+            warn("  The payload was in your project files."),
+            p(" Do these in order."),
+        ]
+    });
+
+    let kinds_now: Vec<Kind> = current.iter().filter_map(|f| f.kind).collect();
+    let mut todos: Vec<Todo> = Vec::new();
+
+    if kinds_now.iter().any(|k| k.running()) {
+        todos.push(todo(
+            "Disconnect from the network, now",
+            &["Something from the payload is running or connected."],
+        ));
+    }
+    if declined > 0 {
+        todos.push(todo(
+            format!(
+                "Deal with the {} you left in place",
+                count(declined, "finding", "findings")
+            ),
+            &["Run polinrider again and type yes."],
+        ));
+    }
+    let unstrippable = |k: Kind| matches!(k, Kind::Config { strippable: false });
+    if kinds_now.iter().any(|k| unstrippable(*k)) {
+        let mut t = todo(
+            "Replace the config files that could not be cleaned safely",
+            &["Delete that clone, and clone it again once GitHub is clean."],
+        );
+        t.paths = paths_of(current, session.home, unstrippable);
+        todos.push(t);
+    }
+    if kinds_now.contains(&Kind::Package) {
+        let mut t = todo(
+            "Remove the campaign package",
+            &["Delete the dependency, delete node_modules, reinstall."],
+        );
+        t.paths = paths_of(current, session.home, |k| k == Kind::Package);
+        todos.push(t);
+    }
+    if kinds_now.contains(&Kind::StartupFile) {
+        let mut t = todo(
+            "Edit your shell startup file",
+            &["Remove the line that runs the payload."],
+        );
+        t.paths = paths_of(current, session.home, |k| k == Kind::StartupFile);
+        todos.push(t);
+    }
+    if kinds_now.contains(&Kind::Crontab) {
+        todos.push(todo(
+            "Edit your scheduled jobs",
+            &["Run crontab -e and remove the line that calls the campaign."],
+        ));
+    }
+    if kinds_now.contains(&Kind::Registry) {
+        let mut t = todo(
+            "Fix your npm registry setting",
+            &["Point it back at a registry you trust."],
+        );
+        t.paths = paths_of(current, session.home, |k| k == Kind::Registry);
+        todos.push(t);
+    }
+    todos.push(todo(
+        "Change your passwords and keys, from a DIFFERENT computer",
+        &[
+            "GitHub tokens and SSH keys, npm tokens, cloud keys,",
+            "anything in a .env file.",
+        ],
+    ));
+    todos.push(if ran_here && what == What::Computer {
+        todo(
+            "Rebuild this computer from a clean install",
+            &["The payload ran here. Quarantine does not make it safe."],
+        )
+    } else if ran_here {
+        todo(
+            "Rebuild the computer these files came from",
+            &["The payload ran there. Quarantine does not make it safe."],
+        )
+    } else {
+        todo(
+            "Decide whether to rebuild this computer",
+            &[
+                "The payload runs when an infected project is built or",
+                "opened in an editor. If that happened, or you are not",
+                "sure, rebuild.",
+            ],
+        )
+    });
+    todos.push(todo(
+        "Clean your repositories on GitHub",
+        &["This beta cannot do that yet. The released tool can."],
+    ));
+    numbered(&mut out, &todos);
     out
 }
 
-fn prevent(io: &mut dyn Console) {
-    io.say("\nStep 6 of 6. So that it does not come back.");
-    io.say("  - npm config set ignore-scripts true   stops install scripts running by default");
-    io.say(
-        "  - Scan every push in CI, so a reinfection is caught by a check and not by a stranger.",
-    );
-    io.say("  - Run this again after the weekly indicator update. Clean today is clean against today's list.");
+fn numbered(out: &mut Vec<Vec<Span>>, todos: &[Todo]) {
+    for (n, todo) in todos.iter().enumerate() {
+        out.push(vec![]);
+        out.push(vec![]);
+        out.push(vec![
+            strong(format!("  {}  ", n + 1)),
+            strong(todo.title.clone()),
+        ]);
+        for path in &todo.paths {
+            out.push(vec![p(format!("     {path}"))]);
+        }
+        for how in &todo.how {
+            out.push(vec![dim(format!("     {how}"))]);
+        }
+    }
 }
 
 #[cfg(test)]
@@ -439,7 +993,6 @@ mod tests {
     struct Script {
         answers: VecDeque<String>,
         said: String,
-        asked: usize,
     }
 
     impl Script {
@@ -447,20 +1000,17 @@ mod tests {
             Self {
                 answers: answers.iter().map(|a| (*a).to_string()).collect(),
                 said: String::new(),
-                asked: 0,
             }
         }
     }
 
     impl Console for Script {
-        fn say(&mut self, text: &str) {
-            self.said.push_str(text);
+        fn say(&mut self, line: &[Span]) {
+            self.said.push_str(&text_of(line));
             self.said.push('\n');
         }
-        fn ask(&mut self, prompt: &str) -> Option<String> {
-            self.asked += 1;
-            self.said.push_str(prompt);
-            self.said.push('\n');
+        fn ask(&mut self) -> Option<String> {
+            self.said.push_str("  > \n");
             self.answers.pop_front()
         }
     }
@@ -468,6 +1018,7 @@ mod tests {
     fn ind() -> Indicators {
         Indicators {
             strong: vec![STRONG.into()],
+            bad_packages: vec!["evil-campaign-pkg".into()],
             implant_names: vec![IMPLANT.into()],
             ..Indicators::default()
         }
@@ -508,6 +1059,9 @@ mod tests {
                 home: &self.dir.join("home"),
                 host,
                 quarantine: &self.quarantine,
+                report: &self.dir.join("home/polinrider-report.txt"),
+                system: "Linux",
+                unicode: false,
             };
             let mut io = Script::new(answers);
             let outcome = run(&session, &mut io);
@@ -516,6 +1070,10 @@ mod tests {
 
         fn run(&self, answers: &[&str]) -> (Outcome, Script) {
             self.run_with(None, answers)
+        }
+
+        fn config(&self) -> String {
+            fs::read_to_string(self.dir.join("repo/postcss.config.mjs")).expect("read")
         }
     }
 
@@ -533,11 +1091,11 @@ mod tests {
     }
 
     #[test]
-    fn quitting_before_a_scan_is_not_a_clean_result() {
+    fn quitting_before_a_check_is_not_a_clean_result() {
         let w = World::new("quit", &[]);
         let (outcome, io) = w.run(&["q"]);
         assert_eq!(outcome.exit, ExitCode::CouldNotRun);
-        assert!(io.said.contains("Nothing was scanned"));
+        assert!(io.said.contains("Nothing was checked"));
     }
 
     #[test]
@@ -546,32 +1104,75 @@ mod tests {
             "clean",
             &[("repo/postcss.config.mjs", "export default {}\n")],
         );
-        let (outcome, io) = w.run(&["2", &w.repo(), ""]);
+        let (outcome, io) = w.run(&["folder", &w.repo(), ""]);
         assert_eq!(outcome.exit, ExitCode::Clean);
+        assert!(io.said.contains("NOTHING FOUND"), "{}", io.said);
         assert!(!io.said.contains("Type yes"), "{}", io.said);
-        assert!(io.said.contains("Step 6 of 6"));
+        assert!(io.said.contains("STEP 4 OF 4"));
+        assert!(io.said.contains("To check again:   polinrider"));
+    }
+
+    #[test]
+    fn the_summary_is_plain_words_and_names_no_path() {
+        // The person reading this is stressed. Counts and what they mean
+        // first; the paths are one word away, and in the report.
+        let w = World::new(
+            "summary",
+            &[
+                ("repo/postcss.config.mjs", &infected()),
+                ("repo/public/fake.woff2", "var a = 1\n"),
+                (
+                    "repo/package.json",
+                    "{\"dependencies\":{\"evil-campaign-pkg\":\"1\"}}\n",
+                ),
+            ],
+        );
+        let (_, io) = w.run(&["folder", &w.repo(), ""]);
+        let step3 = io.said.split("STEP 3 OF 4").nth(1).expect("step 3");
+        assert!(step3.contains("Checked 3 files in 1 folder."), "{step3}");
+        assert!(step3.contains("CONFIRMED   3"), "{step3}");
+        assert!(step3.contains("1 config file with the payload hidden in it"));
+        assert!(step3.contains("1 font file that is really a script"));
+        assert!(step3.contains("1 project that depends on a campaign package"));
+        assert!(step3.contains("I can deal with 2 of the 3 now:"), "{step3}");
+        assert!(!step3.contains("postcss.config.mjs"), "{step3}");
+        assert!(!step3.contains("[HIT]"), "{step3}");
+    }
+
+    #[test]
+    fn details_shows_every_finding_and_then_asks_again() {
+        let w = World::new("details", &[("repo/postcss.config.mjs", &infected())]);
+        let (_, io) = w.run(&["folder", &w.repo(), "", "details", "no", ""]);
+        assert!(io.said.contains("  CONFIRMED\n"), "{}", io.said);
+        assert!(io
+            .said
+            .contains("      config file contains an indicator\n"));
+        assert!(io.said.contains("postcss.config.mjs"));
+        assert!(io
+            .said
+            .contains("Type yes to deal with 1 of the 1, or no to leave them."));
+        assert_eq!(w.config(), infected(), "details changes nothing");
     }
 
     #[test]
     fn a_payload_is_stripped_only_after_an_explicit_yes() {
         let w = World::new("yes", &[("repo/postcss.config.mjs", &infected())]);
-        let (outcome, io) = w.run(&["2", &w.repo(), "", "yes", ""]);
-        assert_eq!(
-            fs::read_to_string(w.dir.join("repo/postcss.config.mjs")).expect("read"),
-            "export default {}\n"
-        );
+        let (outcome, io) = w.run(&["folder", &w.repo(), "", "yes", ""]);
+        assert_eq!(w.config(), "export default {}\n");
         assert!(w.dir.join("q/manifest.tsv").is_file());
-        assert!(io.said.contains("Checking again"));
-        assert!(io.said.contains("clean against the current indicator set"));
+        assert!(io.said.contains("  Done."));
+        assert!(io.said.contains("      stripped   "));
+        assert!(io
+            .said
+            .contains("Checked again. No confirmed finding is left"));
         // What was found is still what the session reports.
         assert_eq!(outcome.exit, ExitCode::Confirmed);
-        assert!(outcome.report.contains("second scan"));
+        assert!(outcome.report.contains("second check"));
+        assert!(outcome.report.contains("Change your passwords and keys"));
     }
 
     #[test]
-    fn a_quarantine_inside_the_scanned_folder_is_not_found_again() {
-        // The session's second scan must not walk into the evidence the
-        // first one just set aside and call the folder still infected.
+    fn a_quarantine_inside_the_checked_folder_is_not_found_again() {
         let mut w = World::new(
             "inside",
             &[
@@ -580,78 +1181,74 @@ mod tests {
             ],
         );
         w.quarantine = w.dir.join("repo/set-aside");
-        let (_, io) = w.run(&["2", &w.repo(), "", "yes", ""]);
+        let (_, io) = w.run(&["folder", &w.repo(), "", "yes", ""]);
         assert!(w.quarantine.join("manifest.tsv").is_file());
-        assert!(io.said.contains("Checking again"));
+        assert!(io.said.contains("      moved      "));
         assert!(
-            io.said
-                .contains("The files are clean against the current indicator set"),
+            io.said.contains("No confirmed finding is left"),
             "{}",
             io.said
         );
-        assert!(!io.said.contains("Some findings remain"));
     }
 
     #[test]
-    fn no_leaves_everything_exactly_as_it_was() {
+    fn no_leaves_everything_exactly_as_it_was_and_says_what_is_left() {
         let w = World::new("no", &[("repo/postcss.config.mjs", &infected())]);
-        let (outcome, io) = w.run(&["2", &w.repo(), "", "no", ""]);
-        assert_eq!(
-            fs::read_to_string(w.dir.join("repo/postcss.config.mjs")).expect("read"),
-            infected()
-        );
+        let (outcome, io) = w.run(&["folder", &w.repo(), "", "no", ""]);
+        assert_eq!(w.config(), infected());
         assert!(!w.dir.join("q").exists(), "no quarantine is even created");
         assert!(io.said.contains("Left as it is"));
-        assert!(!io.said.contains("Checking again"));
+        assert!(!io.said.contains("  Done."));
+        assert!(io
+            .said
+            .contains("Deal with the 1 finding you left in place"));
         assert_eq!(outcome.exit, ExitCode::Confirmed);
     }
 
     #[test]
-    fn a_blank_line_or_anything_that_is_not_yes_never_applies() {
+    fn enter_or_anything_that_is_not_yes_never_changes_a_file() {
         // Enter, a typo, "sure", "ok": each asks again. Only yes writes.
         let w = World::new("blank", &[("repo/postcss.config.mjs", &infected())]);
-        let (_, io) = w.run(&["2", &w.repo(), "", "", "sure", "ok", "Y E S"]);
+        let (_, io) = w.run(&["folder", &w.repo(), "", "", "sure", "ok", "y e s"]);
         assert_eq!(
-            fs::read_to_string(w.dir.join("repo/postcss.config.mjs")).expect("read"),
+            w.config(),
             infected(),
             "input ran out while it was still asking: nothing is changed"
         );
-        assert!(io.said.contains("Type yes or no"));
+        assert!(io.said.contains("Type yes, no or details"));
         assert!(io.said.contains("Input ended"));
     }
 
     #[test]
-    fn q_at_the_apply_prompt_stops_without_changing_anything() {
+    fn q_at_the_question_stops_without_changing_anything() {
         let w = World::new("q-apply", &[("repo/postcss.config.mjs", &infected())]);
-        let (outcome, io) = w.run(&["2", &w.repo(), "", "q"]);
-        assert_eq!(
-            fs::read_to_string(w.dir.join("repo/postcss.config.mjs")).expect("read"),
-            infected()
-        );
+        let (outcome, io) = w.run(&["folder", &w.repo(), "", "q"]);
+        assert_eq!(w.config(), infected());
         assert!(io.said.contains("Stopped. Nothing further was changed."));
         assert_eq!(outcome.exit, ExitCode::Confirmed);
     }
 
     #[test]
-    fn a_wrong_menu_choice_or_a_missing_directory_asks_again() {
+    fn answers_are_words_and_a_wrong_one_asks_again() {
         let w = World::new("retry", &[("repo/index.js", "export const a = 1\n")]);
-        let (outcome, io) = w.run(&["7", "", "2", "/definitely/not/here", "", &w.repo(), ""]);
+        let (outcome, io) = w.run(&["1", "", "FOLDER", "/definitely/not/here", "", &w.repo(), ""]);
         assert_eq!(outcome.exit, ExitCode::Clean);
-        assert!(io.said.contains("Type 1 or 2, or q to stop."));
-        assert!(io.said.contains("no such directory"));
-        assert!(io.said.contains("No directory yet"));
+        assert!(io.said.contains("Type the word computer or folder"));
+        assert!(io.said.contains("That folder does not exist"));
+        assert!(io.said.contains("I need a folder to check"));
+        assert!(!io.said.contains("Type 1 or 2"));
     }
 
     #[test]
-    fn b_goes_back_to_the_first_question() {
+    fn back_returns_to_the_first_question() {
         let w = World::new("back", &[("repo/index.js", "export const a = 1\n")]);
-        let (outcome, io) = w.run(&["2", "b", "2", &w.repo(), ""]);
+        let (outcome, io) = w.run(&["folder", "back", "folder", &w.repo(), ""]);
         assert_eq!(outcome.exit, ExitCode::Clean);
-        assert_eq!(io.said.matches("Step 1 of 6").count(), 2);
+        assert_eq!(io.said.matches("STEP 1 OF 4").count(), 2);
     }
 
     #[test]
-    fn a_running_implant_is_reported_and_nothing_is_offered_that_cannot_be_done() {
+    fn a_running_implant_is_named_and_no_question_is_put_that_has_no_yes() {
         let w = World::new(
             "computer",
             &[("home/code/index.js", "export const a = 1\n")],
@@ -662,25 +1259,76 @@ mod tests {
             name: "implant-process".into(),
             command: "x".into(),
         }]);
-        // Enter accepts the code directory found under the home directory.
-        let (outcome, io) = w.run_with(Some(&host), &["1", "", ""]);
+        // Enter accepts the code folder found under the home directory.
+        let (outcome, io) = w.run_with(Some(&host), &["computer", "", ""]);
         assert_eq!(outcome.exit, ExitCode::Confirmed);
-        assert!(io.said.contains("an implant process is running now"));
+        assert!(io.said.contains("      ~/code\n"), "{}", io.said);
+        assert!(io.said.contains(", and this computer."));
         assert!(io
             .said
-            .contains("Nothing found here can be moved or stripped for you"));
+            .contains("1 program from the payload running right now"));
+        assert!(io
+            .said
+            .contains("A running program means the payload has run on this computer."));
+        assert!(io.said.contains("None of these can be fixed for you."));
         assert!(!io.said.contains("Type yes"));
-        assert!(io.said.contains("Rotate them from a DIFFERENT machine"));
+        assert!(io.said.contains("  1  Disconnect from the network, now"));
+        assert!(io
+            .said
+            .contains("Rebuild this computer from a clean install"));
+    }
+
+    #[test]
+    fn a_payload_only_in_project_files_does_not_say_the_computer_is_lost() {
+        let w = World::new("project-only", &[("repo/postcss.config.mjs", &infected())]);
+        let (_, io) = w.run(&["folder", &w.repo(), "", "yes", ""]);
+        assert!(io.said.contains("Nothing here shows that it has run."));
+        assert!(io.said.contains("The payload was in your project files."));
+        assert!(io.said.contains("Decide whether to rebuild this computer"));
+        assert!(!io.said.contains("not safe yet"));
+    }
+
+    #[test]
+    fn review_only_lists_what_to_look_at() {
+        let w = World::new(
+            "review",
+            &[(
+                "repo/.vscode/tasks.json",
+                "{\"tasks\":[{\"runOptions\":{\"runOn\":\"folderOpen\"}}]}\n",
+            )],
+        );
+        let (outcome, io) = w.run(&["folder", &w.repo(), ""]);
+        assert_eq!(outcome.exit, ExitCode::Review);
+        assert!(io.said.contains("CONFIRMED   0"));
+        assert!(io.said.contains("TO REVIEW   1"));
+        assert!(io.said.contains("  TO REVIEW\n"));
+        assert!(io
+            .said
+            .contains("Nothing is confirmed. 1 thing needs your eyes."));
+        assert!(!io.said.contains("Rebuild"));
     }
 
     #[test]
     fn this_computer_is_not_offered_when_the_host_cannot_be_read() {
         let w = World::new("nohost", &[("repo/index.js", "export const a = 1\n")]);
-        let (outcome, io) = w.run(&["1", "2", &w.repo(), ""]);
+        let (outcome, io) = w.run(&["computer", "folder", &w.repo(), ""]);
         assert_eq!(outcome.exit, ExitCode::Clean);
         assert!(io
             .said
-            .contains("not available in this build on this platform"));
-        assert!(io.said.contains("That is not available here"));
+            .contains("Not available in this build on this system."));
+        assert!(io.said.contains("That is not available here. Type folder."));
+    }
+
+    #[test]
+    fn numbers_and_paths_read_the_way_people_say_them() {
+        assert_eq!(thousands(7), "7");
+        assert_eq!(thousands(48210), "48,210");
+        assert_eq!(thousands(1_000_000), "1,000,000");
+        let home = Path::new("/home/x");
+        assert_eq!(tilde(Path::new("/home/x/Sites/shop"), home), "~/Sites/shop");
+        assert_eq!(tilde(Path::new("/home/x"), home), "~");
+        assert_eq!(tilde(Path::new("/srv/code"), home), "/srv/code");
+        // A path is cleaned on its way to the screen.
+        assert_eq!(tilde(Path::new("/srv/a\x1b[2Jb"), home), "/srv/a[2Jb");
     }
 }

@@ -54,7 +54,7 @@ reflog if they are ever wanted.
 Full detail in [`HACKING.md`](./HACKING.md). The three commands:
 
 ```bash
-./polinrider-sandbox --all     # lint, 9 self-tests, 64 conformance cases, clippy, 118 Rust tests
+./polinrider-sandbox --all     # lint, 9 self-tests, 66 conformance cases, clippy, 124 Rust tests
 ./polinrider-sandbox --demo    # build an infected sample and scan it with 1.x
 ./polinrider-sandbox --beta    # 2.0 installed in the container, on the PATH, with a sample
 ./ci/docs-serve.sh             # the documentation site, with live reload
@@ -101,7 +101,7 @@ argument for running unknown code on a machine you believe is compromised.
 ## What is done
 
 **The corpus** — `conformance/`, 13 filesystem cases, 20 host cases, 7 clean
-cases, 6 guide cases, 16 refusal cases and 2 closed-pipe checks. The filesystem cases are green
+cases, 8 guide cases, 16 refusal cases and 2 closed-pipe checks. The filesystem cases are green
 against both implementations. The host, clean and guide cases run against the
 Rust engine only and print `skip` under the
 shell, which cannot be handed a machine that does not exist. Running in CI and
@@ -130,7 +130,7 @@ that this reversed an earlier mdBook decision and what the Node dependency costs
 | `indicators.rs` | Loading `ioc/` |
 | `checks.rs` | Implants, tasks.json, build configs, fonts, packages, git hooks, extensions, propagation |
 | `scan.rs` | One scan: the walk, every check that applies, and rendering. In the library so a session can run more than one |
-| `guide.rs` | The guided flow. Six steps, every prompt through one `Console` trait so a test can drive a session |
+| `guide.rs` | The guided flow. Four screens, one question on each, answered in words. A summary first, the full list on `details`. Every prompt goes through one `Console` trait so a test can drive a session: ADR-0035 |
 | `ui.rs` | The wordmark and the colours, and nothing else. Runs no command, reads no file. Colour never changes a character: ADR-0033 |
 | `strip.rs` | Plans the cut for `clean`: what to keep of an infected build config, or why not to touch it. Pure, no I/O |
 | `host.rs` | The boundary. `Host`, with `LiveHost` (asks the machine) and `Snapshot` (holds the answers as data). The only module that runs a command |
@@ -163,12 +163,18 @@ cuts one shape and refuses the rest, and it never runs or touches git.
 `check --apply` means what it always did.
 
 **The guided flow** —
-[ADR-0032](./docs/adr/0032-the-guided-flow-changes-something-only-on-a-typed-yes.md).
-`polinrider` with no arguments. Asks what to check, scans, shows what it would
-move or strip, does it only on a typed `yes`, checks again. Only `q` leaves, a
-blank line never chooses, and input that ends stops the session with nothing
-further changed. It stops at the machine: the remote step tells the operator
-to use 1.x.
+[ADR-0032](./docs/adr/0032-the-guided-flow-changes-something-only-on-a-typed-yes.md)
+for the prompt rules and
+[ADR-0035](./docs/adr/0035-the-guided-flow-is-four-calm-screens-answered-in-words.md)
+for its shape. `polinrider` with no arguments. Four screens: what to check,
+where, what was found, what to do now. Answers are words (`computer`,
+`folder`, `yes`, `no`, `details`), never numbers. Step 3 is a summary in plain
+words with no paths; `details` shows the full list. It changes something only
+on a typed `yes`, only `q` leaves, and input that ends stops the session. A
+report is saved on every run. Mandeep rejected the first version as too dense
+for somebody under stress and approved a mock of this one before it was built:
+**show him a mock before changing how it looks again.** It stops at the
+machine: the last screen says GitHub is for the released tool.
 
 ---
 

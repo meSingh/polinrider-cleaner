@@ -39,30 +39,44 @@ impl Level {
     }
 }
 
-/// What a confirmed finding is, in the one sense that matters afterwards:
-/// what can be done about it and what it proves.
+/// What a confirmed finding is.
 ///
 /// Every `[HIT]` has one. It is an argument to [`Finding::hit`] and not a
-/// field to remember, so a finding that the "what to do next" block cannot
-/// account for does not compile.
+/// field to remember, so a finding that the summary and the "what to do next"
+/// block cannot account for does not compile. Everything said about a finding
+/// in plain words comes from here, in one place.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Kind {
     /// A build config carrying a payload. `clean` can cut it out, or the
     /// shape is not one it will touch.
     Config { strippable: bool },
-    /// A file inside a project that `--apply` moves whole: a font that is
-    /// not a font, a `tasks.json` carrying an indicator.
-    InProject,
-    /// A campaign package named in a manifest. Removed by hand.
+    /// A font file whose bytes are a script.
+    FakeFont,
+    /// A `tasks.json` that runs on folder open and carries an indicator.
+    TasksJson,
+    /// A campaign package named in a manifest.
     Package,
-    /// Outside the projects, and `--apply` moves it: an implant, a login
-    /// item, a git hook, an editor extension, the propagation script.
-    OnMachine,
-    /// Outside the projects, and only a person can fix it: a shell startup
-    /// file, a crontab, an npm registry.
-    ByHand,
-    /// Happening now: a process, a connection.
-    Running,
+    /// A git hook carrying an indicator.
+    GitHook,
+    /// The second-stage implant, on disk.
+    Implant,
+    /// The script the payload uses to push itself to other repositories.
+    Propagation,
+    /// An editor extension carrying an indicator.
+    Extension,
+    /// Something that starts at login or on a schedule: a systemd unit, an
+    /// autostart entry, a launch item, a system cron entry.
+    LoginItem,
+    /// The user's crontab.
+    Crontab,
+    /// A shell startup file.
+    StartupFile,
+    /// The npm registry setting.
+    Registry,
+    /// A process running now.
+    Process,
+    /// A connection open now.
+    Connection,
 }
 
 impl Kind {
@@ -70,12 +84,118 @@ impl Kind {
     /// in a file that was cloned onto it? The difference between "rebuild"
     /// and "decide whether to rebuild".
     pub const fn ran_here(self) -> bool {
-        matches!(self, Kind::OnMachine | Kind::ByHand | Kind::Running)
+        !matches!(
+            self,
+            Kind::Config { .. } | Kind::FakeFont | Kind::TasksJson | Kind::Package
+        )
     }
 
-    /// Can `--apply` move it into quarantine?
+    /// Can `--apply` move it into quarantine whole?
     pub const fn movable(self) -> bool {
-        matches!(self, Kind::InProject | Kind::OnMachine)
+        matches!(
+            self,
+            Kind::FakeFont
+                | Kind::TasksJson
+                | Kind::GitHook
+                | Kind::Implant
+                | Kind::Propagation
+                | Kind::Extension
+                | Kind::LoginItem
+        )
+    }
+
+    /// Does only a person editing a file fix it?
+    pub const fn by_hand(self) -> bool {
+        matches!(self, Kind::Crontab | Kind::StartupFile | Kind::Registry)
+    }
+
+    /// Is it happening now?
+    pub const fn running(self) -> bool {
+        matches!(self, Kind::Process | Kind::Connection)
+    }
+
+    /// What it is, in words somebody who has never heard of an indicator can
+    /// read, for `n` of them. No path, no jargon.
+    pub fn plain(self, n: usize) -> String {
+        let (one, many) = match self {
+            Kind::Config { .. } => (
+                "config file with the payload hidden in it",
+                "config files with the payload hidden in them",
+            ),
+            Kind::FakeFont => (
+                "font file that is really a script",
+                "font files that are really scripts",
+            ),
+            Kind::TasksJson => (
+                "editor task that runs the payload when a folder is opened",
+                "editor tasks that run the payload when a folder is opened",
+            ),
+            Kind::Package => (
+                "project that depends on a campaign package",
+                "projects that depend on a campaign package",
+            ),
+            Kind::GitHook => (
+                "git hook carrying the payload",
+                "git hooks carrying the payload",
+            ),
+            Kind::Implant => (
+                "copy of the implant program",
+                "copies of the implant program",
+            ),
+            Kind::Propagation => (
+                "script the payload uses to spread",
+                "scripts the payload uses to spread",
+            ),
+            Kind::Extension => (
+                "editor extension carrying the payload",
+                "editor extensions carrying the payload",
+            ),
+            Kind::LoginItem => (
+                "login item that starts the payload",
+                "login items that start the payload",
+            ),
+            Kind::Crontab => (
+                "scheduled job that calls the campaign",
+                "scheduled jobs that call the campaign",
+            ),
+            Kind::StartupFile => (
+                "shell startup file that runs the payload",
+                "shell startup files that run the payload",
+            ),
+            Kind::Registry => (
+                "npm setting pointing at the campaign",
+                "npm settings pointing at the campaign",
+            ),
+            Kind::Process => (
+                "program from the payload running right now",
+                "programs from the payload running right now",
+            ),
+            Kind::Connection => (
+                "live connection to the campaign's servers",
+                "live connections to the campaign's servers",
+            ),
+        };
+        format!("{n} {}", if n == 1 { one } else { many })
+    }
+
+    /// The same thing as the subject of a sentence: "A login item means...".
+    /// Only for kinds that prove the payload ran.
+    pub const fn evidence(self) -> &'static str {
+        match self {
+            Kind::GitHook => "A git hook",
+            Kind::Implant => "A copy of the implant",
+            Kind::Propagation => "The spreading script",
+            Kind::Extension => "An infected editor extension",
+            Kind::LoginItem => "A login item",
+            Kind::Crontab => "A scheduled job",
+            Kind::StartupFile => "A shell startup file",
+            Kind::Registry => "An npm setting",
+            Kind::Process => "A running program",
+            Kind::Connection => "A live connection",
+            Kind::Config { .. } | Kind::FakeFont | Kind::TasksJson | Kind::Package => {
+                "A file in a project"
+            }
+        }
     }
 }
 
@@ -91,6 +211,10 @@ pub struct Finding {
     /// What kind of confirmed finding this is. `None` for everything that is
     /// not a `[HIT]`.
     pub kind: Option<Kind>,
+    /// The file or directory this is about, when it is about one. Held apart
+    /// from the message so that a display can put it on its own line without
+    /// guessing where the sentence ends and the path begins.
+    pub path: Option<std::path::PathBuf>,
 }
 
 impl Finding {
@@ -100,6 +224,7 @@ impl Finding {
             message: message.into(),
             remedy: None,
             kind: None,
+            path: None,
         }
     }
 
@@ -123,6 +248,27 @@ impl Finding {
     /// never ran, and that ambiguity is how a skipped check gets missed.
     pub fn ok(message: impl Into<String>) -> Self {
         Self::new(Level::Ok, message)
+    }
+
+    /// Name the file or directory this finding is about.
+    #[must_use]
+    pub fn at(mut self, path: impl AsRef<std::path::Path>) -> Self {
+        self.path = Some(path.as_ref().to_path_buf());
+        self
+    }
+
+    /// The message without its path on the end, for a display that shows the
+    /// path on a line of its own.
+    pub fn what(&self) -> &str {
+        match &self.path {
+            Some(path) => self
+                .message
+                .strip_suffix(&path.display().to_string())
+                .map_or(self.message.as_str(), |m| {
+                    m.trim_end().trim_end_matches(':')
+                }),
+            None => &self.message,
+        }
     }
 
     /// Add a line of advice under the message. Called twice, it adds a second
@@ -206,6 +352,9 @@ pub enum Entry {
 #[derive(Debug, Default)]
 pub struct Verdict {
     entries: Vec<Entry>,
+    /// How many files the walk listed. Said back to the operator, because
+    /// "it was quick" and "it looked at eight files" are the same fact.
+    files: usize,
 }
 
 impl Verdict {
@@ -229,6 +378,14 @@ impl Verdict {
 
     pub fn note(&mut self, line: impl Into<String>) {
         self.entries.push(Entry::Note(line.into()));
+    }
+
+    pub fn set_files(&mut self, files: usize) {
+        self.files = files;
+    }
+
+    pub fn files(&self) -> usize {
+        self.files
     }
 
     pub fn entries(&self) -> &[Entry] {
@@ -310,7 +467,7 @@ mod tests {
             v.push(Finding::review("something to look at"));
         }
         v.push(Finding::hit(
-            Kind::InProject,
+            Kind::FakeFont,
             "config file contains an indicator",
         ));
         assert_eq!(v.exit_code(), ExitCode::Confirmed);
@@ -327,7 +484,7 @@ mod tests {
 
     #[test]
     fn a_second_remedy_is_added_not_swapped_in() {
-        let f = Finding::hit(Kind::OnMachine, "launch item contains an indicator")
+        let f = Finding::hit(Kind::LoginItem, "launch item contains an indicator")
             .with_remedy("unload it first")
             .with_remedy("would quarantine: /x");
         assert_eq!(

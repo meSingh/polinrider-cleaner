@@ -280,6 +280,15 @@ impl Quarantine<Apply> {
     pub fn taken(&self) -> usize {
         self.manifest.len()
     }
+
+    /// What was taken, as (where it was, why). For telling the operator what
+    /// was done in their own words, from the same record the manifest is
+    /// written from.
+    pub fn receipts(&self) -> impl Iterator<Item = (&Path, &str)> {
+        self.manifest
+            .iter()
+            .map(|(from, _, reason)| (from.as_path(), reason.as_str()))
+    }
 }
 
 /// `YYYYMMDDTHHMMSSZ` for a number of seconds since the Unix epoch, in UTC.

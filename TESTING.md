@@ -35,10 +35,10 @@ end user would have it, builds a sample and leaves you at a prompt.
 polinrider
 ```
 
-That is the guided flow. It asks what to check, scans, shows what it would
-move or strip, and does it only if you type `yes`. Choose `1` for "this
-computer", which in here is the container, and press Enter to accept
-`~/code`.
+That is the guided flow: four screens, one question on each, answered in
+words. Type `computer`, which in here is the container, and press Enter to
+accept `~/code`. It checks, then shows a short summary of what it found and
+asks one question.
 
 The sample it finds:
 
@@ -51,15 +51,19 @@ The sample it finds:
 None of it is live malware. Each file carries one indicator string from
 `ioc/`, which is what the scanner matches.
 
-Things worth trying, and what should happen:
+Things worth trying at that question, and what should happen:
 
-1. At the yes or no prompt, press Enter, then type `sure`. It asks again each
-   time and changes nothing.
-2. Type `q` at any prompt. It stops and says nothing further was changed.
-3. Type `yes`. One file is stripped and two are moved. `cat
+1. Press Enter, then type `sure`. It asks again each time and changes nothing.
+2. Type `details`. It lists every finding with its path, and asks again.
+3. Type `q`. It stops and says nothing further was changed.
+4. Type `yes`. One file is stripped and two are moved, it checks again, and
+   the last screen says what is left for you. `cat
    ~/code/shop/postcss.config.mjs` is three clean lines, and
    `ls ~/polinrider-quarantine-*` holds the originals with a `manifest.tsv`.
-4. `./ci/beta.sh` puts the sample back, to go again.
+5. `./ci/beta.sh` puts the sample back, to go again.
+
+Every guided run saves a full report in the home directory and names it on
+the last screen.
 
 Without the prompts:
 
@@ -130,8 +134,9 @@ extensions, as opposed to a clean runner.
 2. Whether `./polinrider-sandbox --beta` got you to a prompt, and roughly how
    long the first run took.
 3. What `polinrider --version` printed.
-4. Step 3: whether Enter, `sure` and `q` left the file alone, and whether
-   `yes` stripped one file and moved two.
+4. Step 3: whether Enter, `sure`, `details` and `q` left the file alone, and
+   whether `yes` stripped one file and moved two. And how the screens read:
+   anything that was hard to follow or easy to miss.
 5. If you tried step 5: the exit code, roughly how long it took, and the
    `[HIT]` and `[review]` lines. They name your paths, so trim what you would
    not want in a thread.

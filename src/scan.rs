@@ -48,6 +48,7 @@ pub fn run(scope: &Scope, sink: &mut Sink) -> Verdict {
     let mut v = Verdict::new();
     v.section("Filesystem walk");
     let w = walk::walk_with(scope.roots, &walk::Options::skipping(sink.root()));
+    v.set_files(w.files.len());
     v.push(Finding::info(format!(
         "{} files listed. Not walked: {}",
         w.files.len(),
@@ -344,12 +345,12 @@ pub fn next_steps(v: &Verdict, run: &Run) -> String {
     let kinds: Vec<Kind> = v.kinds().collect();
     let count = |want: fn(&Kind) -> bool| kinds.iter().filter(|k| want(k)).count();
     let ran_here = kinds.iter().any(|k| k.ran_here());
-    let running = count(|k| matches!(k, Kind::Running));
+    let running = count(|k| k.running());
     let movable = count(|k| k.movable());
     let strippable = count(|k| matches!(k, Kind::Config { strippable: true }));
     let not_strippable = count(|k| matches!(k, Kind::Config { strippable: false }));
     let packages = count(|k| matches!(k, Kind::Package));
-    let by_hand = count(|k| matches!(k, Kind::ByHand));
+    let by_hand = count(|k| matches!(k, Kind::StartupFile));
     let cleaning = run.command == "clean";
 
     out.push_str("\n== WHAT TO DO NEXT ==\n");
@@ -537,7 +538,7 @@ mod tests {
         let text = steps(
             vec![
                 config(),
-                Finding::hit(Kind::OnMachine, "systemd unit contains an indicator"),
+                Finding::hit(Kind::LoginItem, "systemd unit contains an indicator"),
             ],
             "check",
             false,
@@ -571,7 +572,7 @@ mod tests {
         let text = steps(
             vec![
                 config(),
-                Finding::hit(Kind::InProject, "font file is not a font"),
+                Finding::hit(Kind::FakeFont, "font file is not a font"),
             ],
             "check",
             false,
@@ -592,7 +593,7 @@ mod tests {
         v.push(config());
         assert!(result(&v).contains("The payload is in your project files. See below."));
         v.push(Finding::hit(
-            Kind::Running,
+            Kind::Process,
             "an implant process is running now",
         ));
         assert!(result(&v).contains("This machine cannot be trusted until it is rebuilt."));
@@ -602,7 +603,7 @@ mod tests {
     fn a_running_implant_puts_the_network_first() {
         let text = steps(
             vec![Finding::hit(
-                Kind::Running,
+                Kind::Process,
                 "an implant process is running now",
             )],
             "check",
@@ -642,7 +643,7 @@ mod tests {
         let text = steps(
             vec![
                 config(),
-                Finding::hit(Kind::InProject, "font file is not a font"),
+                Finding::hit(Kind::FakeFont, "font file is not a font"),
             ],
             "clean",
             true,
@@ -668,7 +669,10 @@ mod tests {
                     "config file contains an indicator",
                 ),
                 Finding::hit(Kind::Package, "known-bad package referenced"),
-                Finding::hit(Kind::ByHand, "shell startup file contains an indicator"),
+                Finding::hit(
+                    Kind::StartupFile,
+                    "shell startup file contains an indicator",
+                ),
             ],
             "check",
             false,

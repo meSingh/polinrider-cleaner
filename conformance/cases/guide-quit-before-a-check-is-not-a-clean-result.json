@@ -1,5 +1,5 @@
 {
-  "why": "Leaving at the first question scanned nothing. Exit 0 would tell a script the machine is clean; exit 3 says the scan did not run, which is what happened.",
+  "why": "Leaving at the first question checked nothing. Exit 0 would tell a script the machine is clean; exit 3 says the check did not run, which is what happened.",
   "command": "guide",
   "roots": [
     "code"
@@ -14,7 +14,7 @@
     "exit": 3,
     "tree_may_change": false,
     "must_print": [
-      "Nothing was scanned"
+      "Nothing was checked"
     ]
   }
 }

@@ -1,0 +1,35 @@
+{
+  "why": "Somebody who has just been told they are infected is not reading a list of sections. The screen says how many, what kind and what it means, in plain words and with no path. The full list is one word away, and asking for it changes nothing.",
+  "command": "guide",
+  "roots": [
+    "code"
+  ],
+  "stdin": [
+    "folder",
+    "{{TREE}}/code",
+    "",
+    "details",
+    "no",
+    ""
+  ],
+  "files": {
+    "code/proj/postcss.config.mjs": "export default { plugins: {} }\n{{PAD}}{{STRONG}}\n",
+    "code/proj/public/fake.woff2": "var _0x4a=function(){return 1};\n"
+  },
+  "expect": {
+    "exit": 2,
+    "tree_may_change": false,
+    "must_print": [
+      "CONFIRMED   2",
+      "1 config file with the payload hidden in it",
+      "1 font file that is really a script",
+      "I can deal with 2 of the 2 now:",
+      "config file contains an indicator",
+      "font file is not a font"
+    ],
+    "must_not_report": [
+      "[HIT]",
+      "[review]"
+    ]
+  }
+}

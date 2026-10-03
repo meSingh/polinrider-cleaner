@@ -5,7 +5,7 @@
     "code"
   ],
   "stdin": [
-    "2",
+    "folder",
     "{{TREE}}/code",
     "",
     "",
@@ -20,12 +20,14 @@
     "exit": 2,
     "tree_may_change": false,
     "must_print": [
-      "Type yes or no",
-      "Left as it is"
+      "Type yes, no or details",
+      "Left as it is",
+      "you left in place"
     ],
     "must_not_print": [
-      "original kept ->",
-      "Checking again"
+      "Done.",
+      "stripped   ",
+      "Checked again."
     ]
   }
 }

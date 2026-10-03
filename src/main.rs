@@ -11,7 +11,7 @@ use polinrider::host::{Host, LiveHost, Snapshot};
 use polinrider::indicators::Indicators;
 use polinrider::quarantine::{Apply, DryRun, Quarantine};
 use polinrider::scan::{self, Run, Scope, Target};
-use polinrider::ui::Ui;
+use polinrider::ui::{Span, Ui};
 use polinrider::verdict::ExitCode;
 
 use std::io::{BufRead, Write};
@@ -275,12 +275,12 @@ struct Terminal {
 }
 
 impl Console for Terminal {
-    fn say(&mut self, text: &str) {
-        emit(&format!("{}\n", self.ui.paint(text)));
+    fn say(&mut self, line: &[Span]) {
+        emit(&format!("{}\n", self.ui.line(line)));
     }
 
-    fn ask(&mut self, prompt: &str) -> Option<String> {
-        emit(&format!("{} ", self.ui.bold(prompt)));
+    fn ask(&mut self) -> Option<String> {
+        emit(&format!("  {} ", self.ui.accent(">")));
         let mut line = String::new();
         match std::io::stdin().lock().read_line(&mut line) {
             // Zero bytes is the end of input, which is not the same as an
@@ -295,26 +295,34 @@ impl Console for Terminal {
 }
 
 fn guided(args: &cli::Args, ind: &Indicators, host: Option<&dyn Host>, ui: Ui) -> ProcExit {
+    // The screens show a summary, so the whole of it has to be somewhere.
+    // A guided run always saves a report, in the home directory unless told
+    // where.
+    let report = args.report.clone().unwrap_or_else(|| {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.as_secs());
+        args.home.join(format!(
+            "polinrider-report-{}.txt",
+            polinrider::quarantine::stamp(now)
+        ))
+    });
     let session = Session {
         ind,
         ioc_dir: &args.ioc,
         home: &args.home,
         host,
         quarantine: &args.quarantine,
+        report: &report,
+        system: system_name(),
+        unicode: ui.unicode,
     };
-    let mut terminal = Terminal { ui };
-    terminal.say(&format!(
-        "PolinRider guided check\n\n  Detected a {} system.\n  DRY RUN until you type yes. No changes will be made before that.\n",
-        system_name()
-    ));
-    let outcome = guide::run(&session, &mut terminal);
-    if let Some(path) = &args.report {
-        if !outcome.report.is_empty() {
-            match write_report(path, &outcome.report) {
-                Ok(()) => emit(&format!("The full report is in {}\n", path.display())),
-                Err(e) => eprintln!("polinrider: could not write {}: {e}", path.display()),
-            }
-        }
+    let outcome = guide::run(&session, &mut Terminal { ui });
+    if let Err(e) = write_report(&report, &outcome.report) {
+        eprintln!(
+            "polinrider: the report could not be saved to {}: {e}",
+            report.display()
+        );
     }
     ProcExit::from(outcome.exit.code() as u8)
 }

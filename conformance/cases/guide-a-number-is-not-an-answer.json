@@ -1,0 +1,28 @@
+{
+  "why": "The first version asked people to type 1 or 2. A digit is easy to mistype and says nothing about what was chosen. Answers are the words on the screen, in any case, and anything else asks again without doing anything.",
+  "command": "guide",
+  "roots": [
+    "code"
+  ],
+  "stdin": [
+    "1",
+    "2",
+    "FOLDER",
+    "{{TREE}}/code",
+    ""
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "expect": {
+    "exit": 0,
+    "tree_may_change": false,
+    "must_print": [
+      "Type the word computer or folder",
+      "NOTHING FOUND"
+    ],
+    "must_not_print": [
+      "Type 1 or 2"
+    ]
+  }
+}

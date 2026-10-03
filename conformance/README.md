@@ -119,9 +119,10 @@ such command, so they skip under it, the same way the host cases do.
 A case with `"command": "guide"` runs a whole guided session
 ([ADR-0032](../docs/adr/0032-the-guided-flow-changes-something-only-on-a-typed-yes.md)).
 Its `stdin` is what the operator types, one answer per entry, and `{{TREE}}` in
-an answer is the fixture tree. These pin the promise on the first screen:
-nothing is changed unless you type yes. Not on Enter, not on "sure", and not
-when the input runs out.
+an answer is the fixture tree. Answers are words, never numbers. These pin
+the promise on the first screen: nothing will be changed unless you type yes.
+Not on Enter, not on "sure", not for asking to see the details, and not when
+the input runs out.
 
 What the host cases do not cover is the thin layer that actually runs `ps`,
 `ss`, `lsof`, `crontab` and `git` on a real machine. The cases start on the far

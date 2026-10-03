@@ -49,3 +49,4 @@ reason to keep them.
 - [The guided flow changes something only on a typed yes](https://github.com/meSingh/polinrider-cleaner/blob/main/docs/adr/0032-the-guided-flow-changes-something-only-on-a-typed-yes.md) — Accepted
 - [Every run opens with the banner, and colour changes no character](https://github.com/meSingh/polinrider-cleaner/blob/main/docs/adr/0033-every-run-opens-with-the-banner-and-colour-changes-no-character.md) — Accepted
 - [The verdict is followed by what to do, and "rebuild" is said only on proof](https://github.com/meSingh/polinrider-cleaner/blob/main/docs/adr/0034-the-verdict-is-followed-by-what-to-do-and-rebuild-is-said-only-on-proof.md) — Accepted
+- [The guided flow is four calm screens, answered in words](https://github.com/meSingh/polinrider-cleaner/blob/main/docs/adr/0035-the-guided-flow-is-four-calm-screens-answered-in-words.md) — Accepted

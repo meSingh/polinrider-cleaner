@@ -1,12 +1,12 @@
 {
-  "why": "The whole flow in one session: choose a folder, scan, see what would be cut, type yes, and it is cut with the original kept, then checked again. Exit 2 although the files end clean, because the session found a confirmed indicator and a script reading the exit code must not be told nothing happened.",
+  "why": "The whole flow in one session: choose a folder, see a summary of what was found, type yes, and it is stripped with the original kept, then checked again. Exit 2 although the files end clean, because the session found a confirmed indicator and a script reading the exit code must not be told nothing happened.",
   "command": "guide",
   "apply": true,
   "roots": [
     "code"
   ],
   "stdin": [
-    "2",
+    "folder",
     "{{TREE}}/code",
     "",
     "yes",
@@ -25,9 +25,12 @@
       "code/proj/postcss.config.mjs": "export default { plugins: {} }\n"
     },
     "must_print": [
-      "Step 4 of 6",
-      "Checking again",
-      "a DIFFERENT machine"
+      "STEP 3 OF 4",
+      "Done.",
+      "stripped   ",
+      "Checked again.",
+      "STEP 4 OF 4",
+      "from a DIFFERENT computer"
     ]
   }
 }

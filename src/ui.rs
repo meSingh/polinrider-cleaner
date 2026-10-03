@@ -47,6 +47,51 @@ const WORDMARK_BOTTOM: [&str; 3] = [
     "  ╚═╝      ╚═════╝ ╚══════╝╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝╚═╝╚═════╝ ╚══════╝╚═╝  ╚═╝",
 ];
 
+/// How a piece of text should read. Meaning, not a colour: the palette is
+/// decided here and nowhere else.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Tone {
+    Plain,
+    /// A word to type, a value to read first.
+    Accent,
+    /// Safe, done, clean.
+    Good,
+    /// Needs a person.
+    Warn,
+    /// Confirmed.
+    Bad,
+    /// Supporting detail.
+    Dim,
+    /// A heading.
+    Strong,
+}
+
+/// A run of text with one tone. A line is a slice of these.
+///
+/// The guided flow speaks in spans and not in marked-up strings on purpose.
+/// Its lines mix words it wrote with paths it found, and a path is chosen by
+/// whoever planted the file. Text in a span is never parsed for anything, so
+/// no file name can change how a line is coloured or what it appears to say.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Span {
+    pub tone: Tone,
+    pub text: String,
+}
+
+impl Span {
+    pub fn new(tone: Tone, text: impl Into<String>) -> Self {
+        Self {
+            tone,
+            text: text.into(),
+        }
+    }
+}
+
+/// The text of a line with no colour at all.
+pub fn text_of(spans: &[Span]) -> String {
+    spans.iter().map(|s| s.text.as_str()).collect()
+}
+
 /// What this output can show.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Ui {
@@ -105,6 +150,22 @@ impl Ui {
     /// cannot scan at all.
     pub fn alarm(&self, text: &str) -> String {
         self.wrap(&[RED, BOLD], text)
+    }
+
+    /// One line of spans, coloured by tone.
+    pub fn line(&self, spans: &[Span]) -> String {
+        spans
+            .iter()
+            .map(|span| match span.tone {
+                Tone::Plain => span.text.clone(),
+                Tone::Accent => self.wrap(&[CYAN, BOLD], &span.text),
+                Tone::Good => self.wrap(&[GREEN, BOLD], &span.text),
+                Tone::Warn => self.wrap(&[YELLOW, BOLD], &span.text),
+                Tone::Bad => self.wrap(&[RED, BOLD], &span.text),
+                Tone::Dim => self.wrap(&[GREY], &span.text),
+                Tone::Strong => self.wrap(&[BOLD], &span.text),
+            })
+            .collect()
     }
 
     /// The wordmark, the signature and one line saying which build this is.
@@ -216,10 +277,7 @@ impl Ui {
             let label = line.get(..line.len() - rest.len()).unwrap_or_default();
             return format!("{}{rest}", self.wrap(&[DIM], label));
         }
-        if (line.starts_with("== ") && line.ends_with(" =="))
-            || line.starts_with("PolinRider ")
-            || line.starts_with("Step ")
-        {
+        if (line.starts_with("== ") && line.ends_with(" ==")) || line.starts_with("PolinRider ") {
             return self.wrap(&[BOLD], line);
         }
         // A command to run next, on a line of its own.
@@ -309,6 +367,20 @@ mod tests {
             COLOUR.paint("something this module has never seen"),
             "something this module has never seen"
         );
+    }
+
+    #[test]
+    fn spans_colour_by_tone_and_never_read_the_text() {
+        // A path that looks like markup, or like a finding, is just text.
+        let line = [
+            Span::new(Tone::Dim, "moved      "),
+            Span::new(Tone::Plain, "/tmp/[HIT] \x1b[31mnot red"),
+        ];
+        assert_eq!(text_of(&line), "moved      /tmp/[HIT] \x1b[31mnot red");
+        assert_eq!(Ui::plain().line(&line), text_of(&line));
+        let painted = COLOUR.line(&line);
+        assert!(painted.starts_with(GREY));
+        assert!(!painted.contains(&format!("{RED}{BOLD}")), "{painted:?}");
     }
 
     #[test]

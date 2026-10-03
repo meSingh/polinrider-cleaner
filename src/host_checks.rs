@@ -73,7 +73,7 @@ pub fn implant_processes(host: &dyn Host, ind: &Indicators, v: &mut Verdict) -> 
         v.detail(format!("{} {}", p.pid, p.name));
     }
     let mut finding = Finding::hit(
-        Kind::Running,
+        Kind::Process,
         "an implant process is running now. Kill it before anything else:",
     );
     if host.is_live() {
@@ -242,9 +242,10 @@ fn systemd_units(dir: &Path, user_scope: bool, ind: &Indicators, v: &mut Verdict
             let quarantined = sink.take(unit, "systemd-unit");
             v.push(
                 Finding::hit(
-                    Kind::OnMachine,
+                    Kind::LoginItem,
                     format!("systemd unit contains an indicator: {}", unit.display()),
                 )
+                .at(unit)
                 .with_remedy(format!(
                     "after quarantine, disable it: {scope} disable --now {}",
                     sh_quote(&file_name(unit))
@@ -281,9 +282,10 @@ fn autostart(home: &Path, ind: &Indicators, v: &mut Verdict, sink: &mut Sink) {
             let quarantined = sink.take(entry, "autostart-entry");
             v.push(
                 Finding::hit(
-                    Kind::OnMachine,
+                    Kind::LoginItem,
                     format!("autostart entry contains an indicator: {}", entry.display()),
                 )
+                .at(entry)
                 .with_remedy(quarantined),
             );
         } else {
@@ -310,12 +312,13 @@ fn system_cron(dir: &Path, ind: &Indicators, v: &mut Verdict, sink: &mut Sink) {
             let quarantined = sink.take(entry, "system-cron");
             v.push(
                 Finding::hit(
-                    Kind::OnMachine,
+                    Kind::LoginItem,
                     format!(
                         "system cron entry contains an indicator: {}",
                         entry.display()
                     ),
                 )
+                .at(entry)
                 .with_remedy(quarantined),
             );
         }
@@ -336,9 +339,10 @@ fn launch_items(dir: &Path, ind: &Indicators, v: &mut Verdict, sink: &mut Sink) 
             let quarantined = sink.take(item, "launch-item");
             v.push(
                 Finding::hit(
-                    Kind::OnMachine,
+                    Kind::LoginItem,
                     format!("launch item contains an indicator: {}", item.display()),
                 )
+                .at(item)
                 .with_remedy(format!(
                     "after quarantine, unload it: launchctl unload {}",
                     sh_quote(&item.display().to_string())
@@ -369,7 +373,7 @@ fn crontab(host: &dyn Host, ind: &Indicators, v: &mut Verdict) {
             // entry with the same content was already a hit.
             if ind.has_strong(&text) || ind.infrastructure_in(&text).is_some() {
                 v.push(
-                    Finding::hit(Kind::ByHand, "user crontab contains an indicator:").with_remedy(
+                    Finding::hit(Kind::Crontab, "user crontab contains an indicator:").with_remedy(
                         "remove the line with: crontab -e. A crontab is never quarantined.",
                     ),
                 );
@@ -438,12 +442,13 @@ pub fn shell_startup(home: &Path, platform: Platform, ind: &Indicators, v: &mut 
         if ind.has_strong(&text) {
             v.push(
                 Finding::hit(
-                    Kind::ByHand,
+                    Kind::StartupFile,
                     format!(
                         "shell startup file contains an indicator: {}",
                         file.display()
                     ),
                 )
+                .at(&file)
                 .with_remedy(
                     "edit it by hand and remove the line. This file is never quarantined.",
                 ),
@@ -451,12 +456,13 @@ pub fn shell_startup(home: &Path, platform: Platform, ind: &Indicators, v: &mut 
         } else if text.lines().any(pipes_a_download_into_an_interpreter) {
             v.push(
                 Finding::hit(
-                    Kind::ByHand,
+                    Kind::StartupFile,
                     format!(
                         "shell startup file pipes a download into an interpreter: {}",
                         file.display()
                     ),
                 )
+                .at(&file)
                 .with_remedy("edit it by hand and remove the line."),
             );
         } else if text.lines().any(|l| l.len() > 2000) {
@@ -570,13 +576,16 @@ pub fn npm_config(home: &Path, ind: &Indicators, v: &mut Verdict) {
             // reports every company with a private registry as compromised.
             // It is confirmed only when it is the campaign's own host.
             if ind.has_strong(registry) || ind.infrastructure_in(registry).is_some() {
-                v.push(Finding::hit(
-                    Kind::ByHand,
-                    format!(
-                        "the npm registry is set to known campaign infrastructure: {}",
-                        redact_userinfo(registry)
-                    ),
-                ));
+                v.push(
+                    Finding::hit(
+                        Kind::Registry,
+                        format!(
+                            "the npm registry is set to known campaign infrastructure: {}",
+                            redact_userinfo(registry)
+                        ),
+                    )
+                    .at(&npmrc),
+                );
             } else {
                 v.push(Finding::review(format!(
                     "a non-default npm registry is configured, confirm it is yours: {}",
@@ -643,7 +652,7 @@ pub fn interpreters(host: &dyn Host, ind: &Indicators, v: &mut Verdict) {
     });
     if implant {
         v.push(Finding::hit(
-            Kind::Running,
+            Kind::Process,
             "an interpreter is running implant code right now",
         ));
     } else {
@@ -690,7 +699,7 @@ pub fn connections(host: &dyn Host, ind: &Indicators, v: &mut Verdict) {
             v.detail(line.as_str());
         }
         v.push(Finding::hit(
-            Kind::Running,
+            Kind::Connection,
             "live connection to known campaign infrastructure",
         ));
         return;
