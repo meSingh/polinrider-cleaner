@@ -11,10 +11,10 @@
 //! promises to the person reading the message:
 //!
 //! - **Unknown**: not a flag this tool has. Lists what it does have.
-//! - **Not implemented**: a flag the shell version accepts and this one does
-//!   not yet. It refuses rather than ignoring, because a flag that silently
-//!   does nothing is how somebody ends up believing a scan resumed when it
-//!   started over.
+//! - **Not implemented** or **removed**: a flag the shell version accepts and
+//!   this one does not, either not yet or by decision. It refuses rather than
+//!   ignoring, because a flag that silently does nothing is how somebody ends
+//!   up believing a scan resumed when it started over.
 //! - **Invalid**: a real flag with an argument that cannot work. A root that
 //!   does not exist is this, not a warning: scanning nothing must never be
 //!   reported as scanning clean.
@@ -53,22 +53,29 @@ pub const ACCEPTED: &[(&str, &str)] = &[
 /// Flags the shell implementation accepts that this one does not yet.
 /// Refused explicitly rather than ignored.
 const NOT_IMPLEMENTED: &[(&str, &str)] = &[
-    (
-        "--state",
-        "checkpointing is not implemented in the Rust engine yet",
-    ),
-    (
-        "--resume",
-        "resuming an interrupted scan is not implemented yet",
-    ),
     ("--jobs", "parallel hashing is not implemented yet"),
     ("--background", "detaching is not implemented yet"),
+];
+
+/// Flags 1.x had that 2.0 does not have and will not get. ADR-0030. Still
+/// recognised, so that somebody arriving from 1.x is told what happened to
+/// the flag instead of being told it never existed.
+const REMOVED: &[(&str, &str)] = &[
+    ("--state", "2.0 does not checkpoint a scan"),
+    (
+        "--resume",
+        "2.0 does not checkpoint a scan, so there is nothing to resume",
+    ),
 ];
 
 #[derive(Debug)]
 pub enum Rejection {
     Unknown(String),
     NotImplemented {
+        flag: String,
+        why: String,
+    },
+    Removed {
         flag: String,
         why: String,
     },
@@ -116,6 +123,12 @@ impl fmt::Display for Rejection {
                 writeln!(f, "nothing is how somebody comes to believe a scan resumed")?;
                 writeln!(f, "when it actually started over.\n")?;
                 write!(f, "The shell implementation supports it: ./polinrider.sh")
+            }
+            Rejection::Removed { flag, why } => {
+                writeln!(f, "{flag} was removed in 2.0: {why}.")?;
+                writeln!(f, "\nNothing was scanned. Every run starts from the beginning and")?;
+                writeln!(f, "walks the filesystem once. Refused rather than ignored: a flag")?;
+                write!(f, "that silently does nothing would let a scan look resumed.")
             }
             Rejection::MissingValue(flag) => write!(f, "{flag} needs a value"),
             Rejection::NoRoots => write!(
@@ -197,6 +210,12 @@ pub fn parse<I: Iterator<Item = String>>(argv: I, default_ioc: PathBuf) -> Resul
                 // than its argument.
                 if let Some((flag, why)) = NOT_IMPLEMENTED.iter().find(|(f, _)| *f == other) {
                     return Err(Rejection::NotImplemented {
+                        flag: (*flag).to_string(),
+                        why: (*why).to_string(),
+                    });
+                }
+                if let Some((flag, why)) = REMOVED.iter().find(|(f, _)| *f == other) {
+                    return Err(Rejection::Removed {
                         flag: (*flag).to_string(),
                         why: (*why).to_string(),
                     });
@@ -342,12 +361,25 @@ mod tests {
 
     #[test]
     fn a_known_but_unbuilt_flag_says_so_rather_than_being_ignored() {
-        // The whole point: --state used to be accepted and silently dropped.
         let ioc = ioc_fixture("notimpl");
-        let e =
-            parse(args(&["--state", "/tmp/s", "/tmp"]).into_iter(), ioc).expect_err("must refuse");
-        assert!(matches!(e, Rejection::NotImplemented { ref flag, .. } if flag == "--state"));
+        let e = parse(args(&["--jobs", "4", "/tmp"]).into_iter(), ioc).expect_err("must refuse");
+        assert!(matches!(e, Rejection::NotImplemented { ref flag, .. } if flag == "--jobs"));
         assert!(e.to_string().contains("Refused rather than ignored"));
+    }
+
+    #[test]
+    fn a_flag_removed_in_2_0_says_it_was_removed() {
+        // The whole point: --state used to be accepted and silently dropped,
+        // and a scan that started over looked like one that had resumed.
+        for flag in ["--state", "--resume"] {
+            let ioc = ioc_fixture("removed");
+            let e =
+                parse(args(&[flag, "/tmp/s", "/tmp"]).into_iter(), ioc).expect_err("must refuse");
+            assert!(matches!(e, Rejection::Removed { flag: ref f, .. } if f == flag));
+            let msg = e.to_string();
+            assert!(msg.contains("was removed in 2.0"), "{msg}");
+            assert!(msg.contains("Nothing was scanned"), "{msg}");
+        }
     }
 
     #[test]

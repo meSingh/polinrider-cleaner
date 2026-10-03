@@ -16,8 +16,9 @@ a rewrite in progress: one Rust binary replacing seventeen shell scripts, a
 documentation site, a container sandbox, and a conformance corpus that both
 implementations answer to. **`v2` has never been pushed.** The Rust engine
 passes every conformance case, for the filesystem checks and now for the
-host-state checks too. What remains is checkpointing, the local-repo cleaner and
-the guided flow.
+host-state checks too. What remains is the local-repo cleaner and the guided
+flow. `v2` is pushed to GitHub as a backup from 2026-10-03 and is **not** to be
+merged to `main` until Mandeep has tested it on his three machines.
 
 ---
 
@@ -49,7 +50,7 @@ reflog if they are ever wanted.
 Full detail in [`HACKING.md`](./HACKING.md). The three commands:
 
 ```bash
-./polinrider-sandbox --all     # lint, 9 self-tests, 41 conformance cases, clippy, 68 Rust tests
+./polinrider-sandbox --all     # lint, 9 self-tests, 43 conformance cases, clippy, 69 Rust tests
 ./polinrider-sandbox --demo    # build an infected sample and scan it
 ./ci/docs-serve.sh             # the documentation site, with live reload
 ```
@@ -94,7 +95,7 @@ argument for running unknown code on a machine you believe is compromised.
 
 ## What is done
 
-**The corpus** — `conformance/`, 12 filesystem cases, 20 host cases and 9
+**The corpus** — `conformance/`, 12 filesystem cases, 20 host cases and 11
 refusal cases. The filesystem cases are green against both implementations.
 The host cases run against the Rust engine only and print `skip` under the
 shell, which cannot be handed a machine that does not exist. Running in CI and
@@ -158,19 +159,19 @@ Mandeep has not reviewed yet.
    inventory, the `stop it first` advice under an implant path and the review
    of extensions that reference campaign infrastructure are still shell only.
    Windows is refused without `--fs-only`.
-3. **`--state` and `--resume` in Rust**, or a decision not to have them. They are
-   currently refused with an explicit message, which is honest, but the shell has
-   them and a backup-drive scan wants them.
-4. **Delete the shell machine check** once 2 and 3 land and the corpus is green
-   on all three platforms.
-5. **The local-repo cleaner** — strip a payload from a working tree in place,
+3. **Delete the shell machine check** once 2 lands and the corpus is green on
+   all three platforms. `--state` and `--resume` are not coming:
+   [ADR-0030](./docs/adr/0030-2-0-does-not-checkpoint-a-scan.md).
+4. **The local-repo cleaner** — strip a payload from a working tree in place,
    without pull, reset or stash, preserving uncommitted work. Mandeep asked for
    this early on and it is still not built. It needs its own ADR because it
    changes what `--apply` means.
-6. **The guided flow** — one CLI session walking triage, machine, credentials,
+5. **The guided flow** — one CLI session walking triage, machine, credentials,
    remote, verify, prevent, without leaving the tool. This is the "fully
    automated flow" Mandeep described.
-7. Then 2.0.0 merges to `main`.
+6. **A full test on Mandeep's three machines.** Only after that does 2.0.0
+   merge to `main` and get released. No backport of the ADR-0029 fixes to 1.x:
+   Mandeep decided 2.0 carries them.
 
 `TASKS.md` in the repository root has the running list, including promotion work.
 **It is git-ignored**, so it exists only on this machine; it carries outreach
@@ -254,7 +255,9 @@ descending. That was the six-hour scan ([ADR-0025](./docs/adr/0025-walk-the-file
 - **Never add AI attribution** to a commit or pull request. `CLAUDE.md` states
   this in full and overrides any session guidance to the contrary. Do not add a
   disclaimer in the other direction either.
-- **Do not push without being asked.** Commit freely; pushing is his call.
+- **Do not push without being asked.** Commit freely; pushing is his call. On
+  2026-10-03 he asked for `v2` to be pushed as a backup. That covers `v2` only,
+  and never a merge to `main` or a pull request.
 - **Answer a question before acting on it.** Open questions get resolved first,
   not implemented speculatively.
 - **All testing happens in the sandbox.** Not on his machine.

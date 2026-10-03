@@ -45,6 +45,7 @@ If you disagree with one, open an issue and quote its number.
 | [0027](./0027-development-and-testing-happen-in-a-container.md) | Development and testing happen in a container | Accepted |
 | [0028](./0028-the-documentation-site-is-astro-starlight.md) | The documentation site is Astro Starlight, on a Node toolchain | Accepted |
 | [0029](./0029-host-state-is-read-through-one-boundary-and-can-be-supplied.md) | Host state is read through one boundary, and can be supplied | Accepted |
+| [0030](./0030-2-0-does-not-checkpoint-a-scan.md) | 2.0 does not checkpoint a scan | Accepted |
 
 ## Adding one
 

@@ -91,8 +91,8 @@ impl_rust() {
   # it after the run made ":" the last command, so rc captured its exit status
   # instead of the binary's and every case read as exit 0.
   : "$state"
-  # No --state flag either: the Rust engine refuses what it has not
-  # implemented rather than ignoring it. --home is explicit so the scan reads
+  # No --state flag either: 2.0 has no checkpointing (ADR-0030) and the Rust
+  # engine refuses the flag rather than ignoring it. --home is explicit so the scan reads
   # the fixture's home rather than the runner's.
   local args=(check --home "$FAKE_HOME" --report "$report")
   # A host case supplies the machine; every other case reads no host state.
@@ -284,7 +284,9 @@ refusals() {
   }
 
   check_refusal "an unknown flag"            check --not-a-real-flag "$tmp"
-  check_refusal "a flag it has not built"    check --state /tmp/s "$tmp"
+  check_refusal "a flag it has not built"    check --jobs 4 "$tmp"
+  check_refusal "a flag 2.0 removed, --state"        check --state /tmp/s "$tmp"
+  check_refusal "a flag 2.0 removed, --resume"       check --resume "$tmp"
   check_refusal "a root that does not exist" check "$tmp/definitely-absent"
   check_refusal "no root at all"             check --fs-only
   check_refusal "a missing indicator set"    check --ioc "$tmp/no-ioc-here" "$tmp"
