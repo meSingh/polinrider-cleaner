@@ -1,0 +1,87 @@
+name: Beta binaries
+
+# Builds the 2.0 beta for each platform on every push to v2, so it can be
+# tested on a machine without a Rust toolchain. These are workflow artifacts,
+# not a release: they are not announced, not attested, and they expire.
+#
+# It is also the only place the binary is built and run on macOS and Windows.
+# The sandbox is Linux, and ci.yml builds on Linux only.
+
+on:
+  push:
+    branches: [v2]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      # One platform failing to build is the result worth having for that
+      # platform. It must not hide the others.
+      fail-fast: false
+      matrix:
+        include:
+          - { name: linux-x86_64,   os: ubuntu-latest,    exe: polinrider }
+          - { name: linux-arm64,    os: ubuntu-24.04-arm, exe: polinrider }
+          - { name: macos-arm64,    os: macos-latest,     exe: polinrider }
+          - { name: windows-x86_64, os: windows-latest,   exe: polinrider.exe }
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Rust toolchain
+        run: rustup toolchain install --profile minimal 1.98.1
+
+      - name: Build
+        run: |
+          # The commit goes into --version, so a binary on a test machine can
+          # say which build it is.
+          POLINRIDER_COMMIT="${GITHUB_SHA::7}" cargo build --locked --release
+
+      - name: Package
+        # The binary with its indicators beside it, which is where it looks
+        # for them. A tar archive on purpose: an artifact upload does not keep
+        # the executable bit, and a tar inside it does.
+        run: |
+          dir="polinrider-beta-${{ matrix.name }}"
+          mkdir -p "dist/$dir"
+          cp "target/release/${{ matrix.exe }}" "dist/$dir/"
+          cp -R ioc "dist/$dir/ioc"
+          cp TESTING.md "dist/$dir/"
+          tar -C dist -czf "dist/$dir.tar.gz" "$dir"
+
+      - name: The packaged binary runs and finds its indicators
+        # From another directory, as an installed copy is run. A binary that
+        # cannot find its indicators refuses every scan.
+        run: |
+          bin="$PWD/dist/polinrider-beta-${{ matrix.name }}/${{ matrix.exe }}"
+          cd "${RUNNER_TEMP}"
+          "$bin" --version | tee version.txt
+          grep -q 'strong' version.txt
+
+      - name: Upload
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: polinrider-beta-${{ matrix.name }}
+          path: dist/polinrider-beta-${{ matrix.name }}.tar.gz
+          retention-days: 30
+          if-no-files-found: error
+
+      # After the upload, so a failing test does not withhold the binary. On
+      # Linux the suite already runs in ci.yml. On Windows the unit tests
+      # assume Unix paths and have never been run; that is its own piece of
+      # work, and the step above is the Windows smoke test for now.
+      - name: Unit tests and the conformance corpus, on macOS
+        if: runner.os == 'macOS'
+        run: |
+          cargo test --locked
+          ./conformance/run.sh --impl rust

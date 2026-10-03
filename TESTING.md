@@ -8,7 +8,36 @@ until now. That is what this test is for.
 and do not type `yes` in the guided flow except on the sample in step 4. A dry
 run reads and changes nothing.
 
-## 1. Build
+## 1. Get the binary
+
+**Without building.** Every push to `v2` builds the beta for Linux (x86_64 and
+arm64), macOS (arm64) and Windows (x86_64). Each download is the binary with
+its indicators beside it. With the GitHub CLI signed in:
+
+```bash
+gh run download --repo meSingh/polinrider-cleaner --name polinrider-beta-linux-x86_64 --dir /tmp/prc-beta
+tar -xzf /tmp/prc-beta/*.tar.gz -C "$HOME"
+"$HOME/polinrider-beta-linux-x86_64/polinrider" --version
+```
+
+Change the name for the machine: `polinrider-beta-linux-arm64`,
+`polinrider-beta-macos-arm64` or `polinrider-beta-windows-x86_64`. Without the
+CLI, the same files are under Artifacts on the latest "Beta binaries" run in
+the repository's Actions tab. On Windows, unpack with `tar -xzf` in PowerShell
+and run `polinrider.exe --version`.
+
+`--version` prints the version, the commit it was built from and where it
+found its indicators. If it says the indicators are not usable, stop and
+report that: every scan would be refused.
+
+To have a bare `polinrider` on the PATH, link the binary from a directory that
+is on it, for example
+`ln -s "$HOME/polinrider-beta-linux-x86_64/polinrider" ~/.local/bin/polinrider`.
+The commands below are written for a checkout; with a download or an installed
+copy, use that path or just `polinrider` in place of
+`./target/release/polinrider`.
+
+**Or build it.**
 
 Needs `git` and `rustup`. Nothing else: the binary has no dependencies. The
 repository pins the Rust version and `rustup` fetches it on the first build.
