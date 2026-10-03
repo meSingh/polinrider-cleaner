@@ -30,6 +30,7 @@ use crate::checks::{OnInfectedConfig, Sink};
 use crate::host::Host;
 use crate::indicators::Indicators;
 use crate::quarantine::{Apply, DryRun, Quarantine};
+use crate::remote::{Forge, OwnerKind};
 use crate::scan::{self, Scope, Target};
 use crate::ui::{text_of, Span, Tone};
 use crate::verdict::{clean, ExitCode, Finding, Kind, Level, Verdict};
@@ -42,6 +43,10 @@ pub trait Console {
     /// Show the prompt mark on a line of its own and read one line, trimmed.
     /// `None` when input has ended.
     fn ask(&mut self) -> Option<String>;
+    /// Show how far a long job has come. Called many times with the same
+    /// number of lines; a terminal redraws them in place. `last` is true for
+    /// the final call, which is the only one a log or a pipe needs.
+    fn progress(&mut self, lines: &[Vec<Span>], last: bool);
 }
 
 /// Everything a session needs that was decided before it started.
@@ -60,6 +65,10 @@ pub struct Session<'a> {
     pub system: &'a str,
     /// Whether the terminal can draw a rule with box characters.
     pub unicode: bool,
+    /// GitHub, or something standing in for it.
+    pub forge: &'a dyn Forge,
+    /// Where copies of repositories are kept while they are checked.
+    pub evidence: &'a Path,
 }
 
 /// What a finished session leaves behind.
@@ -70,7 +79,7 @@ pub struct Outcome {
 }
 
 /// Why a step did not produce a value.
-enum Stop {
+pub(crate) enum Stop {
     /// The operator typed `q`.
     Quit,
     /// Input ended.
@@ -83,43 +92,45 @@ enum Stop {
 enum What {
     Computer,
     Folders,
+    Organization,
+    Account,
 }
 
 // --- saying things -----------------------------------------------------------
 
-fn p(text: impl Into<String>) -> Span {
+pub(crate) fn p(text: impl Into<String>) -> Span {
     Span::new(Tone::Plain, text)
 }
-fn word(text: impl Into<String>) -> Span {
+pub(crate) fn word(text: impl Into<String>) -> Span {
     Span::new(Tone::Accent, text)
 }
-fn good(text: impl Into<String>) -> Span {
+pub(crate) fn good(text: impl Into<String>) -> Span {
     Span::new(Tone::Good, text)
 }
-fn warn(text: impl Into<String>) -> Span {
+pub(crate) fn warn(text: impl Into<String>) -> Span {
     Span::new(Tone::Warn, text)
 }
-fn bad(text: impl Into<String>) -> Span {
+pub(crate) fn bad(text: impl Into<String>) -> Span {
     Span::new(Tone::Bad, text)
 }
-fn dim(text: impl Into<String>) -> Span {
+pub(crate) fn dim(text: impl Into<String>) -> Span {
     Span::new(Tone::Dim, text)
 }
-fn strong(text: impl Into<String>) -> Span {
+pub(crate) fn strong(text: impl Into<String>) -> Span {
     Span::new(Tone::Strong, text)
 }
 
-fn blank(io: &mut dyn Console, lines: usize) {
+pub(crate) fn blank(io: &mut dyn Console, lines: usize) {
     for _ in 0..lines {
         io.say(&[]);
     }
 }
 
-fn line(io: &mut dyn Console, text: &str) {
+pub(crate) fn line(io: &mut dyn Console, text: &str) {
     io.say(&[p(text)]);
 }
 
-fn read(io: &mut dyn Console) -> Result<String, Stop> {
+pub(crate) fn read(io: &mut dyn Console) -> Result<String, Stop> {
     blank(io, 1);
     match io.ask() {
         None => Err(Stop::Ended),
@@ -136,7 +147,13 @@ fn read(io: &mut dyn Console) -> Result<String, Stop> {
 
 /// The top of a step: where you are, what it is, and whether it changes
 /// anything.
-fn header(io: &mut dyn Console, session: &Session, step: usize, title: &str, reads_only: bool) {
+pub(crate) fn header(
+    io: &mut dyn Console,
+    session: &Session,
+    step: usize,
+    title: &str,
+    reads_only: bool,
+) {
     let rule = if session.unicode { "─" } else { "-" }.repeat(56);
     blank(io, 2);
     io.say(&[dim(format!("  {rule}"))]);
@@ -154,7 +171,7 @@ fn header(io: &mut dyn Console, session: &Session, step: usize, title: &str, rea
 
 /// A path as somebody would say it: under the home directory it starts `~`.
 /// Cleaned, because it came off a disk.
-fn tilde(path: &Path, home: &Path) -> String {
+pub(crate) fn tilde(path: &Path, home: &Path) -> String {
     let shown = match path.strip_prefix(home) {
         Ok(rest) if rest.as_os_str().is_empty() => "~".to_string(),
         Ok(rest) => format!("~/{}", rest.display()),
@@ -164,7 +181,7 @@ fn tilde(path: &Path, home: &Path) -> String {
 }
 
 /// 48210 as 48,210.
-fn thousands(n: usize) -> String {
+pub(crate) fn thousands(n: usize) -> String {
     let digits = n.to_string();
     let mut out = String::new();
     for (i, c) in digits.chars().enumerate() {
@@ -176,7 +193,7 @@ fn thousands(n: usize) -> String {
     out
 }
 
-fn count(n: usize, one: &str, many: &str) -> String {
+pub(crate) fn count(n: usize, one: &str, many: &str) -> String {
     format!("{n} {}", if n == 1 { one } else { many })
 }
 
@@ -225,15 +242,34 @@ fn steps(
     report: &mut String,
     worst: &mut Option<ExitCode>,
 ) -> Result<(), Stop> {
-    // --- 1 and 2: what, and where -------------------------------------------
-    let (what, roots) = loop {
+    // --- 1: what. A step that is backed out of returns here. --------------
+    loop {
         let what = choose_what(session, io)?;
-        match choose_roots(session, what, io) {
-            Ok(roots) => break (what, roots),
+        let outcome = match what {
+            What::Computer | What::Folders => local(session, what, io, report, worst),
+            What::Organization => {
+                crate::guide_github::run(session, OwnerKind::Organization, io, report, worst)
+            }
+            What::Account => {
+                crate::guide_github::run(session, OwnerKind::Account, io, report, worst)
+            }
+        };
+        match outcome {
             Err(Stop::Back) => continue,
-            Err(stop) => return Err(stop),
+            other => return other,
         }
-    };
+    }
+}
+
+/// This computer, or folders on it: steps 2 to 4.
+fn local(
+    session: &Session,
+    what: What,
+    io: &mut dyn Console,
+    report: &mut String,
+    worst: &mut Option<ExitCode>,
+) -> Result<(), Stop> {
+    let roots = choose_roots(session, what, io)?;
 
     let scope = Scope {
         roots: &roots,
@@ -336,36 +372,37 @@ fn choose_what(session: &Session, io: &mut dyn Console) -> Result<What, Stop> {
     if session.host.is_some() {
         io.say(&[
             word("      computer"),
-            p("     This whole computer: your home folder,"),
+            p("       This whole computer: your home folder,"),
         ]);
         line(
             io,
-            "                   login items and what is running right now.",
+            "                     login items and what is running right now.",
         );
     } else {
         io.say(&[
             dim("      computer"),
-            dim("     Not available in this build on this system."),
+            dim("       Not available in this build on this system."),
         ]);
     }
     blank(io, 1);
     io.say(&[
         word("      folder"),
-        p("       One folder, repository or drive."),
+        p("         One folder, repository or drive."),
     ]);
-    line(io, "                   Files only.");
+    line(io, "                     Files only.");
+    blank(io, 1);
+    io.say(&[
+        word("      organization"),
+        p("   Every repository and branch of a"),
+    ]);
+    line(io, "                     GitHub organization.");
+    blank(io, 1);
+    io.say(&[
+        word("      account"),
+        p("        Every repository you own on GitHub."),
+    ]);
     blank(io, 2);
-    if session.host.is_some() {
-        io.say(&[
-            p("  Type "),
-            word("computer"),
-            p(" or "),
-            word("folder"),
-            p(", then press Enter."),
-        ]);
-    } else {
-        io.say(&[p("  Type "), word("folder"), p(", then press Enter.")]);
-    }
+    line(io, "  Type one of the words above, then press Enter.");
     io.say(&[dim("  q quits. Nothing has been changed.")]);
 
     loop {
@@ -373,12 +410,18 @@ fn choose_what(session: &Session, io: &mut dyn Console) -> Result<What, Stop> {
             "computer" | "c" if session.host.is_some() => return Ok(What::Computer),
             "computer" | "c" => {
                 blank(io, 1);
-                io.say(&[warn("  That is not available here. Type folder.")]);
+                io.say(&[warn(
+                    "  That is not available here. Type one of the others.",
+                )]);
             }
             "folder" | "f" => return Ok(What::Folders),
+            "organization" | "organisation" | "org" | "o" => return Ok(What::Organization),
+            "account" | "a" => return Ok(What::Account),
             _ => {
                 blank(io, 1);
-                io.say(&[warn("  Type the word computer or folder. q quits.")]);
+                io.say(&[warn(
+                    "  Type computer, folder, organization or account. q quits.",
+                )]);
             }
         }
     }
@@ -796,17 +839,17 @@ fn contain(
 // --- step 4: what to do now ---------------------------------------------------
 
 /// One thing to do: a title, the files it is about, and a line or two of how.
-struct Todo {
-    title: String,
-    paths: Vec<String>,
-    how: Vec<&'static str>,
+pub(crate) struct Todo {
+    pub(crate) title: String,
+    pub(crate) paths: Vec<String>,
+    pub(crate) how: Vec<String>,
 }
 
-fn todo(title: impl Into<String>, how: &[&'static str]) -> Todo {
+pub(crate) fn todo(title: impl Into<String>, how: &[&str]) -> Todo {
     Todo {
         title: title.into(),
         paths: Vec::new(),
-        how: how.to_vec(),
+        how: how.iter().map(|h| (*h).to_string()).collect(),
     }
 }
 
@@ -982,7 +1025,7 @@ fn what_now(
     out
 }
 
-fn numbered(out: &mut Vec<Vec<Span>>, todos: &[Todo]) {
+pub(crate) fn numbered(out: &mut Vec<Vec<Span>>, todos: &[Todo]) {
     for (n, todo) in todos.iter().enumerate() {
         out.push(vec![]);
         out.push(vec![]);
@@ -1034,6 +1077,7 @@ mod tests {
             self.said.push_str("  > \n");
             self.answers.pop_front()
         }
+        fn progress(&mut self, _lines: &[Vec<Span>], _last: bool) {}
     }
 
     fn ind() -> Indicators {
@@ -1083,6 +1127,8 @@ mod tests {
                 report: &self.dir.join("home/polinrider-report.txt"),
                 system: "Linux",
                 unicode: false,
+                forge: &crate::remote::Supplied::new(self.dir.join("forge")),
+                evidence: &self.dir.join("evidence"),
             };
             let mut io = Script::new(answers);
             let outcome = run(&session, &mut io);
@@ -1254,7 +1300,9 @@ mod tests {
         let w = World::new("retry", &[("repo/index.js", "export const a = 1\n")]);
         let (outcome, io) = w.run(&["1", "", "FOLDER", "/definitely/not/here", "", &w.repo(), ""]);
         assert_eq!(outcome.exit, ExitCode::Clean);
-        assert!(io.said.contains("Type the word computer or folder"));
+        assert!(io
+            .said
+            .contains("Type computer, folder, organization or account."));
         assert!(io.said.contains("That folder does not exist"));
         assert!(io.said.contains("I need a folder to check"));
         assert!(!io.said.contains("Type 1 or 2"));
@@ -1373,7 +1421,9 @@ mod tests {
         assert!(io
             .said
             .contains("Not available in this build on this system."));
-        assert!(io.said.contains("That is not available here. Type folder."));
+        assert!(io
+            .said
+            .contains("That is not available here. Type one of the others."));
     }
 
     #[test]

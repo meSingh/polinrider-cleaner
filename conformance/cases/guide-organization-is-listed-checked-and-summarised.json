@@ -1,0 +1,58 @@
+{
+  "why": "The whole read-only GitHub path. The organizations are listed so nobody types a name from memory, every branch is checked and not only the default one, and the summary names the repository, how many branches and who pushed. A pusher's name is never used to discount a finding: the payload pushes as whoever is logged in, so a colleague's name is what an attack looks like.",
+  "command": "guide",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "stdin": [
+    "organization",
+    "ACME",
+    "",
+    ""
+  ],
+  "forge_files": {
+    "whoami": "tester\n",
+    "orgs": "acme\t2\nacme-labs\t7\n"
+  },
+  "forge": {
+    "acme": {
+      "blog": {
+        "branches": {
+          "main": {
+            "index.md": "hello\n"
+          }
+        }
+      },
+      "shop": {
+        "branches": {
+          "main": {
+            "src/index.js": "export const a = 1\n"
+          },
+          "release": {
+            "postcss.config.mjs": "export default { plugins: {} }\n{{PAD}}{{STRONG}}\n"
+          }
+        },
+        "pushes": "refs/heads/release\taaa\tbbb\talice\t2026-09-12T10:00:00Z\t0\nrefs/heads/release\tbbb\tccc\tbob\t2026-09-13T10:00:00Z\t1"
+      }
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "tree_may_change": false,
+    "must_print": [
+      "Signed in to GitHub as tester.",
+      "Your organizations:",
+      "This only reads. Nothing on GitHub is changed.",
+      "2 of 2",
+      "Checked 2 repositories and 3 branches of acme.",
+      "CONFIRMED   1     repository carries the PolinRider payload",
+      "acme/shop   1 branch",
+      "alice, bob",
+      "Their computers need checking too.",
+      "Check the computers of alice and bob"
+    ]
+  }
+}

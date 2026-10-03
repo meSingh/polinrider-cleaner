@@ -54,7 +54,7 @@ reflog if they are ever wanted.
 Full detail in [`HACKING.md`](./HACKING.md). The three commands:
 
 ```bash
-./polinrider-sandbox --all     # lint, 9 self-tests, 66 conformance cases, clippy, 140 Rust tests
+./polinrider-sandbox --all     # lint, 9 self-tests, 70 conformance cases, clippy, 148 Rust tests
 ./polinrider-sandbox --demo    # build an infected sample and scan it with 1.x
 ./polinrider-sandbox --beta    # 2.0 installed in the container, on the PATH, with a sample
 ./ci/docs-serve.sh             # the documentation site, with live reload
@@ -101,7 +101,7 @@ argument for running unknown code on a machine you believe is compromised.
 ## What is done
 
 **The corpus** — `conformance/`, 13 filesystem cases, 20 host cases, 7 clean
-cases, 8 guide cases, 16 refusal cases and 2 closed-pipe checks. The filesystem cases are green
+cases, 12 guide cases (4 of them GitHub), 16 refusal cases and 2 closed-pipe checks. The filesystem cases are green
 against both implementations. The host, clean and guide cases run against the
 Rust engine only and print `skip` under the
 shell, which cannot be handed a machine that does not exist. Running in CI and
@@ -131,7 +131,8 @@ that this reversed an earlier mdBook decision and what the Node dependency costs
 | `checks.rs` | Implants, tasks.json, build configs, fonts, packages, git hooks, extensions, propagation |
 | `scan.rs` | One scan: the walk, every check that applies, and rendering. In the library so a session can run more than one |
 | `guide.rs` | The guided flow. Four screens, one question on each, answered in words. A summary first, the full list on `details`. Every prompt goes through one `Console` trait so a test can drive a session: ADR-0035 |
-| `remote.rs` | Checking GitHub: the `Forge` boundary (`GitHub` through `gh` and `git`, or `Supplied` from a directory of bare repositories), mirroring into an evidence directory, and checking every branch and tag through git plumbing. Read-only. Not wired into the guided flow yet |
+| `remote.rs` | Checking GitHub: the `Forge` boundary (`GitHub` through `gh` and `git`, or `Supplied` from a directory of bare repositories), mirroring into an evidence directory, and checking every branch and tag through git plumbing. Read-only |
+| `guide_github.rs` | The GitHub screens of the guided flow: sign-in help, the organization list, the progress screen, the summary and the last screen. ADR-0036 |
 | `pattern.rs` | A small regular-expression matcher for `ioc/filenames.txt`, which is data written as patterns. A pattern it cannot honour stops the scan |
 | `ui.rs` | The wordmark and the colours, and nothing else. Runs no command, reads no file. Colour never changes a character: ADR-0033 |
 | `strip.rs` | Plans the cut for `clean`: what to keep of an infected build config, or why not to touch it. Pure, no I/O |
@@ -219,15 +220,23 @@ until the port in item 6 lands.
    GitHub can only be tried from the sandbox with a network, a sign-in and a
    throwaway repository, all of which are Mandeep's to give.
 
-   **Where it stands:** the read-only check is built and tested against local
-   repositories (`src/remote.rs`): list, mirror, check every branch and tag,
-   set aside the operator's own detection files, and read who pushed to the
-   confirmed branches. It is not reachable from the command line or the
-   guided flow yet. Next: the screens, once the mock is agreed; conformance
-   cases that build repositories; then `remove`.
+   **Where it stands:** stage 1 is built and in the guided flow.
+   `organization` and `account` are on the first screen. It checks that `gh`
+   is installed and signed in and says what to run if not, lists the
+   organizations, shows a progress screen, checks every branch and tag of
+   every repository read-only, and summarises: which repositories, how many
+   branches, who pushed. `./polinrider-sandbox --beta` builds a pretend
+   organization, and `polinrider guide --forge-state ~/demo-github` runs the
+   screens against it with no network. **Next, in this order:** `restore`,
+   `erase`, `remove` and `archive`, each with a dry run and a typed yes;
+   the all-at-once path; `everything` (this computer, then GitHub); the
+   progress screen for machine checks too. Mandeep approved the mock of all of
+   it on 2026-10-03 ("The rest all looks great. Go ahead."), with one
+   instruction for `archive`: the README notice goes at the very top, big and
+   bold, and removes nothing that is already there. ADR-0036 has the agreed
+   behaviour of each fix.
 
-   **What Mandeep asked of the GitHub screens (2026-10-03), drawn in a second
-   mock and waiting for his yes:** check that `gh` is installed and signed in
+   **What Mandeep asked of the GitHub screens (2026-10-03), all agreed:** check that `gh` is installed and signed in
    first, and walk the operator through it if not; list their organizations
    to choose from; a progress screen while it works, the same one for every
    long job including machine checks; an "all at once" choice behind a warning

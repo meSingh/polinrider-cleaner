@@ -1,0 +1,49 @@
+{
+  "why": "A scanner and an incident write-up hold the same strings the malware does. A branch flagged only for the operator's own detection workflow and documentation is set aside and said to be. The same string in ordinary source is confirmed, whatever its directory is called: 1.x discounted everything under lib/ and ci/, in anybody's repository.",
+  "command": "guide",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "stdin": [
+    "organization",
+    "acme",
+    "details",
+    ""
+  ],
+  "forge_files": {
+    "whoami": "tester\n",
+    "orgs": "acme\t2\nacme-labs\t7\n"
+  },
+  "forge": {
+    "acme": {
+      "infra": {
+        "branches": {
+          "main": {
+            ".github/workflows/polinrider-scan.yml": "run: grep '{{STRONG}}' -r .\n",
+            "docs/incident.md": "We found {{STRONG}} in three repositories.\n"
+          }
+        }
+      },
+      "api": {
+        "branches": {
+          "main": {
+            "lib/vendor.js": "var a = '{{STRONG}}'\n"
+          }
+        }
+      }
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "tree_may_change": false,
+    "must_print": [
+      "CONFIRMED   1",
+      "1 branch matched only your own detection files and was set aside.",
+      "acme/api   main",
+      "lib/vendor.js"
+    ]
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "why": "A check that fails half way down a list of repositories is worse than one that never started. If gh, GitHub's own CLI, is not installed, the flow says exactly what to install and how to sign in, and checks again on Enter. Leaving from there has checked nothing, so the exit code is 3 and not 0.",
+  "command": "guide",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "stdin": [
+    "organization",
+    "",
+    "q"
+  ],
+  "forge_files": {
+    "whoami.absent": ""
+  },
+  "expect": {
+    "exit": 3,
+    "tree_may_change": false,
+    "must_print": [
+      "To check GitHub I use gh, GitHub's own CLI.",
+      "It is not installed on this computer.",
+      "gh auth login",
+      "Nothing was checked"
+    ],
+    "must_not_print": [
+      "Which organization?"
+    ]
+  }
+}

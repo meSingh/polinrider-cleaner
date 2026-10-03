@@ -36,12 +36,81 @@ cp "${CARGO_TARGET_DIR:-$ROOT/target}/release/polinrider" "$SHARE/polinrider"
 cp -R "$ROOT/ioc" "$SHARE/ioc"
 ln -sf "$SHARE/polinrider" "$HOME/bin/polinrider"
 
+STRONG="$(sed -e '/^#/d' -e '/^$/d' "$ROOT/ioc/strong.txt" | head -1)"
+
 # The sample. $HOME/code is one of the directories the guided flow looks for.
 DEMO_DIR="$HOME/code" "$ROOT/ci/demo.sh" --tree-only || exit 3
-STRONG="$(sed -e '/^#/d' -e '/^$/d' "$ROOT/ioc/strong.txt" | head -1)"
 mkdir -p "$HOME/.config/systemd/user"
 printf '[Unit]\nDescription=System update helper\n\n[Service]\nExecStart=/bin/sh -c "%s"\n' "$STRONG" \
   > "$HOME/.config/systemd/user/sysupdate-helper.service"
+
+# A pretend GitHub, so the GitHub screens can be tried with no network and no
+# sign-in: an organization called acme with real git repositories behind it.
+# polinrider is pointed at it with --forge-state and never talks to GitHub.
+#
+#   shop       the payload on two branches, pushed by alice and bob
+#   website    the payload on main, pushed by bob
+#   old-site   the payload on a branch, and no push record left
+#   infra      only the organization's own detection workflow: not a finding
+#   blog       clean
+FORGE="$HOME/demo-github"
+PAD="$(printf '%280s' '')"
+G=(git -c user.name=demo -c user.email=demo@localhost -c commit.gpgsign=false)
+rm -rf "$FORGE" /tmp/demo-work /tmp/polinrider-evidence
+mkdir -p "$FORGE/repos" "$FORGE/git/acme" "$FORGE/pushes/acme"
+printf 'you\n' > "$FORGE/whoami"
+printf 'acme\t5\nacme-labs\t0\n' > "$FORGE/orgs"
+: > "$FORGE/repos/acme"; : > "$FORGE/repos/acme-labs"; : > "$FORGE/repos/you"
+
+demo_repo() {   # demo_repo <name>, then demo_branch for each branch, then demo_done
+  DEMO_WORK="/tmp/demo-work/$1"; DEMO_NAME="$1"
+  mkdir -p "$DEMO_WORK"
+  "${G[@]}" -C "$DEMO_WORK" init -q -b main
+  printf '# %s\n' "$1" > "$DEMO_WORK/README.md"
+  printf 'export const version = 1\n' > "$DEMO_WORK/index.js"
+  "${G[@]}" -C "$DEMO_WORK" add -A; "${G[@]}" -C "$DEMO_WORK" commit -q -m "first commit"
+}
+demo_branch() { # demo_branch <branch>   (files are written by the caller afterwards)
+  if [[ "$1" == "main" ]]; then "${G[@]}" -C "$DEMO_WORK" checkout -q main
+  else "${G[@]}" -C "$DEMO_WORK" checkout -q -b "$1" main; fi
+}
+demo_commit() { "${G[@]}" -C "$DEMO_WORK" add -A; "${G[@]}" -C "$DEMO_WORK" commit -q -m "$1"; }
+demo_done() {
+  "${G[@]}" clone -q --bare "$DEMO_WORK" "$FORGE/git/acme/$DEMO_NAME.git"
+  printf 'acme/%s\n' "$DEMO_NAME" >> "$FORGE/repos/acme"
+}
+infect() {      # the canonical shape: a payload appended behind padding, and a fake font
+  printf 'export default { plugins: {} }\n%s%s\n' "$PAD" "$STRONG" > "$DEMO_WORK/postcss.config.mjs"
+  mkdir -p "$DEMO_WORK/public/fonts"
+  printf 'var _0x3f=function(){return 1};\n' > "$DEMO_WORK/public/fonts/inter-var.woff2"
+}
+
+demo_repo blog; demo_done
+
+demo_repo shop
+demo_branch release; infect; demo_commit "update config"
+demo_branch staging; infect; demo_commit "update config"
+demo_done
+printf 'refs/heads/release\t4f2a91c0de\t9c01d7e2ab\talice\t2026-09-11T09:14:00Z\t0\nrefs/heads/staging\t4f2a91c0de\t71b3f0a9c4\tbob\t2026-09-12T16:40:00Z\t0\n' \
+  > "$FORGE/pushes/acme/shop.tsv"
+
+demo_repo website
+demo_branch main; infect; demo_commit "update config"
+demo_done
+printf 'refs/heads/main\t1a2b3c4d5e\t6f7a8b9c0d\tbob\t2026-09-12T16:52:00Z\t0\n' > "$FORGE/pushes/acme/website.tsv"
+
+demo_repo old-site
+demo_branch legacy; infect; demo_commit "update config"
+demo_done        # no push record: GitHub forgets after about ninety days
+
+demo_repo infra
+demo_branch main
+mkdir -p "$DEMO_WORK/.github/workflows"
+printf 'name: scan\non: push\njobs:\n  scan:\n    runs-on: ubuntu-latest\n    steps:\n      - run: grep -rF "%s" . && exit 1 || true\n' "$STRONG" \
+  > "$DEMO_WORK/.github/workflows/polinrider-scan.yml"
+demo_commit "scan every push"
+demo_done
+rm -rf /tmp/demo-work
 
 # Shown whole and not cut down to a line with head: the first version of this
 # script did that, the pipe closed while the binary was still writing, and
@@ -69,6 +138,11 @@ cat <<TXT
     polinrider clean ~/code/shop      what it would strip and move. Add --apply to do it
     ls ~/polinrider-quarantine-*      where the originals went, after an --apply or a yes
     ./ci/beta.sh                      put the sample back the way it was
+
+  The GitHub screens, on a pretend organization called acme. No network,
+  no sign-in, and GitHub is never contacted. Choose organization, then acme:
+
+    polinrider guide --forge-state ~/demo-github
 
   Exit codes: 0 clean, 1 needs a look, 2 confirmed, 3 could not run.  echo \$?
 TXT

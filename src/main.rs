@@ -10,6 +10,7 @@ use polinrider::guide::{self, Console, Session};
 use polinrider::host::{Host, LiveHost, Snapshot};
 use polinrider::indicators::Indicators;
 use polinrider::quarantine::{Apply, DryRun, Quarantine};
+use polinrider::remote::{self, Forge, GitHub, Supplied};
 use polinrider::scan::{self, Run, Scope, Target};
 use polinrider::ui::{Span, Ui};
 use polinrider::verdict::ExitCode;
@@ -272,11 +273,36 @@ fn about(ui: &Ui) -> String {
 /// The terminal, as the guided flow sees it.
 struct Terminal {
     ui: Ui,
+    /// Lines of the progress block now on screen, to be drawn over.
+    drawn: usize,
 }
 
 impl Console for Terminal {
     fn say(&mut self, line: &[Span]) {
         emit(&format!("{}\n", self.ui.line(line)));
+    }
+
+    fn progress(&mut self, lines: &[Vec<Span>], last: bool) {
+        if !self.ui.live {
+            // A pipe or a log gets the finished state once, not every frame.
+            if last {
+                for line in lines {
+                    self.say(line);
+                }
+            }
+            return;
+        }
+        let mut frame = String::new();
+        if self.drawn > 0 {
+            // Back up over the previous frame.
+            frame.push_str(&format!("\x1b[{}A", self.drawn));
+        }
+        for line in lines {
+            // Clear the line, then draw it.
+            frame.push_str(&format!("\x1b[2K{}\n", self.ui.line(line)));
+        }
+        emit(&frame);
+        self.drawn = if last { 0 } else { lines.len() };
     }
 
     fn ask(&mut self) -> Option<String> {
@@ -307,6 +333,14 @@ fn guided(args: &cli::Args, ind: &Indicators, host: Option<&dyn Host>, ui: Ui) -
             polinrider::quarantine::stamp(now)
         ))
     });
+    let forge: Box<dyn Forge> = match &args.forge_state {
+        Some(dir) => Box::new(Supplied::new(dir)),
+        None => Box::new(GitHub),
+    };
+    let evidence = args
+        .evidence
+        .clone()
+        .unwrap_or_else(remote::default_evidence_dir);
     let session = Session {
         ind,
         ioc_dir: &args.ioc,
@@ -316,8 +350,10 @@ fn guided(args: &cli::Args, ind: &Indicators, host: Option<&dyn Host>, ui: Ui) -
         report: &report,
         system: system_name(),
         unicode: ui.unicode,
+        forge: forge.as_ref(),
+        evidence: &evidence,
     };
-    let outcome = guide::run(&session, &mut Terminal { ui });
+    let outcome = guide::run(&session, &mut Terminal { ui, drawn: 0 });
     if let Err(e) = write_report(&report, &outcome.report) {
         eprintln!(
             "polinrider: the report could not be saved to {}: {e}",

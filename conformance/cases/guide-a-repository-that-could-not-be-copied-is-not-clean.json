@@ -1,0 +1,41 @@
+{
+  "why": "A repository that would not clone was never checked. Leaving it out and reporting clean covers less than the operator believes. It is named, the result says what could be checked was clean, and the exit code is 3.",
+  "command": "guide",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "stdin": [
+    "organization",
+    "acme"
+  ],
+  "forge_files": {
+    "whoami": "tester\n",
+    "orgs": "acme\t2\nacme-labs\t7\n"
+  },
+  "forge": {
+    "acme": {
+      "blog": {
+        "branches": {
+          "main": {
+            "index.md": "hello\n"
+          }
+        }
+      },
+      "ghost": {
+        "missing": true
+      }
+    }
+  },
+  "expect": {
+    "exit": 3,
+    "tree_may_change": false,
+    "must_print": [
+      "1 repository could not be copied and was NOT checked.",
+      "Nothing found in what could be checked.",
+      "acme/ghost"
+    ]
+  }
+}

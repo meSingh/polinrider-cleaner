@@ -47,6 +47,14 @@ pub const ACCEPTED: &[(&str, &str)] = &[
         "the home directory to check. Defaults to $HOME",
     ),
     (
+        "--evidence DIR",
+        "guided flow: where copies of GitHub repositories are kept",
+    ),
+    (
+        "--forge-state DIR",
+        "guided flow: read GitHub's answers from DIR, not from GitHub",
+    ),
+    (
         "--host-state DIR",
         "read processes, sockets and crontab from DIR, not this machine",
     ),
@@ -217,6 +225,10 @@ pub struct Args {
     pub home: PathBuf,
     /// Host state supplied as files, instead of read from this machine.
     pub host_state: Option<PathBuf>,
+    /// GitHub's answers supplied as files, instead of asked of GitHub.
+    pub forge_state: Option<PathBuf>,
+    /// Where copies of repositories are kept while they are checked.
+    pub evidence: Option<PathBuf>,
     /// The flags that decide what is looked at, as they were given, with
     /// their values. Kept so the report can print the exact command to run
     /// next and never one with a blank to fill in.
@@ -231,6 +243,7 @@ pub fn parse<I: Iterator<Item = String>>(argv: I, default_ioc: PathBuf) -> Resul
     let (mut quarantine, mut report, mut ioc, mut home) = (None, None, None, None);
     let mut host_state = None;
     let mut scope_flags: Vec<(String, Option<String>)> = Vec::new();
+    let (mut forge_state, mut evidence) = (None, None);
 
     // The subcommand, when present. `check` is the default.
     let command = match args.peek().map(String::as_str) {
@@ -298,6 +311,14 @@ pub fn parse<I: Iterator<Item = String>>(argv: I, default_ioc: PathBuf) -> Resul
                 let dir = value("--host-state")?;
                 scope_flags.push(("--host-state".into(), Some(dir.clone())));
                 host_state = Some(PathBuf::from(dir));
+            }
+            "--forge-state" => {
+                not_for("--forge-state", &[Command::Check, Command::Clean])?;
+                forge_state = Some(PathBuf::from(value("--forge-state")?));
+            }
+            "--evidence" => {
+                not_for("--evidence", &[Command::Check, Command::Clean])?;
+                evidence = Some(PathBuf::from(value("--evidence")?));
             }
             "-h" | "--help" => return Err(Rejection::HelpRequested),
             "-V" | "--version" => return Err(Rejection::VersionRequested),
@@ -416,6 +437,8 @@ pub fn parse<I: Iterator<Item = String>>(argv: I, default_ioc: PathBuf) -> Resul
         ioc,
         home,
         host_state,
+        forge_state,
+        evidence,
         scope_flags,
     })
 }

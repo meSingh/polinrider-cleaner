@@ -97,6 +97,10 @@ pub fn text_of(spans: &[Span]) -> String {
 pub struct Ui {
     pub color: bool,
     pub unicode: bool,
+    /// Output is a terminal that can be redrawn in place. Separate from
+    /// colour: NO_COLOR asks for no colour, not for a progress screen that
+    /// scrolls.
+    pub live: bool,
 }
 
 impl Ui {
@@ -105,6 +109,7 @@ impl Ui {
         Self {
             color: false,
             unicode: false,
+            live: false,
         }
     }
 
@@ -116,10 +121,10 @@ impl Ui {
             .find(|v| !v.is_empty())
             .unwrap_or_default()
             .to_ascii_lowercase();
+        let live = std::io::stdout().is_terminal() && var("TERM") != "dumb";
         Self {
-            color: std::io::stdout().is_terminal()
-                && std::env::var_os("NO_COLOR").is_none()
-                && var("TERM") != "dumb",
+            live,
+            color: live && std::env::var_os("NO_COLOR").is_none(),
             unicode: std::env::var_os("PRC_ASCII").is_none()
                 && (locale.contains("utf-8") || locale.contains("utf8")),
         }
@@ -301,6 +306,7 @@ mod tests {
     const COLOUR: Ui = Ui {
         color: true,
         unicode: true,
+        live: true,
     };
 
     /// Remove SGR colour codes and OSC 8 links, leaving what was wrapped.

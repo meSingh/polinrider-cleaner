@@ -992,7 +992,7 @@ case(
     expect={
         "exit": 0,
         "tree_may_change": False,
-        "must_print": ["Type the word computer or folder", "NOTHING FOUND"],
+        "must_print": ["Type computer, folder, organization or account", "NOTHING FOUND"],
         "must_not_print": ["Type 1 or 2"],
     },
 )
@@ -1018,6 +1018,143 @@ host_case(
             "Rebuild this computer from a clean install",
         ],
         "must_not_print": ["Type yes"],
+    },
+)
+
+
+# ---------------------------------------------------------------------------
+# GitHub cases. An organization, as data.
+#
+# `forge` is owners, their repositories, branches and files; the runner builds
+# real git repositories from it. `forge_files` holds who is signed in and the
+# list of organizations. These pin the first stage: checking and reporting,
+# which changes nothing on GitHub.
+# ---------------------------------------------------------------------------
+
+SIGNED_IN = {"whoami": "tester\n", "orgs": "acme\t2\nacme-labs\t7\n"}
+
+case(
+    "guide-organization-is-listed-checked-and-summarised",
+    why="The whole read-only GitHub path. The organizations are listed so "
+        "nobody types a name from memory, every branch is checked and not "
+        "only the default one, and the summary names the repository, how many "
+        "branches and who pushed. A pusher's name is never used to discount "
+        "a finding: the payload pushes as whoever is logged in, so a "
+        "colleague's name is what an attack looks like.",
+    command="guide",
+    roots=["code"],
+    files=ORDINARY_TREE,
+    stdin=["organization", "ACME", "", ""],
+    forge_files=SIGNED_IN,
+    forge={"acme": {
+        "blog": {"branches": {"main": {"index.md": "hello\n"}}},
+        "shop": {
+            "branches": {
+                "main": {"src/index.js": "export const a = 1\n"},
+                "release": {"postcss.config.mjs": INFECTED_CONFIG},
+            },
+            "pushes": "refs/heads/release\taaa\tbbb\talice\t2026-09-12T10:00:00Z\t0\n"
+                      "refs/heads/release\tbbb\tccc\tbob\t2026-09-13T10:00:00Z\t1",
+        },
+    }},
+    expect={
+        "exit": 2,
+        "tree_may_change": False,
+        "must_print": [
+            "Signed in to GitHub as tester.",
+            "Your organizations:",
+            "This only reads. Nothing on GitHub is changed.",
+            "2 of 2",
+            "Checked 2 repositories and 3 branches of acme.",
+            "CONFIRMED   1     repository carries the PolinRider payload",
+            "acme/shop   1 branch",
+            "alice, bob",
+            "Their computers need checking too.",
+            "Check the computers of alice and bob",
+        ],
+    },
+)
+
+case(
+    "guide-github-sign-in-is-settled-first",
+    why="A check that fails half way down a list of repositories is worse "
+        "than one that never started. If gh, GitHub's own CLI, is not "
+        "installed, the flow says exactly what to install and how to sign in, "
+        "and checks again on Enter. Leaving from there has checked nothing, "
+        "so the exit code is 3 and not 0.",
+    command="guide",
+    roots=["code"],
+    files=ORDINARY_TREE,
+    stdin=["organization", "", "q"],
+    forge_files={"whoami.absent": ""},
+    expect={
+        "exit": 3,
+        "tree_may_change": False,
+        "must_print": [
+            "To check GitHub I use gh, GitHub's own CLI.",
+            "It is not installed on this computer.",
+            "gh auth login",
+            "Nothing was checked",
+        ],
+        "must_not_print": ["Which organization?"],
+    },
+)
+
+case(
+    "guide-a-repository-that-could-not-be-copied-is-not-clean",
+    why="A repository that would not clone was never checked. Leaving it out "
+        "and reporting clean covers less than the operator believes. It is "
+        "named, the result says what could be checked was clean, and the "
+        "exit code is 3.",
+    command="guide",
+    roots=["code"],
+    files=ORDINARY_TREE,
+    stdin=["organization", "acme"],
+    forge_files=SIGNED_IN,
+    forge={"acme": {
+        "blog": {"branches": {"main": {"index.md": "hello\n"}}},
+        "ghost": {"missing": True},
+    }},
+    expect={
+        "exit": 3,
+        "tree_may_change": False,
+        "must_print": [
+            "1 repository could not be copied and was NOT checked.",
+            "Nothing found in what could be checked.",
+            "acme/ghost",
+        ],
+    },
+)
+
+case(
+    "guide-own-detection-files-are-not-the-payload",
+    why="A scanner and an incident write-up hold the same strings the "
+        "malware does. A branch flagged only for the operator's own detection "
+        "workflow and documentation is set aside and said to be. The same "
+        "string in ordinary source is confirmed, whatever its directory is "
+        "called: 1.x discounted everything under lib/ and ci/, in anybody's "
+        "repository.",
+    command="guide",
+    roots=["code"],
+    files=ORDINARY_TREE,
+    stdin=["organization", "acme", "details", ""],
+    forge_files=SIGNED_IN,
+    forge={"acme": {
+        "infra": {"branches": {"main": {
+            ".github/workflows/polinrider-scan.yml": "run: grep '{{STRONG}}' -r .\n",
+            "docs/incident.md": "We found {{STRONG}} in three repositories.\n",
+        }}},
+        "api": {"branches": {"main": {"lib/vendor.js": "var a = '{{STRONG}}'\n"}}},
+    }},
+    expect={
+        "exit": 2,
+        "tree_may_change": False,
+        "must_print": [
+            "CONFIRMED   1",
+            "1 branch matched only your own detection files and was set aside.",
+            "acme/api   main",
+            "lib/vendor.js",
+        ],
     },
 )
 

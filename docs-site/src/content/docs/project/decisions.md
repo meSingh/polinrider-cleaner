@@ -50,3 +50,4 @@ reason to keep them.
 - [Every run opens with the banner, and colour changes no character](https://github.com/meSingh/polinrider-cleaner/blob/main/docs/adr/0033-every-run-opens-with-the-banner-and-colour-changes-no-character.md) — Accepted
 - [The verdict is followed by what to do, and "rebuild" is said only on proof](https://github.com/meSingh/polinrider-cleaner/blob/main/docs/adr/0034-the-verdict-is-followed-by-what-to-do-and-rebuild-is-said-only-on-proof.md) — Accepted
 - [The guided flow is four calm screens, answered in words](https://github.com/meSingh/polinrider-cleaner/blob/main/docs/adr/0035-the-guided-flow-is-four-calm-screens-answered-in-words.md) — Accepted
+- [GitHub is checked through one boundary, and fixed one agreed way at a time](https://github.com/meSingh/polinrider-cleaner/blob/main/docs/adr/0036-github-is-checked-through-one-boundary-and-fixed-one-agreed-way-at-a-time.md) — Accepted

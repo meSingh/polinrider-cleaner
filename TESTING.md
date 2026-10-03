@@ -66,6 +66,18 @@ Things worth trying at that question, and what should happen:
 Every guided run saves a full report in the home directory and names it on
 the last screen.
 
+**The GitHub screens**, on a pretend organization with no network and no
+sign-in. GitHub is never contacted:
+
+```bash
+polinrider guide --forge-state ~/demo-github
+```
+
+Type `organization`, then `acme`. It checks five pretend repositories and
+finds the payload in three. Type `details` at the end of the summary to see
+every branch and file. This stage reads and reports; the fixes are not built
+yet.
+
 Without the prompts:
 
 ```bash

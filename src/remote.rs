@@ -866,23 +866,17 @@ fn check_ref(
     Ok(finding)
 }
 
+/// Building a pretend GitHub out of local repositories, for tests here and
+/// in the guided flow.
 #[cfg(test)]
 #[allow(clippy::expect_used, clippy::unwrap_used, clippy::indexing_slicing)]
-mod tests {
-    use super::*;
+pub(crate) mod fixture {
+    use super::Supplied;
+    use std::fs;
+    use std::path::{Path, PathBuf};
+    use std::process::Command;
 
-    const STRONG: &str = "MARKER-ALPHA";
-
-    fn ind() -> Indicators {
-        Indicators {
-            strong: vec![STRONG.into()],
-            weak: vec!["weak-signal-string".into()],
-            filenames: vec![Pattern::parse(r"(^|/)temp_helper\.bat$").expect("parses")],
-            ..Indicators::default()
-        }
-    }
-
-    fn git(dir: &Path, args: &[&str]) {
+    pub(crate) fn git(dir: &Path, args: &[&str]) {
         let out = Command::new("git")
             .args(["-c", "user.name=test", "-c", "user.email=test@localhost"])
             .args([
@@ -903,15 +897,15 @@ mod tests {
     }
 
     /// The files of one branch: (path, contents).
-    type Files<'a> = &'a [(&'a str, &'a [u8])];
+    pub(crate) type Files<'a> = &'a [(&'a str, &'a [u8])];
 
     /// A supplied forge with one owner, built from (repository, branch, files).
-    struct World {
-        dir: PathBuf,
+    pub(crate) struct World {
+        pub(crate) dir: PathBuf,
     }
 
     impl World {
-        fn new(name: &str) -> Self {
+        pub(crate) fn new(name: &str) -> Self {
             let dir =
                 std::env::temp_dir().join(format!("prc-remote-{}-{name}", std::process::id()));
             let _ = fs::remove_dir_all(&dir);
@@ -921,7 +915,7 @@ mod tests {
             Self { dir }
         }
 
-        fn repo(&self, name: &str, branches: &[(&str, Files)]) {
+        pub(crate) fn repo(&self, name: &str, branches: &[(&str, Files)]) {
             let work = self.dir.join("work").join(name);
             fs::create_dir_all(&work).expect("mkdir");
             git(&work, &["init", "-q", "-b", "main"]);
@@ -960,27 +954,10 @@ mod tests {
             fs::write(list, repos).expect("write");
         }
 
-        fn pushes(&self, name: &str, tsv: &str) {
+        pub(crate) fn pushes(&self, name: &str, tsv: &str) {
             let dir = self.dir.join("forge/pushes/acme");
             fs::create_dir_all(&dir).expect("mkdir");
             fs::write(dir.join(format!("{name}.tsv")), tsv).expect("write");
-        }
-
-        fn check(&self) -> Findings {
-            let forge = Supplied::new(self.dir.join("forge"));
-            let evidence = prepare_evidence(&self.dir.join("evidence")).expect("evidence");
-            let ind = ind();
-            check(
-                &forge,
-                &Check {
-                    owner: "acme",
-                    kind: OwnerKind::Organization,
-                    evidence: &evidence,
-                    ind: &ind,
-                },
-                &mut |_| {},
-            )
-            .expect("check runs")
         }
     }
 
@@ -988,6 +965,48 @@ mod tests {
         fn drop(&mut self) {
             let _ = fs::remove_dir_all(&self.dir);
         }
+    }
+
+    impl World {
+        pub(crate) fn forge(&self) -> Supplied {
+            Supplied::new(self.dir.join("forge"))
+        }
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::expect_used, clippy::unwrap_used, clippy::indexing_slicing)]
+mod tests {
+    use super::*;
+
+    const STRONG: &str = "MARKER-ALPHA";
+
+    fn ind() -> Indicators {
+        Indicators {
+            strong: vec![STRONG.into()],
+            weak: vec!["weak-signal-string".into()],
+            filenames: vec![Pattern::parse(r"(^|/)temp_helper\.bat$").expect("parses")],
+            ..Indicators::default()
+        }
+    }
+
+    use super::fixture::World;
+
+    fn run(w: &World) -> Findings {
+        let forge = w.forge();
+        let evidence = prepare_evidence(&w.dir.join("evidence")).expect("evidence");
+        let ind = ind();
+        check(
+            &forge,
+            &Check {
+                owner: "acme",
+                kind: OwnerKind::Organization,
+                evidence: &evidence,
+                ind: &ind,
+            },
+            &mut |_| {},
+        )
+        .expect("check runs")
     }
 
     fn infected_config() -> Vec<u8> {
@@ -1010,7 +1029,7 @@ mod tests {
             ],
         );
         w.repo("blog", &[("main", &[("index.md", b"hello\n")])]);
-        let found = w.check();
+        let found = run(&w);
         assert_eq!(found.repositories, 2);
         assert_eq!(found.refs, 3);
         assert_eq!(found.affected(), vec![("acme/shop", 1)]);
@@ -1038,7 +1057,7 @@ mod tests {
                 ],
             )],
         );
-        let found = w.check();
+        let found = run(&w);
         let finding = &found.confirmed[0];
         assert_eq!(
             finding.real_paths(),
@@ -1060,7 +1079,7 @@ mod tests {
                 )],
             )],
         );
-        let found = w.check();
+        let found = run(&w);
         assert!(found.confirmed.is_empty());
         assert_eq!(found.review.len(), 1);
         assert_eq!(
@@ -1099,7 +1118,7 @@ mod tests {
                 &[("src/vendor.js", format!("var a='{STRONG}'\n").as_bytes())],
             )],
         );
-        let found = w.check();
+        let found = run(&w);
         assert_eq!(found.own_tooling, 1);
         assert_eq!(found.affected(), vec![("acme/api", 1)]);
         assert_eq!(found.confirmed[0].real_paths(), vec!["src/vendor.js"]);
@@ -1121,7 +1140,7 @@ mod tests {
              refs/heads/release\tbbb\tccc\tbob\t2026-09-13T10:00:00Z\t1\n\
              refs/heads/main\tddd\teee\tcarol\t2026-09-14T10:00:00Z\t2\n",
         );
-        let found = w.check();
+        let found = run(&w);
         assert_eq!(found.pushers(), vec!["alice", "bob"]);
         assert_eq!(found.restorable(), vec!["acme/shop"]);
         assert_eq!(
@@ -1144,7 +1163,7 @@ mod tests {
         repos.push_str("acme/ghost\n");
         fs::write(list, repos).expect("write");
 
-        let found = w.check();
+        let found = run(&w);
         assert_eq!(found.repositories, 2);
         assert_eq!(found.not_checked.len(), 1);
         assert_eq!(found.not_checked[0].0, "acme/ghost");
@@ -1161,7 +1180,7 @@ mod tests {
             &[("main", &[("vite.config.js", &infected_config())])],
         );
         w.repo("site", &[("main", &[("b.js", b"ok\n" as &[u8])])]);
-        let forge = Supplied::new(w.dir.join("forge"));
+        let forge = w.forge();
         let evidence = prepare_evidence(&w.dir.join("evidence")).expect("evidence");
         let ind = ind();
         let mut seen: Vec<(usize, usize, String, usize)> = Vec::new();
@@ -1195,7 +1214,7 @@ mod tests {
             "acme\t42\nacme-labs\t7\nno-count\n",
         )
         .expect("write");
-        let forge = Supplied::new(w.dir.join("forge"));
+        let forge = w.forge();
         assert_eq!(forge.signed_in_as(), Probe::Read("tester".to_string()));
         let Probe::Read(orgs) = forge.organizations() else {
             unreachable!("the list was supplied")

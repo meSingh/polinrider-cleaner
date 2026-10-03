@@ -29,6 +29,12 @@
 # the case's "stdin", one answer per line. {{TREE}} in an answer is the
 # fixture tree, so a case can type a path it could not know in advance.
 #
+# GITHUB CASES. A case with a "forge" key describes repositories on a pretend
+# GitHub: owners, their repositories, branches and files. The runner builds
+# them as real git repositories and hands the directory to the guided flow
+# with --forge-state. "forge_files" adds plain files beside them: who is
+# signed in, the list of organizations, a marker that gh is not installed.
+#
 # CLEAN CASES. A case with "command": "clean" runs the clean command, which
 # strips an appended payload out of a build config in place. The shell has no
 # such command, so these skip under it too, the same way.
@@ -109,6 +115,9 @@ impl_rust() {
     # goes into it is decided by an answer and not by a flag.
     args=(guide --home "$FAKE_HOME" --report "$report" --quarantine "$(dirname "$report")/quarantine")
     [[ -n "$HOST_STATE" ]] && args+=(--host-state "$HOST_STATE")
+    # Copies of repositories go beside the report, which is outside every
+    # checkout: the engine refuses anywhere that is not.
+    [[ -n "$FORGE_STATE" ]] && args+=(--forge-state "$FORGE_STATE" --evidence "$(dirname "$report")/evidence")
     jq -r '.stdin // [] | .[]' "$CASE_FILE" | sed -e "s|{{TREE}}|$TREE|g" | "$bin" "${args[@]}" 2>&1
     return "${PIPESTATUS[2]}"
   fi
@@ -156,7 +165,46 @@ build_files() {
   done < <(jq -r --arg k "$key" '.[$k] // {} | keys[]' "$cf")
 }
 
+# build_forge <case file> <destination>: real git repositories for every
+# owner/repository/branch the case describes. Identity and signing are set on
+# the command line, so this works on a machine with no git configuration.
+build_forge() {
+  local cf="$1" dest="$2" owner repo branch path content work
+  local g=(git -c user.name=fixture -c user.email=fixture@localhost -c commit.gpgsign=false)
+  mkdir -p "$dest/repos" "$dest/git" "$dest/pushes"
+  build_files "$cf" forge_files "$dest"
+  while IFS= read -r owner; do
+    : > "$dest/repos/$owner"
+    while IFS= read -r repo; do
+      printf '%s/%s\n' "$owner" "$repo" >> "$dest/repos/$owner"
+      # Listed and not there: a repository that cannot be copied.
+      [[ "$(jq -r --arg o "$owner" --arg r "$repo" '.forge[$o][$r].missing // false' "$cf")" == "true" ]] && continue
+      work="$dest/.work/$owner/$repo"; mkdir -p "$work"
+      "${g[@]}" -C "$work" init -q -b main
+      printf 'base\n' > "$work/BASE.txt"
+      "${g[@]}" -C "$work" add -A; "${g[@]}" -C "$work" commit -q -m base
+      while IFS= read -r branch; do
+        if [[ "$branch" == "main" ]]; then "${g[@]}" -C "$work" checkout -q main
+        else "${g[@]}" -C "$work" checkout -q -b "$branch" main; fi
+        while IFS= read -r path; do
+          content="$(jq -r --arg o "$owner" --arg r "$repo" --arg b "$branch" --arg p "$path" \
+                     '.forge[$o][$r].branches[$b][$p]' "$cf")"
+          mkdir -p "$work/$(dirname "$path")"
+          subst "$content" > "$work/$path"
+        done < <(jq -r --arg o "$owner" --arg r "$repo" --arg b "$branch" '.forge[$o][$r].branches[$b] | keys[]' "$cf")
+        "${g[@]}" -C "$work" add -A; "${g[@]}" -C "$work" commit -q -m change
+      done < <(jq -r --arg o "$owner" --arg r "$repo" '.forge[$o][$r].branches // {} | keys[]' "$cf")
+      mkdir -p "$dest/git/$owner" "$dest/pushes/$owner"
+      "${g[@]}" clone -q --bare "$work" "$dest/git/$owner/$repo.git"
+      content="$(jq -r --arg o "$owner" --arg r "$repo" '.forge[$o][$r].pushes // empty' "$cf")"
+      [[ -n "$content" ]] && printf '%s\n' "$content" > "$dest/pushes/$owner/$repo.tsv"
+    done < <(jq -r --arg o "$owner" '.forge[$o] | keys[]' "$cf")
+  done < <(jq -r '.forge // {} | keys[]' "$cf")
+  rm -rf "$dest/.work"
+}
+
 PASS=0; FAIL=0; SKIP=0; FAILED_CASES=()
+FORGE_STATE=""
 HOST_STATE=""
 COMMAND="check"
 CASE_FILE=""
@@ -193,6 +241,11 @@ run_case() {
   # case the machine's state
   build_files "$cf" files "$tmp/tree"
   build_files "$cf" home "$FAKE_HOME"
+  FORGE_STATE=""
+  if [[ "$(jq -r 'has("forge") or has("forge_files")' "$cf")" == "true" ]]; then
+    FORGE_STATE="$tmp/forge"
+    build_forge "$cf" "$FORGE_STATE"
+  fi
   HOST_STATE=""
   if [[ "$is_host" == "true" ]]; then
     HOST_STATE="$tmp/host"; mkdir -p "$HOST_STATE"
