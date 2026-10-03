@@ -150,6 +150,18 @@ impl Indicators {
             .find(|indicator| names_endpoint(line, indicator))
     }
 
+    /// Every campaign host or address `text` names, in the order the
+    /// indicator file lists them. A minified bundle is one line, so asking
+    /// line by line for the first match would report one name and miss the
+    /// rest.
+    pub fn infrastructure_named(&self, text: &str) -> Vec<&str> {
+        self.network
+            .iter()
+            .map(String::as_str)
+            .filter(|indicator| text.lines().any(|line| names_endpoint(line, indicator)))
+            .collect()
+    }
+
     /// Is this the name of the implant process?
     ///
     /// The name only, compared whole, never a command line: anything that

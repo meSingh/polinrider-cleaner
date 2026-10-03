@@ -9,7 +9,7 @@
 //! behaviour change, and the corpus will say so.
 
 use crate::host::Host;
-use crate::host_checks::{self, ProcessCheck};
+use crate::host_checks::{self, sh_quote, ProcessCheck};
 use crate::indicators::Indicators;
 use crate::quarantine::{Apply, DryRun, Quarantine};
 use crate::strip::{self, Plan};
@@ -422,6 +422,35 @@ pub fn git_hooks(
 /// `~` in `implant-paths.txt` expands against the home directory given here,
 /// not the process environment, so a scan of a mounted backup can point at the
 /// backup's home rather than the running user's.
+/// What to run before quarantining a file that is how the implant starts
+/// itself. Read from where the file is: a launch agent, a systemd user unit
+/// or an autostart entry.
+fn stop_first(path: &Path) -> Vec<String> {
+    let text = path.display().to_string();
+    let quoted = sh_quote(&text);
+    if text.contains("/LaunchAgents/") {
+        vec![format!(
+            "stop it first: launchctl bootout gui/$(id -u) {quoted} 2>/dev/null || launchctl unload {quoted}"
+        )]
+    } else if text.contains("/systemd/user/") {
+        let unit = path
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_default();
+        vec![
+            format!(
+                "stop it first: systemctl --user disable --now {}",
+                sh_quote(&unit)
+            ),
+            "and: loginctl disable-linger \"$(whoami)\"".to_string(),
+        ]
+    } else if text.contains("/autostart/") {
+        vec!["it will not start again once this file is quarantined".to_string()]
+    } else {
+        Vec::new()
+    }
+}
+
 /// Where the implant check looks beyond the files of the walk.
 pub struct ImplantScope<'a> {
     /// The home directory its install paths are under, when there is one.
@@ -468,14 +497,17 @@ pub fn implants(
             }
             found = true;
             let line_out = sink.take(&path, "second-stage-implant");
-            v.push(
-                Finding::hit(
-                    Kind::Implant,
-                    format!("implant artifact present: {}", path.display()),
-                )
-                .at(&path)
-                .with_remedy(line_out),
-            );
+            let mut finding = Finding::hit(
+                Kind::Implant,
+                format!("implant artifact present: {}", path.display()),
+            )
+            .at(&path);
+            // Moving the file does not stop what it already started. Said
+            // first, because it has to be done first.
+            for advice in stop_first(&path) {
+                finding = finding.with_remedy(advice);
+            }
+            v.push(finding.with_remedy(line_out));
         }
     }
 
@@ -603,13 +635,27 @@ pub fn extensions(dirs: &[PathBuf], ind: &Indicators, v: &mut Verdict, sink: &mu
         };
         let w = crate::walk::walk_with(std::slice::from_ref(dir), &everything);
         let mut flagged: Vec<PathBuf> = Vec::new();
+        // Files that name a campaign host or address and carry no confirmed
+        // indicator, with what they name.
+        let mut naming: Vec<(&Path, Vec<&str>)> = Vec::new();
 
         for file in w.by_name(|n| {
             [".js", ".mjs", ".cjs", ".ts", ".json", ".map"]
                 .iter()
                 .any(|e| n.ends_with(e))
         }) {
-            if !ind.file_has_strong(file) {
+            let Ok(bytes) = fs::read(file) else {
+                continue;
+            };
+            let text = String::from_utf8_lossy(&bytes);
+            if !ind.has_strong(&text) {
+                // The weak list is useless in an extension bundle: one
+                // legitimately contains "folderOpen" and "windowsHide". Only
+                // the campaign's own infrastructure is worth a human's time.
+                let named = ind.infrastructure_named(&text);
+                if !named.is_empty() {
+                    naming.push((file, named));
+                }
                 continue;
             }
             // Report the extension, not every file inside it.
@@ -623,6 +669,19 @@ pub fn extensions(dirs: &[PathBuf], ind: &Indicators, v: &mut Verdict, sink: &mu
                     flagged.push(root);
                 }
             }
+        }
+
+        // An extension already confirmed is not also listed for review.
+        naming.retain(|(file, _)| !flagged.iter().any(|root| file.starts_with(root)));
+        for (file, named) in naming.iter().take(20) {
+            v.push(
+                Finding::review(format!(
+                    "extension references campaign infrastructure ({}): {}",
+                    named.join(" "),
+                    file.display()
+                ))
+                .at(file),
+            );
         }
 
         for root in flagged {
@@ -641,9 +700,112 @@ pub fn extensions(dirs: &[PathBuf], ind: &Indicators, v: &mut Verdict, sink: &mu
 
     if !any_dir {
         v.push(Finding::ok("no IDE extension directories found"));
-    } else if !found {
+        return;
+    }
+    if !found {
         v.push(Finding::ok("no IDE extension contains an indicator"));
     }
+
+    // What changed lately, by name, in the report. Inventory and not a
+    // finding: an extension updates itself, and the one to worry about is the
+    // one nobody remembers installing.
+    const RECENT_DAYS: u64 = 60;
+    let cutoff = std::time::SystemTime::now()
+        .checked_sub(std::time::Duration::from_secs(RECENT_DAYS * 86_400));
+    let mut recent = 0usize;
+    for dir in dirs {
+        let Ok(entries) = fs::read_dir(dir) else {
+            continue;
+        };
+        let mut names: Vec<String> = entries
+            .flatten()
+            .filter(|e| e.file_type().is_ok_and(|t| t.is_dir()))
+            .filter(|e| {
+                let changed = e.metadata().and_then(|m| m.modified()).ok();
+                matches!((changed, cutoff), (Some(changed), Some(cutoff)) if changed >= cutoff)
+            })
+            .map(|e| e.file_name().to_string_lossy().into_owned())
+            .collect();
+        names.sort_unstable();
+        recent += names.len();
+        for name in names {
+            v.note(format!("    {name}"));
+        }
+    }
+    if recent > 0 {
+        v.push(Finding::info(format!(
+            "{recent} extension{} installed or updated in the last {RECENT_DAYS} days. Names are in the report; check any you did not install yourself.",
+            if recent == 1 { "" } else { "s" }
+        )));
+    }
+}
+
+/// What would have to be changed if anything else here is a confirmed
+/// finding: private keys and credential files in the home directory, and
+/// `.env` files under the scanned paths.
+///
+/// Inventory, never a finding. Owning an SSH key is not suspicious and a
+/// `.pub` file is not a credential. Only paths are listed, and only in the
+/// report: nothing is read, so nothing can be printed.
+pub fn credentials(walk: &Walk, home: Option<&Path>, v: &mut Verdict) {
+    v.section(if home.is_some() {
+        "Credential surface on this machine"
+    } else {
+        "Credential surface under the scanned paths"
+    });
+    let mut files: Vec<PathBuf> = Vec::new();
+    if let Some(home) = home {
+        if let Ok(entries) = fs::read_dir(home.join(".ssh")) {
+            let mut keys: Vec<PathBuf> = entries
+                .flatten()
+                .map(|e| e.path())
+                .filter(|p| {
+                    p.file_name()
+                        .and_then(|n| n.to_str())
+                        .is_some_and(|n| n.starts_with("id_") && !n.ends_with(".pub"))
+                })
+                .collect();
+            keys.sort();
+            files.extend(keys);
+        }
+        files.extend(
+            [
+                ".aws/credentials",
+                ".config/gcloud/credentials.db",
+                ".docker/config.json",
+                ".kube/config",
+                ".netrc",
+            ]
+            .iter()
+            .map(|p| home.join(p))
+            .filter(|p| p.exists()),
+        );
+    }
+    let env: Vec<&PathBuf> = walk.by_name(|n| n.starts_with(".env")).collect();
+    for file in files.iter().chain(env.iter().copied()) {
+        v.note(format!("  credential material: {}", file.display()));
+    }
+    if files.is_empty() && env.is_empty() {
+        v.push(Finding::ok(
+            "no credential files found under the scanned paths",
+        ));
+        return;
+    }
+    let count =
+        |n: usize, one: &str, many: &str| format!("{n} {}", if n == 1 { one } else { many });
+    v.push(Finding::info(format!(
+        "{} and {} under the scanned paths.",
+        count(
+            files.len(),
+            "private key or credential file",
+            "private key or credential files"
+        ),
+        count(env.len(), ".env file", ".env files")
+    )));
+    v.push(Finding::info(
+        "None of this is a finding. It is the list to change if anything else was a HIT.",
+    ));
+    v.push(Finding::info("Full paths are in the report file."));
 }
 
 #[cfg(test)]
@@ -686,6 +848,179 @@ mod tests {
         assert!(
             hits[0].ends_with("publisher.helper-1.0.0"),
             "the extension, not the file: {hits:?}"
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    fn scratch(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("prc-checks-{}-{name}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).expect("mkdir");
+        dir
+    }
+
+    fn put(path: &Path, body: &str) {
+        fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
+        fs::write(path, body).expect("write");
+    }
+
+    #[test]
+    fn an_extension_naming_campaign_infrastructure_is_review_and_names_what_matched() {
+        let dir = scratch("ext-net");
+        let exts = dir.join("extensions");
+        put(
+            &exts.join("pub.caller-1.0.0/out/main.js"),
+            "fetch('http://198.51.100.7/a'); fetch('https://c2.example.test/b')\n",
+        );
+        // An address that only contains the campaign's is somebody else's.
+        put(
+            &exts.join("pub.neighbour-1.0.0/out/main.js"),
+            "fetch('http://198.51.100.70/a')\n",
+        );
+        // Confirmed for another reason: reported once, as the hit.
+        put(
+            &exts.join("pub.both-1.0.0/out/main.js"),
+            "var a='MARKER-ALPHA'; fetch('http://198.51.100.7/a')\n",
+        );
+        let ind = Indicators {
+            strong: vec!["MARKER-ALPHA".into()],
+            network: vec!["198.51.100.7".into(), "c2.example.test".into()],
+            ..Indicators::default()
+        };
+        let q = Quarantine::<DryRun>::new(dir.join("q"));
+        let mut v = Verdict::new();
+        extensions(&[exts], &ind, &mut v, &mut Sink::Dry(&q));
+
+        let reviews: Vec<&str> = v
+            .findings()
+            .filter(|f| f.level == crate::verdict::Level::Review)
+            .map(|f| f.message.as_str())
+            .collect();
+        assert_eq!(reviews.len(), 1, "{reviews:?}");
+        assert!(reviews[0].starts_with(
+            "extension references campaign infrastructure (198.51.100.7 c2.example.test): "
+        ));
+        assert!(reviews[0].ends_with("pub.caller-1.0.0/out/main.js"));
+        assert_eq!(v.hits(), 1);
+        // Fresh on disk, so all three are recent: counted, and named only in
+        // the report.
+        assert!(v
+            .findings()
+            .any(|f| f.message.starts_with("3 extensions installed or updated")));
+        assert!(v.entries().iter().any(
+            |e| matches!(e, crate::verdict::Entry::Note(n) if n.trim() == "pub.caller-1.0.0")
+        ));
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn an_implant_that_starts_itself_comes_with_how_to_stop_it_first() {
+        let dir = scratch("stop-first");
+        let home = dir.join("home");
+        let ioc = dir.join("ioc");
+        put(
+            &ioc.join("implant-paths.txt"),
+            "# comment\n~/.config/systemd/user/helper's.service\n~/.config/autostart/helper.desktop\n~/.local/share/helper\n",
+        );
+        put(
+            &home.join(".config/systemd/user/helper's.service"),
+            "[Unit]\n",
+        );
+        put(
+            &home.join(".config/autostart/helper.desktop"),
+            "[Desktop Entry]\n",
+        );
+        put(&home.join(".local/share/helper"), "binary\n");
+        let q = Quarantine::<DryRun>::new(dir.join("q"));
+        let mut v = Verdict::new();
+        implants(
+            &Walk::default(),
+            &Indicators::default(),
+            &ImplantScope {
+                home: Some(&home),
+                ioc_dir: &ioc,
+                host: None,
+            },
+            &mut v,
+            &mut Sink::Dry(&q),
+            &mut |_, _| {},
+        );
+        let remedies: Vec<String> = v.findings().filter_map(|f| f.remedy.clone()).collect();
+        assert_eq!(v.hits(), 3);
+        // The unit: stopped by name, quoted, and before the move.
+        let unit = remedies
+            .iter()
+            .find(|r| r.contains("systemctl"))
+            .expect("unit advice");
+        let lines: Vec<&str> = unit.lines().collect();
+        assert_eq!(
+            lines[0],
+            "stop it first: systemctl --user disable --now 'helper'\\''s.service'"
+        );
+        assert_eq!(lines[1], "and: loginctl disable-linger \"$(whoami)\"");
+        assert_eq!(lines.len(), 3, "the quarantine line comes last: {unit}");
+        assert!(remedies
+            .iter()
+            .any(|r| r.starts_with("it will not start again once this file is quarantined")));
+        // A plain file needs no stopping.
+        assert!(remedies.iter().any(|r| r.lines().count() == 1));
+
+        let agent = stop_first(Path::new("/Users/x/Library/LaunchAgents/com.helper.plist"));
+        assert_eq!(
+            agent,
+            vec!["stop it first: launchctl bootout gui/$(id -u) '/Users/x/Library/LaunchAgents/com.helper.plist' 2>/dev/null || launchctl unload '/Users/x/Library/LaunchAgents/com.helper.plist'"]
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn credentials_are_counted_and_named_in_the_report_and_never_read() {
+        let dir = scratch("credentials");
+        let home = dir.join("home");
+        put(&home.join(".ssh/id_ed25519"), "PRIVATE\n");
+        put(&home.join(".ssh/id_ed25519.pub"), "public\n");
+        put(&home.join(".ssh/known_hosts"), "host\n");
+        put(&home.join(".aws/credentials"), "[default]\n");
+        put(&home.join("code/app/.env"), "TOKEN=SECRET\n");
+        put(&home.join("code/app/.env.local"), "TOKEN=SECRET\n");
+        put(&home.join("code/app/env.js"), "export {}\n");
+        let w = crate::walk::walk(&[home.join("code")]);
+
+        let mut v = Verdict::new();
+        credentials(&w, Some(&home), &mut v);
+        let said: Vec<&str> = v.findings().map(|f| f.message.as_str()).collect();
+        assert_eq!(
+            said[0],
+            "2 private key or credential files and 2 .env files under the scanned paths."
+        );
+        assert!(v.findings().all(|f| f.level == crate::verdict::Level::Info));
+        let notes: Vec<&str> = v
+            .entries()
+            .iter()
+            .filter_map(|e| match e {
+                crate::verdict::Entry::Note(n) => Some(n.as_str()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(notes.len(), 4);
+        assert!(notes[0].ends_with(".ssh/id_ed25519"));
+        assert!(!notes
+            .iter()
+            .any(|n| n.ends_with(".pub") || n.contains("known_hosts")));
+        assert!(!format!("{:?}", v.entries()).contains("SECRET"));
+
+        // Without a machine to read, only what is under the scanned paths.
+        let mut v = Verdict::new();
+        credentials(&w, None, &mut v);
+        assert_eq!(
+            v.findings().next().map(|f| f.message.as_str()),
+            Some("0 private key or credential files and 2 .env files under the scanned paths.")
+        );
+        let mut v = Verdict::new();
+        credentials(&Walk::default(), None, &mut v);
+        assert_eq!(
+            v.findings().next().map(|f| f.level),
+            Some(crate::verdict::Level::Ok)
         );
         let _ = fs::remove_dir_all(&dir);
     }

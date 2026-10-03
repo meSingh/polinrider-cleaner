@@ -1532,12 +1532,12 @@ case(
         "must_print": [
             "Checking the folder",
             "This only reads. Nothing is changed.",
-            "8 of 8",
+            "9 of 9",
             "now        finished",
             "so far     2 files listed",
             "1 finding confirmed",
         ],
-        "must_not_print": ["0 of 8", "listing files"],
+        "must_not_print": ["0 of 9", "listing files"],
     },
 )
 
@@ -1560,12 +1560,61 @@ host_case(
         "must_print": [
             "everything     This computer first, then GitHub.",
             "Checking this computer",
-            "11 of 11",
+            "12 of 12",
             "This computer is done. GitHub is next.",
             "Type organization, account or done. q quits.",
             "Checked 1 repository and 1 branch of acme.",
             "More on GitHub?",
         ],
+    },
+)
+
+# ---------------------------------------------------------------------------
+# The last of the machine check to leave the shell.
+# ---------------------------------------------------------------------------
+
+case(
+    "host-credentials-are-inventory-and-are-never-read",
+    why="If something else is a confirmed finding, these are what has to be "
+        "changed, so they are counted on the screen and named in the report. "
+        "Owning an SSH key is not a finding and the exit code stays 0. A "
+        ".pub file is a public key, not a credential, and is not counted. "
+        "Nothing is opened: a tool that reads private keys in order to list "
+        "them has put them in its own memory and one bug away from its own "
+        "report, so the secret in the .env here must appear nowhere.",
+    roots=["code"],
+    host=host_state(),
+    files={"code/proj/src/index.js": "export const a = 1\n",
+           "code/proj/.env": "API_TOKEN=do-not-print-this-value\n"},
+    home={".ssh/id_ed25519": "-----BEGIN OPENSSH PRIVATE KEY-----\ndo-not-print-this-value\n",
+          ".ssh/id_ed25519.pub": "ssh-ed25519 AAAA\n",
+          ".aws/credentials": "[default]\naws_secret_access_key = do-not-print-this-value\n"},
+    expect={
+        "exit": 0,
+        "findings": [{"level": "info",
+                      "match": "2 private key or credential files and 1 .env file under the scanned paths."}],
+        "must_not_report": NOTHING_FOUND,
+        "must_not_print": ["do-not-print-this-value", "id_ed25519.pub"],
+    },
+)
+
+host_case(
+    "host-extension-naming-campaign-infrastructure-is-review",
+    why="An installed extension that names a campaign address carries no "
+        "confirmed indicator, and may be a security extension that blocks "
+        "that address. It is worth a human's eyes and not a rebuild: review, "
+        "with what matched and which file. The generic weak list is not "
+        "used here, because every bundled extension contains folderOpen and "
+        "windowsHide for ordinary reasons. An address that merely contains "
+        "the campaign's is somebody else's and is not listed.",
+    home={".vscode/extensions/pub.caller-1.0.0/out/main.js": "fetch('http://{{NETIP}}/a')\n",
+          ".vscode/extensions/pub.neighbour-1.0.0/out/main.js": "fetch('http://{{NETIP}}9/a'); const o = { windowsHide: true }\n"},
+    expect={
+        "exit": 1,
+        "findings": [{"level": "review",
+                      "match": "extension references campaign infrastructure (",
+                      "path": "pub.caller-1.0.0/out/main.js"}],
+        "must_not_report": ["[HIT]", "pub.neighbour-1.0.0"],
     },
 )
 

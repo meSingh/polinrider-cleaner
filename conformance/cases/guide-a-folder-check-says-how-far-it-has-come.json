@@ -21,13 +21,13 @@
     "must_print": [
       "Checking the folder",
       "This only reads. Nothing is changed.",
-      "8 of 8",
+      "9 of 9",
       "now        finished",
       "so far     2 files listed",
       "1 finding confirmed"
     ],
     "must_not_print": [
-      "0 of 8",
+      "0 of 9",
       "listing files"
     ]
   }

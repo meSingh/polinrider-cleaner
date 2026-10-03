@@ -108,7 +108,7 @@ pub fn run_watched(scope: &Scope, sink: &mut Sink, tell: &mut dyn FnMut(Step)) -
     let mut watch = Watch {
         done: 0,
         // The walk, then the checks.
-        total: if scope.home.is_some() { 11 } else { 8 },
+        total: if scope.home.is_some() { 12 } else { 9 },
         files: 0,
         found: 0,
         tell,
@@ -233,6 +233,11 @@ fn machine(
             skipped(v, "Live connections");
         }
     }
+
+    watch.stage("keys and passwords kept here", v);
+    // The home directory is swept only when this machine is being read. A
+    // disk checked with --fs-only gets the .env count and nothing more.
+    checks::credentials(w, host.map(|_| home), v);
 }
 
 /// The given directories and nothing else: every check that reads them, and
@@ -264,6 +269,8 @@ fn directories(w: &walk::Walk, scope: &Scope, v: &mut Verdict, sink: &mut Sink, 
     checks::packages(w, ind, v);
     watch.stage("git hooks", v);
     checks::git_hooks(w, ind, None, v, sink);
+    watch.stage("keys and passwords kept here", v);
+    checks::credentials(w, None, v);
 }
 
 /// Where a rendering is going. The console gets evidence cut to a readable

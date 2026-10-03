@@ -1414,7 +1414,7 @@ mod tests {
             "{}",
             io.said
         );
-        assert!(io.said.contains("11 of 11"));
+        assert!(io.said.contains("12 of 12"));
         assert!(io.said.contains("  NEXT   GitHub"));
         assert!(io.said.contains("  This computer is done. GitHub is next."));
         assert!(io

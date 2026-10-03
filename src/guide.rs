@@ -1432,7 +1432,7 @@ mod tests {
         let (_, io) = w.run(&["folder", &w.repo(), "", "no", ""]);
         assert!(io.said.contains("STEP 3 OF 4   Checking the folder"));
         assert!(io.said.contains("  This only reads. Nothing is changed."));
-        assert!(io.said.contains("8 of 8"), "{}", io.said);
+        assert!(io.said.contains("9 of 9"), "{}", io.said);
         assert!(io.said.contains("      now        finished"));
         assert!(io.said.contains("      so far     2 files listed"));
         assert!(io.said.contains("                 1 finding confirmed"));
@@ -1456,8 +1456,8 @@ mod tests {
         scan::run_watched(&scope, &mut Sink::Dry(&dry), &mut |step| {
             seen.push((step.done, step.total, step.now.to_string(), step.found));
         });
-        assert_eq!(seen.first(), Some(&(0, 8, "listing files".to_string(), 0)));
-        assert_eq!(seen.last(), Some(&(8, 8, String::new(), 1)));
+        assert_eq!(seen.first(), Some(&(0, 9, "listing files".to_string(), 0)));
+        assert_eq!(seen.last(), Some(&(9, 9, String::new(), 1)));
         // Never backwards, and the finding shows up as soon as it is made.
         assert!(seen.windows(2).all(|w| w[0].0 <= w[1].0));
         let fonts = seen.iter().find(|s| s.2 == "fonts").expect("fonts stage");
