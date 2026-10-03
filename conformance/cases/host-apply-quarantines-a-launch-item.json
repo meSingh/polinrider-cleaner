@@ -1,0 +1,35 @@
+{
+  "why": "--apply moves a confirmed launch item out of the home directory and into quarantine with a manifest. Moved, never deleted, the same promise the filesystem checks make.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "home": {
+    "Library/LaunchAgents/com.example.updater.plist": "<plist><dict><key>ProgramArguments</key><array><string>{{STRONG}}</string></array></dict></plist>\n"
+  },
+  "host": {
+    "platform": "macos\n",
+    "processes": "",
+    "connections": "",
+    "crontab": "",
+    "git-config": "",
+    "root/.keep": ""
+  },
+  "expect": {
+    "exit": 2,
+    "tree_may_change": true,
+    "home_quarantined": [
+      "Library/LaunchAgents/com.example.updater.plist"
+    ],
+    "findings": [
+      {
+        "level": "HIT",
+        "match": "launch item contains an indicator",
+        "path": "com.example.updater.plist"
+      }
+    ]
+  },
+  "apply": true
+}

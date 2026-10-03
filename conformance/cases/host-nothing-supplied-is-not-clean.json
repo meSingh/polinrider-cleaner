@@ -1,0 +1,45 @@
+{
+  "why": "The failure this whole boundary exists to prevent: a question that was never answered read as an empty answer. A state directory that only names a platform must produce a review item per unanswered question and must not exit 0.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "home": {},
+  "host": {
+    "platform": "linux\n"
+  },
+  "expect": {
+    "exit": 1,
+    "findings": [
+      {
+        "level": "review",
+        "match": "could not read the process table, so a running implant was not looked for"
+      },
+      {
+        "level": "review",
+        "match": "could not read the process table, so resident interpreters were not checked"
+      },
+      {
+        "level": "review",
+        "match": "system-wide persistence was not checked"
+      },
+      {
+        "level": "review",
+        "match": "could not read the user crontab"
+      },
+      {
+        "level": "review",
+        "match": "could not read the global git configuration"
+      },
+      {
+        "level": "review",
+        "match": "could not list connections"
+      }
+    ],
+    "must_not_report": [
+      "[HIT]"
+    ]
+  }
+}

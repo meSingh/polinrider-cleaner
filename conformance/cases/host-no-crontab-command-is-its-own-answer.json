@@ -1,0 +1,31 @@
+{
+  "why": "A machine without a crontab command has no user crontab to run, which is a different statement from 'it was empty' and from 'it could not be read'. It is not a review item, or every container and minimal install would exit 1.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "home": {},
+  "host": {
+    "platform": "linux\n",
+    "processes": "",
+    "connections": "",
+    "git-config": "",
+    "root/.keep": "",
+    "crontab.absent": ""
+  },
+  "expect": {
+    "exit": 0,
+    "findings": [
+      {
+        "level": "ok",
+        "match": "no crontab command on this machine"
+      }
+    ],
+    "must_not_report": [
+      "[HIT]",
+      "[review]"
+    ]
+  }
+}

@@ -124,6 +124,44 @@ impl Indicators {
             .any(|i| haystack.contains(i.as_str()))
     }
 
+    /// The campaign host or address this line names, if it names one.
+    ///
+    /// Not a plain substring test. `grep -F` for `23.0.0.1` also matches
+    /// `123.0.0.1` and `23.0.0.19`, which are other people's addresses, and a
+    /// connection to one of those would be reported as a live connection to
+    /// the campaign. The match has to end where the address or name ends.
+    pub fn infrastructure_in(&self, line: &str) -> Option<&str> {
+        self.network
+            .iter()
+            .map(String::as_str)
+            .find(|indicator| names_endpoint(line, indicator))
+    }
+
+    /// Is this the name of the implant process?
+    ///
+    /// The name only, compared whole, never a command line: anything that
+    /// merely mentions the implant, this scanner included, would otherwise be
+    /// reported as the implant running.
+    ///
+    /// `kernel_truncates` is true on Linux, where the kernel keeps 15 bytes of
+    /// a process name. An implant whose name is longer shows up cut short, and
+    /// comparing whole names never matches it. A name of exactly 15 bytes that
+    /// begins a longer implant name is that implant.
+    pub fn is_implant_process(&self, name: &str, kernel_truncates: bool) -> bool {
+        const KERNEL_NAME_LEN: usize = 15;
+        let base = name.rsplit('/').next().unwrap_or(name);
+        if base.is_empty() {
+            return false;
+        }
+        self.implant_names.iter().any(|implant| {
+            implant == base
+                || (kernel_truncates
+                    && base.len() == KERNEL_NAME_LEN
+                    && implant.len() > KERNEL_NAME_LEN
+                    && implant.starts_with(base))
+        })
+    }
+
     /// Read a file and test it. Binary files are read lossily rather than
     /// skipped: the payload is appended to text files, but a file with one
     /// invalid byte is still worth matching.
@@ -135,10 +173,112 @@ impl Indicators {
     }
 }
 
+fn is_ipv4(s: &str) -> bool {
+    let parts: Vec<&str> = s.split('.').collect();
+    parts.len() == 4
+        && parts
+            .iter()
+            .all(|p| !p.is_empty() && p.bytes().all(|b| b.is_ascii_digit()))
+}
+
+/// Does `line` contain `indicator` as a whole address or a whole host name?
+fn names_endpoint(line: &str, indicator: &str) -> bool {
+    if indicator.is_empty() {
+        return false;
+    }
+    let address = is_ipv4(indicator);
+    line.match_indices(indicator).any(|(at, found)| {
+        let before = line.get(..at).and_then(|s| s.chars().next_back());
+        let after = line.get(at + found.len()..).and_then(|s| s.chars().next());
+        if address {
+            // A dot may follow: BSD netstat writes the port as a fifth group.
+            // A digit either side, or a dot before, is a different address.
+            !before.is_some_and(|c| c.is_ascii_digit() || c == '.')
+                && !after.is_some_and(|c| c.is_ascii_digit())
+        } else {
+            // A dot before is a subdomain of the campaign host, which counts.
+            let part_of_a_name = |c: char| c.is_ascii_alphanumeric() || c == '-';
+            !before.is_some_and(part_of_a_name) && !after.is_some_and(part_of_a_name)
+        }
+    })
+}
+
 #[cfg(test)]
 #[allow(clippy::expect_used, clippy::unwrap_used, clippy::indexing_slicing)]
 mod tests {
     use super::*;
+
+    fn with(network: &[&str], implants: &[&str]) -> Indicators {
+        Indicators {
+            strong: vec!["MARKER-ALPHA".into()],
+            network: network.iter().map(|s| (*s).to_string()).collect(),
+            implant_names: implants.iter().map(|s| (*s).to_string()).collect(),
+            ..Indicators::default()
+        }
+    }
+
+    #[test]
+    fn an_address_matches_whole_or_not_at_all() {
+        // 203.0.113.0/24 is reserved for documentation. Never a live address.
+        let ind = with(&["203.0.113.7"], &[]);
+        assert!(ind
+            .infrastructure_in("tcp ESTAB 10.0.0.2:51514 203.0.113.7:443")
+            .is_some());
+        // BSD netstat: the port is a fifth dotted group.
+        assert!(ind
+            .infrastructure_in("tcp4 10.0.0.2.51514 203.0.113.7.443")
+            .is_some());
+        // Somebody else's address that merely contains it.
+        assert!(ind
+            .infrastructure_in("10.0.0.2:51514 203.0.113.71:443")
+            .is_none());
+        assert!(ind
+            .infrastructure_in("10.0.0.2:51514 1203.0.113.7:443")
+            .is_none());
+        assert!(ind
+            .infrastructure_in("10.0.0.2:51514 9.203.0.113.7:443")
+            .is_none());
+    }
+
+    #[test]
+    fn a_host_name_matches_itself_and_its_subdomains_only() {
+        let ind = with(&["c2.example"], &[]);
+        assert!(ind
+            .infrastructure_in("node 77 TCP h:1->c2.example:443")
+            .is_some());
+        assert!(ind
+            .infrastructure_in("TCP h:1->api.c2.example:443")
+            .is_some());
+        assert!(ind
+            .infrastructure_in("TCP h:1->notc2.example:443")
+            .is_none());
+        assert!(ind.infrastructure_in("TCP h:1->c2.examples:443").is_none());
+    }
+
+    #[test]
+    fn an_implant_is_matched_by_process_name_not_by_mention() {
+        let ind = with(&[], &["implant-process-name-x64"]);
+        assert!(ind.is_implant_process("implant-process-name-x64", false));
+        // macOS reports the executable's full path.
+        assert!(ind.is_implant_process("/Users/x/Library/implant-process-name-x64", false));
+        // A different program whose name merely contains it.
+        assert!(!ind.is_implant_process("not-implant-process-name-x64", false));
+        assert!(!ind.is_implant_process("grep", false));
+        assert!(!ind.is_implant_process("", false));
+    }
+
+    #[test]
+    fn linux_cuts_a_process_name_to_15_bytes_and_the_cut_name_still_matches() {
+        // Verified in the sandbox: a binary called MicrosoftSystem64 shows in
+        // ps as MicrosoftSystem. A whole-name comparison never matches it, so
+        // the check was silently dead on Linux.
+        let ind = with(&[], &["implant-process-name-x64"]);
+        assert!(ind.is_implant_process("implant-process", true));
+        // Not on macOS, where names are not cut and 15 bytes is just a name.
+        assert!(!ind.is_implant_process("implant-process", false));
+        // A shorter prefix is somebody else's program.
+        assert!(!ind.is_implant_process("implant", true));
+    }
 
     /// A named directory per test. The first version derived the name from the
     /// fixture contents, which collided between tests, and cargo runs them in

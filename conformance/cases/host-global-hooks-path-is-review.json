@@ -1,0 +1,31 @@
+{
+  "why": "A global core.hooksPath runs a script in every repository on the machine, on every commit. Some people set one on purpose, so it is review; it is never passed over.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "home": {},
+  "host": {
+    "platform": "linux\n",
+    "processes": "",
+    "connections": "",
+    "crontab": "",
+    "git-config": "user.name=Someone\ncore.hookspath=/home/x/.hooks\n",
+    "root/.keep": ""
+  },
+  "expect": {
+    "exit": 1,
+    "findings": [
+      {
+        "level": "review",
+        "match": "global core.hooksPath is set to",
+        "path": "/home/x/.hooks"
+      }
+    ],
+    "must_not_report": [
+      "[HIT]"
+    ]
+  }
+}

@@ -78,11 +78,32 @@ impl Finding {
         Self::new(Level::Ok, message)
     }
 
+    /// Add a line of advice under the message. Called twice, it adds a second
+    /// line rather than replacing the first: "stop it first" and "would
+    /// quarantine" both belong under a persistence finding.
     #[must_use]
     pub fn with_remedy(mut self, remedy: impl Into<String>) -> Self {
-        self.remedy = Some(remedy.into());
+        let remedy = remedy.into();
+        self.remedy = Some(match self.remedy {
+            Some(existing) => format!("{existing}\n{remedy}"),
+            None => remedy,
+        });
         self
     }
+}
+
+/// Strip everything that could drive a terminal out of one line of output.
+///
+/// Paths, command lines, crontab entries and file contents all reach the
+/// report, and all of them can be chosen by whoever planted the thing being
+/// reported. Control characters go, including the C1 range some terminals
+/// read as an escape introducer. A newline goes too: a filename containing
+/// one could otherwise forge a second line that looks like a finding.
+pub fn clean(line: &str) -> String {
+    line.chars()
+        .map(|c| if c == '\t' { ' ' } else { c })
+        .filter(|c| !c.is_control())
+        .collect()
 }
 
 /// The exit code contract. Documented in docs-site reference/exit-codes.
@@ -119,11 +140,19 @@ impl fmt::Display for ExitCode {
     }
 }
 
-/// One line of a scan: a section heading, or a finding inside it.
+/// One line of a scan: a section heading, a finding inside it, or the
+/// evidence a finding refers to.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Entry {
     Section(String),
     Finding(Finding),
+    /// Evidence printed under a finding: a process, a crontab line. Shown on
+    /// the console cut to a readable width and written to the report whole.
+    /// Carries no level and counts towards nothing.
+    Detail(String),
+    /// Inventory that goes to the report file only. On the console a wall of
+    /// paths nobody reads is worse than the count that summarises it.
+    Note(String),
 }
 
 /// Everything a scan concluded, in the order it concluded it.
@@ -147,6 +176,14 @@ impl Verdict {
         self.entries.push(Entry::Section(title.into()));
     }
 
+    pub fn detail(&mut self, line: impl Into<String>) {
+        self.entries.push(Entry::Detail(line.into()));
+    }
+
+    pub fn note(&mut self, line: impl Into<String>) {
+        self.entries.push(Entry::Note(line.into()));
+    }
+
     pub fn entries(&self) -> &[Entry] {
         &self.entries
     }
@@ -154,7 +191,7 @@ impl Verdict {
     pub fn findings(&self) -> impl Iterator<Item = &Finding> {
         self.entries.iter().filter_map(|e| match e {
             Entry::Finding(f) => Some(f),
-            Entry::Section(_) => None,
+            Entry::Section(_) | Entry::Detail(_) | Entry::Note(_) => None,
         })
     }
 
@@ -222,6 +259,40 @@ mod tests {
         }
         v.push(Finding::hit("config file contains an indicator"));
         assert_eq!(v.exit_code(), ExitCode::Confirmed);
+    }
+
+    #[test]
+    fn evidence_lines_do_not_count_towards_the_verdict() {
+        let mut v = Verdict::new();
+        v.detail("  412 node -e ...");
+        v.note("/etc/systemd/system/some.service");
+        assert_eq!(v.exit_code(), ExitCode::Clean);
+        assert_eq!(v.findings().count(), 0);
+    }
+
+    #[test]
+    fn a_second_remedy_is_added_not_swapped_in() {
+        let f = Finding::hit("launch item contains an indicator")
+            .with_remedy("unload it first")
+            .with_remedy("would quarantine: /x");
+        assert_eq!(
+            f.remedy.as_deref(),
+            Some("unload it first\nwould quarantine: /x")
+        );
+    }
+
+    #[test]
+    fn output_cannot_carry_an_escape_sequence_or_forge_a_line() {
+        // A file named to clear the screen, and one named to print a fake
+        // "[ok]" line under the real finding.
+        assert_eq!(clean("evil\x1b[2Jname"), "evil[2Jname");
+        assert_eq!(clean("a\n  [ok]     all fine"), "a  [ok]     all fine");
+        assert_eq!(clean("a\u{9b}31mb"), "a31mb");
+        assert_eq!(clean("tab\tseparated"), "tab separated");
+        assert_eq!(
+            clean("plain path/with spaces.js"),
+            "plain path/with spaces.js"
+        );
     }
 
     #[test]

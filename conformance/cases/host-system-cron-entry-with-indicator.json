@@ -1,0 +1,29 @@
+{
+  "why": "System-wide persistence is read through the same boundary as the process table: root/ stands in for /. A cron.d entry carrying an indicator is confirmed.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "home": {},
+  "host": {
+    "platform": "linux\n",
+    "processes": "",
+    "connections": "",
+    "crontab": "",
+    "git-config": "",
+    "root/.keep": "",
+    "root/etc/cron.d/sysupdate": "*/10 * * * * root /bin/sh -c '{{STRONG}}'\n"
+  },
+  "expect": {
+    "exit": 2,
+    "findings": [
+      {
+        "level": "HIT",
+        "match": "system cron entry contains an indicator",
+        "path": "sysupdate"
+      }
+    ]
+  }
+}

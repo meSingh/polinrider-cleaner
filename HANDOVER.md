@@ -1,6 +1,7 @@
 # Handover
 
-Everything a new session needs to pick this up. Written 2026-10-02.
+Everything a new session needs to pick this up. Written 2026-10-02, updated
+2026-10-03 when the host-state checks landed.
 
 Read [`HACKING.md`](./HACKING.md) first if you just want to run it. This file is
 the state of the work and the reasoning behind it.
@@ -13,9 +14,10 @@ the state of the work and the reasoning behind it.
 weekly indicator updates from an automated routine. A branch called **`v2`** holds
 a rewrite in progress: one Rust binary replacing seventeen shell scripts, a
 documentation site, a container sandbox, and a conformance corpus that both
-implementations answer to. **`v2` has 16 commits and has never been pushed.** The
-Rust engine passes every conformance case for the filesystem checks; the
-live-host checks are the remaining work.
+implementations answer to. **`v2` has never been pushed.** The Rust engine
+passes every conformance case, for the filesystem checks and now for the
+host-state checks too. What remains is checkpointing, the local-repo cleaner and
+the guided flow.
 
 ---
 
@@ -23,21 +25,26 @@ live-host checks are the remaining work.
 
 | Ref | What it is | State |
 |---|---|---|
-| `origin/main` | 1.x, the released tool | `d418c54`, public |
-| `main` (local) | **2 commits ahead of origin** | Holds a local merge of PR #33, which is still open on GitHub. Resolve before pushing |
-| `v2` | The 2.0.0 work | 16 commits ahead of `origin/main`. **Never pushed** |
+| `origin/main` | 1.x, the released tool | `f58f2f7`, public. PRs #33 and #34 were squash-merged on 2026-10-03 |
+| `main` (local) | **Stale: 2 local commits, 2 behind** | Holds the old local merge of PR #33. Reset it to `origin/main`, see below |
+| `v2` | The 2.0.0 work | Branched from `d418c54`. **Never pushed** |
 | `scanner/one-walk` + tag `scanner-single-walk-1.x` | Backup of the 1.x scanner fix | Kept deliberately. Verified to merge into current `main` cleanly. **Do not merge it to `main`** — Mandeep wants it as a restore point only |
 | `docs/social-preview` | Merged content, stale branch | Safe to delete |
 
 Nothing in this work has been pushed. That is intentional: Mandeep reviews
 before anything goes public.
 
-### The `main` divergence, to resolve first
+### The `main` divergence: decided, one command left
 
-Local `main` has a merge of the 21 September indicator review. The same work is
-still open as PR #33 on GitHub, and PR #34 (28 September, 11 indicators) has not
-been taken locally at all. Either merge both PRs on GitHub and reset local `main`
-to match, or push the local merge and close #33. Do not leave it as it is.
+PRs #33 and #34 were squash-merged on GitHub on 2026-10-03 as `eb2b11a` and
+`f58f2f7`. Local `main` still holds the earlier local merge of #33: a merge
+commit `c03419a` and `98cd24f`. Checked on 2026-10-03: `git diff main eb2b11a`
+is empty, so those two commits carry nothing that is not already upstream, and
+the working tree was clean.
+
+What is left is `git checkout main && git reset --hard origin/main`. It was not
+run by the session that verified it, because a hard reset wants Mandeep's own
+word. The old commits stay in the reflog either way.
 
 ---
 
@@ -46,7 +53,7 @@ to match, or push the local merge and close #33. Do not leave it as it is.
 Full detail in [`HACKING.md`](./HACKING.md). The three commands:
 
 ```bash
-./polinrider-sandbox --all     # lint, 9 self-tests, 18 conformance cases, clippy, 29 Rust tests
+./polinrider-sandbox --all     # lint, 9 self-tests, 41 conformance cases, clippy, 68 Rust tests
 ./polinrider-sandbox --demo    # build an infected sample and scan it
 ./ci/docs-serve.sh             # the documentation site, with live reload
 ```
@@ -57,8 +64,9 @@ exercise those paths. `polinrider-sandbox` mounts the repository read-only,
 gives the run its own `$HOME`, and has no network unless `--net` is passed.
 Needs Docker Desktop running.
 
-`--net` is required for anything that fetches: `./polinrider-sandbox --net --all`
-when cargo needs the registry.
+`--net` is required for anything that fetches. `--all` does not need it: the
+crate has no dependencies, and the image now carries `rustfmt` and `clippy`
+(see Gotchas).
 
 ---
 
@@ -90,8 +98,11 @@ argument for running unknown code on a machine you believe is compromised.
 
 ## What is done
 
-**The corpus** — `conformance/`, 12 behaviour cases plus 6 refusal cases, green
-against both implementations, running in CI and in `--all`. Fixtures contain no
+**The corpus** — `conformance/`, 12 filesystem cases, 20 host cases and 9
+refusal cases. The filesystem cases are green against both implementations.
+The host cases run against the Rust engine only and print `skip` under the
+shell, which cannot be handed a machine that does not exist. Running in CI and
+in `--all`. Fixtures contain no
 payload: cases write `{{STRONG}}` and the runner substitutes from `ioc/` at build
 time, so the repository stays clean and the corpus cannot drift from the
 indicator set.
@@ -105,7 +116,7 @@ first run (see Gotchas).
 [ADR-0028](./docs/adr/0028-the-documentation-site-is-astro-starlight.md) records
 that this reversed an earlier mdBook decision and what the Node dependency costs.
 
-**The Rust engine** — 2,291 lines across 9 files in `src/`, no dependencies.
+**The Rust engine** — 11 files in `src/`, no dependencies.
 
 | Module | What it holds |
 |---|---|
@@ -115,6 +126,8 @@ that this reversed an earlier mdBook decision and what the Node dependency costs
 | `walk.rs` | One pruned filesystem walk, shared by every check |
 | `indicators.rs` | Loading `ioc/` |
 | `checks.rs` | Implants, tasks.json, build configs, fonts, packages, git hooks, extensions, propagation |
+| `host.rs` | The boundary. `Host`, with `LiveHost` (asks the machine) and `Snapshot` (holds the answers as data). The only module that runs a command |
+| `host_checks.rs` | Implant processes, persistence, shell startup files, global git config, npm config, resident interpreters, live connections |
 | `sha256.rs` | Written out rather than depended on, proven against NIST vectors |
 
 **Strict refusal.** Unknown flags, flags that exist but are not built, missing
@@ -122,29 +135,46 @@ roots, a root that is a file, a missing indicator set and an unusable quarantine
 all exit 3 **before any file is read**. Three distinct messages, because they are
 three different promises.
 
+**The host-state checks**, recorded in
+[ADR-0029](./docs/adr/0029-host-state-is-read-through-one-boundary-and-can-be-supplied.md).
+Everything the scanner asks of the machine goes through one trait, and
+`--host-state DIR` supplies the answers as files, which is what lets the corpus
+assert on a process table. Without `--fs-only` no section prints `skipped` any
+more. A probe that fails is a `[review]` line, never an `[ok]`.
+
+Porting them found eight places where the shell was wrong, all listed in the
+ADR with a case each. The one that matters most: **the implant process check
+has never matched on Linux**, because the kernel cuts a process name to 15
+bytes and the implant's is 17. Those eight are differences from 1.x that
+Mandeep has not reviewed yet.
+
 ---
 
 ## What is next, in order
 
-1. **Host-state checks in Rust** — processes, sockets, npm config, crontab,
-   persistence, shell startup files. These need an **injectable boundary** so a
-   test can supply fake system state. That decision was made and recorded but not
-   yet built; it is why `--fs-only` exists and why seven sections currently print
-   `skipped`. This is the untested third of the scanner, and an untested check
-   that silently stops matching is the failure Mandeep cares most about.
-2. **`--state` and `--resume` in Rust**, or a decision not to have them. They are
+1. **Review the eight deliberate differences in ADR-0029.** Each is a judgement
+   that the shell was mistaken. Three of them also apply to 1.x on `main`,
+   where people are running it today: the Linux process name, the npm registry
+   false positive and the `| shasum` false positive. Whether to fix those in
+   the shell or let 2.0.0 carry them is Mandeep's call.
+2. **What the host checks still do not have.** `LiveHost` on macOS has never
+   been run, only built: the sandbox is Linux. The "Credential surface"
+   inventory, the `stop it first` advice under an implant path and the review
+   of extensions that reference campaign infrastructure are still shell only.
+   Windows is refused without `--fs-only`.
+3. **`--state` and `--resume` in Rust**, or a decision not to have them. They are
    currently refused with an explicit message, which is honest, but the shell has
    them and a backup-drive scan wants them.
-3. **Delete the shell machine check** once 1 and 2 land and the corpus is green
+4. **Delete the shell machine check** once 2 and 3 land and the corpus is green
    on all three platforms.
-4. **The local-repo cleaner** — strip a payload from a working tree in place,
+5. **The local-repo cleaner** — strip a payload from a working tree in place,
    without pull, reset or stash, preserving uncommitted work. Mandeep asked for
    this early on and it is still not built. It needs its own ADR because it
    changes what `--apply` means.
-5. **The guided flow** — one CLI session walking triage, machine, credentials,
+6. **The guided flow** — one CLI session walking triage, machine, credentials,
    remote, verify, prevent, without leaving the tool. This is the "fully
    automated flow" Mandeep described.
-6. Then 2.0.0 merges to `main`.
+7. Then 2.0.0 merges to `main`.
 
 `TASKS.md` in the repository root has the running list, including promotion work.
 **It is git-ignored**, so it exists only on this machine; it carries outreach
@@ -176,6 +206,20 @@ requests before.
 ---
 
 ## Gotchas, each of which cost real time
+
+**Linux cuts a process name to 15 bytes.** `ps -o comm=` shows
+`MicrosoftSystem`, not `MicrosoftSystem64`. Comparing whole names never
+matches. Found by running a binary under the implant's name in the sandbox and
+reading what `ps` printed; nothing else would have shown it.
+
+**The sandbox image lacked `rustfmt` and `clippy`.** `rust-toolchain.toml` asks
+for both and the slim image carries neither, so rustup tried to download them
+on every cargo invocation and the whole Rust half of `--all` failed offline.
+The Dockerfile installs them now. If the image predates 2026-10-03, rebuild it:
+`./polinrider-sandbox --build`.
+
+**The sandbox is read-only, so `cargo fmt` cannot run in it.** Format on the
+host (it rewrites source and executes nothing), then check in the sandbox.
 
 **mdBook sets `html { font-size: 62.5% }`.** Irrelevant now the site is Astro,
 but the lesson generalises: measure computed styles rather than eyeballing a
@@ -227,7 +271,8 @@ descending. That was the six-hour scan ([ADR-0025](./docs/adr/0025-walk-the-file
 ## Needing Mandeep
 
 - Verify the Homebrew formula once: `brew install mesingh/tap/polinrider-cleaner`
-- Decide the `main` divergence above
+- Say the word on resetting local `main` (above): verified safe, not run
+- Review the eight differences from the shell in ADR-0029
 - AUR account, if Arch packaging matters
 - Whether `OpenSourceMalware/PolinRider` outreach happens, since it is the one
   thing likely to move adoption

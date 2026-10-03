@@ -61,10 +61,45 @@ port faithful, not correct. That is the reason every case has to argue for its
 expected value, and the reason a genuinely wrong answer here is worse than no
 case at all.
 
-It also only covers the filesystem checks. Runs use `--fs-only`, because the
-live checks — processes, sockets, npm config, crontab, `$HOME` persistence —
-describe the machine the suite is running on, and a result that depends on
-what happens to be running is not a specification. Those need their own
-approach, most likely injectable system state in the Rust implementation.
+## Host cases
+
+Most cases describe a tree. A case with a `host` key describes a machine as
+well: its process table, its sockets, its crontab, its system directories, as
+files. These run without `--fs-only` and with `--host-state` pointing at those
+files, which is how a check that reads "whatever is running" gets a fixed
+answer to be measured against.
+
+| File in `host` | Holds |
+|---|---|
+| `platform` | `linux` or `macos`. Decides which persistence locations are read |
+| `processes` | one per line: pid, name, command line, tab-separated |
+| `connections` | socket tool output, one connection per line |
+| `crontab` | the user crontab |
+| `git-config` | `key=value`, as `git config --global --list` prints it |
+| `root/...` | stands in for `/`: `root/etc/cron.d/x` is `/etc/cron.d/x` |
+
+A `home` map is written under the fixture's home directory, for startup files,
+`~/.npmrc` and user-level persistence.
+
+**An absent file is not an empty file.** Empty means the question was asked and
+the answer was nothing. Absent means nobody asked, and the scan has to say so
+with a `[review]` line. `<name>.absent` records that the tool which would
+answer was not installed. `host_state()` in `build-cases.py` starts every case
+from a quiet machine with every question answered, so a case changes only the
+one thing it is about.
+
+Host cases add three placeholders: `{{IMPLANT}}`, `{{IMPLANT_CUT}}` (the same
+name cut to the 15 bytes the Linux kernel keeps) and `{{NETIP}}`.
+
+**The shell implementation skips these**, and prints `skip` for each one so a
+shell run cannot look as though it covered them. Only the Rust engine can be
+handed a machine that does not exist. That has a cost, written into
+[ADR-0029](../docs/adr/0029-host-state-is-read-through-one-boundary-and-can-be-supplied.md):
+for the host checks there is no second implementation to disagree with the
+corpus, so a wrong expected value here has nothing to catch it but its `why`.
+
+What the host cases do not cover is the thin layer that actually runs `ps`,
+`ss`, `lsof`, `crontab` and `git` on a real machine. The cases start on the far
+side of it.
 
 See [ADR-0026](../docs/adr/0026-2-0-0-is-one-binary-built-against-a-conformance-corpus.md).

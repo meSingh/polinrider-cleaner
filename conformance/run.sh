@@ -18,6 +18,12 @@
 # {{WEAK}} or {{BADPKG}} and this runner substitutes a real entry from ioc/ at
 # build time. That keeps working malware strings out of the repository, and
 # means the corpus cannot drift away from the indicator set it is testing.
+#
+# HOST CASES. A case with a "host" key describes a machine as well as a tree:
+# its process table, sockets, crontab and system directories, as files. They
+# run without --fs-only and with --host-state pointing at those files. Only the
+# Rust engine can be handed a machine that does not exist, so under the shell
+# implementation these print "skip" and are counted, never silently dropped.
 
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -42,6 +48,16 @@ STRONG="$(pick strong.txt 1)"
 WEAK="$(pick weak.txt 1)"
 BADPKG="$(pick bad-packages.txt 1)"
 [[ -n "$STRONG" && -n "$BADPKG" ]] || { echo "indicator set is empty or unreadable" >&2; exit 3; }
+# For the host cases: an implant process name, the same name as the Linux
+# kernel reports it (15 bytes, no more), and a campaign address.
+IMPLANT="$(pick implant-names.txt 1)"
+IMPLANT_CUT="${IMPLANT:0:15}"
+NETIP="$(sed -e '/^#/d' -e '/^$/d' "$ROOT/ioc/network.txt" | grep -E '^[0-9]+(\.[0-9]+){3}$' | sed -n 1p)"
+[[ -n "$IMPLANT" && -n "$NETIP" ]] || { echo "implant-names.txt or network.txt is empty or unreadable" >&2; exit 3; }
+# The cut-name case is only a test if the name is longer than the cut. If the
+# first entry ever stops being, fail here rather than pass a case that proves
+# nothing.
+[[ ${#IMPLANT} -gt 15 ]] || { echo "the first implant name is not longer than 15 bytes; the kernel-truncation case needs one that is" >&2; exit 3; }
 # The campaign hides the payload behind roughly 280 spaces of padding.
 PAD="$(printf '%280s' '')"
 
@@ -78,11 +94,11 @@ impl_rust() {
   # No --state flag either: the Rust engine refuses what it has not
   # implemented rather than ignoring it. --home is explicit so the scan reads
   # the fixture's home rather than the runner's.
-  if [[ -n "$qdir" ]]; then
-    "$bin" check --fs-only --home "$FAKE_HOME" --report "$report" --apply --quarantine "$qdir" "$@" 2>&1
-  else
-    "$bin" check --fs-only --home "$FAKE_HOME" --report "$report" "$@" 2>&1
-  fi
+  local args=(check --home "$FAKE_HOME" --report "$report")
+  # A host case supplies the machine; every other case reads no host state.
+  if [[ -n "$HOST_STATE" ]]; then args+=(--host-state "$HOST_STATE"); else args+=(--fs-only); fi
+  [[ -n "$qdir" ]] && args+=(--apply --quarantine "$qdir")
+  "$bin" "${args[@]}" "$@" 2>&1
 }
 
 case "$IMPL" in
@@ -101,25 +117,51 @@ snapshot() {
 
 subst() { printf '%s' "$1" \
   | sed -e "s|{{STRONG}}|$STRONG|g" -e "s|{{WEAK}}|$WEAK|g" \
-        -e "s|{{BADPKG}}|$BADPKG|g" -e "s|{{PAD}}|$PAD|g"; }
+        -e "s|{{BADPKG}}|$BADPKG|g" -e "s|{{PAD}}|$PAD|g" \
+        -e "s|{{IMPLANT_CUT}}|$IMPLANT_CUT|g" -e "s|{{IMPLANT}}|$IMPLANT|g" \
+        -e "s|{{NETIP}}|$NETIP|g"; }
 
-PASS=0; FAIL=0; FAILED_CASES=()
+# build_files <case file> <key> <destination>: write every entry of one of the
+# case's file maps under a directory.
+build_files() {
+  local cf="$1" key="$2" dest="$3" path content
+  while IFS= read -r path; do
+    content="$(jq -r --arg k "$key" --arg p "$path" '.[$k][$p]' "$cf")"
+    mkdir -p "$dest/$(dirname "$path")"
+    subst "$content" > "$dest/$path"
+  done < <(jq -r --arg k "$key" '.[$k] // {} | keys[]' "$cf")
+}
+
+PASS=0; FAIL=0; SKIP=0; FAILED_CASES=()
+HOST_STATE=""
 
 run_case() {
   local cf="$1" name; name="$(basename "$cf" .json)"
   [[ -n "$ONLY" && "$ONLY" != "$name" ]] && return 0
 
   local why; why="$(jq -r '.why' "$cf")"
+
+  # A host case needs an engine that can be handed a machine. Said, and
+  # counted, so a shell run never looks as though it covered them.
+  local is_host; is_host="$(jq -r 'has("host")' "$cf")"
+  if [[ "$is_host" == "true" && "$IMPL" != "rust" ]]; then
+    SKIP=$((SKIP+1))
+    printf '  \033[33mskip\033[0m  %-38s %s\n' "$name" "needs supplied host state, which only the Rust engine takes"
+    return 0
+  fi
+
   local tmp; tmp="$(mktemp -d)"
   FAKE_HOME="$tmp/home"; mkdir -p "$FAKE_HOME" "$tmp/tree" "$tmp/out"
 
-  # build the fixture
-  local path content
-  while IFS= read -r path; do
-    content="$(jq -r --arg p "$path" '.files[$p]' "$cf")"
-    mkdir -p "$tmp/tree/$(dirname "$path")"
-    subst "$content" > "$tmp/tree/$path"
-  done < <(jq -r '.files | keys[]' "$cf")
+  # build the fixture: the tree to scan, the home directory, and for a host
+  # case the machine's state
+  build_files "$cf" files "$tmp/tree"
+  build_files "$cf" home "$FAKE_HOME"
+  HOST_STATE=""
+  if [[ "$is_host" == "true" ]]; then
+    HOST_STATE="$tmp/host"; mkdir -p "$HOST_STATE"
+    build_files "$cf" host "$HOST_STATE"
+  fi
 
   # roots, relative to the fixture tree
   local roots=(); local r
@@ -129,11 +171,15 @@ run_case() {
   apply="$(jq -r '.apply // false' "$cf")"
   [[ "$apply" == "true" ]] && qdir="$tmp/out/quarantine"
 
+  # For a host case the home directory and the supplied state are part of what
+  # a read-only run must leave alone: that is where persistence lives.
   local before after out rc
   before="$(snapshot "$tmp/tree")"
+  [[ -n "$HOST_STATE" ]] && before+="$(snapshot "$FAKE_HOME")$(snapshot "$HOST_STATE")"
   out="$("impl_$IMPL" "$tmp/out/report.txt" "$tmp/out/state" "$qdir" "${roots[@]}")"
   rc=$?
   after="$(snapshot "$tmp/tree")"
+  [[ -n "$HOST_STATE" ]] && after+="$(snapshot "$FAKE_HOME")$(snapshot "$HOST_STATE")"
 
   # --- assertions ----------------------------------------------------------
   local errs=()
@@ -166,6 +212,17 @@ run_case() {
       && errs+=("reported as a finding, and must not be: $forbidden")
   done < <(jq -r '.expect.must_not_report[]? // empty' "$cf")
 
+  # strings that must appear nowhere at all, on the console or in the report
+  # file. This is the redaction guard: a secret the scan read must not be a
+  # secret the scan wrote down.
+  local everything="$out"
+  [[ -f "$tmp/out/report.txt" ]] && everything+="$(cat "$tmp/out/report.txt")"
+  while IFS= read -r forbidden; do
+    [[ -z "$forbidden" ]] && continue
+    printf '%s\n' "$everything" | grep -qF "$forbidden" \
+      && errs+=("printed, and must never be: $forbidden")
+  done < <(jq -r '.expect.must_not_print[]? // empty' "$cf")
+
   # the scanned tree must be untouched unless the case says otherwise
   local may_change; may_change="$(jq -r '.expect.tree_may_change // false' "$cf")"
   if [[ "$may_change" != "true" && "$before" != "$after" ]]; then
@@ -180,6 +237,13 @@ run_case() {
       find "$qdir" -type f -path "*${q##*/}" 2>/dev/null | grep -q . \
         || errs+=("not found in quarantine after --apply: $q")
     done < <(jq -r '.expect.quarantined[]? // empty' "$cf")
+    # the same, for an artifact that lived in the home directory
+    while IFS= read -r q; do
+      [[ -z "$q" ]] && continue
+      [[ -e "$FAKE_HOME/$q" ]] && errs+=("still in the home directory after --apply: $q")
+      find "$qdir" -type f -path "*${q##*/}" 2>/dev/null | grep -q . \
+        || errs+=("not found in quarantine after --apply: $q")
+    done < <(jq -r '.expect.home_quarantined[]? // empty' "$cf")
     [[ -f "$qdir/manifest.tsv" ]] || errs+=("--apply wrote no quarantine manifest")
   fi
 
@@ -225,6 +289,9 @@ refusals() {
   check_refusal "no root at all"             check --fs-only
   check_refusal "a missing indicator set"    check --ioc "$tmp/no-ioc-here" "$tmp"
   check_refusal "a root that is a file"      check "$0"
+  check_refusal "host state that is not there"       check --host-state "$tmp/no-state-here" "$tmp"
+  check_refusal "host state alongside --fs-only"     check --fs-only --host-state "$tmp" "$tmp"
+  check_refusal "host state that names no platform"  check --host-state "$tmp" "$tmp"
   rm -rf "$tmp"
 }
 
@@ -232,7 +299,11 @@ printf 'conformance: %s implementation, indicators from ioc/\n\n' "$IMPL"
 for cf in "$HERE"/cases/*.json; do run_case "$cf"; done
 [[ -z "$ONLY" ]] && refusals
 
-printf '\n  %d passed, %d failed\n' "$PASS" "$FAIL"
+if [[ $SKIP -gt 0 ]]; then
+  printf '\n  %d passed, %d failed, %d skipped\n' "$PASS" "$FAIL" "$SKIP"
+else
+  printf '\n  %d passed, %d failed\n' "$PASS" "$FAIL"
+fi
 if [[ $FAIL -gt 0 ]]; then
   printf '  failed: %s\n' "${FAILED_CASES[*]}"
   printf '  one case in detail:  ./conformance/run.sh --case %s\n' "${FAILED_CASES[0]}"

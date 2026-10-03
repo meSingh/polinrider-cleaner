@@ -1,0 +1,33 @@
+{
+  "why": "The shell called any registry other than npmjs.org a confirmed hit, which tells every company with an internal registry that the machine must be rebuilt. It is worth a human confirming the registry is theirs; it is not evidence of this campaign.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "home": {
+    ".npmrc": "registry=https://npm.corp.example/\n"
+  },
+  "host": {
+    "platform": "linux\n",
+    "processes": "",
+    "connections": "",
+    "crontab": "",
+    "git-config": "",
+    "root/.keep": ""
+  },
+  "expect": {
+    "exit": 1,
+    "findings": [
+      {
+        "level": "review",
+        "match": "a non-default npm registry is configured",
+        "path": "npm.corp.example"
+      }
+    ],
+    "must_not_report": [
+      "[HIT]"
+    ]
+  }
+}

@@ -7,12 +7,15 @@
 
 pub mod checks;
 pub mod cli;
+pub mod host;
+pub mod host_checks;
 pub mod indicators;
 pub mod quarantine;
 pub mod sha256;
 pub mod verdict;
 pub mod walk;
 
+pub use host::{Host, LiveHost, Platform, Probe, Snapshot};
 pub use indicators::Indicators;
 pub use quarantine::{Apply, DryRun, Outcome, Quarantine};
 pub use verdict::{Entry, ExitCode, Finding, Level, Verdict};

@@ -1,0 +1,31 @@
+{
+  "why": "A fixed-string match for an address also matches every address that contains it: one more digit on the end, or one more on the front, is somebody else's server. The fixture address need not be a valid one; what it tests is that the match ends where the address ends. A connection to a neighbour must not report the machine compromised.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "home": {},
+  "host": {
+    "platform": "linux\n",
+    "processes": "",
+    "connections": "ESTAB 0 0 10.0.0.2:40001 {{NETIP}}9:443 users:((\"node\",pid=8,fd=3))\nESTAB 0 0 10.0.0.2:40002 1{{NETIP}}:443 users:((\"node\",pid=8,fd=4))\n",
+    "crontab": "",
+    "git-config": "",
+    "root/.keep": ""
+  },
+  "expect": {
+    "exit": 0,
+    "findings": [
+      {
+        "level": "ok",
+        "match": "none to known campaign infrastructure"
+      }
+    ],
+    "must_not_report": [
+      "[HIT]",
+      "[review]"
+    ]
+  }
+}

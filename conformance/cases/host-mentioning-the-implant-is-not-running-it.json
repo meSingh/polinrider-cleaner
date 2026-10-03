@@ -1,0 +1,25 @@
+{
+  "why": "The process NAME is compared, never the command line. An administrator grepping for the implant, or an editor with a file named after it, mentions it without being it. Matching the command line once reported the operator's own shell as the implant.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "home": {},
+  "host": {
+    "platform": "linux\n",
+    "processes": "10\tgrep\tgrep -r {{IMPLANT}} /home/x\n11\tvim\tvim notes-about-{{IMPLANT}}.txt\n",
+    "connections": "",
+    "crontab": "",
+    "git-config": "",
+    "root/.keep": ""
+  },
+  "expect": {
+    "exit": 0,
+    "must_not_report": [
+      "[HIT]",
+      "[review]"
+    ]
+  }
+}

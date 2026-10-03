@@ -6,9 +6,11 @@
 
 use polinrider::checks::{self, Sink};
 use polinrider::cli::{self, Rejection};
+use polinrider::host::{Host, LiveHost, Snapshot};
+use polinrider::host_checks;
 use polinrider::indicators::Indicators;
 use polinrider::quarantine::{Apply, DryRun, Quarantine};
-use polinrider::verdict::{Entry, ExitCode, Level, Verdict};
+use polinrider::verdict::{clean, Entry, ExitCode, Level, Verdict};
 use polinrider::walk;
 
 use std::path::{Path, PathBuf};
@@ -35,6 +37,30 @@ fn main() -> ProcExit {
         }
     };
 
+    // The host is settled before anything is printed or walked. Supplied state
+    // that does not load, or a platform whose live checks are not built, is a
+    // scan that cannot run, not one that runs with a third of it missing.
+    let host: Option<Box<dyn Host>> = if args.fs_only {
+        None
+    } else if let Some(dir) = &args.host_state {
+        match Snapshot::load(dir) {
+            Ok(s) => Some(Box::new(s)),
+            Err(e) => {
+                eprintln!("polinrider: {e}");
+                return ProcExit::from(ExitCode::CouldNotRun.code() as u8);
+            }
+        }
+    } else {
+        match LiveHost::new(&args.home) {
+            Ok(h) => Some(Box::new(h)),
+            Err(e) => {
+                eprintln!("polinrider: {e}");
+                return ProcExit::from(ExitCode::CouldNotRun.code() as u8);
+            }
+        }
+    };
+    let host = host.as_deref();
+
     let mut out = String::new();
     out.push_str(&format!(
         "PolinRider local check - {} - scan\n",
@@ -54,6 +80,13 @@ fn main() -> ProcExit {
             "APPLY - confirmed artifacts will be moved to quarantine"
         } else {
             "dry run - nothing will be changed"
+        }
+    ));
+    out.push_str(&format!(
+        "host state: {}\n",
+        match host {
+            Some(h) => h.describe(),
+            None => "not read, --fs-only".to_string(),
         }
     ));
 
@@ -87,17 +120,17 @@ fn main() -> ProcExit {
         };
         {
             let mut sink = Sink::Apply(&mut q);
-            run_checks(&w, &ind, &args, &mut v, &mut sink);
+            run_checks(&w, &ind, &args, host, &mut v, &mut sink);
         }
         if let Err(e) = q.write_manifest() {
             eprintln!("polinrider: could not write the quarantine manifest: {e}");
         }
-        finish(&v, &mut out, &args.report)
+        finish(&v, &out, &args.report)
     } else {
         let q = Quarantine::<DryRun>::new(&args.quarantine);
         let mut sink = Sink::Dry(&q);
-        run_checks(&w, &ind, &args, &mut v, &mut sink);
-        finish(&v, &mut out, &args.report)
+        run_checks(&w, &ind, &args, host, &mut v, &mut sink);
+        finish(&v, &out, &args.report)
     };
 
     ProcExit::from(code.code() as u8)
@@ -121,66 +154,113 @@ fn run_checks(
     w: &walk::Walk,
     ind: &Indicators,
     args: &cli::Args,
+    host: Option<&dyn Host>,
     v: &mut Verdict,
     sink: &mut Sink,
 ) {
-    checks::implants(w, ind, &args.home, &args.ioc, v, sink);
+    // One line per host check that did not run, so a section that was skipped
+    // can never be mistaken for one that found nothing.
+    let skipped = |v: &mut Verdict, name: &str| {
+        v.section(format!("{name}: skipped, --fs-only"));
+    };
 
-    if args.fs_only {
-        v.section("IDE extensions: skipped, --fs-only");
-    } else {
+    checks::implants(w, ind, &args.home, &args.ioc, host, v, sink);
+
+    if host.is_some() {
         checks::extensions(&extension_dirs(&args.home), ind, v, sink);
+    } else {
+        skipped(v, "IDE extensions");
     }
 
     checks::tasks_json(w, ind, v, sink);
     checks::build_configs(w, ind, v);
     checks::fonts(w, v, sink);
 
-    if args.fs_only {
-        v.section("Propagation artifact: skipped, --fs-only");
-    } else {
+    if host.is_some() {
         checks::propagation(w, v, sink);
+    } else {
+        skipped(v, "Propagation artifact");
     }
 
     checks::packages(w, ind, v);
-    checks::git_hooks(w, ind, v, sink);
 
-    if args.fs_only {
-        for name in [
-            "Persistence",
-            "Shell startup files",
-            "npm configuration",
-            "Resident interpreters",
-            "Live connections",
-        ] {
-            v.section(format!("{name}: skipped, --fs-only"));
+    match host {
+        Some(host) => {
+            host_checks::persistence(host, &args.home, ind, v, sink);
+            host_checks::shell_startup(&args.home, host.platform(), ind, v);
+        }
+        None => {
+            skipped(v, "Persistence");
+            skipped(v, "Shell startup files");
+        }
+    }
+
+    checks::git_hooks(w, ind, host, v, sink);
+
+    match host {
+        Some(host) => {
+            host_checks::npm_config(&args.home, ind, v);
+            host_checks::interpreters(host, ind, v);
+            host_checks::connections(host, ind, v);
+        }
+        None => {
+            skipped(v, "npm configuration");
+            skipped(v, "Resident interpreters");
+            skipped(v, "Live connections");
         }
     }
 }
 
-fn render(v: &Verdict, out: &mut String) {
+/// Where a rendering is going. The console gets evidence cut to a readable
+/// width and no inventory; the report file gets all of it.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Target {
+    Console,
+    Report,
+}
+
+/// How much of one evidence line the console shows. The report has the rest.
+const CONSOLE_WIDTH: usize = 110;
+
+fn render(v: &Verdict, target: Target) -> String {
+    let mut out = String::new();
+    // Everything below can carry bytes chosen by whoever planted what is
+    // being reported, so every line goes through `clean` on its way out.
     for entry in v.entries() {
         match entry {
-            Entry::Section(title) => out.push_str(&format!("\n== {title} ==\n")),
+            Entry::Section(title) => out.push_str(&format!("\n== {} ==\n", clean(title))),
             Entry::Finding(f) => {
-                out.push_str(&format!("  {} {}\n", f.level.tag(), f.message));
-                if let Some(r) = &f.remedy {
-                    out.push_str(&format!("           {r}\n"));
+                out.push_str(&format!("  {} {}\n", f.level.tag(), clean(&f.message)));
+                for line in f.remedy.iter().flat_map(|r| r.lines()) {
+                    out.push_str(&format!("           {}\n", clean(line)));
+                }
+            }
+            Entry::Detail(line) => {
+                let line = clean(line);
+                if target == Target::Console && line.chars().count() > CONSOLE_WIDTH {
+                    let cut: String = line.chars().take(CONSOLE_WIDTH).collect();
+                    out.push_str(&format!("    {cut} ...\n"));
+                } else {
+                    out.push_str(&format!("    {line}\n"));
+                }
+            }
+            Entry::Note(line) => {
+                if target == Target::Report {
+                    out.push_str(&format!("    {}\n", clean(line)));
                 }
             }
         }
     }
+    out
 }
 
-fn finish(v: &Verdict, out: &mut String, report: &Option<PathBuf>) -> ExitCode {
-    render(v, out);
-
+fn finish(v: &Verdict, header: &str, report: &Option<PathBuf>) -> ExitCode {
     let hits = v.count(Level::Hit);
     let reviews = v.count(Level::Review);
-    out.push_str("\n== RESULT ==\n");
-    out.push_str(&format!("  confirmed indicator hits : {hits}\n"));
-    out.push_str(&format!("  items needing a human    : {reviews}\n"));
-    out.push('\n');
+    let mut result = String::from("\n== RESULT ==\n");
+    result.push_str(&format!("  confirmed indicator hits : {hits}\n"));
+    result.push_str(&format!("  items needing a human    : {reviews}\n"));
+    result.push('\n');
 
     let code = v.exit_code();
     if hits > 0 {
@@ -188,23 +268,24 @@ fn finish(v: &Verdict, out: &mut String, report: &Option<PathBuf>) -> ExitCode {
         let w = 54usize;
         let bar = "#".repeat(w + 7);
         let row = |s: &str| format!("  ##   {s:<w$}##\n");
-        out.push_str(&format!("  {bar}\n"));
-        out.push_str(&row(""));
-        out.push_str(&row("VERDICT: COMPROMISED"));
-        out.push_str(&row(""));
-        out.push_str(&row(&format!("{hits} confirmed {word} found.")));
-        out.push_str(&row("This machine cannot be trusted until it is rebuilt."));
-        out.push_str(&row(""));
-        out.push_str(&format!("  {bar}\n"));
+        result.push_str(&format!("  {bar}\n"));
+        result.push_str(&row(""));
+        result.push_str(&row("VERDICT: COMPROMISED"));
+        result.push_str(&row(""));
+        result.push_str(&row(&format!("{hits} confirmed {word} found.")));
+        result.push_str(&row("This machine cannot be trusted until it is rebuilt."));
+        result.push_str(&row(""));
+        result.push_str(&format!("  {bar}\n"));
     } else if reviews > 0 {
-        out.push_str("VERDICT: no confirmed indicator.\n");
+        result.push_str("VERDICT: no confirmed indicator.\n");
     } else {
-        out.push_str("VERDICT: clean against the current indicator set.\n");
+        result.push_str("VERDICT: clean against the current indicator set.\n");
     }
 
-    print!("{out}");
+    print!("{header}{}{result}", render(v, Target::Console));
     if let Some(path) = report {
-        if let Err(e) = write_report(path, out) {
+        let body = format!("{header}{}{result}", render(v, Target::Report));
+        if let Err(e) = write_report(path, &body) {
             eprintln!("polinrider: could not write {}: {e}", path.display());
         }
     }

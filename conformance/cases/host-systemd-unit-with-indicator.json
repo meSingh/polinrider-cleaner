@@ -1,0 +1,36 @@
+{
+  "why": "A user unit carrying an indicator is confirmed persistence. The run is a dry run, so the unit must still be where it was afterwards: the home directory is part of what a read-only scan leaves alone.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "home": {
+    ".config/systemd/user/updater.service": "[Service]\nExecStart=/bin/sh -c '{{STRONG}}'\n",
+    ".config/systemd/user/backup.timer": "[Timer]\nOnCalendar=daily\n"
+  },
+  "host": {
+    "platform": "linux\n",
+    "processes": "",
+    "connections": "",
+    "crontab": "",
+    "git-config": "",
+    "root/.keep": ""
+  },
+  "expect": {
+    "exit": 2,
+    "tree_may_change": false,
+    "findings": [
+      {
+        "level": "HIT",
+        "match": "systemd unit contains an indicator",
+        "path": "updater.service"
+      }
+    ],
+    "must_not_report": [
+      "backup.timer",
+      "quarantined ->"
+    ]
+  }
+}

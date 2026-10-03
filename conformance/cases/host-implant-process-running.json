@@ -1,0 +1,27 @@
+{
+  "why": "The implant sets its own process title, so the process table is a finding with nothing on disk. macOS reports the executable's full path, spaces included, and the name is its last component.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "home": {},
+  "host": {
+    "platform": "macos\n",
+    "processes": "1\t/sbin/launchd\t/sbin/launchd\n4242\t/Users/x/Library/Application Support/{{IMPLANT}}\t/Users/x/Library/Application Support/{{IMPLANT}}\n",
+    "connections": "",
+    "crontab": "",
+    "git-config": "",
+    "root/.keep": ""
+  },
+  "expect": {
+    "exit": 2,
+    "findings": [
+      {
+        "level": "HIT",
+        "match": "an implant process is running now"
+      }
+    ]
+  }
+}

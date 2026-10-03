@@ -1,9 +1,15 @@
 //! The filesystem checks.
 //!
+//! Two of them, the implant and the git configuration, have a half that reads
+//! the machine rather than the disk. That half arrives as an optional
+//! [`Host`]: `None` under `--fs-only`, and the check says what it did not read.
+//!
 //! Every message here is matched verbatim by the conformance corpus, which is
 //! the specification both implementations answer to. Changing a string is a
 //! behaviour change, and the corpus will say so.
 
+use crate::host::Host;
+use crate::host_checks::{self, ProcessCheck};
 use crate::indicators::Indicators;
 use crate::quarantine::{Apply, DryRun, Quarantine};
 use crate::verdict::{Finding, Verdict};
@@ -20,7 +26,7 @@ pub enum Sink<'a> {
 
 impl Sink<'_> {
     /// Record a confirmed artifact. Returns the line to print under it.
-    fn take(&mut self, path: &Path, reason: &str) -> String {
+    pub(crate) fn take(&mut self, path: &Path, reason: &str) -> String {
         match self {
             Sink::Dry(q) => q.would_take(path).line(),
             Sink::Apply(q) => match q.take(path, reason) {
@@ -256,12 +262,21 @@ pub fn packages(walk: &Walk, ind: &Indicators, v: &mut Verdict) {
     }
 }
 
-pub fn git_hooks(walk: &Walk, ind: &Indicators, v: &mut Verdict, sink: &mut Sink) {
+pub fn git_hooks(
+    walk: &Walk,
+    ind: &Indicators,
+    host: Option<&dyn Host>,
+    v: &mut Verdict,
+    sink: &mut Sink,
+) {
     v.section("Git configuration and hooks");
-    // The global hooksPath lives in the user's git config, which is host
-    // state; under --fs-only it is not read. Reported as ok so the section
-    // always says something rather than printing nothing.
-    v.push(Finding::ok("no global core.hooksPath"));
+    match host {
+        Some(host) => host_checks::git_global_config(host, v),
+        // The global hooksPath lives in the user's git config, which is host
+        // state; under --fs-only it is not read. Reported as ok so the section
+        // always says something rather than printing nothing.
+        None => v.push(Finding::ok("no global core.hooksPath")),
+    }
 
     for hook in walk.git_hooks() {
         if ind.file_has_strong(&hook) {
@@ -293,6 +308,7 @@ pub fn implants(
     ind: &Indicators,
     home: &Path,
     ioc_dir: &Path,
+    host: Option<&dyn Host>,
     v: &mut Verdict,
     sink: &mut Sink,
 ) {
@@ -355,11 +371,27 @@ pub fn implants(
         }
     }
 
-    let _ = ind;
-    if !found {
-        v.push(Finding::ok(
-            "no second-stage implant found on disk (--fs-only: process table not read)",
-        ));
+    // 3. the process table. The implant sets its own process title, so a
+    //    match there is a finding even with nothing on disk.
+    let Some(host) = host else {
+        if !found {
+            v.push(Finding::ok(
+                "no second-stage implant found on disk (--fs-only: process table not read)",
+            ));
+        }
+        return;
+    };
+    match host_checks::implant_processes(host, ind, v) {
+        ProcessCheck::Running => {}
+        ProcessCheck::NoneRunning if !found => {
+            v.push(Finding::ok("no second-stage implant found"));
+        }
+        // Not read: the review line above already says so, and "none found"
+        // may only be claimed for the half that was looked at.
+        ProcessCheck::NotRead if !found => {
+            v.push(Finding::ok("no second-stage implant found on disk"));
+        }
+        ProcessCheck::NoneRunning | ProcessCheck::NotRead => {}
     }
 }
 

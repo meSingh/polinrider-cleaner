@@ -1,0 +1,30 @@
+{
+  "why": "An ordinary crontab is not evidence of anything, and it is also exactly where persistence goes. A human reads it: review, not a hit, and not silence.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "home": {},
+  "host": {
+    "platform": "linux\n",
+    "processes": "",
+    "connections": "",
+    "crontab": "0 3 * * * /usr/local/bin/backup\n",
+    "git-config": "",
+    "root/.keep": ""
+  },
+  "expect": {
+    "exit": 1,
+    "findings": [
+      {
+        "level": "review",
+        "match": "user crontab is not empty"
+      }
+    ],
+    "must_not_report": [
+      "[HIT]"
+    ]
+  }
+}

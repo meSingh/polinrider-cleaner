@@ -43,3 +43,4 @@ reason to keep them.
 - [2.0.0 is one binary, built against a conformance corpus](https://github.com/meSingh/polinrider-cleaner/blob/main/docs/adr/0026-2-0-0-is-one-binary-built-against-a-conformance-corpus.md) — Accepted
 - [Development and testing happen in a container](https://github.com/meSingh/polinrider-cleaner/blob/main/docs/adr/0027-development-and-testing-happen-in-a-container.md) — Accepted
 - [The documentation site is Astro Starlight, on a Node toolchain](https://github.com/meSingh/polinrider-cleaner/blob/main/docs/adr/0028-the-documentation-site-is-astro-starlight.md) — Accepted
+- [Host state is read through one boundary, and can be supplied](https://github.com/meSingh/polinrider-cleaner/blob/main/docs/adr/0029-host-state-is-read-through-one-boundary-and-can-be-supplied.md) — Accepted

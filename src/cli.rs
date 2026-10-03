@@ -43,6 +43,10 @@ pub const ACCEPTED: &[(&str, &str)] = &[
         "--home DIR",
         "the home directory to check. Defaults to $HOME",
     ),
+    (
+        "--host-state DIR",
+        "read processes, sockets and crontab from DIR, not this machine",
+    ),
     ("-h, --help", "this"),
 ];
 
@@ -64,12 +68,32 @@ const NOT_IMPLEMENTED: &[(&str, &str)] = &[
 #[derive(Debug)]
 pub enum Rejection {
     Unknown(String),
-    NotImplemented { flag: String, why: String },
+    NotImplemented {
+        flag: String,
+        why: String,
+    },
     MissingValue(String),
     NoRoots,
-    BadRoot { path: PathBuf, why: String },
-    BadIoc { path: PathBuf },
-    QuarantineUnusable { path: PathBuf, why: String },
+    BadRoot {
+        path: PathBuf,
+        why: String,
+    },
+    BadIoc {
+        path: PathBuf,
+    },
+    QuarantineUnusable {
+        path: PathBuf,
+        why: String,
+    },
+    BadHostState {
+        path: PathBuf,
+        why: String,
+    },
+    Conflict {
+        first: String,
+        second: String,
+        why: String,
+    },
     HelpRequested,
 }
 
@@ -113,6 +137,15 @@ impl fmt::Display for Rejection {
                 "--apply cannot use {}: {why}.\n\nChecked before scanning, so a run does not get halfway through\nfinding things it then cannot quarantine.",
                 path.display()
             ),
+            Rejection::BadHostState { path, why } => write!(
+                f,
+                "--host-state cannot use {}: {why}.\n\nRefused before starting. Falling back to this machine's own state would\nanswer a question nobody asked.",
+                path.display()
+            ),
+            Rejection::Conflict { first, second, why } => write!(
+                f,
+                "{first} and {second} cannot be given together: {why}.\n\nNothing was scanned."
+            ),
             Rejection::HelpRequested => Ok(()),
         }
     }
@@ -127,6 +160,8 @@ pub struct Args {
     pub report: Option<PathBuf>,
     pub ioc: PathBuf,
     pub home: PathBuf,
+    /// Host state supplied as files, instead of read from this machine.
+    pub host_state: Option<PathBuf>,
 }
 
 /// Parse and validate. Returns only arguments it is safe to act on.
@@ -135,6 +170,7 @@ pub fn parse<I: Iterator<Item = String>>(argv: I, default_ioc: PathBuf) -> Resul
     let mut roots: Vec<PathBuf> = Vec::new();
     let (mut fs_only, mut apply) = (false, false);
     let (mut quarantine, mut report, mut ioc, mut home) = (None, None, None, None);
+    let mut host_state = None;
 
     // The subcommand, when present.
     if args.peek().map(String::as_str) == Some("check") {
@@ -153,6 +189,7 @@ pub fn parse<I: Iterator<Item = String>>(argv: I, default_ioc: PathBuf) -> Resul
             "--report" => report = Some(PathBuf::from(value("--report")?)),
             "--ioc" => ioc = Some(PathBuf::from(value("--ioc")?)),
             "--home" => home = Some(PathBuf::from(value("--home")?)),
+            "--host-state" => host_state = Some(PathBuf::from(value("--host-state")?)),
             "-h" | "--help" => return Err(Rejection::HelpRequested),
             other if other.starts_with('-') => {
                 // A known-but-unbuilt flag gets its own message. Its value, if
@@ -217,6 +254,22 @@ pub fn parse<I: Iterator<Item = String>>(argv: I, default_ioc: PathBuf) -> Resul
         }
     }
 
+    if let Some(dir) = &host_state {
+        if fs_only {
+            return Err(Rejection::Conflict {
+                first: "--fs-only".into(),
+                second: "--host-state".into(),
+                why: "one says not to read host state and the other supplies it".into(),
+            });
+        }
+        if !dir.is_dir() {
+            return Err(Rejection::BadHostState {
+                path: dir.clone(),
+                why: "not a directory".into(),
+            });
+        }
+    }
+
     let home = home
         .or_else(|| std::env::var_os("HOME").map(PathBuf::from))
         .unwrap_or_else(|| PathBuf::from("/"));
@@ -229,6 +282,7 @@ pub fn parse<I: Iterator<Item = String>>(argv: I, default_ioc: PathBuf) -> Resul
         report,
         ioc,
         home,
+        host_state,
     })
 }
 
@@ -332,6 +386,34 @@ mod tests {
             parse(args(&["/tmp", "--report"]).into_iter(), ioc),
             Err(Rejection::MissingValue(_))
         ));
+    }
+
+    #[test]
+    fn supplied_host_state_is_refused_alongside_fs_only() {
+        // One flag says "do not read host state", the other supplies some.
+        // Picking a winner silently would run a different scan from the one
+        // that was asked for.
+        let ioc = ioc_fixture("conflict");
+        let e = parse(
+            args(&["--fs-only", "--host-state", "/tmp", "/tmp"]).into_iter(),
+            ioc,
+        )
+        .expect_err("must refuse");
+        assert!(matches!(e, Rejection::Conflict { .. }));
+        assert!(e.to_string().contains("Nothing was scanned"));
+    }
+
+    #[test]
+    fn a_host_state_directory_that_is_not_there_stops_the_run() {
+        // Falling back to the live machine would report this laptop's state
+        // as the state of whatever the directory was meant to describe.
+        let ioc = ioc_fixture("nohoststate");
+        let e = parse(
+            args(&["--host-state", "/definitely/not/here", "/tmp"]).into_iter(),
+            ioc,
+        )
+        .expect_err("must refuse");
+        assert!(matches!(e, Rejection::BadHostState { .. }));
     }
 
     #[test]

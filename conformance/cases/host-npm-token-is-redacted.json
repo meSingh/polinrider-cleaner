@@ -1,0 +1,36 @@
+{
+  "why": "The scan reads ~/.npmrc and prints it. A token it read must not be a token it wrote into a report that gets attached to a ticket. Owning a token is inventory, not a finding.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "home": {
+    ".npmrc": "//registry.npmjs.org/:_authToken=npm_NOTAREALTOKEN0000000000\n"
+  },
+  "host": {
+    "platform": "linux\n",
+    "processes": "",
+    "connections": "",
+    "crontab": "",
+    "git-config": "",
+    "root/.keep": ""
+  },
+  "expect": {
+    "exit": 0,
+    "findings": [
+      {
+        "level": "info",
+        "match": "an npm auth token is stored on disk"
+      }
+    ],
+    "must_not_report": [
+      "[HIT]",
+      "[review]"
+    ],
+    "must_not_print": [
+      "npm_NOTAREALTOKEN0000000000"
+    ]
+  }
+}

