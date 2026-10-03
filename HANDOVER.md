@@ -54,7 +54,7 @@ reflog if they are ever wanted.
 Full detail in [`HACKING.md`](./HACKING.md). The three commands:
 
 ```bash
-./polinrider-sandbox --all     # lint, 9 self-tests, 66 conformance cases, clippy, 124 Rust tests
+./polinrider-sandbox --all     # lint, 9 self-tests, 66 conformance cases, clippy, 125 Rust tests
 ./polinrider-sandbox --demo    # build an infected sample and scan it with 1.x
 ./polinrider-sandbox --beta    # 2.0 installed in the container, on the PATH, with a sample
 ./ci/docs-serve.sh             # the documentation site, with live reload
@@ -173,8 +173,10 @@ words with no paths; `details` shows the full list. It changes something only
 on a typed `yes`, only `q` leaves, and input that ends stops the session. A
 report is saved on every run. Mandeep rejected the first version as too dense
 for somebody under stress and approved a mock of this one before it was built:
-**show him a mock before changing how it looks again.** It stops at the
-machine: the last screen says GitHub is for the released tool.
+**show him a mock before changing how it looks again.** `computer` checks
+the whole home folder; `folder` suggests the code folders it finds. It stops
+at the machine for now: the last screen says GitHub is for the released tool
+until the port in item 6 lands.
 
 ---
 
@@ -201,12 +203,19 @@ machine: the last screen says GitHub is for the released tool.
    optionally real code mounted read-only, and what to send back. The results
    come back in the project thread. What a container cannot show, the macOS
    and Windows behaviour, comes from the "Beta binaries" workflow instead.
-6. **The GitHub tracks in Rust, after the test.** Scanning an organization or
-   an account, the push ledger, restore and remote cleaning are about 1,500
-   lines of shell in `lib/gh-*.sh`. Until they are ported the 2.0 guided flow
-   does less than the 1.x one, and "delete the shell" cannot happen. Decided
-   2026-10-03: not started until the machine side has been tested. Do not
-   start it early.
+6. **The GitHub tracks in Rust, now.** Scanning an organization or an
+   account, the push ledger, restore and remote cleaning are about 1,500 lines
+   of shell in `lib/gh-*.sh`. On 2026-10-03 this was first put after the
+   machine test; later the same day Mandeep tried the guided flow, missed the
+   GitHub choices 1.x has, and asked for them back, which moves the port up.
+   A mock of the screens was sent for his yes first (a first screen with
+   `computer`, `folder`, `organization`, `account`, `everything`, then one
+   repository at a time). Build in stages, and put a choice on the screen only
+   when it really works: checking and reporting first, which changes nothing
+   on GitHub; then `remove`; then `restore` and `erase`. It needs a boundary
+   like `Host` so the corpus can drive it with local repositories, and real
+   GitHub can only be tried from the sandbox with a network, a sign-in and a
+   throwaway repository, all of which are Mandeep's to give.
 7. **Release.** Only after 5 and 6, and only on Mandeep's word. 2.0.0 merges to
    `main` then. No backport of the ADR-0029 fixes to 1.x: 2.0 carries them.
 
