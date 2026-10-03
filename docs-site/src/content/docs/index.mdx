@@ -91,7 +91,10 @@ A tool you run during an incident should be honest about its limits.
 - It **does not make a compromised machine trustworthy again.** Quarantining
   files is containment; rebuilding from a clean OS install is recovery.
 - It **changes nothing unless you tell it to.** Every destructive step is a dry
-  run first, and `--apply` moves files to quarantine rather than deleting them.
+  run first. Nothing is deleted: a confirmed artifact is moved to quarantine,
+  and where a payload was appended to a build config, `clean` cuts it out in
+  place and keeps the infected original in quarantine. On GitHub, each fix
+  shows what it would change and pushes only when you type `yes`.
 
 ## Why you can run this
 

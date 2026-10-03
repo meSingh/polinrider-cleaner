@@ -208,9 +208,14 @@ the whole home folder; `folder` suggests the code folders it finds.
    of the corpus, so deleting it means the corpus has one implementation, and
    the eight differences in item 1 stop being differences. That is why it
    waits for his word and not only for the code.
-4. **Reword "only moves files" wherever 1.x documentation says it**, before
-   2.0 is released. `clean` edits source, and ADR-0031 says the claim has to be
-   corrected and not left to mislead. The README on `v2` is still the 1.x one.
+4. **Rewrite the user-facing documentation for 2.0**, before it is released.
+   The README, `AGENTS.md` and most of the docs site on `v2` still describe
+   1.x: seventeen scripts, `--apply` that only moves files, "no new
+   dependencies". 2.0 edits source with `clean` and pushes to GitHub from the
+   guided flow, and ADR-0031 says the old claim has to be corrected and not
+   left to mislead. The one sentence on the site's front page is corrected.
+   The rest is one piece of work, and it is easier after item 3 is decided:
+   it describes either one tool or two.
 5. **The three-machine test, now.** [`TESTING.md`](./TESTING.md) is the guide:
    `./polinrider-sandbox --beta` on each machine, the guided flow on a sample,
    optionally real code mounted read-only, and what to send back. The results
