@@ -19,6 +19,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       bash git jq shellcheck curl ca-certificates procps \
  && rm -rf /var/lib/apt/lists/*
 
+# rustfmt and clippy, which rust-toolchain.toml asks for and the slim image
+# does not carry. Without them rustup tries to download both on every cargo
+# invocation, and the sandbox has no network: the whole Rust half of --all
+# failed offline for a reason that had nothing to do with the code.
+RUN rustup component add rustfmt clippy
+
 # mdbook is deliberately NOT here. The sandbox exists to contain destructive
 # filesystem work; rendering Markdown is not that, and the release tarball is
 # per-architecture, which broke the build on arm64 with a SIGTRAP. Docs build
