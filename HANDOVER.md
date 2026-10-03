@@ -26,7 +26,7 @@ the guided flow.
 | Ref | What it is | State |
 |---|---|---|
 | `origin/main` | 1.x, the released tool | `f58f2f7`, public. PRs #33 and #34 were squash-merged on 2026-10-03 |
-| `main` (local) | **Stale: 2 local commits, 2 behind** | Holds the old local merge of PR #33. Reset it to `origin/main`, see below |
+| `main` (local) | Same as `origin/main` | Reset on 2026-10-03, see below |
 | `v2` | The 2.0.0 work | Branched from `d418c54`. **Never pushed** |
 | `scanner/one-walk` + tag `scanner-single-walk-1.x` | Backup of the 1.x scanner fix | Kept deliberately. Verified to merge into current `main` cleanly. **Do not merge it to `main`** — Mandeep wants it as a restore point only |
 | `docs/social-preview` | Merged content, stale branch | Safe to delete |
@@ -34,17 +34,13 @@ the guided flow.
 Nothing in this work has been pushed. That is intentional: Mandeep reviews
 before anything goes public.
 
-### The `main` divergence: decided, one command left
+### The `main` divergence: resolved
 
 PRs #33 and #34 were squash-merged on GitHub on 2026-10-03 as `eb2b11a` and
-`f58f2f7`. Local `main` still holds the earlier local merge of #33: a merge
-commit `c03419a` and `98cd24f`. Checked on 2026-10-03: `git diff main eb2b11a`
-is empty, so those two commits carry nothing that is not already upstream, and
-the working tree was clean.
-
-What is left is `git checkout main && git reset --hard origin/main`. It was not
-run by the session that verified it, because a hard reset wants Mandeep's own
-word. The old commits stay in the reflog either way.
+`f58f2f7`, and local `main` was reset to `origin/main` the same day at
+Mandeep's request. The two local commits it dropped, merge `c03419a` and
+`98cd24f`, had the same tree as `eb2b11a`, so nothing was lost. They are in the
+reflog if they are ever wanted.
 
 ---
 
@@ -271,7 +267,6 @@ descending. That was the six-hour scan ([ADR-0025](./docs/adr/0025-walk-the-file
 ## Needing Mandeep
 
 - Verify the Homebrew formula once: `brew install mesingh/tap/polinrider-cleaner`
-- Say the word on resetting local `main` (above): verified safe, not run
 - Review the eight differences from the shell in ADR-0029
 - AUR account, if Arch packaging matters
 - Whether `OpenSourceMalware/PolinRider` outreach happens, since it is the one
