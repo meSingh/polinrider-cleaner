@@ -24,6 +24,23 @@ fn main() -> ProcExit {
             print!("{}", cli::usage());
             return ProcExit::from(0);
         }
+        Err(Rejection::VersionRequested) => {
+            // Where the indicators are is part of the answer. A binary that
+            // cannot find them refuses every scan, and this is how somebody
+            // finds that out before an incident and not during one.
+            println!("{}", cli::version());
+            let ioc = cli::default_ioc();
+            match Indicators::load(&ioc) {
+                Ok(i) => println!(
+                    "indicators: {} ({} strong, {} network)",
+                    ioc.display(),
+                    i.strong.len(),
+                    i.network.len()
+                ),
+                Err(e) => println!("indicators: NOT USABLE, every scan will be refused. {e}"),
+            }
+            return ProcExit::from(0);
+        }
         Err(e) => {
             eprintln!("polinrider: {e}");
             return ProcExit::from(ExitCode::CouldNotRun.code() as u8);

@@ -50,6 +50,7 @@ pub const ACCEPTED: &[(&str, &str)] = &[
         "--host-state DIR",
         "read processes, sockets and crontab from DIR, not this machine",
     ),
+    ("-V, --version", "the version, and where its indicators are"),
     ("-h, --help", "this"),
 ];
 
@@ -109,6 +110,7 @@ pub enum Rejection {
         why: String,
     },
     HelpRequested,
+    VersionRequested,
 }
 
 impl fmt::Display for Rejection {
@@ -170,7 +172,7 @@ impl fmt::Display for Rejection {
                 f,
                 "{first} and {second} cannot be given together: {why}.\n\nNothing was scanned."
             ),
-            Rejection::HelpRequested => Ok(()),
+            Rejection::HelpRequested | Rejection::VersionRequested => Ok(()),
         }
     }
 }
@@ -281,6 +283,7 @@ pub fn parse<I: Iterator<Item = String>>(argv: I, default_ioc: PathBuf) -> Resul
                 host_state = Some(PathBuf::from(value("--host-state")?));
             }
             "-h" | "--help" => return Err(Rejection::HelpRequested),
+            "-V" | "--version" => return Err(Rejection::VersionRequested),
             other if other.starts_with('-') => {
                 // A known-but-unbuilt flag gets its own message. Its value, if
                 // it takes one, is consumed so the error names the flag rather
@@ -402,14 +405,31 @@ pub fn parse<I: Iterator<Item = String>>(argv: I, default_ioc: PathBuf) -> Resul
 /// Where `ioc/` sits relative to the running binary.
 pub fn default_ioc() -> PathBuf {
     if let Ok(exe) = std::env::current_exe() {
+        // Resolved first. An installed binary is usually reached through a
+        // symlink on the PATH, and on macOS the path reported is the link:
+        // looking beside the link finds a bin directory and no indicators.
+        let exe = std::fs::canonicalize(&exe).unwrap_or(exe);
         for dir in exe.ancestors() {
-            let candidate = dir.join("ioc");
-            if candidate.join("strong.txt").is_file() {
-                return candidate;
+            // Beside the binary, as in a checkout or an unpacked release, or
+            // under share/, as a package manager lays it out.
+            for candidate in [dir.join("ioc"), dir.join("share/polinrider/ioc")] {
+                if candidate.join("strong.txt").is_file() {
+                    return candidate;
+                }
             }
         }
     }
     PathBuf::from("ioc")
+}
+
+/// The version, and the commit it was built from when the build recorded one.
+pub fn version() -> String {
+    match option_env!("POLINRIDER_COMMIT") {
+        Some(commit) if !commit.is_empty() => {
+            format!("polinrider {} ({commit})", env!("CARGO_PKG_VERSION"))
+        }
+        _ => format!("polinrider {}", env!("CARGO_PKG_VERSION")),
+    }
 }
 
 pub fn usage() -> String {
@@ -605,6 +625,16 @@ mod tests {
         );
         assert!(name.starts_with("polinrider-quarantine-20"), "{name}");
         assert!(name.ends_with('Z'), "{name}");
+    }
+
+    #[test]
+    fn asking_for_the_version_scans_nothing_and_needs_no_directory() {
+        let ioc = ioc_fixture("version");
+        assert!(matches!(
+            parse(args(&["--version"]).into_iter(), ioc),
+            Err(Rejection::VersionRequested)
+        ));
+        assert!(version().starts_with("polinrider 2."));
     }
 
     #[test]
