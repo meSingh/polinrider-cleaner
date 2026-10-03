@@ -16,8 +16,8 @@ a rewrite in progress: one Rust binary replacing seventeen shell scripts, a
 documentation site, a container sandbox, and a conformance corpus that both
 implementations answer to. **`v2` has never been pushed.** The Rust engine
 passes every conformance case, for the filesystem checks and now for the
-host-state checks too. What remains is the local-repo cleaner and the guided
-flow. `v2` is pushed to GitHub as a backup from 2026-10-03 and is **not** to be
+host-state checks too, and the local-repo cleaner is built. What remains is
+the guided flow. `v2` is pushed to GitHub as a backup from 2026-10-03 and is **not** to be
 merged to `main` until Mandeep has tested it on his three machines.
 
 ---
@@ -50,7 +50,7 @@ reflog if they are ever wanted.
 Full detail in [`HACKING.md`](./HACKING.md). The three commands:
 
 ```bash
-./polinrider-sandbox --all     # lint, 9 self-tests, 43 conformance cases, clippy, 69 Rust tests
+./polinrider-sandbox --all     # lint, 9 self-tests, 54 conformance cases, clippy, 84 Rust tests
 ./polinrider-sandbox --demo    # build an infected sample and scan it
 ./ci/docs-serve.sh             # the documentation site, with live reload
 ```
@@ -95,9 +95,9 @@ argument for running unknown code on a machine you believe is compromised.
 
 ## What is done
 
-**The corpus** — `conformance/`, 12 filesystem cases, 20 host cases and 11
-refusal cases. The filesystem cases are green against both implementations.
-The host cases run against the Rust engine only and print `skip` under the
+**The corpus** — `conformance/`, 13 filesystem cases, 20 host cases, 7 clean
+cases and 14 refusal cases. The filesystem cases are green against both
+implementations. The host and clean cases run against the Rust engine only and print `skip` under the
 shell, which cannot be handed a machine that does not exist. Running in CI and
 in `--all`. Fixtures contain no
 payload: cases write `{{STRONG}}` and the runner substitutes from `ioc/` at build
@@ -123,6 +123,7 @@ that this reversed an earlier mdBook decision and what the Node dependency costs
 | `walk.rs` | One pruned filesystem walk, shared by every check |
 | `indicators.rs` | Loading `ioc/` |
 | `checks.rs` | Implants, tasks.json, build configs, fonts, packages, git hooks, extensions, propagation |
+| `strip.rs` | Plans the cut for `clean`: what to keep of an infected build config, or why not to touch it. Pure, no I/O |
 | `host.rs` | The boundary. `Host`, with `LiveHost` (asks the machine) and `Snapshot` (holds the answers as data). The only module that runs a command |
 | `host_checks.rs` | Implant processes, persistence, shell startup files, global git config, npm config, resident interpreters, live connections |
 | `sha256.rs` | Written out rather than depended on, proven against NIST vectors |
@@ -145,6 +146,13 @@ has never matched on Linux**, because the kernel cuts a process name to 15
 bytes and the implant's is 17. Those eight are differences from 1.x that
 Mandeep has not reviewed yet.
 
+**The local-repo cleaner** —
+[ADR-0031](./docs/adr/0031-clean-strips-an-appended-payload-in-place-and-never-touches-git.md).
+`polinrider clean REPO...` strips a payload appended to a build config, in
+place, keeping the infected original in quarantine. Dry run by default. It
+cuts one shape and refuses the rest, and it never runs or touches git.
+`check --apply` means what it always did.
+
 ---
 
 ## What is next, in order
@@ -162,10 +170,9 @@ Mandeep has not reviewed yet.
 3. **Delete the shell machine check** once 2 lands and the corpus is green on
    all three platforms. `--state` and `--resume` are not coming:
    [ADR-0030](./docs/adr/0030-2-0-does-not-checkpoint-a-scan.md).
-4. **The local-repo cleaner** — strip a payload from a working tree in place,
-   without pull, reset or stash, preserving uncommitted work. Mandeep asked for
-   this early on and it is still not built. It needs its own ADR because it
-   changes what `--apply` means.
+4. **Reword "only moves files" wherever 1.x documentation says it**, before
+   2.0 is released. `clean` edits source, and ADR-0031 says the claim has to be
+   corrected and not left to mislead. The README on `v2` is still the 1.x one.
 5. **The guided flow** — one CLI session walking triage, machine, credentials,
    remote, verify, prevent, without leaving the tool. This is the "fully
    automated flow" Mandeep described.

@@ -79,6 +79,10 @@ pub enum Rejection {
         flag: String,
         why: String,
     },
+    NotForCommand {
+        flag: String,
+        command: &'static str,
+    },
     MissingValue(String),
     NoRoots,
     BadRoot {
@@ -130,6 +134,10 @@ impl fmt::Display for Rejection {
                 writeln!(f, "walks the filesystem once. Refused rather than ignored: a flag")?;
                 write!(f, "that silently does nothing would let a scan look resumed.")
             }
+            Rejection::NotForCommand { flag, command } => write!(
+                f,
+                "{flag} does not apply to {command}.\n\nNothing was scanned. {command} reads the directories it is given and\nnothing else, so there is nothing for {flag} to change."
+            ),
             Rejection::MissingValue(flag) => write!(f, "{flag} needs a value"),
             Rejection::NoRoots => write!(
                 f,
@@ -164,8 +172,30 @@ impl fmt::Display for Rejection {
     }
 }
 
+/// What the binary was asked to do.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Command {
+    /// Scan and report. `--apply` moves confirmed artifacts into quarantine
+    /// and never changes the contents of a file.
+    Check,
+    /// Scan the given working trees and, with `--apply`, also cut an appended
+    /// payload out of a build config in place. Reads nothing outside the
+    /// roots and never touches git. ADR-0031.
+    Clean,
+}
+
+impl Command {
+    pub const fn name(self) -> &'static str {
+        match self {
+            Command::Check => "check",
+            Command::Clean => "clean",
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Args {
+    pub command: Command,
     pub roots: Vec<PathBuf>,
     pub fs_only: bool,
     pub apply: bool,
@@ -185,10 +215,29 @@ pub fn parse<I: Iterator<Item = String>>(argv: I, default_ioc: PathBuf) -> Resul
     let (mut quarantine, mut report, mut ioc, mut home) = (None, None, None, None);
     let mut host_state = None;
 
-    // The subcommand, when present.
-    if args.peek().map(String::as_str) == Some("check") {
-        args.next();
-    }
+    // The subcommand, when present. `check` is the default.
+    let command = match args.peek().map(String::as_str) {
+        Some("check") => {
+            args.next();
+            Command::Check
+        }
+        Some("clean") => {
+            args.next();
+            Command::Clean
+        }
+        _ => Command::Check,
+    };
+    // Flags that mean nothing to `clean`, which reads the directories it is
+    // given and nothing else. Refused, not ignored.
+    let not_for_clean = |flag: &str| -> Result<(), Rejection> {
+        if command == Command::Clean {
+            return Err(Rejection::NotForCommand {
+                flag: flag.to_string(),
+                command: command.name(),
+            });
+        }
+        Ok(())
+    };
 
     while let Some(arg) = args.next() {
         let mut value = |flag: &str| {
@@ -196,13 +245,22 @@ pub fn parse<I: Iterator<Item = String>>(argv: I, default_ioc: PathBuf) -> Resul
                 .ok_or_else(|| Rejection::MissingValue(flag.into()))
         };
         match arg.as_str() {
-            "--fs-only" => fs_only = true,
+            "--fs-only" => {
+                not_for_clean("--fs-only")?;
+                fs_only = true;
+            }
             "--apply" => apply = true,
             "--quarantine" => quarantine = Some(PathBuf::from(value("--quarantine")?)),
             "--report" => report = Some(PathBuf::from(value("--report")?)),
             "--ioc" => ioc = Some(PathBuf::from(value("--ioc")?)),
-            "--home" => home = Some(PathBuf::from(value("--home")?)),
-            "--host-state" => host_state = Some(PathBuf::from(value("--host-state")?)),
+            "--home" => {
+                not_for_clean("--home")?;
+                home = Some(PathBuf::from(value("--home")?));
+            }
+            "--host-state" => {
+                not_for_clean("--host-state")?;
+                host_state = Some(PathBuf::from(value("--host-state")?));
+            }
             "-h" | "--help" => return Err(Rejection::HelpRequested),
             other if other.starts_with('-') => {
                 // A known-but-unbuilt flag gets its own message. Its value, if
@@ -294,6 +352,7 @@ pub fn parse<I: Iterator<Item = String>>(argv: I, default_ioc: PathBuf) -> Resul
         .unwrap_or_else(|| PathBuf::from("/"));
 
     Ok(Args {
+        command,
         roots,
         fs_only,
         apply,
@@ -320,11 +379,12 @@ pub fn default_ioc() -> PathBuf {
 
 pub fn usage() -> String {
     let mut s = String::from(
-        "polinrider - detect and clean up after the PolinRider supply-chain campaign.\n\n  polinrider check [options] ROOT...\n\nOptions:\n",
+        "polinrider - detect and clean up after the PolinRider supply-chain campaign.\n\n  polinrider check [options] ROOT...   scan and report\n  polinrider clean [options] REPO...   scan working trees, and with --apply\n                                       strip an appended payload in place\n\nOptions:\n",
     );
     for (flag, help) in ACCEPTED {
         s.push_str(&format!("  {flag:<18} {help}\n"));
     }
+    s.push_str("\nclean takes --apply, --quarantine, --report and --ioc. It never touches git:\nnothing is staged, committed, reset or stashed, and the original of every\nfile it changes is kept in quarantine.\n");
     s.push_str("\nExit codes: 0 clean - 1 review items only - 2 a confirmed indicator\n            3 the scan could not run.\n");
     s
 }
@@ -449,6 +509,30 @@ mod tests {
     }
 
     #[test]
+    fn clean_is_a_command_and_refuses_flags_that_mean_nothing_to_it() {
+        let ioc = ioc_fixture("clean");
+        let a = parse(
+            args(&["clean", "--apply", "--ioc", ioc.to_str().unwrap(), "/tmp"]).into_iter(),
+            PathBuf::from("unused"),
+        )
+        .expect("valid");
+        assert_eq!(a.command, Command::Clean);
+        assert!(a.apply);
+
+        for flag in ["--fs-only", "--home", "--host-state"] {
+            let e = parse(
+                args(&["clean", flag, "/tmp", "/tmp"]).into_iter(),
+                ioc_fixture("clean-flags"),
+            )
+            .expect_err("must refuse");
+            assert!(
+                matches!(e, Rejection::NotForCommand { flag: ref f, .. } if f == flag),
+                "{flag}: {e}"
+            );
+        }
+    }
+
+    #[test]
     fn valid_arguments_parse() {
         let ioc = ioc_fixture("valid");
         let a = parse(
@@ -456,6 +540,7 @@ mod tests {
             PathBuf::from("unused"),
         )
         .expect("valid");
+        assert_eq!(a.command, Command::Check);
         assert!(a.fs_only);
         assert!(!a.apply);
         assert_eq!(a.roots, vec![PathBuf::from("/tmp")]);

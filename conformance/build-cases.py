@@ -633,6 +633,212 @@ host_case(
     },
 )
 
+
+# ---------------------------------------------------------------------------
+# Clean cases. The one command that changes the contents of a source file.
+#
+# `polinrider clean` strips a payload that was appended to a build config and
+# keeps the original in quarantine. It recognises one shape and refuses the
+# rest, so half of these are about what it must leave alone.
+# ---------------------------------------------------------------------------
+
+CLEAN_CONFIG = "export default { plugins: {} }\n"
+INFECTED_CONFIG = CLEAN_CONFIG + "{{PAD}}{{STRONG}}\n"
+
+case(
+    "clean-dry-run-shows-the-cut-and-changes-nothing",
+    why="Dry run by default holds for clean too, and matters more: this is "
+        "the command that edits source. Without --apply it shows the last "
+        "line it would keep and the start of what it would cut, and the tree "
+        "is byte for byte what it was.",
+    command="clean",
+    roots=["code"],
+    files={"code/proj/postcss.config.mjs": INFECTED_CONFIG},
+    expect={
+        "exit": 2,
+        "tree_may_change": False,
+        "findings": [{
+            "level": "HIT",
+            "match": "config file contains an indicator",
+            "path": "postcss.config.mjs",
+        }],
+        "must_print": ["would strip", "keeps through line 1"],
+        "must_not_print": ["original kept ->"],
+    },
+)
+
+case(
+    "clean-strips-a-payload-appended-on-its-own-line",
+    why="The canonical infection, undone. The module is kept whole, the "
+        "padding and the payload go, and the infected original is in "
+        "quarantine so the change can be put back. Exit 2, because the exit "
+        "code reports what was found, and a confirmed indicator was.",
+    command="clean",
+    apply=True,
+    roots=["code"],
+    files={"code/proj/postcss.config.mjs": INFECTED_CONFIG},
+    expect={
+        "exit": 2,
+        "tree_may_change": True,
+        "stripped": ["code/proj/postcss.config.mjs"],
+        "file_after": {"code/proj/postcss.config.mjs": CLEAN_CONFIG},
+        "must_print": ["stripped", "original kept ->"],
+    },
+)
+
+case(
+    "clean-strips-a-payload-on-the-module-line",
+    why="The form that hides best: the padding follows the closing bracket "
+        "on the same line and pushes the payload off the edge of the editor. "
+        "The cut must leave that line intact and ended.",
+    command="clean",
+    apply=True,
+    roots=["code"],
+    files={
+        "code/proj/next.config.js":
+            "module.exports = { reactStrictMode: true };{{PAD}}{{STRONG}}\n",
+    },
+    expect={
+        "exit": 2,
+        "tree_may_change": True,
+        "stripped": ["code/proj/next.config.js"],
+        "file_after": {
+            "code/proj/next.config.js": "module.exports = { reactStrictMode: true };\n",
+        },
+    },
+)
+
+UNCOMMITTED = (
+    "import tailwind from 'tailwindcss'\n"
+    "\n"
+    "// half-finished: trying the new plugin order\n"
+    "const extra = [1, 2, 3]\n"
+    "\n"
+    "export default {\n"
+    "  plugins: [tailwind, ...extra],\n"
+    "}\n"
+)
+
+case(
+    "clean-keeps-uncommitted-work-and-never-touches-git",
+    why="The reason this command exists. The alternative is 'delete the clone "
+        "and re-clone', which throws away whatever was not pushed. Work in "
+        "the infected file itself survives byte for byte, other files are "
+        "not opened for writing, and nothing under .git changes: no pull, no "
+        "reset, no stash, no staging. A cleanup tool that runs git inside a "
+        "repository an attacker wrote to is taking orders from its config.",
+    command="clean",
+    apply=True,
+    roots=["code"],
+    files={
+        "code/proj/postcss.config.mjs": UNCOMMITTED + "{{PAD}}{{STRONG}}\n",
+        "code/proj/src/draft.js": "// not committed yet\nexport const wip = true\n",
+        "code/proj/.git/HEAD": "ref: refs/heads/main\n",
+        "code/proj/.git/index": "DIRC fixture bytes, never parsed\n",
+        "code/proj/.git/config": "[core]\n\tbare = false\n",
+    },
+    expect={
+        "exit": 2,
+        "tree_may_change": True,
+        "stripped": ["code/proj/postcss.config.mjs"],
+        "file_after": {
+            "code/proj/postcss.config.mjs": UNCOMMITTED,
+            "code/proj/src/draft.js": "// not committed yet\nexport const wip = true\n",
+            "code/proj/.git/HEAD": "ref: refs/heads/main\n",
+            "code/proj/.git/index": "DIRC fixture bytes, never parsed\n",
+            "code/proj/.git/config": "[core]\n\tbare = false\n",
+        },
+        "must_print": ["It does not touch git"],
+    },
+)
+
+case(
+    "clean-refuses-a-payload-inside-the-module",
+    why="Appended is the only shape it cuts. Here the payload sits inside "
+        "the object literal with the project's own code after it, and "
+        "cutting to the end of the file would take that code too. A cleanup "
+        "that breaks the build has made the incident worse. Reported, not "
+        "edited, even under --apply.",
+    command="clean",
+    apply=True,
+    roots=["code"],
+    files={
+        "code/proj/vite.config.js":
+            "module.exports = {{{PAD}}{{STRONG}}\n  plugins: [],\n}\n",
+    },
+    expect={
+        "exit": 2,
+        "tree_may_change": False,
+        "findings": [{
+            "level": "HIT",
+            "match": "config file contains an indicator",
+            "path": "vite.config.js",
+        }],
+        "must_print": ["not stripped", "re-clone"],
+        "must_not_print": ["original kept ->"],
+    },
+)
+
+case(
+    "clean-refuses-a-payload-that-is-not-behind-padding",
+    why="An indicator on a line of its own after the module may well be a "
+        "payload. It is not the shape this campaign is known to use, and "
+        "editing somebody's source on a guess is not something a tool that "
+        "asks to be trusted mid-incident gets to do. It says why and leaves "
+        "the file.",
+    command="clean",
+    apply=True,
+    roots=["code"],
+    files={"code/proj/eslint.config.mjs": "export default []\nvar x = '{{STRONG}}'\n"},
+    expect={
+        "exit": 2,
+        "tree_may_change": False,
+        "must_print": ["not stripped", "not behind the padding"],
+    },
+)
+
+case(
+    "clean-quarantines-what-check-would",
+    why="clean is check plus one thing, not a different scanner. A fake font "
+        "in the same repository is moved to quarantine exactly as "
+        "check --apply moves it.",
+    command="clean",
+    apply=True,
+    roots=["code"],
+    files={
+        "code/proj/postcss.config.mjs": INFECTED_CONFIG,
+        "code/proj/public/fake.woff2": FAKE_FONT,
+    },
+    expect={
+        "exit": 2,
+        "tree_may_change": True,
+        "stripped": ["code/proj/postcss.config.mjs"],
+        "quarantined": ["code/proj/public/fake.woff2"],
+        "findings": [{"level": "HIT", "match": "font file is not a font"}],
+    },
+)
+
+case(
+    "check-apply-still-never-edits-a-file",
+    why="ADR-0031 adds a command; it does not change what an existing one "
+        "means. check --apply moves confirmed artifacts and never rewrites "
+        "the contents of anything. An infected config is reported and left "
+        "exactly as it was, under both implementations.",
+    apply=True,
+    roots=["code"],
+    files={"code/proj/postcss.config.mjs": INFECTED_CONFIG},
+    expect={
+        "exit": 2,
+        "tree_may_change": False,
+        "findings": [{
+            "level": "HIT",
+            "match": "config file contains an indicator",
+            "path": "postcss.config.mjs",
+        }],
+        "must_not_print": ["original kept ->", "stripped "],
+    },
+)
+
 for name, body in CASES.items():
     with open(os.path.join(D, name + ".json"), "w") as f:
         json.dump(body, f, indent=2)

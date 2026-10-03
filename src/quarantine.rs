@@ -65,6 +65,11 @@ pub enum Outcome {
     Would { from: PathBuf, to: PathBuf },
     /// Moved. The original no longer exists at `from`.
     Moved { from: PathBuf, to: PathBuf },
+    /// A dry run of a strip. Nothing was copied and nothing was written.
+    WouldStrip { from: PathBuf, to: PathBuf },
+    /// The file at `from` was rewritten without its payload. The original, as
+    /// it was, is at `to`.
+    Stripped { from: PathBuf, to: PathBuf },
 }
 
 impl Outcome {
@@ -73,6 +78,10 @@ impl Outcome {
         match self {
             Outcome::Would { from, .. } => format!("would quarantine: {}", from.display()),
             Outcome::Moved { to, .. } => format!("quarantined -> {}", to.display()),
+            Outcome::WouldStrip { to, .. } => {
+                format!("the original would be kept at: {}", to.display())
+            }
+            Outcome::Stripped { to, .. } => format!("original kept -> {}", to.display()),
         }
     }
 }
@@ -119,6 +128,15 @@ impl Quarantine<DryRun> {
             to: self.destination(src),
         }
     }
+
+    /// Report what a strip would do. Like everything on this type, it only
+    /// computes a path.
+    pub fn would_strip(&self, src: &Path) -> Outcome {
+        Outcome::WouldStrip {
+            from: src.to_path_buf(),
+            to: self.destination(src),
+        }
+    }
 }
 
 impl Quarantine<Apply> {
@@ -161,6 +179,53 @@ impl Quarantine<Apply> {
         })
     }
 
+    /// Rewrite a file without its payload, keeping the original.
+    ///
+    /// The one operation in this tool that changes the contents of a file in
+    /// place. The order is the point: the original is copied into quarantine
+    /// and read back before anything touches the working tree, the cleaned
+    /// file is written beside the original, and only then does a rename put
+    /// it in place. If any step fails the original is still where it was.
+    ///
+    /// ```compile_fail
+    /// use polinrider::quarantine::{Quarantine, DryRun};
+    /// use std::path::Path;
+    ///
+    /// let mut q = Quarantine::<DryRun>::new("/tmp/q");
+    /// q.strip(Path::new("/tmp/postcss.config.mjs"), b"", "reason");   // not on DryRun
+    /// ```
+    pub fn strip(&mut self, src: &Path, cleaned: &[u8], reason: &str) -> io::Result<Outcome> {
+        let dest = self.destination(src);
+        if let Some(parent) = dest.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        let original = fs::read(src)?;
+        fs::write(&dest, &original)?;
+        if fs::read(&dest)? != original {
+            return Err(io::Error::other(
+                "the copy in quarantine does not match the original",
+            ));
+        }
+
+        let mut temp = src.as_os_str().to_owned();
+        temp.push(".polinrider-tmp");
+        let temp = PathBuf::from(temp);
+        let written = fs::write(&temp, cleaned)
+            .and_then(|()| fs::set_permissions(&temp, fs::metadata(src)?.permissions()))
+            .and_then(|()| fs::rename(&temp, src));
+        if let Err(e) = written {
+            let _ = fs::remove_file(&temp);
+            return Err(e);
+        }
+
+        self.manifest
+            .push((src.to_path_buf(), dest.clone(), reason.to_string()));
+        Ok(Outcome::Stripped {
+            from: src.to_path_buf(),
+            to: dest,
+        })
+    }
+
     /// Write the receipt. Every quarantined file, where it came from, and why.
     pub fn write_manifest(&self) -> io::Result<PathBuf> {
         let path = self.root.join("manifest.tsv");
@@ -189,6 +254,10 @@ Nothing here was deleted. To put a file back:
     [ \"$orig\" = \"original_path\" ] && continue
     mkdir -p \"$(dirname \"$orig\")\" && mv \"$dest\" \"$orig\"
   done < manifest.tsv
+
+A row whose reason is stripped-config is different: that file was cleaned in
+place and is still in your project. The copy here is the infected original, and
+putting it back undoes the cleaning.
 
 Keep this directory until the incident is closed. It is evidence.
 ";
@@ -236,6 +305,65 @@ mod tests {
         );
         assert!(text.contains("fake.woff2"));
         assert_eq!(q.taken(), 1);
+
+        fs::remove_dir_all(&tmp)?;
+        Ok(())
+    }
+
+    #[test]
+    fn a_strip_keeps_the_original_and_rewrites_the_file_in_place() -> io::Result<()> {
+        let tmp = std::env::temp_dir().join(format!("prc-q-strip-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&tmp);
+        fs::create_dir_all(tmp.join("tree"))?;
+        let src = tmp.join("tree/postcss.config.mjs");
+        fs::write(&src, b"export default {}\nPAYLOAD")?;
+
+        let mut q = Quarantine::<Apply>::create(tmp.join("q"))?;
+        let outcome = q.strip(&src, b"export default {}\n", "stripped-config")?;
+
+        assert_eq!(fs::read(&src)?, b"export default {}\n", "cleaned in place");
+        let Outcome::Stripped { to, .. } = &outcome else {
+            unreachable!()
+        };
+        assert_eq!(
+            fs::read(to)?,
+            b"export default {}\nPAYLOAD",
+            "the original survives, byte for byte"
+        );
+        assert!(
+            !tmp.join("tree/postcss.config.mjs.polinrider-tmp").exists(),
+            "no temporary file is left in the working tree"
+        );
+        let manifest = fs::read_to_string(q.write_manifest()?)?;
+        assert!(manifest.contains("stripped-config"));
+        assert_eq!(q.taken(), 1);
+
+        fs::remove_dir_all(&tmp)?;
+        Ok(())
+    }
+
+    #[test]
+    fn a_strip_that_cannot_keep_the_original_changes_nothing() -> io::Result<()> {
+        // The quarantine destination's parent is a file, so the copy fails.
+        // The working tree must be exactly as it was.
+        let tmp = std::env::temp_dir().join(format!("prc-q-stripfail-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&tmp);
+        fs::create_dir_all(tmp.join("tree"))?;
+        let src = tmp.join("tree/next.config.js");
+        fs::write(&src, b"module.exports = {}\nPAYLOAD")?;
+
+        let mut q = Quarantine::<Apply>::create(tmp.join("q"))?;
+        let blocker = q.destination(&src);
+        if let Some(dir) = blocker.parent().and_then(Path::parent) {
+            fs::create_dir_all(dir)?;
+            fs::write(blocker.parent().unwrap_or(dir), b"in the way")?;
+        }
+
+        assert!(q
+            .strip(&src, b"module.exports = {}\n", "stripped-config")
+            .is_err());
+        assert_eq!(fs::read(&src)?, b"module.exports = {}\nPAYLOAD");
+        assert_eq!(q.taken(), 0);
 
         fs::remove_dir_all(&tmp)?;
         Ok(())

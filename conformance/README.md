@@ -98,6 +98,22 @@ handed a machine that does not exist. That has a cost, written into
 for the host checks there is no second implementation to disagree with the
 corpus, so a wrong expected value here has nothing to catch it but its `why`.
 
+## Clean cases
+
+A case with `"command": "clean"` runs `polinrider clean`, the one command that
+changes the contents of a source file
+([ADR-0031](../docs/adr/0031-clean-strips-an-appended-payload-in-place-and-never-touches-git.md)).
+Three more things can be expected of a case:
+
+| In `expect` | Asserts |
+|---|---|
+| `stripped` | the file is still in the tree without the indicator, and the infected original is in quarantine |
+| `file_after` | the exact contents of a file afterwards. Used to show that unrelated files, and everything under `.git`, are untouched |
+| `must_print` | text that must appear in the output, for advice that carries no level tag |
+
+Half of these cases are about what `clean` must leave alone. The shell has no
+such command, so they skip under it, the same way the host cases do.
+
 What the host cases do not cover is the thin layer that actually runs `ps`,
 `ss`, `lsof`, `crontab` and `git` on a real machine. The cases start on the far
 side of it.

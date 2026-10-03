@@ -24,6 +24,10 @@
 # run without --fs-only and with --host-state pointing at those files. Only the
 # Rust engine can be handed a machine that does not exist, so under the shell
 # implementation these print "skip" and are counted, never silently dropped.
+#
+# CLEAN CASES. A case with "command": "clean" runs the clean command, which
+# strips an appended payload out of a build config in place. The shell has no
+# such command, so these skip under it too, the same way.
 
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -94,9 +98,16 @@ impl_rust() {
   # No --state flag either: 2.0 has no checkpointing (ADR-0030) and the Rust
   # engine refuses the flag rather than ignoring it. --home is explicit so the scan reads
   # the fixture's home rather than the runner's.
-  local args=(check --home "$FAKE_HOME" --report "$report")
-  # A host case supplies the machine; every other case reads no host state.
-  if [[ -n "$HOST_STATE" ]]; then args+=(--host-state "$HOST_STATE"); else args+=(--fs-only); fi
+  local args
+  if [[ "$COMMAND" == "clean" ]]; then
+    # clean reads the roots and nothing else: no home, no host, and it refuses
+    # the flags that would say otherwise.
+    args=(clean --report "$report")
+  else
+    args=(check --home "$FAKE_HOME" --report "$report")
+    # A host case supplies the machine; every other case reads no host state.
+    if [[ -n "$HOST_STATE" ]]; then args+=(--host-state "$HOST_STATE"); else args+=(--fs-only); fi
+  fi
   [[ -n "$qdir" ]] && args+=(--apply --quarantine "$qdir")
   "$bin" "${args[@]}" "$@" 2>&1
 }
@@ -134,6 +145,7 @@ build_files() {
 
 PASS=0; FAIL=0; SKIP=0; FAILED_CASES=()
 HOST_STATE=""
+COMMAND="check"
 
 run_case() {
   local cf="$1" name; name="$(basename "$cf" .json)"
@@ -147,6 +159,13 @@ run_case() {
   if [[ "$is_host" == "true" && "$IMPL" != "rust" ]]; then
     SKIP=$((SKIP+1))
     printf '  \033[33mskip\033[0m  %-38s %s\n' "$name" "needs supplied host state, which only the Rust engine takes"
+    return 0
+  fi
+
+  COMMAND="$(jq -r '.command // "check"' "$cf")"
+  if [[ "$COMMAND" == "clean" && "$IMPL" != "rust" ]]; then
+    SKIP=$((SKIP+1))
+    printf '  \033[33mskip\033[0m  %-38s %s\n' "$name" "runs the clean command, which only the Rust engine has"
     return 0
   fi
 
@@ -223,6 +242,27 @@ run_case() {
       && errs+=("printed, and must never be: $forbidden")
   done < <(jq -r '.expect.must_not_print[]? // empty' "$cf")
 
+  # strings that must appear somewhere in the output. For advice printed under
+  # a finding, which carries no level tag of its own to match on.
+  while IFS= read -r wanted; do
+    [[ -z "$wanted" ]] && continue
+    printf '%s\n' "$out" | grep -qF "$wanted" \
+      || errs+=("not printed, and must be: $wanted")
+  done < <(jq -r '.expect.must_print[]? // empty' "$cf")
+
+  # files that must hold exactly this afterwards. Compared without trailing
+  # newlines, which the fixture builder does not control on every platform.
+  local want_path want_body
+  while IFS= read -r want_path; do
+    [[ -z "$want_path" ]] && continue
+    want_body="$(subst "$(jq -r --arg p "$want_path" '.expect.file_after[$p]' "$cf")")"
+    if [[ ! -f "$tmp/tree/$want_path" ]]; then
+      errs+=("missing afterwards: $want_path")
+    elif [[ "$(cat "$tmp/tree/$want_path")" != "$want_body" ]]; then
+      errs+=("not what it should be afterwards: $want_path")
+    fi
+  done < <(jq -r '.expect.file_after // {} | keys[]' "$cf")
+
   # the scanned tree must be untouched unless the case says otherwise
   local may_change; may_change="$(jq -r '.expect.tree_may_change // false' "$cf")"
   if [[ "$may_change" != "true" && "$before" != "$after" ]]; then
@@ -237,6 +277,16 @@ run_case() {
       find "$qdir" -type f -path "*${q##*/}" 2>/dev/null | grep -q . \
         || errs+=("not found in quarantine after --apply: $q")
     done < <(jq -r '.expect.quarantined[]? // empty' "$cf")
+    # a stripped file stays where it was, without the indicator, and the
+    # original, with it, is in quarantine
+    while IFS= read -r q; do
+      [[ -z "$q" ]] && continue
+      [[ -f "$tmp/tree/$q" ]] || { errs+=("stripped file is gone from the tree: $q"); continue; }
+      grep -qF "$STRONG" "$tmp/tree/$q" && errs+=("still carries the indicator after the strip: $q")
+      local kept; kept="$(find "$qdir" -type f -path "*${q##*/}" 2>/dev/null | sed -n 1p)"
+      if [[ -z "$kept" ]]; then errs+=("original not kept in quarantine: $q")
+      elif ! grep -qF "$STRONG" "$kept"; then errs+=("the copy in quarantine is not the infected original: $q"); fi
+    done < <(jq -r '.expect.stripped[]? // empty' "$cf")
     # the same, for an artifact that lived in the home directory
     while IFS= read -r q; do
       [[ -z "$q" ]] && continue
@@ -294,6 +344,9 @@ refusals() {
   check_refusal "host state that is not there"       check --host-state "$tmp/no-state-here" "$tmp"
   check_refusal "host state alongside --fs-only"     check --fs-only --host-state "$tmp" "$tmp"
   check_refusal "host state that names no platform"  check --host-state "$tmp" "$tmp"
+  check_refusal "clean with no directory"            clean
+  check_refusal "clean handed host state"            clean --host-state "$tmp" "$tmp"
+  check_refusal "clean handed --fs-only"             clean --fs-only "$tmp"
   rm -rf "$tmp"
 }
 

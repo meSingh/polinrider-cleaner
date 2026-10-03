@@ -1,0 +1,28 @@
+{
+  "why": "Dry run by default holds for clean too, and matters more: this is the command that edits source. Without --apply it shows the last line it would keep and the start of what it would cut, and the tree is byte for byte what it was.",
+  "command": "clean",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/postcss.config.mjs": "export default { plugins: {} }\n{{PAD}}{{STRONG}}\n"
+  },
+  "expect": {
+    "exit": 2,
+    "tree_may_change": false,
+    "findings": [
+      {
+        "level": "HIT",
+        "match": "config file contains an indicator",
+        "path": "postcss.config.mjs"
+      }
+    ],
+    "must_print": [
+      "would strip",
+      "keeps through line 1"
+    ],
+    "must_not_print": [
+      "original kept ->"
+    ]
+  }
+}

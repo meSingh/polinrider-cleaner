@@ -1,0 +1,19 @@
+{
+  "why": "An indicator on a line of its own after the module may well be a payload. It is not the shape this campaign is known to use, and editing somebody's source on a guess is not something a tool that asks to be trusted mid-incident gets to do. It says why and leaves the file.",
+  "command": "clean",
+  "apply": true,
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/eslint.config.mjs": "export default []\nvar x = '{{STRONG}}'\n"
+  },
+  "expect": {
+    "exit": 2,
+    "tree_may_change": false,
+    "must_print": [
+      "not stripped",
+      "not behind the padding"
+    ]
+  }
+}

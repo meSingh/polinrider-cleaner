@@ -1,0 +1,32 @@
+{
+  "why": "The reason this command exists. The alternative is 'delete the clone and re-clone', which throws away whatever was not pushed. Work in the infected file itself survives byte for byte, other files are not opened for writing, and nothing under .git changes: no pull, no reset, no stash, no staging. A cleanup tool that runs git inside a repository an attacker wrote to is taking orders from its config.",
+  "command": "clean",
+  "apply": true,
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/postcss.config.mjs": "import tailwind from 'tailwindcss'\n\n// half-finished: trying the new plugin order\nconst extra = [1, 2, 3]\n\nexport default {\n  plugins: [tailwind, ...extra],\n}\n{{PAD}}{{STRONG}}\n",
+    "code/proj/src/draft.js": "// not committed yet\nexport const wip = true\n",
+    "code/proj/.git/HEAD": "ref: refs/heads/main\n",
+    "code/proj/.git/index": "DIRC fixture bytes, never parsed\n",
+    "code/proj/.git/config": "[core]\n\tbare = false\n"
+  },
+  "expect": {
+    "exit": 2,
+    "tree_may_change": true,
+    "stripped": [
+      "code/proj/postcss.config.mjs"
+    ],
+    "file_after": {
+      "code/proj/postcss.config.mjs": "import tailwind from 'tailwindcss'\n\n// half-finished: trying the new plugin order\nconst extra = [1, 2, 3]\n\nexport default {\n  plugins: [tailwind, ...extra],\n}\n",
+      "code/proj/src/draft.js": "// not committed yet\nexport const wip = true\n",
+      "code/proj/.git/HEAD": "ref: refs/heads/main\n",
+      "code/proj/.git/index": "DIRC fixture bytes, never parsed\n",
+      "code/proj/.git/config": "[core]\n\tbare = false\n"
+    },
+    "must_print": [
+      "It does not touch git"
+    ]
+  }
+}

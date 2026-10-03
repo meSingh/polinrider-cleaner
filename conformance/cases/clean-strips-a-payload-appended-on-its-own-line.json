@@ -1,0 +1,25 @@
+{
+  "why": "The canonical infection, undone. The module is kept whole, the padding and the payload go, and the infected original is in quarantine so the change can be put back. Exit 2, because the exit code reports what was found, and a confirmed indicator was.",
+  "command": "clean",
+  "apply": true,
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/postcss.config.mjs": "export default { plugins: {} }\n{{PAD}}{{STRONG}}\n"
+  },
+  "expect": {
+    "exit": 2,
+    "tree_may_change": true,
+    "stripped": [
+      "code/proj/postcss.config.mjs"
+    ],
+    "file_after": {
+      "code/proj/postcss.config.mjs": "export default { plugins: {} }\n"
+    },
+    "must_print": [
+      "stripped",
+      "original kept ->"
+    ]
+  }
+}

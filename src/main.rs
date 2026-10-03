@@ -4,8 +4,8 @@
 //! recognise before a single file is read. This binary moves things; a typo
 //! must not get as far as doing work.
 
-use polinrider::checks::{self, Sink};
-use polinrider::cli::{self, Rejection};
+use polinrider::checks::{self, OnInfectedConfig, Sink};
+use polinrider::cli::{self, Command, Rejection};
 use polinrider::host::{Host, LiveHost, Snapshot};
 use polinrider::host_checks;
 use polinrider::indicators::Indicators;
@@ -40,7 +40,7 @@ fn main() -> ProcExit {
     // The host is settled before anything is printed or walked. Supplied state
     // that does not load, or a platform whose live checks are not built, is a
     // scan that cannot run, not one that runs with a third of it missing.
-    let host: Option<Box<dyn Host>> = if args.fs_only {
+    let host: Option<Box<dyn Host>> = if args.fs_only || args.command == Command::Clean {
         None
     } else if let Some(dir) = &args.host_state {
         match Snapshot::load(dir) {
@@ -61,9 +61,11 @@ fn main() -> ProcExit {
     };
     let host = host.as_deref();
 
+    let clean = args.command == Command::Clean;
     let mut out = String::new();
     out.push_str(&format!(
-        "PolinRider local check - {} - scan\n",
+        "PolinRider local {} - {} - scan\n",
+        args.command.name(),
         std::env::consts::OS
     ));
     out.push_str(&format!(
@@ -76,16 +78,19 @@ fn main() -> ProcExit {
     ));
     out.push_str(&format!(
         "mode: {}\n",
-        if args.apply {
-            "APPLY - confirmed artifacts will be moved to quarantine"
-        } else {
-            "dry run - nothing will be changed"
+        match (args.apply, clean) {
+            (false, _) => "dry run - nothing will be changed",
+            (true, false) => "APPLY - confirmed artifacts will be moved to quarantine",
+            (true, true) =>
+                "APPLY - appended payloads are stripped in place, other confirmed artifacts are moved to quarantine. Every original is kept",
         }
     ));
     out.push_str(&format!(
         "host state: {}\n",
         match host {
             Some(h) => h.describe(),
+            None if clean =>
+                "not read, clean looks only at the directories it is given".to_string(),
             None => "not read, --fs-only".to_string(),
         }
     ));
@@ -158,13 +163,17 @@ fn run_checks(
     v: &mut Verdict,
     sink: &mut Sink,
 ) {
+    if args.command == Command::Clean {
+        return run_clean(w, ind, args, v, sink);
+    }
+
     // One line per host check that did not run, so a section that was skipped
     // can never be mistaken for one that found nothing.
     let skipped = |v: &mut Verdict, name: &str| {
         v.section(format!("{name}: skipped, --fs-only"));
     };
 
-    checks::implants(w, ind, &args.home, &args.ioc, host, v, sink);
+    checks::implants(w, ind, Some(&args.home), &args.ioc, host, v, sink);
 
     if host.is_some() {
         checks::extensions(&extension_dirs(&args.home), ind, v, sink);
@@ -173,7 +182,7 @@ fn run_checks(
     }
 
     checks::tasks_json(w, ind, v, sink);
-    checks::build_configs(w, ind, v);
+    checks::build_configs(w, ind, OnInfectedConfig::Report, v, sink);
     checks::fonts(w, v, sink);
 
     if host.is_some() {
@@ -209,6 +218,20 @@ fn run_checks(
             skipped(v, "Live connections");
         }
     }
+}
+
+/// `clean`: every check that reads the working trees it was given, and none
+/// that read anything else. No home directory, no host. The difference from
+/// `check` is one argument: an infected build config is stripped, not just
+/// reported.
+fn run_clean(w: &walk::Walk, ind: &Indicators, args: &cli::Args, v: &mut Verdict, sink: &mut Sink) {
+    checks::implants(w, ind, None, &args.ioc, None, v, sink);
+    checks::tasks_json(w, ind, v, sink);
+    checks::build_configs(w, ind, OnInfectedConfig::Strip, v, sink);
+    checks::fonts(w, v, sink);
+    checks::propagation(w, v, sink);
+    checks::packages(w, ind, v);
+    checks::git_hooks(w, ind, None, v, sink);
 }
 
 /// Where a rendering is going. The console gets evidence cut to a readable

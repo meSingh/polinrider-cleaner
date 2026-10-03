@@ -12,6 +12,7 @@ pub mod host_checks;
 pub mod indicators;
 pub mod quarantine;
 pub mod sha256;
+pub mod strip;
 pub mod verdict;
 pub mod walk;
 
