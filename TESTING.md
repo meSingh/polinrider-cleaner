@@ -1,74 +1,76 @@
-# Testing the 2.0 beta on a real machine
+# Testing the 2.0 beta
 
-For the three-machine test before 2.0 is released. This is the `v2` branch: a
-beta, built and tested in a container so far, and never run on a real machine
-until now. That is what this test is for.
+For the three-machine test before 2.0 is released.
 
-**For the first pass, only dry runs on your real code.** Do not pass `--apply`
-and do not type `yes` in the guided flow except on the sample in step 4. A dry
-run reads and changes nothing.
+**The beta is never run on the machine itself. Not installed, not on the PATH,
+not a dry run, not `--version`.** This is a tool that moves files and rewrites
+them, and it is a beta. It runs inside the sandbox container, where the home
+directory is the container's own and nothing it does can reach the machine
+underneath. That goes for the maintainer as much as for anybody else.
 
-## 1. Get the binary
+## 1. What each machine needs
 
-**Without building.** Every push to `v2` builds the beta for Linux (x86_64 and
-arm64), macOS (arm64) and Windows (x86_64). Each download is the binary with
-its indicators beside it. With the GitHub CLI signed in:
+Docker and git. Nothing else, and no Rust: the build happens in the container.
 
-```bash
-gh run download --repo meSingh/polinrider-cleaner --name polinrider-beta-linux-x86_64 --dir /tmp/prc-beta
-tar -xzf /tmp/prc-beta/*.tar.gz -C "$HOME"
-"$HOME/polinrider-beta-linux-x86_64/polinrider" --version
-```
+- **macOS:** Docker Desktop, running.
+- **Linux:** the `docker.io` package or Docker Engine.
+- **Windows:** Docker Desktop, and run the commands below from WSL or Git Bash.
+  `polinrider-sandbox` is a bash script.
 
-Change the name for the machine: `polinrider-beta-linux-arm64`,
-`polinrider-beta-macos-arm64` or `polinrider-beta-windows-x86_64`. Without the
-CLI, the same files are under Artifacts on the latest "Beta binaries" run in
-the repository's Actions tab. On Windows, unpack with `tar -xzf` in PowerShell
-and run `polinrider.exe --version`.
-
-`--version` prints the version, the commit it was built from and where it
-found its indicators. If it says the indicators are not usable, stop and
-report that: every scan would be refused.
-
-To have a bare `polinrider` on the PATH, link the binary from a directory that
-is on it, for example
-`ln -s "$HOME/polinrider-beta-linux-x86_64/polinrider" ~/.local/bin/polinrider`.
-The commands below are written for a checkout; with a download or an installed
-copy, use that path or just `polinrider` in place of
-`./target/release/polinrider`.
-
-**Or build it.**
-
-Needs `git` and `rustup`. Nothing else: the binary has no dependencies. The
-repository pins the Rust version and `rustup` fetches it on the first build.
+## 2. Start it
 
 ```bash
 git clone -b v2 https://github.com/meSingh/polinrider-cleaner.git polinrider-v2
 cd polinrider-v2
-cargo build --release --locked
+./polinrider-sandbox --beta
 ```
 
-The binary is `target/release/polinrider` (`target\release\polinrider.exe` on
-Windows). Run it from inside the checkout, so it finds the indicators in `ioc/`.
+The first run builds the container image and takes a few minutes. After that
+it is seconds. It builds the beta, installs it inside the container the way an
+end user would have it, builds a sample and leaves you at a prompt.
 
-## 2. Check the machine, read only
-
-macOS and Linux. Give it the directories your code is really in:
+## 3. Use it, as a user would
 
 ```bash
-./target/release/polinrider check --report ~/polinrider-report.txt ~/Sites ~/Projects
-echo "exit code: $?"
+polinrider
 ```
 
-Windows. The live checks (processes, sockets, persistence) are not built for
-Windows yet, so it is files only:
+That is the guided flow. It asks what to check, scans, shows what it would
+move or strip, and does it only if you type `yes`. Choose `1` for "this
+computer", which in here is the container, and press Enter to accept
+`~/code`.
 
-```powershell
-.\target\release\polinrider.exe check --fs-only --report report.txt C:\path\to\code
-"exit code: $LASTEXITCODE"
+The sample it finds:
+
+| Where | What |
+|---|---|
+| `~/code/shop` | a project infected five ways |
+| `~/code/blog` | a clean project |
+| `~/.config/systemd/user/sysupdate-helper.service` | an infected login item |
+
+None of it is live malware. Each file carries one indicator string from
+`ioc/`, which is what the scanner matches.
+
+Things worth trying, and what should happen:
+
+1. At the yes or no prompt, press Enter, then type `sure`. It asks again each
+   time and changes nothing.
+2. Type `q` at any prompt. It stops and says nothing further was changed.
+3. Type `yes`. One file is stripped and two are moved. `cat
+   ~/code/shop/postcss.config.mjs` is three clean lines, and
+   `ls ~/polinrider-quarantine-*` holds the originals with a `manifest.tsv`.
+4. `./ci/beta.sh` puts the sample back, to go again.
+
+Without the prompts:
+
+```bash
+polinrider --version              # which build, and where its indicators are
+polinrider check ~/code           # read-only check of the container and that folder
+polinrider clean ~/code/shop      # what it would strip and move. --apply does it
+echo $?                           # the exit code of the last command
 ```
 
-## 3. What the result means
+## 4. What the result means
 
 | Exit | Last lines | Means |
 |---|---|---|
@@ -77,90 +79,76 @@ Windows yet, so it is files only:
 | `2` | A box saying `VERDICT: COMPROMISED` and one or more `[HIT]` lines | A confirmed indicator |
 | `3` | An error on its own, no report | The scan could not run. Says nothing about infection |
 
-**Expect exit 1 on a machine you develop on.** An active git hook, a crontab
-that is not empty, a global `core.hooksPath`, and `node -e` or `python -c`
-processes started by an editor or a coding agent are all `[review]` lines and
-all normal. Part of this test is finding out which of them are noise.
+On the sample, `polinrider check ~/code` exits 2. One `[review]` line is
+expected in the container and is not a fault: `neither ss nor netstat
+available, skipped`, because the image has no socket tool.
 
 Every section should print at least one line. A section heading with nothing
 under it is a bug worth reporting.
 
-## 4. Watch it find and clean something, on a sample
+## 5. Your own code, read-only
 
-This makes one small file holding one indicator string, in a temporary
-directory. It is not malware. Delete the directory afterwards.
-
-```bash
-mkdir -p /tmp/prc-demo/proj
-printf 'export default {}\n%280s%s\n' '' "$(grep -v '^#' ioc/strong.txt | grep -v '^$' | head -1)" > /tmp/prc-demo/proj/postcss.config.mjs
-
-./target/release/polinrider clean /tmp/prc-demo           # dry run: exit 2, "would strip"
-./target/release/polinrider clean --apply /tmp/prc-demo   # strips it, keeps the original
-./target/release/polinrider clean /tmp/prc-demo           # exit 0
-cat /tmp/prc-demo/proj/postcss.config.mjs                 # one line: export default {}
-```
-
-Then the guided flow on the same kind of sample. Recreate the file with the
-`printf` line, run the binary with no arguments, choose `2`, type
-`/tmp/prc-demo`, press Enter on an empty line, and answer the question. Try
-pressing Enter at the yes or no prompt, and try `q`: neither should change the
-file.
+To see what the beta makes of real projects without letting it near them, give
+the sandbox a directory. It is mounted read-only at `/scan`: the beta can read
+it and the kernel will not let it change a byte, whatever the beta does.
 
 ```bash
-./target/release/polinrider
-rm -rf /tmp/prc-demo
+./polinrider-sandbox --beta ~/Sites
+# then, inside:
+polinrider check --fs-only /scan
 ```
 
-On Windows this step has not been tried at all. The same idea in PowerShell:
+`--apply` on `/scan` prints `QUARANTINE FAILED (Read-only file system)` and
+changes nothing there. That is the point.
 
-```powershell
-$ind = (Get-Content ioc\strong.txt | Where-Object { $_ -and -not $_.StartsWith('#') })[0]
-New-Item -ItemType Directory -Force $env:TEMP\prc-demo\proj | Out-Null
-"export default {}`n" + (' ' * 280) + $ind | Set-Content $env:TEMP\prc-demo\proj\postcss.config.mjs
-.\target\release\polinrider.exe clean $env:TEMP\prc-demo
+## 6. What this cannot test, and where that is tested instead
+
+The container is Linux. **The macOS and Windows live checks, which read the
+real machine's processes, sockets and login items, cannot run in it and are
+never run on your machine.** They run on GitHub's own disposable machines: the
+"Beta binaries" workflow builds the beta for Linux, macOS and Windows on every
+push to `v2`, and on each one runs a check of that machine, cleans the sample
+and verifies the original was kept. On macOS it also runs the unit tests and
+the conformance corpus. The `[review]` lines a real macOS machine produces are
+in that run's log.
+
+The same workflow publishes each build as a download, for use inside any other
+disposable container:
+
+```bash
+gh run download --repo meSingh/polinrider-cleaner --name polinrider-beta-linux-x86_64 --dir /tmp/prc-beta
+tar -xzf /tmp/prc-beta/*.tar.gz -C /tmp && /tmp/polinrider-beta-linux-x86_64/polinrider --version
 ```
 
-## 5. Where quarantine lands
+What that leaves untested until somebody chooses to run it on a real machine:
+a real developer's Mac or Windows PC, with years of login items and editor
+extensions, as opposed to a clean runner.
 
-In your home directory, a new directory for every run that applies:
-`~/polinrider-quarantine-<UTC date and time>/`. Inside it:
-
-- `files/` holds each original at its full, resolved path. For the sample
-  above that is `files/tmp/prc-demo/proj/postcss.config.mjs` on Linux and
-  `files/private/tmp/prc-demo/proj/postcss.config.mjs` on macOS, where `/tmp`
-  is a link
-- `manifest.tsv` lists what was taken, from where and why
-- `RESTORE.txt` says how to put a file back
-
-A dry run prints the path it would use and creates nothing. `--quarantine DIR`
-puts it somewhere else. Delete the sample's quarantine directory when you are
-done; a quarantine from a real finding is evidence and is kept.
-
-## 6. What to send back, for each machine
+## 7. What to send back, for each machine
 
 1. The operating system and version, and `uname -sm` where there is one.
-2. Whether the build worked, and roughly how long it took.
-3. The exit code of step 2 and roughly how long the check took.
-4. The findings: `grep -E '\[(HIT|review)\]' ~/polinrider-report.txt`. The report
-   names paths on your machine, so trim what you would not want in a thread.
-5. Step 4: did the three `clean` runs give exit 2, then stripped, then exit 0,
-   and did Enter and `q` leave the file alone in the guided flow.
+2. Whether `./polinrider-sandbox --beta` got you to a prompt, and roughly how
+   long the first run took.
+3. What `polinrider --version` printed.
+4. Step 3: whether Enter, `sure` and `q` left the file alone, and whether
+   `yes` stripped one file and moved two.
+5. If you tried step 5: the exit code, roughly how long it took, and the
+   `[HIT]` and `[review]` lines. They name your paths, so trim what you would
+   not want in a thread.
 6. Anything that looked wrong: a `[review]` line that is plainly noise, a
    `could not read` you did not expect, a section with nothing under it, a
    crash, or a wait long enough to wonder whether it had hung.
 
 ## Known before you start
 
-- **macOS:** the live checks have been built on macOS and never run there. The
-  first real run is yours.
-- **Windows:** type-checks for Windows and has never been built or run on it.
-  `--fs-only` only. A failure to build is a useful result.
 - **Large files are hashed.** Every file between 10 MB and 300 MB under the
-  directories you give is read once to compare against known implant hashes.
-  On a directory full of media or disk images that takes a while, and there is
-  no progress line yet.
+  directories given is read once to compare against known implant hashes. On a
+  directory full of media or disk images that takes a while, and there is no
+  progress line yet.
 - **No GitHub.** This build does not scan or clean a remote. That is ported
   after this test.
 - **"This machine cannot be trusted"** is printed under any `[HIT]`, including
   for a scan of one folder. The wording is carried over from 1.x and is wrong
   for a folder.
+- **Windows through WSL or Git Bash has not been tried.** If
+  `./polinrider-sandbox --beta` does not start there, that is a result.

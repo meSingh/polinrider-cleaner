@@ -4,6 +4,9 @@
 # Runs INSIDE the sandbox (polinrider-sandbox --demo). It needs somewhere writable
 # and somewhere safe, and the container is both.
 #
+#   ./ci/demo.sh              build the sample and scan it with the 1.x tool
+#   ./ci/demo.sh --tree-only  build the sample and stop
+#
 # The fixture carries no payload. It writes a real indicator pulled from ioc/
 # at build time, the same way the conformance corpus does, so this file stays
 # clean in the repository and the demo cannot drift from the indicator set.
@@ -50,6 +53,10 @@ printf '{\n  "name": "shop",\n  "dependencies": { "react": "^18.0.0", "%s": "^1.
 printf 'export const cart = []\n' > "$DEMO/shop/src/cart.js"
 printf 'export default { plugins: {} }\n' > "$DEMO/blog/postcss.config.mjs"
 printf 'wOF2 clean font\n' > "$DEMO/blog/logo.woff2"
+
+# The sample alone, for callers that scan it themselves: ci/beta.sh and the
+# beta build workflow.
+[[ "${1:-}" == "--tree-only" ]] && exit 0
 
 cat <<EOF
 

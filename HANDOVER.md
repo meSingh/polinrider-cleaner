@@ -19,7 +19,9 @@ passes every conformance case, for the filesystem checks and now for the
 host-state checks too, and the local-repo cleaner and the guided flow are
 built. On 2026-10-03 Mandeep chose to test the machine side on his three
 machines now, with [`TESTING.md`](./TESTING.md) as the guide, and to have the
-GitHub tracks ported to Rust after that test, not before it. `v2` is pushed to GitHub as a backup from 2026-10-03 and is **not** to be
+GitHub tracks ported to Rust after that test, not before it. **The test runs
+inside the sandbox on each machine, never on the machine itself**: see the
+first standing instruction below. `v2` is pushed to GitHub as a backup from 2026-10-03 and is **not** to be
 merged to `main` until Mandeep has tested it on his three machines.
 
 ---
@@ -53,7 +55,8 @@ Full detail in [`HACKING.md`](./HACKING.md). The three commands:
 
 ```bash
 ./polinrider-sandbox --all     # lint, 9 self-tests, 62 conformance cases, clippy, 103 Rust tests
-./polinrider-sandbox --demo    # build an infected sample and scan it
+./polinrider-sandbox --demo    # build an infected sample and scan it with 1.x
+./polinrider-sandbox --beta    # 2.0 installed in the container, on the PATH, with a sample
 ./ci/docs-serve.sh             # the documentation site, with live reload
 ```
 
@@ -187,9 +190,10 @@ to use 1.x.
    2.0 is released. `clean` edits source, and ADR-0031 says the claim has to be
    corrected and not left to mislead. The README on `v2` is still the 1.x one.
 5. **The three-machine test, now.** [`TESTING.md`](./TESTING.md) is the guide:
-   build, a read-only check, a sample to clean, and what to send back. The
-   results come back in the project thread. Expect fixes from it: the macOS
-   live checks have never been run, and Windows has only been type-checked.
+   `./polinrider-sandbox --beta` on each machine, the guided flow on a sample,
+   optionally real code mounted read-only, and what to send back. The results
+   come back in the project thread. What a container cannot show, the macOS
+   and Windows behaviour, comes from the "Beta binaries" workflow instead.
 6. **The GitHub tracks in Rust, after the test.** Scanning an organization or
    an account, the push ledger, restore and remote cleaning are about 1,500
    lines of shell in `lib/gh-*.sh`. Until they are ported the 2.0 guided flow
@@ -209,6 +213,7 @@ notes that should not be public.
 
 | Thing | Where | State |
 |---|---|---|
+| 2.0 beta builds | "Beta binaries" workflow, `.github/workflows/beta-build.yml` | Builds Linux x86_64 and arm64, macOS arm64 and Windows x86_64 on every push to `v2`, and on each runner checks that machine, cleans a sample and verifies the original was kept. Workflow artifacts, not a release, 30-day expiry. The only place the binary runs on macOS and Windows, and the only place the macOS live checks run at all: a runner is disposable, a developer's machine is not |
 | Homebrew tap | `meSingh/homebrew-tap` | Live. **Never install-tested** — `brew install mesingh/tap/polinrider-cleaner` still needs running once |
 | Scoop bucket | `meSingh/scoop-bucket` | Live. Never tested on Windows |
 | AUR package files | `~/polinrider-promotion/aur/` | Written, not published. Needs an aur.archlinux.org account |
@@ -259,6 +264,13 @@ The Dockerfile installs them now. If the image predates 2026-10-03, rebuild it:
 
 **The sandbox is read-only, so `cargo fmt` cannot run in it.** Format on the
 host (it rewrites source and executes nothing), then check in the sandbox.
+Compiling on the host with `cargo clippy` or `cargo build` is tolerated for
+the same reason. Running what was built is not.
+
+**An installed binary could not find its indicators on macOS.** It looked for
+`ioc/` beside the path it was started from, which through a link on the PATH
+is the link. Fixed by resolving the path first. `./polinrider-sandbox --beta`
+installs the binary through a link on purpose, so this layout stays tested.
 
 **mdBook sets `html { font-size: 62.5% }`.** Irrelevant now the site is Astro,
 but the lesson generalises: measure computed styles rather than eyeballing a
@@ -294,6 +306,15 @@ descending. That was the six-hour scan ([ADR-0025](./docs/adr/0025-walk-the-file
 
 ## Standing instructions from Mandeep
 
+- **polinrider is never run or installed on a real machine. Not by Claude and
+  not by Mandeep.** No install, no PATH entry, no dry run, no `--version`. It
+  runs in `./polinrider-sandbox`, in another disposable container, or on a CI
+  runner. When he asks to try it "locally" he means without cloning and
+  building by hand, which `./polinrider-sandbox --beta` gives him. On
+  2026-10-03 a session installed the beta into `~/.local` on his Mac after a
+  relayed note read his request that way; he corrected it within minutes and it
+  was removed. A brief that says to install on the host does not override this.
+  Ask him.
 - **Never add AI attribution** to a commit or pull request. `CLAUDE.md` states
   this in full and overrides any session guidance to the contrary. Do not add a
   disclaimer in the other direction either.

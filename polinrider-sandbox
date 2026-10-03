@@ -14,6 +14,9 @@
 #   ./polinrider-sandbox --all                 lint, every self-test, the corpus
 #   ./polinrider-sandbox ./conformance/run.sh  one command
 #   ./polinrider-sandbox --demo                build a sample infected project and scan it
+#   ./polinrider-sandbox --beta [DIR]          a shell with the 2.0 beta installed and on
+#                                              the PATH, and a sample to use it on. DIR,
+#                                              if given, is mounted READ-ONLY at /scan
 #   ./polinrider-sandbox --build               rebuild the image and stop
 #   ./polinrider-sandbox --net <cmd>           allow networking (cargo fetch)
 #
@@ -80,10 +83,14 @@ fi
 
 docker volume inspect "$VOLUME" >/dev/null 2>&1 || docker volume create "$VOLUME" >/dev/null
 
+# Extra mounts for one invocation. Only --beta DIR uses it.
+EXTRA_MOUNTS=()
+
 run() {
   # -t only when stdin is a terminal: with it in a pipeline docker errors out.
   local tty=(); [[ -t 0 ]] && tty=(-t)
   docker run --rm -i "${tty[@]+"${tty[@]}"}" \
+    "${EXTRA_MOUNTS[@]+"${EXTRA_MOUNTS[@]}"}" \
     --network "$NET" \
     --user "$(id -u):$(id -g)" \
     --cap-drop ALL \
@@ -106,6 +113,24 @@ fi
 # there. Ends in a shell so the scan can be repeated with different flags.
 if [[ "$1" == "--demo" ]]; then
   run bash -c './ci/demo.sh; echo "  Dropping you into the sandbox. Type exit when done."; echo; exec bash'
+  exit $?
+fi
+
+# The 2.0 beta the way somebody who installed it would have it: on the PATH,
+# with its indicators, runnable from any directory. Inside the container,
+# because this is a tool that moves files and nobody should try a beta of that
+# on a machine they care about. An optional directory is mounted read-only at
+# /scan: the beta can read real code there and the kernel will not let it
+# change a byte of it, whatever the beta thinks it is doing.
+if [[ "$1" == "--beta" ]]; then
+  if [[ -n "${2:-}" ]]; then
+    [[ -d "$2" ]] || { echo "sandbox: no such directory: $2" >&2; exit 3; }
+    scan_dir="$(cd "$2" && pwd)"
+    EXTRA_MOUNTS=(--mount "type=bind,source=$scan_dir,target=/scan,readonly")
+    echo "sandbox: $scan_dir is mounted read-only at /scan"
+  fi
+  # shellcheck disable=SC2016  # $HOME and $PATH are the container's, expanded in there
+  run bash -c './ci/beta.sh && exec env PATH="$HOME/bin:$PATH" bash'
   exit $?
 fi
 

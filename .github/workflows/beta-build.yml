@@ -5,7 +5,10 @@ name: Beta binaries
 # not a release: they are not announced, not attested, and they expire.
 #
 # It is also the only place the binary is built and run on macOS and Windows.
-# The sandbox is Linux, and ci.yml builds on Linux only.
+# The sandbox is Linux, and ci.yml builds on Linux only. And it is the only
+# place the live checks run against a real macOS: a runner is a machine nobody
+# minds a file-moving tool being let loose on, which the maintainer's own is
+# not. Nothing is ever run on a developer's host. See TESTING.md.
 
 on:
   push:
@@ -67,6 +70,47 @@ jobs:
           cd "${RUNNER_TEMP}"
           "$bin" --version | tee version.txt
           grep -q 'strong' version.txt
+
+      - name: Find, strip and quarantine on this machine
+        # The runner is the disposable machine. The sample is the one the
+        # sandbox demo uses. On Windows the live checks are not built, so the
+        # check is of the files only; everywhere else it is a full check of
+        # the runner itself, and its [review] lines are printed because they
+        # are the first look at what a real machine of that kind produces.
+        run: |
+          bin="$PWD/dist/polinrider-beta-${{ matrix.name }}/${{ matrix.exe }}"
+          strong="$(sed -e '/^#/d' -e '/^$/d' ioc/strong.txt | head -1)"
+          export DEMO_DIR="${RUNNER_TEMP}/prc-demo"
+          ./ci/demo.sh --tree-only
+          cd "${RUNNER_TEMP}"
+
+          fs_only=""
+          [[ "${RUNNER_OS}" == "Windows" ]] && fs_only="--fs-only"
+          rc=0
+          # shellcheck disable=SC2086  # empty or one flag, on purpose
+          "$bin" check $fs_only --report check.txt "$DEMO_DIR" >/dev/null || rc=$?
+          grep -E '\[(HIT|review)\]|could not' check.txt || true
+          [[ $rc -eq 2 ]] || { echo "an infected sample must exit 2, got $rc"; exit 1; }
+
+          rc=0
+          "$bin" clean --apply --quarantine "${RUNNER_TEMP}/q" --report clean.txt "$DEMO_DIR/shop" >/dev/null || rc=$?
+          grep -E 'stripped|original kept|quarantined ->|FAILED' clean.txt || true
+          [[ $rc -eq 2 ]] || { echo "clean of an infected sample must exit 2, got $rc"; exit 1; }
+          if grep -qF "$strong" "$DEMO_DIR/shop/postcss.config.mjs"; then
+            echo "the payload is still in the config after clean --apply"; exit 1
+          fi
+          grep -q 'plugins' "$DEMO_DIR/shop/postcss.config.mjs" \
+            || { echo "the config lost its own contents"; exit 1; }
+          # The original must be in quarantine, with the payload, and must not
+          # be the file in the tree. On Windows this once came out as the
+          # same path.
+          kept="$(find q/files -name postcss.config.mjs | head -1)"
+          [[ -n "$kept" ]] || { echo "the original was not kept in quarantine"; exit 1; }
+          grep -qF "$strong" "$kept" || { echo "the copy in quarantine is not the infected original"; exit 1; }
+          [[ ! -e "$DEMO_DIR/shop/public/inter-var.woff2" ]] || { echo "the fake font was not moved"; exit 1; }
+          [[ -n "$(find q/files -name inter-var.woff2)" ]] || { echo "the fake font is not in quarantine"; exit 1; }
+          [[ -f q/manifest.tsv ]] || { echo "no quarantine manifest"; exit 1; }
+          echo "found, stripped and quarantined; originals kept"
 
       - name: Upload
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
