@@ -25,6 +25,7 @@ Newest first.
 
 | Date | Outcome | What it found |
 |---|---|---|
+| [2026-10-05](2026-10-05.md) | 83 indicators added | A second analyst team decoded the Ethereum dead drop end to end: two operator wallets, eleven C2 servers, 35 live repositories. It also showed that the `0xa322` wallet address in `strong.txt` has been in the wrong case since it was added, and settled the XOR-key boundary the 2026-09-28 entry could not. 55 package names lifted from the OpenSSF malicious-packages database, which turns out to be readable from here, five rejected as substrings of live packages. First current-variant font indicator. Two self-tests that failed for four weeks now pass |
 | [2026-09-28](2026-09-28.md) | 11 indicators added | The campaign is A/B testing three fake-font variants at once. Added the single-quoted `A8` marker, two XOR keys, the `.gitignore` machine fingerprint and `allowAutomaticTasks`. Reversed last week's rejection of the C2 paths: this build leaves them in plain text. The font indicators are a variant behind and cannot catch up as fixed strings. |
 | [2026-09-21](2026-09-21.md) | 8 indicators added | The `A8-` campaign marker, five Ethereum RPC resolvers and two NullReceiver C2 addresses read off the chain. CloudSEK's GHAPPIER report rejected as a separate loader family sharing victims, not infrastructure. Found one PolinRider post the previous week's sweep missed. |
 | [2026-09-14](2026-09-14.md) | 19 indicators added | The egress block on the analysis hosts lifted. Drained a backlog: the ChainVeil and ViteVenom npm clusters, the NullReceiver marker, wallet and C2. Three known-malicious names rejected as substrings of real packages. npm-CLI persistence found, not implemented. |
@@ -38,6 +39,9 @@ Newest first.
 | [opensourcemalware.com blog](https://opensourcemalware.com/blog) | the team's running coverage | yes, since 2026-09-14. Fetch a **post path** — the bare domain and `/blog/rss.xml` return an empty single-page-app shell, though `/blog` itself now server-renders the full post index. Enumerate every slug containing `polinrider` and check it off; following the posts a previous entry named misses the ones it missed |
 | Web search | anything published in the last seven days, searched under the campaign name and under `MicrosoftSystem64` and `ForceMemo`, where new analysis often lands first | yes |
 | [socket.dev tracker](https://socket.dev/supply-chain-attacks/polinrider) | current package counts | no, and it refuses automated fetches regardless |
+| [safedep.io](https://safedep.io/) | the second team publishing primary teardowns of this campaign. Its article pages embed the indicator table verbatim in a `data-csv` attribute, which is a better source than the rendered HTML | yes, since first tested 2026-10-05. Needs `curl -L`: the un-slashed URL returns 308 |
+| [OpenSSF `malicious-packages`](https://github.com/ossf/malicious-packages) | the machine-readable malicious-package database. Searching it for indicators already in `ioc/` finds the registry side of the campaign | yes, by git clone. Expect ~2 GB checked out, and do **not** use `--filter=blob:none` |
+| [registry.npmjs.org](https://registry.npmjs.org/) and [pypi.org](https://pypi.org/) | not sources of indicators — the way to check one. A name going into `bad-packages.txt` must not be a substring of a live package, and these answer that mechanically | yes, since first tested 2026-10-05, including the full `pypi.org/simple/` index |
 
 The blocked hosts are a property of the sandbox the weekly job runs in, not of
 the sources. Their content still reaches a review through search summaries,
@@ -48,8 +52,10 @@ As of 2026-09-14 the sandbox's egress allowlist has widened, and most of those
 hosts — `opensourcemalware.com`, `checkmarx.com`, `stepsecurity.io`,
 `securityonline.info`, `thehackernews.com` — now serve full content. `socket.dev`
 still does not, and that one is a policy of the site rather than of the sandbox.
+`medium.com` does not either, which cost the 2026-10-05 review a SlowMist report.
 Re-check reachability every week regardless of what this table says; it has
-changed once and can change back.
+changed once and can change back — and test hosts the table does not list, which
+is how three of the rows above were found.
 
 ## What a review looks for
 
