@@ -64,3 +64,83 @@ A10-npm3!
 # Source: OpenSourceMalware, "NPM Isn't Prepared For North Korean PolinRider
 # Attack", August 2026.
 global.i="A8-
+
+# The A8 marker again, in the other quote style. The entry above was taken from
+# a sample written global.i="A8-3292-1". The September 2026 fake-font build
+# opens its payload with global.i = 'A8'; -- single quotes, spaces around the
+# '=' -- so the double-quoted prefix does not match it, and a build in a second
+# repository carries the related marker A8-n*. Carried as its own prefix rather
+# than by relaxing the other entry, because ioc/ is matched as fixed strings and
+# cannot express "either quote".
+# Source: OpenSourceMalware, "PolinRider is A/B Testing its Way Past Your
+# Detections", September 2026.
+global.i = 'A8
+
+# The two XOR keys in the string table of the 500-variant fake-font payload,
+# readable without deobfuscating the file. The second is carried as the
+# whitespace-free tail of the published key: the source prints it inside a
+# pre-formatted table as Sr3=@   y-p_>d$0B&@^1aQk, and the run of spaces cannot
+# be distinguished from column alignment, so the part that can be established
+# byte for byte is what is matched.
+# Source: OpenSourceMalware, "PolinRider is A/B Testing its Way Past Your
+# Detections", September 2026.
+q4FZkxX{!h
+y-p_>d$0B&@^1aQk
+
+# The Ethereum dead-drop branch, from the 0x33ff operator wallet: the same
+# technique as NullReceiver above -- the C2 address is read out of the recipient
+# field of a heartbeat transaction -- but a different wallet, a different
+# obfuscator and a different marker letter. The 32-hex string is the sender
+# check the loader embeds verbatim (`var r = '33ff3eda...'`), and it is
+# deliberately the truncated form: it also matches the full operator address
+# 0x33ff3edaf55a8e03dcbc7cb40d498a49cd499891 and the `X:` request header, which
+# the full address would not. `_$_fed0` is the string-table name of this build,
+# the same shape as `_$_1e42` above. `global.o='5-` is the campaign-marker
+# assignment with the counter dropped; the published markers are 5-841-du,
+# 5-1169-du and 5-1460-du. Nothing legitimate assigns a "5-" string to global.o.
+# Source: SafeDep, "PolinRider Switches to Ethereum C2 in 30+ Repositories",
+# September 2026.
+33ff3edaf55a8e03dcbc7cb40d498a49
+_$_fed0
+global.o='5-
+YU7m{rE/>|==b>#~
+
+# The second operator wallet again, in the checksummed mixed case the loader
+# actually embeds. `ioc/` is matched with grep -F and no -i, so the lowercase
+# entry earlier in this file does not match an infected file: the source prints
+# the literal as '0xa322E5f3D311D3080e6f0121063e9aDC2490Ef1a'.toLowerCase(),
+# and the OpenSSF record for `pybitjs` cites the same casing. Both forms are
+# carried; neither subsumes the other.
+# Source: as above. See docs/indicator-reviews/2026-10-05.md.
+0xa322E5f3D311D3080e6f0121063e9aDC2490Ef1a
+
+# The Tron and Aptos dead drops of the paired "1-NN-1" loader -- a second
+# loader file written into the same project beside the Ethereum one. The source
+# reports finding none of these four addresses in any earlier public report.
+# Source: as above.
+TCqf6ZkaQD84vYsC2cuu1jRwB6JveTaRrF
+TFMryB9m6d4kBMRjEVyFRbqKSV1cV2NcpH
+0x3d2075f97b7b1e3234bd653779d21c605d7d8c6ec9c98d983880be5c7f4f9471
+0x9d202c824402ca89e9aaccd2390b6f8b332ae743caa1469c695feb2781d56519
+
+# The first XOR key of the 0xa322 branch, complete. The 2026-09-28 entry read
+# OpenSourceMalware's column-aligned table `q4FZkxX{!h,Sr3=@   y-p_>d$0B&@^1aQk`
+# as two keys separated by that comma, and carried `q4FZkxX{!h` -- the part it
+# could establish byte for byte -- for the first. This source prints the pair as
+# two arguments in source code, rl(..., 'q4FZkxX{!h,Sr3=@', !1) and
+# rl(..., 'y-p_>d$0B&@^1aQk', !0), so the comma is inside the first key and both
+# keys are sixteen characters. The shorter entry above is a prefix of this one
+# and is kept rather than replaced: it still matches, and it covers a build that
+# reuses only the first half.
+# Source: as above. See docs/indicator-reviews/2026-10-05.md.
+q4FZkxX{!h,Sr3=@
+
+# Second-stage loader staging on GitLab. The account name is the indicator and
+# the project is attacker-owned, in the same way as the two GitHub
+# `system-releases` accounts above.
+# Source: Deception.Pro, "[Op Report] Hands-on-Keyboard Activity from the DPRK
+# PolinRider Supply Chain Attack", September 2026. Carried because that report
+# is corroborated twice over: its loader C2 23.27.13.135 is independently
+# confirmed by SafeDep as the 0xa322 C2 for 2026-08-22 to 2026-08-27, and the
+# OpenSSF record for `pybitjs` cites the report as a reference.
+test26330331/test
