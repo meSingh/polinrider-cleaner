@@ -36,10 +36,17 @@ node-env-resolve
 #   registry, and 1.2.14 was the latest dist-tag: pin to <= 1.2.8 or remove.
 #   Sources: OpenSourceMalware, "NPM Isn't Prepared For North Korean
 #   PolinRider Attack", August 2026; JFrog Security Research, June 2026.
-#     fetch-page-assets            1.2.9 through 1.2.14
-#     html-to-gutenberg            4.2.11
+#     fetch-page-assets            1.2.9 through 1.2.16
+#     html-to-gutenberg            4.2.11 through 4.2.22
 #     @lambda-platform/lambda-vue  3.3.24 (pulled from npm; the GitHub
 #                                  repository that builds it is still infected)
+#   Both version ranges above are wider than the August source reported, and
+#   both have since been cleaned up: on 2026-10-05 the npm dist-tags are
+#   fetch-page-assets 1.2.8 and html-to-gutenberg 4.2.10, so the registry has
+#   rolled each back behind the first malicious release. The ranges come from
+#   the OpenSSF malicious-packages records MAL-2026-6358 and MAL-2026-6359,
+#   which list every affected version; the dist-tags were read from
+#   registry.npmjs.org the same day.
 #
 #   Packagist packages compromised through their backing GitHub repositories in
 #   the July 2026 expansion. Packagist resolves from the git repo, so the tagged
@@ -92,3 +99,126 @@ rate-limits-flexible
 # Challenges of EtherHiding", August 2026.
 bianira-ui
 fluid-type-ui
+
+# --- the registry side of the Ethereum dead-drop branch. SafeDep reported that
+# the OpenSSF malicious-packages database holds ~70 records whose payload
+# carries either the 0xa322 operator wallet or the /0x/cls request path -- both
+# already in strong.txt and weak.txt. That database is a public git repository,
+# so it was cloned and searched directly: 71 records match, 69 npm and 2 PyPI,
+# published between 2026-06-24 and 2026-10-04. Each record attributes the find
+# to a named reporter (Amazon Inspector, GitHub Security Advisories, or
+# kam193's bad-packages feed), and the kam193 record for `pybitjs` states the
+# attribution in as many words: "consistent with campaigns attributed to
+# Lazarus APT/PolinRider".
+#
+# These are attacker-owned names: every one has had its whole version history
+# removed from the registry, which is what npm does to a package it treats as
+# wholly malicious rather than hijacked. That was checked per name against
+# registry.npmjs.org and pypi.org -- `latest` is either absent (fully
+# unpublished) or the `0.0.1-security` placeholder. The hijacked packages in the
+# same result set are below, as comments, because for those the name alone is
+# not a finding.
+#
+# Each name was also checked against the live registries for the substring trap
+# this file's format carries: `grep -F` on a name that is a prefix of a real
+# package reports every project that depends on the real one. Five names from
+# the same result set are therefore NOT here; see the block after this one.
+# Sources: OpenSSF malicious-packages <https://github.com/ossf/malicious-packages>
+# at commit ae1ef409, read 2026-10-05; SafeDep, "PolinRider Switches to
+# Ethereum C2 in 30+ Repositories", September 2026.
+# See docs/indicator-reviews/2026-10-05.md.
+@hoteldev/common
+@nasddatax/common
+@nasdtickets/common
+@rentwise/common
+@simplipayng/checkout
+@vboxdev/common
+@wizloft/harness
+@wizloft/harness-context
+@wizloft/harness-kernel
+@wizloft/harness-plugin-repository-files
+@wizloft/harness-validation
+@zahlen/checkout-angular
+@zahlen/checkout-react
+anhn-cli
+devpack-conf
+envpack-conf
+iconova-react
+post-css-transfer
+postcss-initial-provider
+postcss-initialize-plugin
+postcss-theme-provider
+react-scroll-disable
+scrollbar-hide-plugin
+simplipayng
+tailwind-animate-plugin
+tailwind-animationgroup
+tailwind-animationpack
+tailwind-anime
+tailwind-contact-forms
+tailwind-custom-forms
+tailwind-custom-templates
+tailwind-form-styles
+tailwind-form-templates
+tailwind-forms-kit
+tailwind-forms-styles
+tailwind-hide-scrollbar
+tailwind-minanimated
+tailwind-modernanimation
+tailwind-opentype
+tailwind-scrollbar-styles
+tailwindcss-3d-animate
+tailwindcss-animate-styles
+tailwindcss-contact-form
+tailwindcss-contact-forms
+tailwindcss-fluid-styles
+tailwindcss-form-ui
+tailwindcss-form-utils
+tailwindcss-forms-style
+tailwindcss-forms-styles
+tailwindcss-forms-ui
+tailwindcss-motion-advanced
+tailwindcss-scrollbar-hide
+uibabai
+# PyPI. Both names are gone from PyPI and neither is a substring of anything in
+# the live simple index, which was downloaded and searched to confirm it.
+pybitjs
+pyservercheck
+#
+# Five names from the same 71 records are deliberately NOT above. Each is a
+# strict substring of a live, maintained package, and this file is matched with
+# grep -F, so carrying one would report every project that depends on the real
+# package as INFECTED. The real packages were fetched from the registry to
+# confirm they are live and maintained, not placeholders:
+#   tailwind-anim               is inside  tailwind-animate (19 versions, live)
+#                                     and  tailwind-animations
+#   tailwindcss-anim            is inside  tailwindcss-animate (the popular one)
+#                                     and  tailwindcss-animated, -animatecss
+#   tailwind-container-queries  is inside  tailwind-container-queries-2d
+#   webdev-conf                 is inside  @webdev-config/eslint
+#   tailwindcss-form            is inside  tailwindcss-forms, and is a prefix of
+#                                          three malicious names already above
+# This is the same trap as sass-format, typeorm-encrypt and clsx-tailwind,
+# recorded in docs/indicator-reviews/2026-09-14.md. Matching any of the five
+# needs a whole-name check against a parsed manifest, not a fixed string.
+#
+# Hijacked packages from the same 71 records: legitimate projects whose
+# maintainer account was taken over, so only the listed versions carry the
+# payload and the name on its own is not a finding. Check the version in your
+# lockfile. Three of them were still live on npm on 2026-10-05, with the
+# malicious version removed and a later clean release published.
+#   @kolbo/mcp             1.57.1   (265 versions, latest 1.107.2, live)
+#   @syncraft-labs/core    0.4.1    (latest 0.6.0, live)
+#   @syncraft-labs/react   0.4.1    (latest 0.6.0, live)
+#   @syncraft-labs/vue     0.4.1    (latest 0.6.0, live)
+#   fsbrowse               0.2.28   (latest rolled back to 0.2.27)
+#   godot-kit              1.0.1786316795 (latest rolled back to 1.0.1783372048)
+#   zenntechinc-cli        1.6.4, 1.6.6   (latest rolled back to 1.5.0)
+#   visanduma/nova-two-factor  Packagist, branches dev-main, dev-nova4support,
+#                              dev-nova5 and dev-using-inertia; the Visanduma
+#                              GitHub organization was compromised in June 2026
+#                              and Socket found the payload on 2026-09-17. The
+#                              primary reports (Socket, SlowMist) are not
+#                              reachable from the review sandbox; this line
+#                              comes from mallory.ai's aggregation of them and
+#                              is recorded as a comment for that reason.

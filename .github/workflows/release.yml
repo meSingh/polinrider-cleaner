@@ -1,6 +1,7 @@
-# Cuts a release from a signed tag: a source archive, its SHA-256 checksum, and
-# a build-provenance attestation proving the archive was produced by this
-# workflow, from this repository, at that commit.
+# Cuts a release from a signed tag: the polinrider binary for each platform,
+# each with its indicators beside it, a source archive, one SHA-256 file over
+# all of them, and a build-provenance attestation proving every archive was
+# produced by this workflow, from this repository, at that commit.
 #
 # The point of this repository is recovering from tampered code. Publishing a
 # release nobody can verify would be inconsistent with that.
@@ -19,12 +20,149 @@ permissions:
   contents: read
 
 jobs:
+  check:
+    name: Tag, tests and corpus
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - name: Check out the tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+          persist-credentials: false
+
+      # The tag reaches the shell through the environment, never through
+      # expression interpolation. `run: TAG="${{ inputs.tag }}"` would let anyone
+      # who can dispatch this workflow execute arbitrary commands in a job that
+      # later holds contents:write and attestation signing rights.
+      - name: The tag names the version being built
+        id: tag
+        env:
+          INPUT_TAG: ${{ github.event.inputs.tag }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          TAG="${INPUT_TAG:-$REF_NAME}"
+          case "$TAG" in
+            v[0-9]*) ;;
+            *) echo "refusing to release from a tag that is not vN...: $TAG" >&2; exit 1 ;;
+          esac
+          VERSION="$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -1)"
+          if [[ "v${VERSION}" != "$TAG" ]]; then
+            echo "tag $TAG does not match Cargo.toml version $VERSION" >&2
+            exit 1
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Rust toolchain
+        run: rustup toolchain install --profile minimal --component rustfmt,clippy 1.98.1
+
+      - name: Format, lint, unit tests
+        run: |
+          cargo fmt --check
+          cargo clippy --locked --all-targets -- -D warnings
+          cargo test --locked
+
+      - name: The conformance corpus
+        run: |
+          cargo build --locked --release
+          ./conformance/run.sh
+
+  build:
+    name: Build ${{ matrix.name }}
+    needs: check
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      # A release ships every platform or none, so one failing stops the
+      # release job below. fail-fast off so the log shows all of them.
+      fail-fast: false
+      matrix:
+        include:
+          - { name: linux-x86_64,   os: ubuntu-latest,    target: x86_64-unknown-linux-gnu,  exe: polinrider }
+          - { name: linux-arm64,    os: ubuntu-24.04-arm, target: aarch64-unknown-linux-gnu, exe: polinrider }
+          - { name: macos-arm64,    os: macos-latest,     target: aarch64-apple-darwin,      exe: polinrider }
+          - { name: macos-x86_64,   os: macos-latest,     target: x86_64-apple-darwin,       exe: polinrider }
+          - { name: windows-x86_64, os: windows-latest,   target: x86_64-pc-windows-msvc,    exe: polinrider.exe }
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+          persist-credentials: false
+
+      - name: Rust toolchain
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          rustup toolchain install --profile minimal 1.98.1
+          rustup target add --toolchain 1.98.1 "$TARGET"
+
+      - name: Build
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          # The commit goes into --version, so an installed binary can say
+          # exactly which build it is.
+          POLINRIDER_COMMIT="${GITHUB_SHA::7}" cargo build --locked --release --target "$TARGET"
+
+      - name: Package
+        # The binary with its indicators beside it, which is where it looks
+        # for them, plus the licence and the disclaimer. A tar archive on every
+        # platform: it keeps the executable bit, and Windows 10 and later ship
+        # tar.exe.
+        env:
+          TAG: ${{ needs.check.outputs.tag }}
+          NAME: ${{ matrix.name }}
+          TARGET: ${{ matrix.target }}
+          EXE: ${{ matrix.exe }}
+        run: |
+          dir="polinrider-${TAG}-${NAME}"
+          mkdir -p "dist/$dir"
+          cp "target/${TARGET}/release/${EXE}" "dist/$dir/"
+          cp -R ioc "dist/$dir/ioc"
+          cp LICENSE DISCLAIMER.md "dist/$dir/"
+          tar -C dist -czf "dist/$dir.tar.gz" "$dir"
+
+      - name: The packaged binary runs and finds its indicators
+        # From another directory, as an installed copy is run. A binary that
+        # cannot find its indicators refuses every scan. The Intel macOS build
+        # runs under Rosetta on an arm64 runner.
+        env:
+          TAG: ${{ needs.check.outputs.tag }}
+          NAME: ${{ matrix.name }}
+          EXE: ${{ matrix.exe }}
+        run: |
+          if [[ "$NAME" == macos-x86_64 ]]; then
+            /usr/bin/pgrep -q oahd || softwareupdate --install-rosetta --agree-to-license
+          fi
+          bin="$PWD/dist/polinrider-${TAG}-${NAME}/${EXE}"
+          cd "${RUNNER_TEMP}"
+          "$bin" --version | tee version.txt
+          grep -q "${TAG#v}" version.txt || { echo "the binary does not report $TAG"; exit 1; }
+          if grep -q 'NOT USABLE' version.txt; then
+            echo "the binary cannot use its indicators"; exit 1
+          fi
+
+      - name: Upload
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: polinrider-${{ matrix.name }}
+          path: dist/polinrider-${{ needs.check.outputs.tag }}-${{ matrix.name }}.tar.gz
+          retention-days: 7
+          if-no-files-found: error
+
   release:
-    name: Build, attest and publish
+    name: Attest and publish
+    needs: [check, build]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: write      # create the release
+      actions: read        # download this run's binaries
       id-token: write      # sign the attestation
       attestations: write  # record the attestation
     steps:
@@ -35,75 +173,57 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Verify the tests pass at this tag
-        run: |
-          ./ci/selftest.sh
-          ./ci/selftest-restore.sh
-
-      # The tag reaches the shell through the environment, never through
-      # expression interpolation. `run: TAG="${{ inputs.tag }}"` would let anyone
-      # who can dispatch this workflow execute arbitrary commands in a job that
-      # holds contents:write and attestation signing rights.
-      - name: Build the archive
-        id: build
+      # Through gh, which the runner already has, rather than one more
+      # third-party action holding this job's token.
+      - name: Collect the binaries
         env:
-          INPUT_TAG: ${{ github.event.inputs.tag }}
-          REF_NAME: ${{ github.ref_name }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="${INPUT_TAG:-$REF_NAME}"
-          case "$TAG" in
-            v[0-9]*) ;;
-            *) echo "refusing to release from a tag that is not vN...: $TAG" >&2; exit 1 ;;
-          esac
-          NAME="polinrider-cleaner-${TAG}"
+          gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --dir artifacts --pattern 'polinrider-*'
           mkdir -p dist
-          git archive --format=tar.gz --prefix="${NAME}/" -o "dist/${NAME}.tar.gz" HEAD
-          # A second copy under a fixed name, so
-          # releases/latest/download/polinrider-cleaner.tar.gz is a URL that
-          # keeps working without anyone having to look up a version first.
-          cp "dist/${NAME}.tar.gz" dist/polinrider-cleaner.tar.gz
+          find artifacts -name 'polinrider-*.tar.gz' -exec mv {} dist/ \;
+
+      - name: Source archive and checksums
+        env:
+          TAG: ${{ needs.check.outputs.tag }}
+        run: |
+          git archive --format=tar.gz --prefix="polinrider-${TAG}-source/" \
+            -o "dist/polinrider-${TAG}-source.tar.gz" HEAD
           cd dist
-          sha256sum "${NAME}.tar.gz" polinrider-cleaner.tar.gz > SHA256SUMS
+          ls -l
+          [[ "$(ls polinrider-"${TAG}"-*.tar.gz | wc -l)" -eq 6 ]] \
+            || { echo "expected five binaries and the source, got:"; ls; exit 1; }
+          sha256sum polinrider-"${TAG}"-*.tar.gz > SHA256SUMS
           cat SHA256SUMS
-          echo "name=${NAME}" >> "$GITHUB_OUTPUT"
-          echo "tag=${TAG}"   >> "$GITHUB_OUTPUT"
 
       - name: Attest build provenance
         id: attest
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
-          subject-path: dist/${{ steps.build.outputs.name }}.tar.gz
-          # The fixed-name copy is byte-identical, so one attestation covers both.
+          subject-path: dist/polinrider-*.tar.gz
 
       # `gh attestation verify` reads the attestation from GitHub's API, which
       # means it needs network access and it means anything scanning the release
       # assets cannot see that the release is signed at all. Attaching the
       # sigstore bundle fixes both: it can be verified offline with
       # `--bundle`, and it is visible to tooling that inspects release assets.
-      - name: Attach the provenance bundle to the artifacts
+      - name: Attach the provenance bundle
         env:
           BUNDLE: ${{ steps.attest.outputs.bundle-path }}
-          NAME: ${{ steps.build.outputs.name }}
+          TAG: ${{ needs.check.outputs.tag }}
         run: |
-          cp "$BUNDLE" "dist/${NAME}.tar.gz.intoto.jsonl"
-          cp "$BUNDLE" dist/polinrider-cleaner.tar.gz.intoto.jsonl
+          cp "$BUNDLE" "dist/polinrider-${TAG}.intoto.jsonl"
           cd dist
-          sha256sum "${NAME}.tar.gz.intoto.jsonl" polinrider-cleaner.tar.gz.intoto.jsonl >> SHA256SUMS
-          cat SHA256SUMS
+          sha256sum "polinrider-${TAG}.intoto.jsonl" >> SHA256SUMS
 
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ steps.build.outputs.tag }}
-          NAME: ${{ steps.build.outputs.name }}
+          TAG: ${{ needs.check.outputs.tag }}
         run: |
           sed "s/__TAG__/${TAG}/g" .github/release-notes.md > notes.md
-          gh release create "$TAG" \
-            "dist/${NAME}.tar.gz" \
-            "dist/${NAME}.tar.gz.intoto.jsonl" \
-            dist/polinrider-cleaner.tar.gz \
-            dist/polinrider-cleaner.tar.gz.intoto.jsonl \
-            dist/SHA256SUMS \
+          gh release create "$TAG" dist/polinrider-"${TAG}"-*.tar.gz \
+            "dist/polinrider-${TAG}.intoto.jsonl" dist/SHA256SUMS \
             --title "$TAG" \
             --notes-file notes.md \
             --verify-tag

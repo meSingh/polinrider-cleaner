@@ -618,7 +618,7 @@ fn load_hashes(ioc_dir: &Path) -> Vec<(String, String)> {
 pub fn propagation(walk: &Walk, v: &mut Verdict, sink: &mut Sink) {
     v.section("Propagation artifact temp_auto_push.bat");
     let mut found = false;
-    for path in walk.by_name(|n| n == "temp_auto_push.bat" || n == "config.bat") {
+    for path in walk.by_name(is_propagation_script) {
         found = true;
         let line = sink.take(path, "propagation-script");
         v.push(
@@ -632,6 +632,51 @@ pub fn propagation(walk: &Walk, v: &mut Verdict, sink: &mut Sink) {
     }
     if !found {
         v.push(Finding::ok("temp_auto_push.bat not found"));
+    }
+}
+
+fn is_propagation_script(name: &str) -> bool {
+    name == "temp_auto_push.bat" || name == "config.bat"
+}
+
+/// Files whose name alone is an indicator in `ioc/filenames.txt`, such as a
+/// fake font renamed to `.llf`. 1.x matched these names in a path scan and in
+/// a GitHub scan; `remote.rs` carries the GitHub side and this the path side.
+/// A file check, so it runs with `--fs-only` too. The propagation script is
+/// left to its own check, which says what it is.
+pub fn named_files(walk: &Walk, ind: &Indicators, v: &mut Verdict, sink: &mut Sink) {
+    v.section("Files named as indicators");
+    // A file another check already reported, the implant at its install path
+    // for one, is reported once and quarantined once.
+    let reported: Vec<PathBuf> = v.findings().filter_map(|f| f.path.clone()).collect();
+    let mut named = false;
+    for path in &walk.files {
+        if reported.iter().any(|p| p == path) {
+            continue;
+        }
+        let is_script_name = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .is_some_and(is_propagation_script);
+        // Matched on the path with forward slashes, as the patterns are
+        // written, so a Windows path is read the same way.
+        let text = path.to_string_lossy().replace('\\', "/");
+        if is_script_name || !ind.is_bad_filename(&text) {
+            continue;
+        }
+        named = true;
+        let line = sink.take(path, "named-file");
+        v.push(
+            Finding::hit(
+                Kind::NamedFile,
+                format!("file named as an indicator: {}", path.display()),
+            )
+            .at(path)
+            .with_remedy(line),
+        );
+    }
+    if !named {
+        v.push(Finding::ok("no file named as an indicator"));
     }
 }
 

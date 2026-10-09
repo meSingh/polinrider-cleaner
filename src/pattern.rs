@@ -8,8 +8,8 @@
 //! apart. Hence this: the subset of ERE those patterns use, written out.
 //!
 //! Supported: literals, `.`, `\` escapes, `^` and `$`, groups with `|`,
-//! bracket classes with ranges and negation, and the quantifiers `?`, `*`
-//! and `+`. Anything else is a parse error, and a pattern that does not parse
+//! bracket classes with ranges and negation, and the quantifiers `?`, `*`,
+//! `+`, `{n}`, `{n,}` and `{n,m}`. Anything else is a parse error, and a pattern that does not parse
 //! stops the scan. A pattern that silently matched nothing would be an
 //! indicator that silently stopped working.
 
@@ -108,7 +108,7 @@ impl Parser<'_> {
                 None => Err("a backslash at the end"),
             },
             Some('?' | '*' | '+') => Err("a quantifier with nothing before it"),
-            Some('{') => Err("counted repetition {n,m} is not supported"),
+            Some('{') => Err("a quantifier with nothing before it"),
             Some(c) => Ok(Node::Char(c)),
             None => Err("the pattern ends where something was expected"),
         }
@@ -147,10 +147,14 @@ impl Parser<'_> {
             Some('?') => (0, Some(1)),
             Some('*') => (0, None),
             Some('+') => (1, None),
-            Some('{') => return Err("counted repetition {n,m} is not supported"),
+            Some('{') => (0, Some(0)),
             _ => return Ok(atom),
         };
-        self.chars.next();
+        let (min, max) = if self.chars.next() == Some('{') {
+            self.counted()?
+        } else {
+            (min, max)
+        };
         if matches!(atom, Node::Start | Node::End) {
             return Err("a quantifier on ^ or $");
         }
@@ -159,6 +163,41 @@ impl Parser<'_> {
             min,
             max,
         })
+    }
+
+    /// The inside of `{n}`, `{n,}` or `{n,m}`, after the `{`. Spaces, a
+    /// missing lower bound and a bound that runs backwards are refused rather
+    /// than read the way one tool or another happens to.
+    fn counted(&mut self) -> Result<(usize, Option<usize>), &'static str> {
+        let min = self.number()?.ok_or("a { with no count after it")?;
+        let max = match self.chars.next() {
+            Some('}') => return Ok((min, Some(min))),
+            Some(',') => self.number()?,
+            _ => return Err("a { that is not {n}, {n,} or {n,m}"),
+        };
+        if self.chars.next() != Some('}') {
+            return Err("a { that is not {n}, {n,} or {n,m}");
+        }
+        if max.is_some_and(|m| m < min) {
+            return Err("a count in { } runs backwards");
+        }
+        Ok((min, max))
+    }
+
+    fn number(&mut self) -> Result<Option<usize>, &'static str> {
+        let mut digits = String::new();
+        while let Some(c) = self.chars.peek().copied().filter(char::is_ascii_digit) {
+            digits.push(c);
+            self.chars.next();
+        }
+        if digits.is_empty() {
+            return Ok(None);
+        }
+        // A count this large is a typo, and backtracking over it would not end.
+        match digits.parse::<usize>() {
+            Ok(n) if n <= 255 => Ok(Some(n)),
+            _ => Err("a count in { } over 255"),
+        }
     }
 }
 
@@ -317,12 +356,40 @@ mod tests {
     }
 
     #[test]
+    fn counted_repetition_matches_as_grep_e_does() {
+        // The shape the 5 October 2026 review added to ioc/filenames.txt.
+        let font = r"(^|/)fa-solid-[0-9]{3}\.llf$";
+        assert!(m(font, "fa-solid-900.llf"));
+        assert!(m(font, "public/fonts/fa-solid-300.llf"));
+        assert!(!m(font, "fa-solid-30.llf"), "two digits is not three");
+        assert!(!m(font, "fa-solid-9000.llf"), "four digits is not three");
+        assert!(!m(font, "fa-solid-900.woff2"));
+        assert!(!m(font, "fa-solid-brands.llf"));
+
+        assert!(m("^a{2,}$", "aa"));
+        assert!(m("^a{2,}$", "aaaaa"));
+        assert!(!m("^a{2,}$", "a"));
+        assert!(m("^a{1,3}b$", "aaab"));
+        assert!(!m("^a{1,3}b$", "aaaab"));
+        assert!(!m("^a{1,3}b$", "b"));
+        assert!(m("^(ab){2}$", "abab"));
+        assert!(!m("^(ab){2}$", "ababab"));
+        assert!(m("^x{0}y$", "y"));
+    }
+
+    #[test]
     fn a_pattern_it_cannot_honour_is_refused_not_guessed() {
         // Each of these would otherwise match nothing, or the wrong thing,
         // and nobody would find out.
         for bad in [
             r"\d+",
-            "a{2,3}",
+            "a{2,1}",
+            "a{,3}",
+            "a{x}",
+            "a{2",
+            "a{ 2}",
+            "a{256}",
+            "{2}a",
             "(open",
             "close)",
             "[abc",

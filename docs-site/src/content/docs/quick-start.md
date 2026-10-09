@@ -2,48 +2,53 @@
 title: Quick start
 ---
 
-Two commands. It asks what you need, works out which scanner to run for the
-machine you are on, and tells you what to do next.
+One program. Download it, verify it, run it. It asks what you need, one
+question at a time, and tells you what it found before it offers to change
+anything.
 
-```bash
-git clone https://github.com/meSingh/polinrider-cleaner.git && cd polinrider-cleaner
-./polinrider.sh
-```
+1. Download the archive for your machine from the
+   [latest release](https://github.com/meSingh/polinrider-cleaner/releases/latest):
+   macOS (Apple silicon or Intel), Linux (x86_64 or arm64) or Windows (x86_64).
+2. Verify it:
+
+   ```bash
+   sha256sum -c SHA256SUMS --ignore-missing
+   gh attestation verify polinrider-v2.0.0-macos-arm64.tar.gz --repo meSingh/polinrider-cleaner
+   ```
+
+3. Unpack it and run it with no arguments:
+
+   ```bash
+   tar -xzf polinrider-v2.0.0-macos-arm64.tar.gz
+   cd polinrider-v2.0.0-macos-arm64
+   ./polinrider
+   ```
+
+Keep the `ioc/` folder beside the binary. It is the indicator set, and the
+binary refuses to scan without it. On macOS the binary is not notarised, so
+Gatekeeper stops the first run; once you have verified it, run
+`xattr -d com.apple.quarantine ./polinrider`.
 
 :::note
-This is read-only. It changes nothing. Everything else on this site can wait
+It changes nothing until you type `yes`. Everything else on this site can wait
 until it has told you what it found.
 :::
 
-## Installing instead of cloning
+## The first question
 
-```bash
-brew install meSingh/tap/polinrider-cleaner   # macOS and Linux
-polinrider
-```
+| Answer | What it checks |
+|---|---|
+| `computer` | This machine: your whole home folder, plus what starts by itself, shell startup files, git and npm settings, running programs and open connections |
+| `folder` | One folder of code. It suggests the code folders it finds |
+| `organization` | Every repository, branch and tag of a GitHub organization |
+| `account` | The same for your own GitHub account |
+| `everything` | This computer first, then GitHub |
 
-```powershell
-scoop bucket add mesingh https://github.com/meSingh/scoop-bucket   # Windows
-scoop install polinrider-cleaner
-polinrider-check -Roots C:\work
-```
-
-## A large disk
-
-A drive full of old projects takes a while. Two flags for that:
-
-```bash
-./polinrider.sh --machine --background    # detached; the terminal can close, the machine will not sleep
-./polinrider.sh --machine --resume        # an interrupted run picks up where it stopped
-```
-
-`--background` survives the terminal closing and idle sleep. It does not survive
-a logout or a reboot; that is what `--resume` is for, and it reuses the file list
-and skips the checks that already finished.
+Answers are words, never numbers. `q` leaves at any point.
 
 ## If it finds something
 
 Do not start with the repositories. Cleaning a remote while an infected laptop
 still holds a valid token puts you back where you started within minutes, and
 that is documented behaviour of this campaign rather than bad luck.
-[Order matters](/guides/order/) explains the sequence.
+[Order matters](/polinrider-cleaner/guides/order/) explains the sequence.

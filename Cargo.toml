@@ -1,6 +1,6 @@
 [package]
 name = "polinrider"
-version = "2.0.0-beta.1"
+version = "2.0.0"
 edition = "2021"
 rust-version = "1.98"
 description = "Detect and clean up after the PolinRider supply-chain campaign"

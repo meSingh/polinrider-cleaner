@@ -40,8 +40,9 @@ pub struct Push {
     pub head: String,
     pub actor: String,
     pub at: String,
-    /// Commits the push carried. Zero means the branch was moved without
-    /// adding history: a force-push.
+    /// Zero means the branch was moved without adding history: a
+    /// force-push. GitHub's activity record does not count commits, so any
+    /// other push reads as one.
     pub size: u64,
 }
 
@@ -497,7 +498,11 @@ impl Forge for GitHub {
     }
 
     fn pushes(&self, repository: &str) -> Probe<Vec<Push>> {
-        let endpoint = format!("/repos/{repository}/events?per_page=100");
+        // The activity record, not the events feed. The feed can trail a
+        // push by an hour or more, so a check run soon after an attack found
+        // no record and could not offer restore; it also stopped carrying
+        // the commit count, which made every push read as a force-push.
+        let endpoint = format!("/repos/{repository}/activity?per_page=100");
         match text(
             "gh",
             &[
@@ -505,7 +510,7 @@ impl Forge for GitHub {
                 &endpoint,
                 "--paginate",
                 "--jq",
-                r#".[] | select(.type=="PushEvent") | [(.payload.ref // ""), (.payload.before // ""), (.payload.head // ""), (.actor.login // ""), (.created_at // ""), ((.payload.size // 0)|tostring)] | @tsv"#,
+                r#".[] | select(.activity_type != "branch_deletion") | [(.ref // ""), (.before // ""), (.after // ""), (.actor.login // ""), (.timestamp // ""), (if .activity_type == "force_push" then "0" else "1" end)] | @tsv"#,
             ],
             None,
         ) {

@@ -4,3 +4,35 @@
 (^|/)temp_auto_push\.bat$
 (^|/)MicrosoftSystem64(\.exe|-win\.exe|-linux|-darwin-(x64|arm64))?$
 (^|/)com\.launchkeeper\.MicrosoftSystem64\.plist$
+# The second working file of the force-push tool, beside temp_auto_push.bat
+# above. Never committed -- it lives on the infected developer's machine -- so
+# this fires on a disk scan, and weak.txt carries the name for the separate case
+# of a committed .gitignore that lists it. config.bat and branch_structure.json,
+# named in the same block, are not here: both are ordinary names, and this file
+# is INFECTED tier with no weaker path tier to put them in.
+# Source: OpenSourceMalware, "PolinRider is A/B Testing its Way Past Your
+# Detections", September 2026.
+(^|/)temp_interactive_push\.bat$
+# The Windows persistence chain of the hands-on-keyboard stage: a Python and a
+# JavaScript stager dropped in %TEMP%, and the VBS that both a scheduled task
+# and a Startup entry named MicrosoftCLROptimization run at logon. The names
+# impersonate the real .NET native-image service, which is called
+# ".NET Framework NGEN v4.0.30319"; nothing legitimate ships either of these.
+# clr_init.vbs, dropped beside the second one, is deliberately absent: it is
+# ordinary enough to need a weak path tier, which this file is not.
+# Source: Deception.Pro, "[Op Report] Hands-on-Keyboard Activity from the DPRK
+# PolinRider Supply Chain Attack", September 2026.
+(^|/)SvcHostUpdate\.(py|js)$
+(^|/)MicrosoftCLROptimization\.vbs$
+# The fake-font payload with a non-font extension. The 2026-09-28 entry turned
+# away fa-solid-900.woff2 because that is a genuine Font Awesome filename and
+# this file is INFECTED tier. .llf is not: Font Awesome ships .woff2, .woff,
+# .ttf, .eot and .svg, and nothing legitimate names an .llf after a font weight.
+# Carried as a regex over the weight rather than one literal because that is
+# what the source gives -- "they're keeping the front of the file name basically
+# the same, so fa-solid- fill in a number [...] the one that I saw was 300, but
+# instead of .woff2 it's a .llf" -- and because the whole point of the variant is
+# that the number rotates. The .woff2 forms stay out, for the reason above.
+# Source: OpenSourceMalware, The OpenSourceMalware Show #23, 2026-10-02
+# (spoken transcript; over 120 versions reported live on GitHub on 2026-09-28).
+(^|/)fa-solid-[0-9]{3}\.llf$

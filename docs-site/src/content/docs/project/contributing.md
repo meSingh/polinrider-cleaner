@@ -32,13 +32,14 @@ directly on your workstation is one bad path expansion away from moving your
 real files.
 
 ```bash
-./ci/sandbox.sh --all          # lint, every self-test, the conformance corpus
-./ci/sandbox.sh                # an interactive shell in the sandbox
+./polinrider-sandbox --all     # fmt, clippy, unit tests, the corpus, shell lint
+./polinrider-sandbox --beta    # the binary installed in the container, with a sample
+./polinrider-sandbox           # an interactive shell in the sandbox
 ```
 
 The repository is mounted read-only, `$HOME` belongs to the container, and
 networking is off unless you ask for it. It needs Docker, which is a
-development dependency only: the tool itself still runs on a bare machine with
+development dependency only: the released binary runs on a bare machine with
 nothing installed. See
 [ADR-0027](https://github.com/meSingh/polinrider-cleaner/blob/main/docs/adr/0027-development-and-testing-happen-in-a-container.md).
 
