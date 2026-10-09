@@ -51,8 +51,8 @@ enough there.
 If the branch was **force-pushed** to a rewritten history, GitHub's push record
 still holds the earlier commit and `restore` goes back to it. If the payload
 was **committed normally**, there is no earlier state to return to, so
-`remove` or `erase` is the fix. The push record keeps roughly the last 300
-events per repository, so run the check before anyone pushes a fix by hand.
+`remove` or `erase` is the fix. GitHub serves the commit a branch was moved
+off only until it collects its garbage, so run the check early.
 
 After any fix, delete every local clone and clone again. A `git pull` into an
 infected clone can re-infect the remote.

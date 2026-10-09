@@ -109,9 +109,10 @@ lists is one nobody on the team claims.
 - **Do not read git history to decide whether a branch is clean.** The
   propagation script backdates its commits, so `git log` shows nothing wrong.
   `restore` uses GitHub's push record, never commit dates.
-- **Evidence is time-critical.** GitHub's push record keeps roughly the last
-  300 events per repository. Every push anyone makes moves the attacker's push
-  closer to falling off the end. Check before anyone pushes a fix by hand.
+- **Evidence is time-critical.** The push record comes from GitHub's
+  repository activity, which shows a push at once. The commit a force-push
+  replaced is served by ID only until GitHub collects its garbage, and then
+  `restore` has nothing to go back to. Check early.
 - **A quarantined login item is still running.** Moving the file does not stop
   the process it started. The tool prints the command that does; surface it to
   the human.
