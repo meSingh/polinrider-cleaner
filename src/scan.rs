@@ -201,6 +201,7 @@ fn machine(
     } else {
         skipped(v, "Propagation artifact");
     }
+    checks::named_files(w, ind, v, sink);
 
     watch.stage("packages", v);
     checks::packages(w, ind, v);
@@ -265,6 +266,7 @@ fn directories(w: &walk::Walk, scope: &Scope, v: &mut Verdict, sink: &mut Sink, 
     checks::fonts(w, v, sink);
     watch.stage("the scripts the payload spreads with", v);
     checks::propagation(w, v, sink);
+    checks::named_files(w, ind, v, sink);
     watch.stage("packages", v);
     checks::packages(w, ind, v);
     watch.stage("git hooks", v);

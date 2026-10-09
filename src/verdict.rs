@@ -62,6 +62,8 @@ pub enum Kind {
     Implant,
     /// The script the payload uses to push itself to other repositories.
     Propagation,
+    /// A file whose name alone is an indicator, from `ioc/filenames.txt`.
+    NamedFile,
     /// An editor extension carrying an indicator.
     Extension,
     /// Something that starts at login or on a schedule: a systemd unit, an
@@ -89,7 +91,11 @@ impl Kind {
     pub const fn ran_here(self) -> bool {
         !matches!(
             self,
-            Kind::Config { .. } | Kind::FakeFont | Kind::TasksJson | Kind::Package
+            Kind::Config { .. }
+                | Kind::FakeFont
+                | Kind::TasksJson
+                | Kind::Package
+                | Kind::NamedFile
         )
     }
 
@@ -102,6 +108,7 @@ impl Kind {
                 | Kind::GitHook
                 | Kind::Implant
                 | Kind::Propagation
+                | Kind::NamedFile
                 | Kind::Extension
                 | Kind::LoginItem
         )
@@ -151,6 +158,10 @@ impl Kind {
             Kind::Propagation => (
                 "script the payload uses to spread",
                 "scripts the payload uses to spread",
+            ),
+            Kind::NamedFile => (
+                "file the campaign is known to leave behind",
+                "files the campaign is known to leave behind",
             ),
             Kind::Extension => (
                 "editor extension carrying the payload",
@@ -203,9 +214,11 @@ impl Kind {
             Kind::Autostart => "An entry that starts with Windows",
             Kind::Process => "A running program",
             Kind::Connection => "A live connection",
-            Kind::Config { .. } | Kind::FakeFont | Kind::TasksJson | Kind::Package => {
-                "A file in a project"
-            }
+            Kind::Config { .. }
+            | Kind::FakeFont
+            | Kind::TasksJson
+            | Kind::Package
+            | Kind::NamedFile => "A file in a project",
         }
     }
 }

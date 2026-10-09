@@ -86,6 +86,25 @@ case(
 )
 
 case(
+    "a-file-named-as-an-indicator-is-found-on-disk",
+    why="ioc/filenames.txt names files that are indicators by name alone. 1.x "
+        "matched them in a path scan, and a GitHub scan still does, so a check "
+        "of a folder must too. The near miss has two digits where the pattern "
+        "counts three.",
+    roots=["code"],
+    files={
+        "code/proj/public/fa-solid-900.llf": "not a font\n",
+        "code/proj/public/fa-solid-90.llf": "not a font\n",
+    },
+    expect={
+        "exit": 2,
+        "findings": [{"level": "HIT", "match": "file named as an indicator",
+                      "path": "fa-solid-900.llf"}],
+        "must_not_report": ["fa-solid-90.llf"],
+    },
+)
+
+case(
     "lfs-pointer-is-not-a-fake-font",
     why="Git LFS stores a text pointer in place of the font. Flagging it is a "
         "known false positive and must stay fixed.",
