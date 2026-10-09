@@ -33,6 +33,6 @@ way a cleanup fails.
 
 ## The guided flow does this for you
 
-Running `./polinrider.sh` with no arguments walks the sequence, and will not
-offer to clean a remote before the machine it is running on has come back clear.
-If you would rather drive it yourself, the per-track guides are next.
+Running `polinrider` and answering `everything` walks the sequence: this
+computer first, then GitHub. Rotating credentials is yours to do between the
+two. The per-track guides are next.

@@ -28,21 +28,22 @@ import { Card, CardGrid, Code } from '@astrojs/starlight/components';
 <li><a href="https://github.com/meSingh/polinrider-cleaner/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/meSingh/polinrider-cleaner/actions/workflows/ci.yml/badge.svg" /></a></li>
 <li><a href="https://scorecard.dev/viewer/?uri=github.com/meSingh/polinrider-cleaner"><img alt="OpenSSF Scorecard" src="https://api.scorecard.dev/projects/github.com/meSingh/polinrider-cleaner/badge" /></a></li>
 <li><a href="https://github.com/meSingh/polinrider-cleaner/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://github.com/meSingh/polinrider-cleaner/actions/workflows/codeql.yml/badge.svg" /></a></li>
-<li><a href="https://github.com/meSingh/polinrider-cleaner/commits/main"><img alt="Commits are GPG signed" src="https://img.shields.io/badge/commits-GPG%20signed-2c7048" /></a></li>
+<li><a href="https://github.com/meSingh/polinrider-cleaner/commits/main"><img alt="Commits are signed" src="https://img.shields.io/badge/commits-signed-2c7048" /></a></li>
 <li><a href="https://github.com/meSingh/polinrider-cleaner/releases/latest"><img alt="Attested provenance" src="https://img.shields.io/badge/releases-attested%20provenance-2c7048" /></a></li>
 <li><a href="https://github.com/meSingh/polinrider-cleaner/tree/main/docs/indicator-reviews"><img alt="Indicators reviewed weekly" src="https://img.shields.io/badge/indicators-reviewed%20weekly-0f6d63" /></a></li>
 <li><img alt="Zero runtime dependencies" src="https://img.shields.io/badge/runtime%20deps-0-0f6d63" /></li>
 </ul>
 
-## Two commands
+## One program
 
-It asks what you need, works out which scanner to run for the machine you are
-on, and tells you what to do next. Read-only: it changes nothing.
+Download it for macOS, Linux or Windows, verify it, and run it. It asks what
+you need, one question at a time, and changes nothing until you type `yes`.
 
 ```bash
-git clone https://github.com/meSingh/polinrider-cleaner.git && cd polinrider-cleaner
-./polinrider.sh
+./polinrider
 ```
+
+[Download and verify](/polinrider-cleaner/quick-start/)
 
 <div style="text-align:center; margin: 2.5rem 0 1rem;">
 <span class="figure">267 days</span>
@@ -66,13 +67,13 @@ events. Nobody does that by eye across fifty repositories.
     [Check a machine](/polinrider-cleaner/guides/machine/)
   </Card>
   <Card title="A GitHub account" icon="github">
-    Every repository, every ref, reconciled against push events. Restores
-    branches where the evidence survived.
+    Every repository, every branch and tag, read against GitHub's push record.
+    Restores branches where the evidence survived.
     [Clean an account](/polinrider-cleaner/guides/account/)
   </Card>
   <Card title="An organization" icon="setting">
-    The same sweep across every repository an org owns, with a triage pass so
-    the list is short enough to read.
+    The same check across every repository an org owns, then one repository
+    at a time or one fix for all of them.
     [Clean an organization](/polinrider-cleaner/guides/organization/)
   </Card>
   <Card title="Every future push" icon="approve-check">
@@ -105,8 +106,8 @@ compromised. That deserves evidence rather than a promise.
 |---|---|
 | **Built during a real incident** | 57 repositories and 304 refs on the author's own account. Two of ten restore points turned out to be infected themselves |
 | **Indicators reviewed weekly** | Every review [logged, including the weeks nothing changed](https://github.com/meSingh/polinrider-cleaner/tree/main/docs/indicator-reviews) |
-| **Every commit GPG-signed** | The direct counter to the campaign's own backdated-amend technique |
-| **Releases carry provenance** | A sigstore attestation proves the tarball came from this repository's CI |
+| **Every commit signed** | The direct counter to the campaign's own backdated-amend technique |
+| **Releases carry provenance** | A sigstore attestation proves each binary came from this repository's CI |
 | **It scans itself** | CI fails if the repository matches its own indicators once its detection code is excluded |
 | **Every decision is written down** | [28 records](/polinrider-cleaner/project/decisions/), each with its cost, not just its reasoning |
 

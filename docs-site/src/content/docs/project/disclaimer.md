@@ -37,9 +37,9 @@ repositories, service interruption, and business or financial loss.
   organizations or machines that you do not own or administer may breach your
   employer's policy, a customer contract, or applicable law. Get permission
   first, in writing if the systems are not yours.
-- **The destructive operations are your decision.** `restore.sh --apply`
-  force-updates branch references on GitHub. The local checks with `--apply`
-  move files on a machine. Both run with your credentials, at your instruction.
+- **The destructive operations are your decision.** The GitHub fixes push to
+  GitHub, and `erase` rewrites history. `check --apply` moves files on a
+  machine and `clean --apply` edits a build config in place. Both run with your credentials, at your instruction.
   Read the dry run first.
 - **Recovery can lose work.** Restoring a branch to an earlier commit orphans
   anything pushed to it afterwards. The tool tells you when that will happen. Act
