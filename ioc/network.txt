@@ -39,3 +39,31 @@ copilot-ai.whisdev.org
 # Source: CloudSEK, "GHAPPIER", September 2026.
 193.247.144.38
 166.88.73.46
+
+# --- the 0x33ff Ethereum dead-drop rotation, recovered by decoding every
+# heartbeat recipient that wallet has sent since 2026-06-23. 198.105.127.210,
+# already listed above, is the current first server; these are the rest of the
+# rotation. Eight of the eleven servers across both wallets sit on AS149440
+# (Evoxt), which is a better block than any single address here.
+# Source: SafeDep, "PolinRider Switches to Ethereum C2 in 30+ Repositories",
+# September 2026.
+45.137.198.133
+181.214.149.147
+181.214.149.148
+23.27.20.187
+
+# --- the 0xa322 rotation, from the same source and decoded the same way. It
+# independently confirms 166.88.134.62, 166.88.73.46 and 193.247.144.38, all
+# already above from OpenSourceMalware and CloudSEK, and adds the two the chain
+# had not been read far enough back to see.
+23.27.13.135
+166.88.134.75
+91.218.183.174
+
+# --- stealer exfiltration, port 8443, from a honeypot capture of an operator
+# working interactively on an infected host for about 167 hours. The same
+# report's loader C2, 23.27.13.135, is independently confirmed just above, which
+# is why this address is carried.
+# Source: Deception.Pro, "[Op Report] Hands-on-Keyboard Activity from the DPRK
+# PolinRider Supply Chain Attack", September 2026.
+150.251.113.223

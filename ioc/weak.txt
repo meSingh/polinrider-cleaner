@@ -63,3 +63,36 @@ allowAutomaticTasks
 X-Payload-B64
 /0x/cls
 /0x/ls
+
+# The loader-marker prefixes, generalised. Every marker entry in strong.txt is
+# pinned to one campaign number -- `global.i="A8-`, `global.i = 'A8`,
+# `A10-npm3!` -- and the markers published since include A9-0337-4, A10-*23720
+# and A8-3465, which none of those three match. These are the assignment shapes
+# both sources recommend grepping for, with the number dropped. Review tier and
+# not INFECTED, because `global.i="A` also matches a legitimate assignment of
+# any string beginning with A, and `global.o='` is a bare global assignment --
+# where `global.o='5-` in strong.txt is specific enough to be a verdict.
+# Sources: SafeDep, "PolinRider Switches to Ethereum C2 in 30+ Repositories",
+# September 2026, whose recommended hunt is
+# global\.o='|global\.i="A|_\$_[0-9a-f]{4}=\(function ; OpenSourceMalware,
+# "PolinRider is A/B Testing its Way Past Your Detections", September 2026.
+global.i="A
+global.i = 'A
+global.o='
+
+# The payload response header again, lower-cased. HTTP header names are
+# case-insensitive and `ioc/` is matched with grep -F and no -i, so the
+# `X-Payload-B64` entry above does not match this literal. The OpenSSF record
+# for `tailwind-anim` prints it as x-payload-b64 where OpenSourceMalware printed
+# it capitalised, and both forms occur in shipped samples.
+# Source: OpenSSF malicious-packages MAL-2026-11500 (reported by Amazon
+# Inspector), August 2026.
+x-payload-b64
+
+# Payload staging on a public file host, captured during a honeypot run that
+# recorded an operator working interactively on an infected machine. catbox.moe
+# is an ordinary file host with ordinary uses, so this is the same tier as the
+# public Ethereum RPC endpoints above: alert, do not block.
+# Source: Deception.Pro, "[Op Report] Hands-on-Keyboard Activity from the DPRK
+# PolinRider Supply Chain Attack", September 2026.
+files.catbox.moe

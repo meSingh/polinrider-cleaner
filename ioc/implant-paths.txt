@@ -32,3 +32,12 @@
 # --- dropped payloads seen on Linux and macOS
 /tmp/0001.dat
 /tmp/tmp7A863DD1.tmp
+
+# --- the Python stealer's lock file on Windows, beside the Linux and macOS path
+# already listed above. ~/.node_modules (the private npm prefix the stage-4
+# script installs axios into) and /tmp/.pip (its fallback pip target) are
+# deliberately absent: both are paths a developer could plausibly create, and
+# this file is INFECTED tier with no weaker path tier to put them in.
+# Source: SafeDep, "PolinRider Switches to Ethereum C2 in 30+ Repositories",
+# September 2026.
+%LOCALAPPDATA%\Temp\tmp7A863DD1.tmp

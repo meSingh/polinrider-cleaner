@@ -903,17 +903,20 @@ weeks that found nothing. Each review keeps its own dated entry, and entries are
 never edited or removed:
 [`docs/indicator-reviews/`](docs/indicator-reviews/).
 
-**Last reviewed: [28 September 2026](docs/indicator-reviews/2026-09-28.md).**
+**Last reviewed: [5 October 2026](docs/indicator-reviews/2026-10-05.md).**
 
-Eleven indicators added, after published analysis showed the campaign running
-three fake-font variants side by side rather than replacing one with the next:
-the campaign marker in the quote style the set was missing, two XOR keys readable
-in the payload, the four-line `.gitignore` block that marks a contributor's
-machine as infected even when the repository is clean, and the VS Code setting
-that lets the malicious task run unprompted.
+Eighty-three indicators added, the largest week so far, after a second analyst
+team decoded this campaign's Ethereum dead drop end to end — two operator
+wallets, eleven rotating C2 servers, 35 repositories still carrying the loader —
+and after the OpenSSF malicious-package database turned out to be readable from
+the review environment, which yielded 55 malicious package names tied to
+indicators this set already held.
 
-The same analysis dates one of this repository's own indicators. The only entry
-covering the fake-font vector names the 400 filename and the `public/fonts` path,
-and the two variants now in circulation use neither; catching them needs a regex
-tier that `ioc/` does not have, so it is written up as a gap rather than papered
-over. Read the entry before trusting a clean result on that vector.
+It also found two faults in the set's own entries. The second operator wallet has
+been listed in lower case since September and the loader embeds it checksummed,
+so under `grep -F` that entry has never matched a sample; and one XOR key was
+carried as a ten-character prefix because a column-aligned table left the
+boundary ambiguous. Both are corrected, and the entry records why. Eighteen of
+the thirty-five infected repositories hold a loader written with `\u` escapes,
+against which fixed-string matching finds nothing at all — read the entry before
+trusting a clean result.
