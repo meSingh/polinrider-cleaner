@@ -57,10 +57,8 @@ polinrider clean ~/code/shop        # what clean would cut, changing nothing
 Exit codes: `0` clean, `1` review items only, `2` a confirmed indicator, `3`
 the scan could not run. A 3 is never a verdict about the code.
 
-The shell scripts still in the tree (`polinrider.sh`, `lib/`,
-`github-org-recovery/`, `github-account-recovery/`, `ui/`) are 1.x and are
-being removed. Do not run them. 1.x is available from the `v1.0.9` tag for
-anyone who needs it.
+The 1.x shell tool (`polinrider.sh`, `lib/`, `github-*-recovery/`, `ui/`) was
+removed in 2.0. It is available from the `v1.0.9` tag for anyone who needs it.
 
 ### What you may run without asking
 
@@ -146,7 +144,6 @@ the sandbox and the test harness.
 | `docs-site/` | the documentation site, Astro Starlight |
 | `ci/` | the vendorable CI scanner, its workflow template and installer, and the sandbox demo |
 | `polinrider-sandbox`, `.devcontainer/` | the container every test runs in |
-| `polinrider.sh`, `lib/`, `github-*-recovery/`, `ui/` | 1.x shell, being removed. Do not extend it |
 
 ### Record the decision
 

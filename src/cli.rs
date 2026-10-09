@@ -65,7 +65,7 @@ pub const ACCEPTED: &[(&str, &str)] = &[
     ("-h, --help", "this"),
 ];
 
-/// Flags the shell implementation accepts that this one does not yet.
+/// Flags that are planned and not built yet.
 /// Refused explicitly rather than ignored.
 const NOT_IMPLEMENTED: &[(&str, &str)] = &[
     ("--jobs", "parallel hashing is not implemented yet"),
@@ -142,7 +142,7 @@ impl fmt::Display for Rejection {
                 writeln!(f, "\nRefused rather than ignored. A flag that silently does")?;
                 writeln!(f, "nothing is how somebody comes to believe a scan resumed")?;
                 writeln!(f, "when it actually started over.\n")?;
-                write!(f, "The shell implementation supports it: ./polinrider.sh")
+                write!(f, "Run without it; the result is the same, only slower.")
             }
             Rejection::Removed { flag, why } => {
                 writeln!(f, "{flag} was removed in 2.0: {why}.")?;

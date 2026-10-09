@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # polinrider-sandbox - run anything in this repository inside a container.
 #
-# A sibling of polinrider.sh, deliberately its own command rather than a
+# A sibling of the polinrider binary, deliberately its own command rather than a
 # subcommand of it. The thing that launches the test environment cannot be the
 # thing under test: if the binary will not build, you still need a way to get
 # into the sandbox and find out why.
@@ -139,10 +139,10 @@ if [[ "$1" == "--all" ]]; then
     set -uo pipefail
     fail=0
     echo "== syntax =="
-    bash -n polinrider.sh lib/*.sh ci/*.sh conformance/*.sh github-*/*.sh || fail=1
+    bash -n polinrider-sandbox ci/*.sh conformance/*.sh || fail=1
     echo "== shellcheck =="
     shellcheck --severity=warning --external-sources \
-      polinrider.sh lib/*.sh ci/*.sh conformance/*.sh github-*/*.sh || fail=1
+      polinrider-sandbox ci/*.sh conformance/*.sh || fail=1
     echo "== self-tests =="
     for t in ci/selftest*.sh; do
       if ./"$t" >/dev/null 2>&1; then printf "  pass  %s\n" "$(basename "$t")"
