@@ -28,105 +28,98 @@ before anything is applied. See [DISCLAIMER.md](DISCLAIMER.md).
 ### Non-negotiable order
 
 ```
-1. polinrider check     on every affected machine
-2. credential rotation                       (the human does this, not you)
-3. github-org-recovery/ or github-account-recovery/         restore the branches
-4. ci/                                       prevent the next one
+1. polinrider, answer computer      on every affected machine
+2. credential rotation              (the human does this, not you)
+3. polinrider, answer organization  or account: get the payload out of GitHub
+4. ci/install-workflow.sh           prevent the next one
 ```
 
-Restoring branches while an infected machine still holds a valid token means the
+Fixing GitHub while an infected machine still holds a valid token means the
 attacker re-pushes within minutes. This is documented behaviour of this
 campaign, not a theoretical risk. **Never reorder these.**
 
 ### Start here
 
-`./polinrider.sh` is the entry point. It works out what needs scanning, picks the
-right tool for the operating system it is on, and prints the next command. Every
-mode is read-only. Pass `--yes` so it never prompts:
+`polinrider` is one binary. Run it from the release archive, with the `ioc/`
+folder beside it. With no arguments it is the guided flow: one question per
+screen, answered in words (`computer`, `folder`, `organization`, `account`,
+`everything`, `details`, `yes`, `no`, `q`). It changes something only on a
+typed `yes`, so as an agent, never type `yes` on the human's behalf.
+
+Without the questions, every one of these is read-only:
 
 ```bash
-./polinrider.sh --machine --yes
-./polinrider.sh --org ACME --yes
-./polinrider.sh --path /some/repo --yes
+polinrider check ~/code             # this machine and that folder
+polinrider check --fs-only ~/code   # only the folder
+polinrider clean ~/code/shop        # what clean would cut, changing nothing
 ```
 
-Exit codes: `0` nothing found, `1` review items only, `2` something confirmed.
+Exit codes: `0` clean, `1` review items only, `2` a confirmed indicator, `3`
+the scan could not run. A 3 is never a verdict about the code.
+
+The shell scripts still in the tree (`polinrider.sh`, `lib/`,
+`github-org-recovery/`, `github-account-recovery/`, `ui/`) are 1.x and are
+being removed. Do not run them. 1.x is available from the `v1.0.9` tag for
+anyone who needs it.
 
 ### What you may run without asking
 
-Everything below is read-only. It writes to an output directory and changes
-nothing on GitHub or on the machine.
-
 | Command | Effect |
 |---|---|
-| `polinrider.sh` in any mode | routes to the tools below; never changes anything |
-| `ci/selftest*.sh` (seven of them) | offline, no network, no credentials |
+| `polinrider check DIR ...` | reads the machine and the folders, writes one report file |
+| `polinrider clean REPO ...` without `--apply` | prints the cut it would make, changes nothing |
+| `polinrider --version`, `--help` | prints |
+| The guided flow, up to any `yes` | reads, mirrors GitHub repositories into an evidence folder, reports |
 | `ci/scan-workspace.sh --path DIR` | reads files |
-| `polinrider check DIR ...` | reads the machine, writes one report file |
-| `github-org-recovery/scan.sh`, `sweep.sh`, `triage-filter.sh`, `preflight.sh` | reads the GitHub API, clones mirrors |
-| `github-account-recovery/*` (same four) | as above |
-| `restore.sh` **without** `--apply` | prints a plan, changes nothing |
-| `lib/next-steps.sh` | reads a finished triage, writes `NEXT-STEPS.md` and three lists |
-| `preserve-restore-points.sh` | fetches pre-attack commits into the mirrors. Fetch only, never pushes |
-| `clean-repo.sh` **without** `--apply` | bare-clones and prints a plan, pushes nothing, with or without `--rewrite` |
+| `./polinrider-sandbox --all` | the test suite, inside a container |
 
 ### What you must NOT run without explicit human confirmation
 
 | Command | Why |
 |---|---|
-| `restore.sh --apply` | force-updates branch refs on GitHub. Irreversible from the tool's side |
-| `clean-repo.sh --apply` | commits and pushes a deletion to every affected branch. Reversible, but it is still a push |
-| `clean-repo.sh --rewrite --apply` | rewrites every commit and force-pushes every ref. Every SHA changes. Not reversible from the remote's side |
-| `polinrider check --apply` | moves files on the human's machine |
-| `polinrider clean --apply` | also cuts an appended payload out of a build config, in place |
-| Any `gh api -X DELETE` or `-X PATCH` printed by these tools | the tools print commands deliberately so a human runs them |
+| `polinrider check --apply` | moves files on the human's machine into quarantine |
+| `polinrider clean --apply` | cuts an appended payload out of a build config, in place |
+| A `yes` in the guided flow | on GitHub this pushes: `restore` moves branches, `erase` rewrites every commit and force-pushes, `remove` commits, `archive` edits the README and makes the repository read-only |
+| `all` followed by the organization's name | applies one fix to every repository that can take it |
+| Any command the tool prints for a human to run | it prints them deliberately so a human runs them |
 
-For `restore.sh --apply` specifically, all of these must be true first, and you
-must confirm them rather than assume them:
-
-1. `preflight.sh` exits 0.
-2. The compromised account's access is actually severed. The human confirms this;
-   no API call proves it.
-3. Every row in `restore-plan.tsv` is a push nobody on the team claims. Ask.
-4. No row is marked `MALICIOUS_TARGET`. If any is, the `--since` window starts
-   too late. Widen it and rebuild the plan.
+Before a GitHub fix, confirm rather than assume: the compromised account's
+access is actually severed (no API call proves it), and every push the summary
+lists is one nobody on the team claims.
 
 ### How to read the output
 
-- **Read what matched, never the count.** `cat evidence/triage.txt`. An
-  `INFECTED` count is meaningless on its own.
-- **Run `triage-filter.sh` before drawing conclusions.** A grep-based scanner
-  flags its own detection rules. Findings in files that *detect* this malware are
-  expected and are not infections.
-- **`ok_orphaned` in a restore plan is normal and good.** It means the target
-  commit is unreachable from any ref, so the mirror never fetched it, but GitHub
-  still holds it and confirmed so. It does not mean work was lost.
-- **`clean` means the current indicator set is absent from that ref.** It is not
-  proof the ref was never touched.
-- Exit codes for the local checks: `0` clean, `1` review items only, `2` a
-  confirmed indicator.
+- **Read what matched, never the count.** `details` in the guided flow, or the
+  saved report, lists every finding with its path.
+- **`clean` means the current indicator set is absent.** It is not proof the
+  code was never touched. 18 of 35 infected repositories in one published
+  analysis hold a loader written in Unicode escapes, which no fixed string in
+  `ioc/` matches.
+- **A `[review]` line is a question for the human, not an infection.** A probe
+  that could not run is a `[review]`, never an `[ok]`.
+- **"Rebuild" is said only on proof** that the payload ran on that machine.
+  Files in projects alone do not prove it.
 
 ### Things that are true and counter-intuitive
 
 - **Do not `git pull` into an existing clone of an affected repository.** Delete
   the clone and re-clone after the remote is verified clean. A pull into an
-  infected clone re-infects the remote.
+  infected clone re-infects the remote. After an `erase` the tool prints how to
+  reset each clone.
 - **Do not read git history to decide whether a branch is clean.** The
   propagation script backdates its commits, so `git log` shows nothing wrong.
-- **Evidence capture is time-critical.** Pre-attack commit SHAs come from an
-  events API that keeps roughly the last 300 events per repository. Every push
-  anyone makes pushes the attacker's push closer to falling off the end. Capture
-  before you clean.
-- **A quarantined LaunchAgent or systemd unit is still running.** Moving the file
-  does not stop the process it started. The tools print the command that does;
-  surface it to the human.
+  `restore` uses GitHub's push record, never commit dates.
+- **Evidence is time-critical.** GitHub's push record keeps roughly the last
+  300 events per repository. Every push anyone makes moves the attacker's push
+  closer to falling off the end. Check before anyone pushes a fix by hand.
+- **A quarantined login item is still running.** Moving the file does not stop
+  the process it started. The tool prints the command that does; surface it to
+  the human.
 
 ### Never do these
 
 - Never invent an indicator. Everything in `ioc/` traces to a named public
   source. A false `INFECTED` costs someone hours during an incident.
-- Never widen `--exclude` to make a finding go away before a human has read the
-  matched line.
 - Never paste the human's report file into a public issue. It contains paths
   from their machine.
 
@@ -136,27 +129,23 @@ must confirm them rather than assume them:
 
 ### What it is
 
-Shell and PowerShell only. No Node, no Python, no package manager, no build
-step. Dependencies are `git`, `gh` and `jq`; the local checks and the CI scanner
-need only `git` and POSIX tools. Windows uses PowerShell 5.1, which ships with
-the OS.
+One Rust binary, `polinrider`, with no dependencies, built against a
+conformance corpus. It calls `git` and `gh` for the GitHub checks and nothing
+else. The CI scan template (`ci/scan-workspace.sh`) is still shell, and so are
+the sandbox and the test harness.
 
 ### Layout
 
 | Path | Contains |
 |---|---|
-| `ioc/` | the indicator set, single source of truth, read at runtime by everything |
-| `lib/` | shared engines: `gh-scan`, `gh-sweep`, `gh-restore`, `gh-clean`, `gh-preserve`, `next-steps`, `triage-filter`, `common.sh` |
-| `github-org-recovery/` | recover a GitHub **organization**: thin wrappers over `lib/` plus its own `preflight.sh` |
-| `github-account-recovery/` | the same for **one personal account** |
-| `src/` | the `polinrider` binary: check and clean **one computer** on macOS, Linux and Windows, and the guided flow |
-| `polinrider.sh` | the single entry point at the repository root |
-| `ui/` | colours, symbols and drawing. No scanning logic; skip it when auditing |
+| `src/` | the binary. `HANDOVER.md` has a table of what each module holds |
+| `ioc/` | the indicator set, single source of truth, read at runtime |
+| `conformance/` | the specification: fixture trees as data with the verdict each must produce |
 | `docs/adr/` | one record per design decision, with its reasoning and its cost |
-| `ci/` | the vendorable scanner, its workflow template, installer, and seven self-tests |
-
-`common.sh` is sourced, not executed, and is deliberately not marked
-executable.
+| `docs-site/` | the documentation site, Astro Starlight |
+| `ci/` | the vendorable CI scanner, its workflow template and installer, and the sandbox demo |
+| `polinrider-sandbox`, `.devcontainer/` | the container every test runs in |
+| `polinrider.sh`, `lib/`, `github-*-recovery/`, `ui/` | 1.x shell, being removed. Do not extend it |
 
 ### Record the decision
 
@@ -179,34 +168,25 @@ Run these in the sandbox, not on your machine: `./polinrider-sandbox --all` does
 all of it. See ADR-0027.
 
 ```bash
-bash -n polinrider.sh lib/*.sh ci/*.sh github-*/*.sh
-shellcheck --severity=warning --external-sources \
-  polinrider.sh lib/*.sh ci/*.sh github-*/*.sh
-./ci/selftest.sh
-./ci/selftest-restore.sh
-./ci/selftest-entrypoint.sh
-./ci/selftest-nextsteps.sh
-./ci/selftest-preserve.sh
-./ci/selftest-rewrite.sh
-./ci/selftest-ui.sh
+cargo fmt --check
+cargo clippy --locked --all-targets -- -D warnings
+cargo test --locked
+cargo build --locked --release && ./conformance/run.sh
+./ci/selftest.sh          # the CI scanner
 ```
 
-CI enforces `shellcheck --severity=warning` and runs the self-tests, then
-`cargo fmt`, `clippy`, the unit tests and the conformance corpus.
-The tree is clean at those levels; keep it that way. Where a warning is
-suppressed there is a `# shellcheck disable=` with the reason on the line above.
+CI enforces all of these, plus `shellcheck --severity=warning` on the shell
+that remains. Keep the tree clean at those levels.
 
 ### Rules that are not negotiable
 
-**`ui/` stays presentation only.** Nothing in there may read a repository, run
-git, or decide whether something is infected. An auditor should be able to skip
-the directory entirely. `ci/selftest-ui.sh` fails the build if an external
-command appears in it.
+**`src/ui.rs` stays presentation only.** It runs no command and reads no file.
+Colour never changes a character. ADR-0033.
 
 
 **An error is not a finding.** Exit code 3 means a scan could not run. It must
 never be reported as a verdict about the code, and it must never be folded into
-`WORST`. `./polinrider.sh --path /nowhere` used to exit 2 and print the full
+`WORST`. 1.x once made `--path /nowhere` exit 2 and print the full
 compromise playbook for a directory that does not exist. A tool that says
 "confirmed" when it did not look is worse than one that says nothing. Equally,
 an incomplete run is not a clean one: 3 also suppresses the "nothing confirmed"
@@ -220,39 +200,36 @@ that discards precisely the evidence that matters, and an earlier version of
 dismiss: their machine needs checking and their credentials rotating.
 
 **A restore target must be read before it is recommended.** The commit before
-the last hostile push is often the previous wave. `gh-preserve.sh` scans each
-candidate and writes `CLEAN` or `INFECTED` to `restore-targets.tsv`; only the
-earliest `CLEAN` one may be offered. Two of ten were already infected on the
-account this was built against.
+the last hostile push is often the previous wave. Each candidate on the push
+record is fetched and checked first, and only a clean one may be offered. Two
+of ten were already infected on the account 1.x was built against. ADR-0037.
 
 
 **A mirror does not contain the commit you want to restore to.** `git clone
 --mirror` fetches only what is reachable from a ref, and after a force-push the
-pre-attack commit is reachable from nothing. `restore.sh` looks for it in the
-mirror and will not find it. `gh-preserve.sh` fetches it by SHA and anchors it
-under `refs/polinrider/pre-attack/`, and that has to happen while GitHub still
-serves the object. Do not write documentation or output that says the old commit
+pre-attack commit is reachable from nothing. It has to be fetched by SHA while
+GitHub still serves the object. Do not write documentation or output that says the old commit
 is "still in the mirror". It is not, until something puts it there.
 
 
 **Evidence never lands inside a git working tree.** Mirror clones hold live
 malware. Inside a checkout an editor indexes them and a stray `git add -A`
-republishes the payload from the operator's own account. `prc_prepare_out`
-enforces this, and the default is a directory under `$TMPDIR` that the machine
-clears on restart, so infected mirrors do not outlive the incident. Do not add a code
+republishes the payload from the operator's own account. The same goes for
+quarantine, which defaults to a new directory in the home folder and is never
+walked by a scan. Do not add a code
 path that writes mirrors somewhere else, and do not weaken the guard. The
 override exists for people who know why they want it, not for convenience.
 
 **Never print a placeholder inside a command.** A line like
 `--since <T0>` is a command that fails the moment anyone pastes it, and zsh
 rejects it outright. If a value is not known, either compute it, or say plainly
-that the step does not apply and print nothing runnable. `ci/selftest-nextsteps.sh`
-asserts this by parsing every fenced bash block in the generated document.
+that the step does not apply and print nothing runnable.
 
 
 1. **Nothing is deleted, ever.** Quarantine moves files and writes a manifest.
    Restore moves a branch pointer to a commit that still exists.
-2. **Dry run by default.** Anything that changes state requires `--apply`.
+2. **Dry run by default.** Anything that changes state requires `--apply`, or
+   a typed `yes` in the guided flow. ADR-0032.
 3. **No new dependencies.**
 4. **A false `INFECTED` is worse than a missed `review`.** If a legitimate
    project could contain the string, it belongs in `ioc/weak.txt`.
@@ -263,57 +240,50 @@ asserts this by parsing every fenced bash block in the generated document.
 6. **Strip control characters from anything derived from a scanned file** before
    it reaches a terminal or a report. A crafted filename or file header would
    otherwise drive the operator's terminal.
-7. **Add a self-test case for any detection you add or fix.**
+7. **Add a conformance case for any detection you add or fix**, with a `why`
+   that argues for its expected result.
 
 ### Compatibility
 
-Scripts must run on bash 3.2, which is what macOS ships. No `mapfile`, no
+The shell that remains, `ci/scan-workspace.sh` above all since users vendor
+it, must run on bash 3.2, which is what macOS ships. No `mapfile`, no
 associative arrays, no `${var,,}`. Guard array expansion under `set -u` with
 `${arr[@]+"${arr[@]}"}`.
 
 ### Cutting a release
 
-The README tells people to clone a **specific tag**, not `main` and not `latest`.
-That pin has to be updated by hand when a new release goes out, or the front page
-keeps pointing at an old version. This is the checklist.
-
-**1. Decide the version and bump the pin first.** It appears in exactly one file. `README.md`, in the "Run it"
-section: the `git clone --branch vX.Y.Z` line, the two sentences below it that
-name the tag, and the `git verify-tag vX.Y.Z` line. Four occurrences, one block.
-Check with:
+**1. Decide the version and set it first.** `version` in `Cargo.toml`, then
+`cargo build` to update `Cargo.lock`, and the example archive names in
+`README.md` ("Run it" and "Verifying this repository"). The Release workflow
+refuses a tag that does not match `Cargo.toml`. Check with:
 
 ```bash
-grep -rn 'v[0-9]\+\.[0-9]\+\.[0-9]\+' README.md
+grep -n '^version' Cargo.toml; grep -n 'v[0-9]\+\.[0-9]\+\.[0-9]\+' README.md
 ```
 
-**2. Merge everything first.** `main` is protected: no direct pushes, four
-required checks, and the rule applies to admins. Every change goes through a
-pull request.
+**2. Merge everything first.** `main` is protected: no direct pushes, required
+checks, and the rule applies to admins. Every change goes through a pull
+request.
 
-**3. Tag the merged commit, signed.** The commit you tag must already contain
-its own version in the README.
-
+**3. Tag the merged commit, signed.**
 
 ```bash
 git checkout main && git pull
-VERSION=v1.0.9   # the release you are cutting
+VERSION=v2.0.0   # the release you are cutting
 git tag -s "$VERSION" -m "polinrider-cleaner $VERSION
 
 Summarise what changed and why it matters to someone running this."
 git push origin "$VERSION"
 ```
 
-`tag.gpgsign` is enabled, so `-s` is the default; keep it explicit anyway.
+**4. The Release workflow does the rest.** It checks the tag against
+`Cargo.toml`, runs fmt, clippy, the unit tests and the corpus, builds five
+binaries, runs each one, attests them with the source archive and publishes.
+If anything fails, no release is created, which is intentional.
 
-**4. The Release workflow does the rest.** It re-runs all four self-tests at that
-tag, builds the archive, records SHA-256, attaches a sigstore provenance bundle,
-and publishes. If the tests fail, no release is created, which is intentional.
-
-**Order matters, and it is the opposite of what feels natural.** Bump the pin
-*before* tagging, in the commit you are about to tag. If you tag first and update
-the pin afterwards, the released tag contains a README telling people to clone
-the previous version. So step 1 above is not optional and not a follow-up: decide
-the version, bump the pin, merge that, then tag the commit that carries it.
+**5. Then the packages.** The Homebrew tap and the Scoop bucket point at a
+release archive and its checksum, so both need the new version and the new
+`SHA256SUMS` lines.
 
 > Tags matching `refs/tags/v*` are protected by a repository ruleset with no
 > bypass actors: they cannot be updated, force-pushed or deleted by anyone,
