@@ -8,6 +8,29 @@ the state of the work and the reasoning behind it.
 
 ---
 
+## 2026-10-09: getting 2.0 out
+
+Mandeep asked to close 1.x and release 2.0 the same day. Done on the working
+branch `claude/v2-status-review-mo5tbh`, on top of `v2`:
+
+- main's 28 September and 5 October indicator reviews brought onto v2
+  (PR #35, 83 indicators, was still open on main at the time).
+- The pattern engine reads `{n}`, `{n,}` and `{n,m}`. #35's
+  `fa-solid-[0-9]{3}\.llf` line otherwise stopped every scan with exit 3.
+- Folder and machine checks now match `ioc/filenames.txt`, as 1.x's path scan
+  did. v2 had only ported the GitHub side.
+- `release.yml` builds and attests five binaries; version is 2.0.0.
+- README, AGENTS.md and the docs site describe 2.0.
+
+**Still to do before the tag:** the real-GitHub test (item 6 below), the
+remaining machine tests, and deleting the 1.x shell (`polinrider.sh`, `lib/`,
+`github-*-recovery/`, `ui/`, six `ci/selftest-*.sh` and their CI steps). The
+CI scan template, `ci/scan-workspace.sh`, stays shell in 2.0.0 because it also
+scans every ref of a repository's history, which the binary does not do for a
+local checkout. After release: Homebrew, Scoop, AUR and the weekly routine.
+
+---
+
 ## Where things stand in one paragraph
 
 `main` is **1.x**, the working shell tool, released at `v1.0.9` and still taking
