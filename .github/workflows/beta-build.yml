@@ -1,8 +1,9 @@
-name: Beta binaries
+name: Every platform
 
-# Builds the 2.0 beta for each platform on every push to v2, so it can be
-# tested on a machine without a Rust toolchain. These are workflow artifacts,
-# not a release: they are not announced, not attested, and they expire.
+# Builds the binary for each platform on every push and pull request, and runs
+# it on that platform's runner, so a change can be tried on a machine without
+# a Rust toolchain. These are workflow artifacts, not a release: they are not
+# announced, not attested, and they expire. Releases come from release.yml.
 #
 # It is also the only place the binary is built and run on macOS and Windows.
 # The sandbox is Linux, and ci.yml builds on Linux only. And it is the only
@@ -12,7 +13,8 @@ name: Beta binaries
 
 on:
   push:
-    branches: [v2]
+    branches: [main, v2]
+  pull_request:
   workflow_dispatch:
 
 permissions:
