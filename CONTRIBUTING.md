@@ -22,9 +22,8 @@ repositories they cannot afford to lose. That sets the bar.
 ```bash
 bash -n <every script you touched>
 shellcheck --severity=warning --external-sources <every script you touched>
-./ci/selftest.sh            # detection: infected fixture and clean control
-./ci/selftest-restore.sh    # restore planner: classification and the wave-2 trap
-./ci/selftest-entrypoint.sh # polinrider.sh routing, exit codes and read-only behaviour
+./ci/selftest.sh            # the vendorable CI scanner: infected fixture and clean control
+./polinrider-sandbox --all  # everything else: Rust tests, the corpus and shell lint, in the container
 ```
 
 The tree is clean at `--severity=warning`, which is what CI enforces. Where a
@@ -35,10 +34,10 @@ reason on the line above it.
 containing the known false-positive shapes, and asserts the scanner gets both
 right. **Add a case to it for any detection you add or fix.**
 
-`selftest-restore.sh` covers the only code path that can destroy someone's work.
-It builds a two-wave attack offline and asserts that the planner refuses to
-restore onto an attacker commit. **Any change to `lib/gh-restore.sh` needs a case
-here.** It makes no network calls, so it is safe to run anywhere.
+The restore planner is the only code path that can destroy someone's work. It
+lives in `src/remote_fix.rs`, and the conformance corpus builds two-wave attacks
+offline and asserts that it refuses to restore onto an attacker commit. **Any
+change to it needs a corpus case.**
 
 ## Adding an indicator
 

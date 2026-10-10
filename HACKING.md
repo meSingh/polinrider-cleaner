@@ -95,9 +95,7 @@ edit-and-see-it loop.
 
 | | |
 |---|---|
-| `polinrider.sh` | The one command a user runs |
 | `src/` | The `polinrider` binary: checks one computer, a folder, or GitHub |
-| `github-*-recovery/` | Scans and repairs GitHub accounts and organizations |
 | `ioc/` | The indicator set. Plain text, read at runtime |
 | `conformance/` | The specification: what a scan must return, as data |
 | `docs-site/` | The documentation site |

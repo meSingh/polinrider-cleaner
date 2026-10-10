@@ -49,24 +49,6 @@ jobs:
       - name: Detection self-test
         run: ./ci/selftest.sh
 
-      - name: Restore planner self-test
-        run: ./ci/selftest-restore.sh
-
-      - name: Entry point self-test
-        run: ./ci/selftest-entrypoint.sh
-
-      - name: Self-test - next steps and evidence location
-        run: ./ci/selftest-nextsteps.sh
-
-      - name: Self-test - preserving restore points
-        run: ./ci/selftest-preserve.sh
-
-      - name: Self-test - history rewrite
-        run: ./ci/selftest-rewrite.sh
-
-      - name: Self-test - presentation layer
-        run: ./ci/selftest-ui.sh
-
       - name: Rust toolchain
         run: rustup toolchain install --profile minimal --component clippy,rustfmt 1.98.1
 
@@ -99,8 +81,9 @@ jobs:
       # Markdown is skipped by the scanner's own defaults, but docs-site/book/
       # is the rendered HTML of that same Markdown, so it carries the same
       # strings without the .md extension that would exempt it. conformance/
-      # is excluded for the same reason as lib/ and ci/: a corpus that tests
-      # for an indicator has to contain it.
+      # is excluded for the same reason as ci/ and src/: a corpus that tests
+      # for an indicator has to contain it. lib/ and github-*-recovery/ are
+      # gone from the tree but not from history, which --all-refs reads.
       - name: Scan with detection tooling excluded
         run: |
           ./ci/scan-workspace.sh --path . --all-refs --fail-on infected \

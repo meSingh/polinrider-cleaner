@@ -17,7 +17,6 @@ you. See [below](#why-the-scanner-is-vendored-not-installed).
 | `polinrider-scan.yml` | The workflow that runs it. Copy into `.github/workflows/` |
 | `install-workflow.sh` | Copies both, plus the indicator set, into one of your repositories |
 | `selftest.sh` | Builds a synthetic infected repo and a clean control, and asserts the scanner gets both right |
-| `selftest-restore.sh` | Offline test of the restore planner, including the second-wave trap. No network, no credentials |
 
 ---
 
