@@ -1,0 +1,31 @@
+{
+  "why": "node -e and python -c are how the first stage runs, and also how editors and coding agents run things all day. Review, with the command line shown. A node process running a file is ordinary and is not listed.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "home": {},
+  "host": {
+    "platform": "linux\n",
+    "processes": "50\tnode\tnode /srv/app/server.js\n51\tnode\tnode -e console.log(1)\n",
+    "connections": "",
+    "crontab": "",
+    "git-config": "",
+    "root/.keep": ""
+  },
+  "expect": {
+    "exit": 1,
+    "findings": [
+      {
+        "level": "review",
+        "match": "an interpreter is running code passed on the command line"
+      }
+    ],
+    "must_not_report": [
+      "[HIT]",
+      "server.js"
+    ]
+  }
+}

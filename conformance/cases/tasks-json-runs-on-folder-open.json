@@ -1,0 +1,22 @@
+{
+  "why": "A task that runs on folder open needs a human, but is not on its own a confirmed infection.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/.vscode/tasks.json": "{\"version\":\"2.0.0\",\"tasks\":[{\"label\":\"setup\",\"type\":\"shell\",\"command\":\"npm ci\",\"runOptions\":{\"runOn\":\"folderOpen\"}}]}\n"
+  },
+  "expect": {
+    "exit": 1,
+    "findings": [
+      {
+        "level": "review",
+        "match": "runs on folder open",
+        "path": "tasks.json"
+      }
+    ],
+    "must_not_report": [
+      "[HIT]"
+    ]
+  }
+}

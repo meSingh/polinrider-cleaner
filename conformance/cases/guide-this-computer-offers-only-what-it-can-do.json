@@ -1,0 +1,39 @@
+{
+  "why": "A running implant cannot be moved into quarantine. The flow names it in plain words, says that nothing here can be fixed for you, and does not put a yes or no question that has no yes. The last screen puts the network first and says to rebuild, because a running program is proof the payload ran.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "home": {},
+  "host": {
+    "platform": "linux\n",
+    "processes": "4242\t{{IMPLANT_CUT}}\t/home/x/.local/share/{{IMPLANT}}\n",
+    "connections": "",
+    "crontab": "",
+    "git-config": "",
+    "root/.keep": ""
+  },
+  "expect": {
+    "exit": 2,
+    "tree_may_change": false,
+    "must_print": [
+      "1 program from the payload running right now",
+      "A running program means the payload has run on this computer.",
+      "None of these can be fixed for you.",
+      "Disconnect from the network, now",
+      "Rebuild this computer from a clean install"
+    ],
+    "must_not_print": [
+      "Type yes"
+    ]
+  },
+  "command": "guide",
+  "stdin": [
+    "computer",
+    "{{TREE}}/code",
+    "",
+    ""
+  ]
+}

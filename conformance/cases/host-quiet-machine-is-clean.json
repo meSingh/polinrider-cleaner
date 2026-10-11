@@ -1,0 +1,47 @@
+{
+  "why": "A machine with nothing running, scheduled or configured is clean, and every host section says it looked. If this fails, a host check is making a finding out of nothing and every other host case is noise.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "home": {},
+  "host": {
+    "platform": "linux\n",
+    "processes": "",
+    "connections": "",
+    "crontab": "",
+    "git-config": "",
+    "root/.keep": ""
+  },
+  "expect": {
+    "exit": 0,
+    "findings": [
+      {
+        "level": "ok",
+        "match": "no second-stage implant found"
+      },
+      {
+        "level": "ok",
+        "match": "user crontab is empty"
+      },
+      {
+        "level": "ok",
+        "match": "no global core.hooksPath"
+      },
+      {
+        "level": "ok",
+        "match": "no interpreter running inline code"
+      },
+      {
+        "level": "ok",
+        "match": "no established node or Electron TCP connections"
+      }
+    ],
+    "must_not_report": [
+      "[HIT]",
+      "[review]"
+    ]
+  }
+}

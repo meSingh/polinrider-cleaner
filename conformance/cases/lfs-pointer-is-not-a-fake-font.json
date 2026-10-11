@@ -1,0 +1,21 @@
+{
+  "why": "Git LFS stores a text pointer in place of the font. Flagging it is a known false positive and must stay fixed.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/public/tracked.woff2": "version https://git-lfs.github.com/spec/v1\noid sha256:abc123\nsize 1234\n"
+  },
+  "expect": {
+    "exit": 0,
+    "findings": [
+      {
+        "level": "ok",
+        "match": "font files checked"
+      }
+    ],
+    "must_not_report": [
+      "tracked.woff2"
+    ]
+  }
+}

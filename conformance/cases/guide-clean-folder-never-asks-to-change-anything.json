@@ -1,0 +1,30 @@
+{
+  "why": "With nothing found there is nothing to consent to, so the question is never put. A clean folder goes straight to the last screen and exits 0.",
+  "command": "guide",
+  "roots": [
+    "code"
+  ],
+  "stdin": [
+    "folder",
+    "{{TREE}}/code",
+    ""
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "expect": {
+    "exit": 0,
+    "tree_may_change": false,
+    "must_print": [
+      "NOTHING FOUND",
+      "STEP 4 OF 4"
+    ],
+    "must_not_print": [
+      "Type yes"
+    ],
+    "must_not_report": [
+      "[HIT]",
+      "[review]"
+    ]
+  }
+}

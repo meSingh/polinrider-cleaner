@@ -1,0 +1,29 @@
+{
+  "why": "Appended is the only shape it cuts. Here the payload sits inside the object literal with the project's own code after it, and cutting to the end of the file would take that code too. A cleanup that breaks the build has made the incident worse. Reported, not edited, even under --apply.",
+  "command": "clean",
+  "apply": true,
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/vite.config.js": "module.exports = {{{PAD}}{{STRONG}}\n  plugins: [],\n}\n"
+  },
+  "expect": {
+    "exit": 2,
+    "tree_may_change": false,
+    "findings": [
+      {
+        "level": "HIT",
+        "match": "config file contains an indicator",
+        "path": "vite.config.js"
+      }
+    ],
+    "must_print": [
+      "not stripped",
+      "re-clone"
+    ],
+    "must_not_print": [
+      "original kept ->"
+    ]
+  }
+}

@@ -40,6 +40,21 @@ If you disagree with one, open an issue and quote its number.
 | [0022](./0022-q-quits-b-goes-back.md) | q quits, b goes back | Accepted |
 | [0023](./0023-the-entry-point-parses-before-it-runs.md) | The entry point parses before it runs | Accepted |
 | [0024](./0024-a-prompt-inside-a-loop-must-not-share-its-stdin.md) | A prompt inside a loop must not share its stdin | Accepted |
+| [0025](./0025-walk-the-filesystem-once-with-prune-and-checkpoint-it.md) | Walk the filesystem once, with -prune, and checkpoint it | Accepted |
+| [0026](./0026-2-0-0-is-one-binary-built-against-a-conformance-corpus.md) | 2.0.0 is one binary, built against a conformance corpus | Accepted |
+| [0027](./0027-development-and-testing-happen-in-a-container.md) | Development and testing happen in a container | Accepted |
+| [0028](./0028-the-documentation-site-is-astro-starlight.md) | The documentation site is Astro Starlight, on a Node toolchain | Accepted |
+| [0029](./0029-host-state-is-read-through-one-boundary-and-can-be-supplied.md) | Host state is read through one boundary, and can be supplied | Accepted |
+| [0030](./0030-2-0-does-not-checkpoint-a-scan.md) | 2.0 does not checkpoint a scan | Accepted |
+| [0031](./0031-clean-strips-an-appended-payload-in-place-and-never-touches-git.md) | clean strips an appended payload in place, and never touches git | Accepted |
+| [0032](./0032-the-guided-flow-changes-something-only-on-a-typed-yes.md) | The guided flow changes something only on a typed yes | Accepted |
+| [0033](./0033-every-run-opens-with-the-banner-and-colour-changes-no-character.md) | Every run opens with the banner, and colour changes no character | Accepted |
+| [0034](./0034-the-verdict-is-followed-by-what-to-do-and-rebuild-is-said-only-on-proof.md) | The verdict is followed by what to do, and "rebuild" is said only on proof | Accepted |
+| [0035](./0035-the-guided-flow-is-four-calm-screens-answered-in-words.md) | The guided flow is four calm screens, answered in words | Accepted |
+| [0036](./0036-github-is-checked-through-one-boundary-and-fixed-one-agreed-way-at-a-time.md) | GitHub is checked through one boundary, and fixed one agreed way at a time | Accepted |
+| [0037](./0037-a-github-fix-is-planned-on-the-copy-pushed-on-a-yes-and-believed-when-github-shows-it.md) | A GitHub fix is planned on the copy, pushed on a yes, and believed when GitHub shows it | Accepted |
+| [0038](./0038-windows-is-read-through-the-same-boundary-with-powershell-as-the-tool.md) | Windows is read through the same boundary, with PowerShell as the tool | Accepted |
+| [0039](./0039-the-shell-machine-check-is-removed-and-the-corpus-holds-one-engine.md) | The shell machine check is removed, and the corpus holds one engine | Accepted |
 
 ## Adding one
 

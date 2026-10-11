@@ -1,0 +1,170 @@
+# The conformance corpus
+
+This is the specification. Not the code: this.
+
+Each case declares a filesystem to build and exactly what a scan of it must
+return — exit code, findings that must appear, findings that must **not**, and
+which paths the run is allowed to touch.
+
+It was written so that two implementations had to give the same answers: the
+shell machine check and the Rust binary that replaced it. The port was
+finished when they agreed on every case both could run, not when it compiled.
+The shell machine check was then removed
+([ADR-0039](../docs/adr/0039-the-shell-machine-check-is-removed-and-the-corpus-holds-one-engine.md)),
+so the corpus now holds one engine to what was agreed, and every new case has
+to carry its own argument in `why`, because there is no second implementation
+left to disagree with it.
+
+```bash
+cargo build --release                   # the corpus runs the built binary
+./conformance/run.sh                    # every case
+./conformance/run.sh --case font-masquerade   # one case, with the run output
+./conformance/run.sh --diff             # every case, with output
+```
+
+Exit `0` all passed · `1` a case failed · `3` the harness could not run.
+
+## No payload is committed here
+
+Cases write `{{STRONG}}`, `{{WEAK}}`, `{{BADPKG}}` and `{{PAD}}`. The runner
+substitutes real values out of [`ioc/`](../ioc/) when it builds the tree.
+
+Two reasons. Working malware strings stay out of the repository, so cloning
+this does not trip anyone's scanner. And the corpus cannot drift away from the
+indicator set it is testing: change `ioc/strong.txt` and the fixtures change
+with it.
+
+## Adding a case
+
+Cases are generated from [`build-cases.py`](./build-cases.py) so the set stays
+consistent and a reviewer reads intent rather than JSON punctuation. Add a
+`case(...)` block and re-run it.
+
+Every case carries a `why`. It is not a description of the fixture, which the
+fixture already gives you. It is the argument for why the expected result is
+the **right** result. A case without that argument pins behaviour without
+justifying it, which is how a corpus quietly canonises a bug.
+
+Three kinds of case are worth writing:
+
+**What it must catch.** The canonical infection, in each of the shapes the
+campaign uses.
+
+**What it must not catch.** Every false positive found in the field gets a case
+so it stays fixed. A tool that cries wolf during an incident wastes the one
+thing nobody has.
+
+**What it deliberately misses.** `node-modules-is-not-scanned` and
+`payload-in-an-ordinary-source-file-is-not-found` both assert a limitation.
+They exist so the limitation is explicit and survives the rewrite in both
+directions: the port should not silently start catching these, and should not
+silently stop.
+
+## What it cannot tell you
+
+The corpus pins current behaviour, including any bug not yet found. It makes a
+port faithful, not correct. That is the reason every case has to argue for its
+expected value, and the reason a genuinely wrong answer here is worse than no
+case at all.
+
+## Host cases
+
+Most cases describe a tree. A case with a `host` key describes a machine as
+well: its process table, its sockets, its crontab, its system directories, as
+files. These run without `--fs-only` and with `--host-state` pointing at those
+files, which is how a check that reads "whatever is running" gets a fixed
+answer to be measured against.
+
+| File in `host` | Holds |
+|---|---|
+| `platform` | `linux` or `macos`. Decides which persistence locations are read |
+| `processes` | one per line: pid, name, command line, tab-separated |
+| `connections` | socket tool output, one connection per line |
+| `crontab` | the user crontab |
+| `git-config` | `key=value`, as `git config --global --list` prints it |
+| `root/...` | stands in for `/`: `root/etc/cron.d/x` is `/etc/cron.d/x` |
+
+A `home` map is written under the fixture's home directory, for startup files,
+`~/.npmrc` and user-level persistence.
+
+**An absent file is not an empty file.** Empty means the question was asked and
+the answer was nothing. Absent means nobody asked, and the scan has to say so
+with a `[review]` line. `<name>.absent` records that the tool which would
+answer was not installed. `host_state()` in `build-cases.py` starts every case
+from a quiet machine with every question answered, so a case changes only the
+one thing it is about.
+
+Host cases add three placeholders: `{{IMPLANT}}`, `{{IMPLANT_CUT}}` (the same
+name cut to the 15 bytes the Linux kernel keeps) and `{{NETIP}}`.
+
+The shell implementation could never run these: only the Rust engine can be
+handed a machine that does not exist. That had a cost, written into
+[ADR-0029](../docs/adr/0029-host-state-is-read-through-one-boundary-and-can-be-supplied.md):
+for the host checks there is no second implementation to disagree with the
+corpus, so a wrong expected value here has nothing to catch it but its `why`.
+
+## Clean cases
+
+A case with `"command": "clean"` runs `polinrider clean`, the one command that
+changes the contents of a source file
+([ADR-0031](../docs/adr/0031-clean-strips-an-appended-payload-in-place-and-never-touches-git.md)).
+Three more things can be expected of a case:
+
+| In `expect` | Asserts |
+|---|---|
+| `stripped` | the file is still in the tree without the indicator, and the infected original is in quarantine |
+| `file_after` | the exact contents of a file afterwards. Used to show that unrelated files, and everything under `.git`, are untouched |
+| `must_print` | text that must appear in the output, for advice that carries no level tag |
+
+Half of these cases are about what `clean` must leave alone.
+
+## Guide cases
+
+A case with `"command": "guide"` runs a whole guided session
+([ADR-0032](../docs/adr/0032-the-guided-flow-changes-something-only-on-a-typed-yes.md)).
+Its `stdin` is what the operator types, one answer per entry, and `{{TREE}}` in
+an answer is the fixture tree. Answers are words, never numbers. These pin
+the promise on the first screen: nothing will be changed unless you type yes.
+Not on Enter, not on "sure", not for asking to see the details, and not when
+the input runs out.
+
+## GitHub cases
+
+A guide case with a `forge` key describes a pretend GitHub: owners, their
+repositories, branches and files. The runner builds each as a real git
+repository and hands the directory to the session
+([ADR-0036](../docs/adr/0036-github-is-checked-through-one-boundary-and-fixed-one-agreed-way-at-a-time.md)).
+`forge_files` adds who is signed in and the list of organizations.
+
+| Under a repository | Means |
+|---|---|
+| `branches` | each branch and its files, as one commit on top of a shared base |
+| `pushes` | the push record, written as given, for a case that needs IDs GitHub would not serve |
+| `attacks` | pushes made after the repository existed, each a real push. `force` replaces the newest commit, which leaves the old one reachable from nothing. With an `actor` and `at` the push goes on the record with the commit the branch pointed to before. `date` is what the commit claims as its date |
+| `missing` | listed, and not there to copy |
+
+The fixes push
+([ADR-0037](../docs/adr/0037-a-github-fix-is-planned-on-the-copy-pushed-on-a-yes-and-believed-when-github-shows-it.md)),
+so a GitHub case is also held to what the pretend GitHub looks like when the
+session is over. **A repository the case does not name under
+`expect.forge_after` must be exactly as it was**: every branch, every tag, its
+description and whether it is archived. A case that pushes has to say so:
+
+| `forge_after` key | Asserts |
+|---|---|
+| `clean` | these branches no longer hold the indicator |
+| `infected` | these branches still do, for a fix that says it leaves the payload in place |
+| `history` | `clean`: the indicator is in no commit a branch or tag reaches. `infected`: it still is, for a fix that says it rewrites nothing |
+| `file` | `<ref>:<path>` holds exactly this |
+| `readme_top`, `readme_keeps` | the first line of the README, and text from before the fix that must still be in it |
+| `archived` | the repository was made read-only and its description replaced |
+| `unchanged` | named, and still must be exactly as it was |
+
+What these do not cover is GitHub. `gh`, a protected branch, a ruleset and a
+real force-push are on the far side of the boundary, and no case reaches them.
+
+What the host cases do not cover is the thin layer that actually runs `ps`,
+`ss`, `lsof`, `crontab` and `git` on a real machine. The cases start on the far
+side of it.
+
+See [ADR-0026](../docs/adr/0026-2-0-0-is-one-binary-built-against-a-conformance-corpus.md).

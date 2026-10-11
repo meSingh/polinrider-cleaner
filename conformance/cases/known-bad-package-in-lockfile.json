@@ -1,0 +1,19 @@
+{
+  "why": "A campaign package named in a manifest is confirmed even though node_modules itself is never walked.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/package.json": "{\"name\":\"proj\",\"dependencies\":{\"{{BADPKG}}\":\"^1.0.0\"}}\n"
+  },
+  "expect": {
+    "exit": 2,
+    "findings": [
+      {
+        "level": "HIT",
+        "match": "known-bad package referenced",
+        "path": "package.json"
+      }
+    ]
+  }
+}

@@ -5,7 +5,7 @@
 | clean up an incident, start to finish | [`../README.md`](../README.md) |
 | recover a personal GitHub account | [`../github-account-recovery/README.md`](../github-account-recovery/README.md) |
 | recover an organization | [`../github-org-recovery/README.md`](../github-org-recovery/README.md) |
-| check or clean one computer | [`../machine-cleanup/`](../machine-cleanup/) |
+| check or clean one computer | [the machine guide](../docs-site/src/content/docs/guides/machine.md) |
 | run the scanner in CI | [`../ci/README.md`](../ci/README.md) |
 | understand the indicator set | [`../ioc/README.md`](../ioc/README.md) |
 | know when the indicator set was last reviewed | [`indicator-reviews/`](./indicator-reviews/) |

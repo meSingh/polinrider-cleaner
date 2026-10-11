@@ -1,0 +1,23 @@
+{
+  "why": "The canonical infection: payload appended past the module end, behind padding.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/postcss.config.mjs": "export default { plugins: {} }\n{{PAD}}{{STRONG}}\n",
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "expect": {
+    "exit": 2,
+    "findings": [
+      {
+        "level": "HIT",
+        "match": "config file contains an indicator",
+        "path": "postcss.config.mjs"
+      }
+    ],
+    "must_not_report": [
+      "src/index.js"
+    ]
+  }
+}

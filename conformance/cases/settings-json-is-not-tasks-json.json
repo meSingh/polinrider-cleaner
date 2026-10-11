@@ -1,0 +1,15 @@
+{
+  "why": "Only .vscode/tasks.json executes commands. Matching folderOpen in settings.json is a known false positive.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/.vscode/settings.json": "{\"workbench.editor.labelFormat\":\"folderOpen\"}\n"
+  },
+  "expect": {
+    "exit": 0,
+    "must_not_report": [
+      "settings.json"
+    ]
+  }
+}

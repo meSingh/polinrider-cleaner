@@ -49,49 +49,21 @@ jobs:
       - name: Detection self-test
         run: ./ci/selftest.sh
 
-      - name: Restore planner self-test
-        run: ./ci/selftest-restore.sh
+      - name: Rust toolchain
+        run: rustup toolchain install --profile minimal --component clippy,rustfmt 1.98.1
 
-      - name: Implant detection self-test
-        run: ./ci/selftest-implant.sh
-
-      - name: Entry point self-test
-        run: ./ci/selftest-entrypoint.sh
-
-      - name: Self-test - next steps and evidence location
-        run: ./ci/selftest-nextsteps.sh
-
-      - name: Self-test - preserving restore points
-        run: ./ci/selftest-preserve.sh
-
-      - name: Self-test - history rewrite
-        run: ./ci/selftest-rewrite.sh
-
-      - name: Self-test - presentation layer
-        run: ./ci/selftest-ui.sh
-
-  powershell:
-    name: PowerShell lint
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Parse and analyse check-windows.ps1
-        shell: pwsh
+      - name: Rust - format, lint, test
         run: |
-          $errors = $null
-          [void][System.Management.Automation.Language.Parser]::ParseFile(
-            (Resolve-Path ./machine-cleanup/check-windows.ps1), [ref]$null, [ref]$errors)
-          if ($errors.Count -gt 0) { $errors | ForEach-Object { $_.Message }; exit 1 }
-          if (-not (Get-Module -ListAvailable -Name PSScriptAnalyzer)) {
-            Install-Module PSScriptAnalyzer -Force -Scope CurrentUser -ErrorAction Stop
-          }
-          $r = Invoke-ScriptAnalyzer -Path ./machine-cleanup/check-windows.ps1 -Severity Error,Warning
-          if ($r) { $r | Format-Table -AutoSize | Out-String | Write-Host; exit 1 }
-          Write-Host "PowerShell clean"
+          cargo fmt --check
+          cargo clippy --locked --all-targets -- -D warnings
+          cargo test --locked
+
+      - name: Conformance corpus
+        # The specification. The shell machine check answered to it too, until
+        # the two agreed and the shell one was removed.
+        run: |
+          cargo build --locked --release
+          ./conformance/run.sh
 
   self-scan:
     name: Scan this repository
@@ -106,8 +78,13 @@ jobs:
       # This repository contains indicator strings by design: they are what it
       # detects. The scanner must still come back clean once its own detection
       # code is excluded, which is what proves the exclusion logic works.
-      # Markdown is skipped by the scanner's own defaults.
+      # Markdown is skipped by the scanner's own defaults, but docs-site/book/
+      # is the rendered HTML of that same Markdown, so it carries the same
+      # strings without the .md extension that would exempt it. conformance/
+      # is excluded for the same reason as ci/ and src/: a corpus that tests
+      # for an indicator has to contain it. lib/ and github-*-recovery/ are
+      # gone from the tree but not from history, which --all-refs reads.
       - name: Scan with detection tooling excluded
         run: |
           ./ci/scan-workspace.sh --path . --all-refs --fail-on infected \
-            --exclude '(^|/)(lib|ci|github-org-recovery|github-account-recovery|machine-cleanup)/'
+            --exclude '(^|/)(lib|ci|src|conformance|github-org-recovery|github-account-recovery)/|(^|/)docs-site/(book|dist|node_modules|\\.astro)/'

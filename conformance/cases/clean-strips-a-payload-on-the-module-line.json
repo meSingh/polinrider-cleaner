@@ -1,0 +1,21 @@
+{
+  "why": "The form that hides best: the padding follows the closing bracket on the same line and pushes the payload off the edge of the editor. The cut must leave that line intact and ended.",
+  "command": "clean",
+  "apply": true,
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/next.config.js": "module.exports = { reactStrictMode: true };{{PAD}}{{STRONG}}\n"
+  },
+  "expect": {
+    "exit": 2,
+    "tree_may_change": true,
+    "stripped": [
+      "code/proj/next.config.js"
+    ],
+    "file_after": {
+      "code/proj/next.config.js": "module.exports = { reactStrictMode: true };\n"
+    }
+  }
+}

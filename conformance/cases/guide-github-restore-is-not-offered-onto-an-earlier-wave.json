@@ -1,0 +1,55 @@
+{
+  "why": "The commit before the newest hostile push is often the previous wave of the same attack. Here every state GitHub remembers carries the payload, so there is nothing clean to go back to. restore is left off the screen with the reason, typing it anyway is refused, and the repository is not touched. Restoring to the commit before the last push, as a tool that trusted the record blindly would, puts the payload straight back and reports a fix.",
+  "command": "guide",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "stdin": [
+    "organization",
+    "acme",
+    "fix",
+    "restore",
+    "skip"
+  ],
+  "forge_files": {
+    "whoami": "tester\n",
+    "orgs": "acme\t2\nacme-labs\t7\n"
+  },
+  "forge": {
+    "acme": {
+      "site": {
+        "branches": {
+          "main": {
+            "vite.config.js": "export default { plugins: {} }\n{{PAD}}{{STRONG}}\n"
+          }
+        },
+        "attacks": [
+          {
+            "branch": "main",
+            "actor": "alice",
+            "at": "2026-09-12T10:00:00Z",
+            "files": {
+              "next.config.js": "export default { plugins: {} }\n{{PAD}}{{STRONG}}\n"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "tree_may_change": false,
+    "must_print": [
+      "restore is not possible here:",
+      "every earlier state GitHub remembers carries the payload",
+      "restore is not possible for this repository."
+    ],
+    "must_not_print": [
+      "Record found",
+      "Done."
+    ]
+  }
+}

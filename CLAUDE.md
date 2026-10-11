@@ -1,5 +1,18 @@
 # Working in this repository
 
+**Start with [`HANDOVER.md`](./HANDOVER.md).** It carries the current state of the
+work: which branch holds what, what is done, what is next, and the mistakes that
+already cost time. [`HACKING.md`](./HACKING.md) is how to run things.
+
+Two facts that change what you should do:
+
+- `main` is **1.x**, the released shell tool. The **`v2`** branch holds a rewrite
+  in progress (one Rust binary, a docs site, a sandbox, a conformance corpus).
+  Check which branch you are on before changing anything.
+- **Everything destructive runs in the container**, via `./polinrider-sandbox`.
+  This tool moves files and rewrites git history, and its tests exercise those
+  paths. Do not run the suite directly on the machine.
+
 Read `AGENTS.md` before changing anything. It covers the layout, the release
 process, the exit-code contract and the rules that are not negotiable. This file
 is the short version of the one thing that is easiest to get wrong.
@@ -29,6 +42,16 @@ something was written without AI assistance. The absence of attribution is the
 point; a note claiming human authorship is the same metadata inverted.
 
 Write the message, explain why the change was needed, and stop.
+
+## The conformance corpus is the specification
+
+`conformance/` holds fixture trees as data with the verdict each must produce.
+Both the shell and the Rust implementation answer to it, and the port is finished
+when they agree, not when it compiles. Changing a message the corpus matches on
+is a behaviour change; the corpus will say so.
+
+Add a case for anything you fix. Every case carries a `why` that argues for the
+expected value, because a corpus that pins a bug is worse than no corpus.
 
 ## Everything else
 

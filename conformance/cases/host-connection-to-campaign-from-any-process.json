@@ -1,0 +1,27 @@
+{
+  "why": "The shell looked only at sockets held by node and Electron. The second stage is a native binary under its own name, so its connection to the controller was never examined. A live connection to a campaign address is confirmed whatever holds it.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "home": {},
+  "host": {
+    "platform": "linux\n",
+    "processes": "",
+    "connections": "ESTAB 0 0 10.0.0.2:40000 198.51.100.4:443 users:((\"node\",pid=9,fd=20))\nESTAB 0 0 10.0.0.2:40001 {{NETIP}}:443 users:((\"updater\",pid=8,fd=3))\n",
+    "crontab": "",
+    "git-config": "",
+    "root/.keep": ""
+  },
+  "expect": {
+    "exit": 2,
+    "findings": [
+      {
+        "level": "HIT",
+        "match": "live connection to known campaign infrastructure"
+      }
+    ]
+  }
+}

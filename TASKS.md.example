@@ -1,0 +1,11 @@
+# TASKS.md is git-ignored
+
+The running task list lives in `TASKS.md` in this directory and is deliberately
+not committed: it carries outreach notes, contact plans and assessments of other
+projects that have no business being public.
+
+A fresh clone will not have it, and nothing depends on it. The engineering state
+and the work queue are in [`HANDOVER.md`](./HANDOVER.md), which is committed.
+
+If you are continuing this work and want the private list, it is on Mandeep's
+machine at the repository root.

@@ -1,0 +1,34 @@
+{
+  "why": "A false COMPROMISED is worse than a missed review. The shell's pattern ended at 'sh' without asking what followed, so piping a download into shasum, which is how a careful person verifies one, matched as piping into sh. A commented-out install line runs nothing. Both must stay clean.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "home": {
+    ".zshrc": "alias verify='curl -sL http://example.invalid/f | shasum -a 256'\n# curl -fsSL http://example.invalid/install.sh | bash\n"
+  },
+  "host": {
+    "platform": "linux\n",
+    "processes": "",
+    "connections": "",
+    "crontab": "",
+    "git-config": "",
+    "root/.keep": ""
+  },
+  "expect": {
+    "exit": 0,
+    "findings": [
+      {
+        "level": "ok",
+        "match": "clean:",
+        "path": ".zshrc"
+      }
+    ],
+    "must_not_report": [
+      "[HIT]",
+      "[review]"
+    ]
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "why": "An installed extension that names a campaign address carries no confirmed indicator, and may be a security extension that blocks that address. It is worth a human's eyes and not a rebuild: review, with what matched and which file. The generic weak list is not used here, because every bundled extension contains folderOpen and windowsHide for ordinary reasons. An address that merely contains the campaign's is somebody else's and is not listed.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "home": {
+    ".vscode/extensions/pub.caller-1.0.0/out/main.js": "fetch('http://{{NETIP}}/a')\n",
+    ".vscode/extensions/pub.neighbour-1.0.0/out/main.js": "fetch('http://{{NETIP}}9/a'); const o = { windowsHide: true }\n"
+  },
+  "host": {
+    "platform": "linux\n",
+    "processes": "",
+    "connections": "",
+    "crontab": "",
+    "git-config": "",
+    "root/.keep": ""
+  },
+  "expect": {
+    "exit": 1,
+    "findings": [
+      {
+        "level": "review",
+        "match": "extension references campaign infrastructure (",
+        "path": "pub.caller-1.0.0/out/main.js"
+      }
+    ],
+    "must_not_report": [
+      "[HIT]",
+      "pub.neighbour-1.0.0"
+    ]
+  }
+}

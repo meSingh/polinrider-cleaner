@@ -1,0 +1,28 @@
+{
+  "why": "clean is check plus one thing, not a different scanner. A fake font in the same repository is moved to quarantine exactly as check --apply moves it.",
+  "command": "clean",
+  "apply": true,
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/postcss.config.mjs": "export default { plugins: {} }\n{{PAD}}{{STRONG}}\n",
+    "code/proj/public/fake.woff2": "var _0x4a=function(){return 1};\n"
+  },
+  "expect": {
+    "exit": 2,
+    "tree_may_change": true,
+    "stripped": [
+      "code/proj/postcss.config.mjs"
+    ],
+    "quarantined": [
+      "code/proj/public/fake.woff2"
+    ],
+    "findings": [
+      {
+        "level": "HIT",
+        "match": "font file is not a font"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "why": "Linux keeps 15 bytes of a process name. The implant's is longer, so ps shows it cut short and a whole-name comparison never matches. Observed in the sandbox, not assumed: a binary run under the full name appears as the first 15 bytes. The shell check compares whole names and has therefore never matched on Linux. A name of exactly 15 bytes that begins a longer implant name is that implant.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "home": {},
+  "host": {
+    "platform": "linux\n",
+    "processes": "1\tsystemd\t/sbin/init\n4242\t{{IMPLANT_CUT}}\t/home/x/.local/share/{{IMPLANT}}\n",
+    "connections": "",
+    "crontab": "",
+    "git-config": "",
+    "root/.keep": ""
+  },
+  "expect": {
+    "exit": 2,
+    "findings": [
+      {
+        "level": "HIT",
+        "match": "an implant process is running now"
+      }
+    ]
+  }
+}

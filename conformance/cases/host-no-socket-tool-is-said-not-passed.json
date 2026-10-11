@@ -1,0 +1,30 @@
+{
+  "why": "With neither ss nor netstat there is no connection list, and no list is not the same as no connections. The section must say it was skipped and the run must not exit 0 on the strength of it.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "home": {},
+  "host": {
+    "platform": "linux\n",
+    "processes": "",
+    "crontab": "",
+    "git-config": "",
+    "root/.keep": "",
+    "connections.absent": ""
+  },
+  "expect": {
+    "exit": 1,
+    "findings": [
+      {
+        "level": "review",
+        "match": "skipped"
+      }
+    ],
+    "must_not_report": [
+      "[HIT]"
+    ]
+  }
+}

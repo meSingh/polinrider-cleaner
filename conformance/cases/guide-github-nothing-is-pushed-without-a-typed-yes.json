@@ -1,0 +1,77 @@
+{
+  "why": "The rule of the whole flow, where it matters most: this half rewrites other people's repositories. Enter is not yes, a near miss is not yes, and no backs out to the choice of fix. After three dry runs and a skip, every branch on GitHub is exactly where it was. The runner checks that for any repository a case does not say may change.",
+  "command": "guide",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "stdin": [
+    "organization",
+    "acme",
+    "fix",
+    "restore",
+    "",
+    "sure",
+    "no",
+    "erase",
+    "y",
+    "no",
+    "archive",
+    "YES please",
+    "no",
+    "skip"
+  ],
+  "forge_files": {
+    "whoami": "tester\n",
+    "orgs": "acme\t2\nacme-labs\t7\n"
+  },
+  "forge": {
+    "acme": {
+      "shop": {
+        "branches": {
+          "main": {
+            "postcss.config.mjs": "export default { plugins: {} }\n",
+            "README.md": "# Shop\n\nnpm install, then npm start.\n"
+          }
+        },
+        "attacks": [
+          {
+            "branch": "main",
+            "force": true,
+            "date": "2019-03-01T12:00:00Z",
+            "actor": "alice",
+            "at": "2026-09-11T09:14:00Z",
+            "files": {
+              "postcss.config.mjs": "export default { plugins: {} }\n{{PAD}}{{STRONG}}\n"
+            }
+          },
+          {
+            "branch": "main",
+            "actor": "bob",
+            "at": "2026-09-12T16:40:00Z",
+            "files": {
+              "src/feature.js": "export const feature = true\n"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "tree_may_change": false,
+    "must_print": [
+      "Nothing has been pushed yet.",
+      "Type yes or no. Enter is not yes. q quits.",
+      "Nothing was changed.",
+      "1 repository on GitHub carries the payload.",
+      "Fix acme/shop, which still carries the payload"
+    ],
+    "must_not_print": [
+      "Pushing to GitHub",
+      "Done."
+    ]
+  }
+}

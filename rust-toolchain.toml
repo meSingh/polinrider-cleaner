@@ -1,0 +1,4 @@
+# Pinned so a build here, in CI and in the sandbox are the same build.
+[toolchain]
+channel = "1.98.1"
+components = ["rustfmt", "clippy"]

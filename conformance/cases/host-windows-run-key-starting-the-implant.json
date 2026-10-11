@@ -1,0 +1,36 @@
+{
+  "why": "The implant registers itself to start with Windows. A Run entry whose command is the implant is confirmed with nothing on disk, and the finding says how to remove it, with the value's name quoted so that a name containing a quote cannot end the command early. An ordinary entry beside it is not a finding.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "home": {},
+  "host": {
+    "platform": "windows\n",
+    "processes": "",
+    "connections": "",
+    "git-config": "",
+    "root/.keep": "",
+    "run-keys": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\tOneDrive\t\"C:\\Program Files\\OneDrive\\OneDrive.exe\" /background\nHKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\tSys's Helper\tC:\\Users\\x\\AppData\\Local\\{{IMPLANT}}.exe --quiet\n",
+    "scheduled-tasks": ""
+  },
+  "expect": {
+    "exit": 2,
+    "findings": [
+      {
+        "level": "HIT",
+        "match": "implant run key entry",
+        "path": "Sys's Helper"
+      }
+    ],
+    "must_print": [
+      "Remove-ItemProperty",
+      "'Sys''s"
+    ],
+    "must_not_report": [
+      "OneDrive"
+    ]
+  }
+}

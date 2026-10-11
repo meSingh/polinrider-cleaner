@@ -1,0 +1,81 @@
+{
+  "why": "When there is no record to restore from, the history is rewritten without the payload. Every commit means every commit: the payload here also sat in old/vendor.js, a file since overwritten, so it is in the history and not in the newest commit, and a rewrite that only removed what the newest commit shows would leave it there and say it was gone. The build config is not lost with the payload: its clean part is put back. Afterwards the screen says how to bring an existing clone into line, because a pull from an old clone pushes the payload back.",
+  "command": "guide",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "stdin": [
+    "organization",
+    "acme",
+    "fix",
+    "erase",
+    "yes",
+    ""
+  ],
+  "forge_files": {
+    "whoami": "tester\n",
+    "orgs": "acme\t2\nacme-labs\t7\n"
+  },
+  "forge": {
+    "acme": {
+      "shop": {
+        "branches": {
+          "main": {
+            "postcss.config.mjs": "export default { plugins: {} }\n"
+          }
+        },
+        "attacks": [
+          {
+            "branch": "main",
+            "files": {
+              "old/vendor.js": "var a = '{{STRONG}}'\n"
+            }
+          },
+          {
+            "branch": "main",
+            "files": {
+              "old/vendor.js": "var a = 1\n"
+            }
+          },
+          {
+            "branch": "main",
+            "files": {
+              "postcss.config.mjs": "export default { plugins: {} }\n{{PAD}}{{STRONG}}\n"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "tree_may_change": false,
+    "must_print": [
+      "restore is not possible here:",
+      "2 files are taken out of every commit:",
+      "old/vendor.js",
+      "Every commit gets a new ID: 5 in all.",
+      "The clean part of each build config is put back,",
+      "Done. The payload is out of the history of acme/shop.",
+      "Every existing clone of acme/shop now needs updating.",
+      "git reset --hard origin/main",
+      "Do not git pull, merge or push from the old history",
+      "Ask GitHub Support to clear the old commits"
+    ],
+    "forge_after": {
+      "acme/shop": {
+        "clean": [
+          "main"
+        ],
+        "history": "clean",
+        "file": {
+          "refs/heads/main:postcss.config.mjs": "export default { plugins: {} }\n",
+          "refs/heads/main:BASE.txt": "base\n"
+        }
+      }
+    }
+  }
+}

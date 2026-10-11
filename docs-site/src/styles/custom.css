@@ -1,0 +1,49 @@
+/* Additions on top of the Lucode theme.
+ *
+ * Lucode ships a full OKLCH palette (--red, --orange, --green, --blue,
+ * --purple, each with -low and -high) but leaves --accent as var(--gray-7),
+ * which is grey. That is why the site read as flat. Everything below either
+ * gives it an accent or maps the tool's own vocabulary onto tokens the theme
+ * already defines, rather than inventing a second palette beside it.
+ */
+
+/* A teal accent, in the theme's own OKLCH idiom so it sits with the rest of
+ * the palette rather than on top of it. Hue 195 lands between the theme's
+ * green (150) and blue (240), and matches the cyan of the project's artwork.
+ * Deliberately not the indigo-on-slate that every generated docs site uses. */
+:root[data-theme='dark'] {
+  --accent: oklch(74% 0.115 195);
+  --accent-low: oklch(28% 0.055 195);
+  --accent-high: oklch(86% 0.075 195);
+}
+:root[data-theme='light'] {
+  --accent: oklch(52% 0.105 195);
+  --accent-low: oklch(97% 0.014 195);
+  --accent-high: oklch(40% 0.095 195);
+}
+
+/* The scanner prints [HIT], [review] and [ok]. The page uses the theme's own
+ * red, orange and green for those, so a reader moving between terminal and
+ * documentation relearns nothing and the palette stays coherent. */
+code.hit    { color: var(--red);    font-weight: 600; }
+code.review { color: var(--orange); font-weight: 600; }
+code.ok     { color: var(--green);  font-weight: 600; }
+
+/* Badge strip: a row that wraps, no bullets, no baseline gaps. */
+.badges {
+  display: flex; flex-wrap: wrap; gap: 0.4rem; justify-content: center;
+  margin: 0 0 2rem; padding: 0; list-style: none;
+}
+.badges li  { margin: 0; }
+.badges a   { display: block; line-height: 0; }
+.badges img { display: block; height: 20px; }
+
+/* One number worth making loud on the landing page. */
+.figure {
+  display: block; font-size: clamp(2.5rem, 7vw, 4rem); line-height: 1;
+  font-weight: 700; color: var(--accent); letter-spacing: -0.03em;
+}
+.figure-note { display: block; color: var(--muted-foreground); margin-top: 0.4rem; }
+
+/* Wide tables scroll inside the page instead of pushing the layout sideways. */
+.sl-markdown-content table { display: block; overflow-x: auto; }

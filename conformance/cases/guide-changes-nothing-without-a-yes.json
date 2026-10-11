@@ -1,0 +1,33 @@
+{
+  "why": "Enter is not yes. 'sure' is not yes. Each asks again, and no leaves the tree byte for byte as it was. A prompt that treats anything short of no as consent will one day be answered by a stray keypress.",
+  "command": "guide",
+  "roots": [
+    "code"
+  ],
+  "stdin": [
+    "folder",
+    "{{TREE}}/code",
+    "",
+    "",
+    "sure",
+    "no",
+    ""
+  ],
+  "files": {
+    "code/proj/postcss.config.mjs": "export default { plugins: {} }\n{{PAD}}{{STRONG}}\n"
+  },
+  "expect": {
+    "exit": 2,
+    "tree_may_change": false,
+    "must_print": [
+      "Type yes, no or details",
+      "Left as it is",
+      "you left in place"
+    ],
+    "must_not_print": [
+      "Done.",
+      "stripped   ",
+      "Checked again."
+    ]
+  }
+}

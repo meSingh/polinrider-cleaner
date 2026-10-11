@@ -48,5 +48,6 @@ Current published tracking for this campaign:
 
 Any file that *detects* PolinRider contains PolinRider strings by definition. Your
 own scanners, this repository, and CI workflows built from it will be flagged by a
-grep-based scan. That is expected. `triage-filter.sh` separates those matches by
-path; see `github-org-recovery/README.md`, step 3.
+grep-based scan. That is expected. `polinrider` sets aside a branch whose only
+matches are in detection files and says how many it set aside;
+`ci/scan-workspace.sh --exclude` takes the same paths as a regex.
