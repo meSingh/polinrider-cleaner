@@ -143,6 +143,7 @@ the sandbox and the test harness.
 | `docs/adr/` | one record per design decision, with its reasoning and its cost |
 | `docs-site/` | the documentation site, Astro Starlight, including the weekly indicator reviews |
 | `ci/` | the vendorable CI scanner, its workflow template and installer, and the sandbox demo |
+| `packaging/` | the `.deb` builder, the tap, bucket and winget manifest writers and the bump pull request script, all used by `release.yml` |
 | `polinrider-sandbox`, `.devcontainer/` | the container every test runs in |
 
 ### What each module holds
@@ -341,9 +342,10 @@ descending. That was the six-hour scan ([ADR-0025](./docs/adr/0025-walk-the-file
 
 | Thing | Where | Note |
 |---|---|---|
-| Releases | GitHub Releases | Five attested binaries per tag, from `release.yml` |
-| Homebrew tap | `meSingh/homebrew-tap` | Installs the binary and `ioc/`. Bumped by hand on every release |
-| Scoop bucket | `meSingh/scoop-bucket` | Same. Bumped by hand on every release |
+| Releases | GitHub Releases | Per tag, from `release.yml`: five binary archives, a Windows zip, two `.deb` packages and the source, all attested and in `SHA256SUMS` |
+| Homebrew tap | `meSingh/homebrew-tap` | Installs the binary and `ioc/`. `release.yml` opens the bump pull request; the maintainer merges it |
+| Scoop bucket | `meSingh/scoop-bucket` | Same, from the Windows zip |
+| winget | `microsoft/winget-pkgs` | Not submitted yet. `release.yml` writes the manifests as the `winget-manifests` artifact; submitting them is by hand |
 | Weekly indicator review | claude.ai routine "PolinRider indicator watch (2.0)" | Mondays 08:00 IST. Opens a draft `ioc/YYYY-MM-DD` pull request every week with signed commits, change or no change |
 | Beta binaries | `.github/workflows/beta-build.yml` | Builds and exercises every platform on each push to `main`. The only place the macOS and Windows live checks run |
 | Documentation site | GitHub Pages, from `main` | `docs-site/`, including the indicator reviews |
@@ -377,12 +379,55 @@ git push origin "$VERSION"
 
 **4. The Release workflow does the rest.** It checks the tag against
 `Cargo.toml`, runs fmt, clippy, the unit tests and the corpus, builds five
-binaries, runs each one, attests them with the source archive and publishes.
-If anything fails, no release is created, which is intentional.
+binaries and runs each one. It packages them as `.tar.gz` archives, the
+Windows binary also as a flat `.zip` (for winget and Scoop) and the Linux ones
+also as `.deb` packages, which it installs on the runner and runs. It attests
+every file with the source archive, writes `SHA256SUMS` and publishes. If
+anything fails, no release is created, which is intentional.
 
-**5. Then the packages.** The Homebrew tap and the Scoop bucket point at a
-release archive and its checksum, so both need the new version and the new
-`SHA256SUMS` lines.
+A release now carries, for `vX.Y.Z`:
+
+```
+polinrider-vX.Y.Z-{linux-x86_64,linux-arm64,macos-arm64,macos-x86_64,windows-x86_64}.tar.gz
+polinrider-vX.Y.Z-windows-x86_64.zip
+polinrider-vX.Y.Z-{linux-x86_64,linux-arm64}.deb
+polinrider-vX.Y.Z-source.tar.gz
+polinrider-vX.Y.Z.intoto.jsonl
+SHA256SUMS
+```
+
+The packaging itself is in `packaging/`: `deb.sh` builds the `.deb`,
+`formula.sh` and `scoop.sh` rewrite the tap and bucket manifests from
+`SHA256SUMS`, `winget.sh` writes the winget manifests and `bump.sh` opens the
+pull requests. Each one writes files or calls GitHub's API; none of them runs
+the binary.
+
+**5. Then the packages.** After publishing, the `packages` job opens a pull
+request on `meSingh/homebrew-tap` and one on `meSingh/scoop-bucket` with the
+new version, URLs and checksums. **Review and merge both.** It needs the
+`PACKAGING_TOKEN` secret (below); without it the job prints a notice and
+does nothing, and the two manifests are bumped by hand as before. It skips
+pre-release tags (`v2.1.0-rc.1`).
+
+The commit in each pull request is made through GitHub's GraphQL
+`createCommitOnBranch`, so it is authored by the token's owner and signed by
+GitHub, like an edit in the web interface. `bump.sh` reads the commit's
+verification back from the API and opens no pull request if GitHub did not
+mark it Verified. No git commit is made on the runner and no signing key is
+stored as a secret.
+
+**6. winget, by hand.** The run's `winget-manifests` artifact (kept 90 days)
+holds the version, installer and defaultLocale manifests at the path
+`microsoft/winget-pkgs` expects. Copy them into a fork of that repository and
+open the pull request yourself; nothing here targets it. To write them again
+later: `packaging/winget.sh X.Y.Z SHA256SUMS outdir`. The manifests install the
+flat zip as a portable package. winget links `polinrider.exe` onto the PATH and
+the binary resolves the link before looking for `ioc/` beside it, which
+`beta-build.yml` and `release.yml` both test on Windows. Do not add
+`PortableCommandAlias` or `Commands`: since winget 1.30 an alias is a hard
+link, which cannot be resolved the way a symbolic link can, so whether `ioc/`
+is found would depend on where winget puts it. The exe is already called
+`polinrider`.
 
 > Tags matching `refs/tags/v*` are protected by a repository ruleset with no
 > bypass actors: they cannot be updated, force-pushed or deleted by anyone,
@@ -411,6 +456,35 @@ Two things to know:
 To rotate it, create a replacement with the same settings and run
 `gh secret set SCORECARD_TOKEN --repo <owner>/<repo>`, which prompts for the
 value so it never reaches shell history.
+
+### Maintaining PACKAGING_TOKEN
+
+The `packages` job in `release.yml` reads `secrets.PACKAGING_TOKEN` to open the
+tap and bucket pull requests. The default workflow token cannot, because it
+reaches this repository only. To create it, at GitHub, Settings, Developer
+settings, Fine-grained tokens, Generate new token:
+
+1. **Resource owner:** meSingh. **Expiration:** a year at most.
+2. **Repository access:** Only select repositories, and select exactly
+   `meSingh/homebrew-tap` and `meSingh/scoop-bucket`. Not this repository.
+3. **Repository permissions:** **Contents: Read and write** (the branch and
+   the commit) and **Pull requests: Read and write** (the pull request).
+   Metadata: Read-only is added by GitHub and is required. Nothing else.
+4. Store it in this repository only:
+   `gh secret set PACKAGING_TOKEN --repo meSingh/polinrider-cleaner`, which
+   prompts for the value.
+
+It can write to the tap and the bucket, so it lives as a repository secret
+read by one job, which runs only after a release from a protected tag has
+been published. Its pull requests still need the maintainer to merge them; the
+token is never used to push to a default branch.
+
+When it expires, the `packages` job fails with an authentication error after
+the release is already published, so the release itself is unaffected; if the
+secret is deleted, the job prints a notice and passes. Either way the packages
+fall behind quietly. If a release's tap or bucket pull request did not appear,
+check the token first. Do not replace it with a classic token,
+which would need `repo` scope over every repository the owner can reach.
 
 ### Signing
 

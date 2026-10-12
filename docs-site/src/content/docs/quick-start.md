@@ -29,6 +29,18 @@ binary refuses to scan without it. On macOS the binary is not notarised, so
 Gatekeeper stops the first run; once you have verified it, run
 `xattr -d com.apple.quarantine ./polinrider`.
 
+Or install it with a package manager, which puts the binary and `ioc/` in
+place:
+
+```bash
+brew install meSingh/tap/polinrider-cleaner    # macOS and Linux
+scoop bucket add mesingh https://github.com/meSingh/scoop-bucket
+scoop install polinrider-cleaner               # Windows
+```
+
+On Debian and Ubuntu, releases after 2.0.0 carry a `.deb` for x86_64 and arm64.
+Verify it the same way, then `sudo apt install ./` followed by its file name.
+
 :::note
 It changes nothing until you type `yes`. Everything else on this site can wait
 until it has told you what it found.
