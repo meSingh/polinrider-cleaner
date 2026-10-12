@@ -190,6 +190,135 @@ case(
 )
 
 case(
+    "known-bad-package-in-every-lockfile-format",
+    why="A lockfile is where a campaign package sits when it came in as a "
+        "dependency of a dependency, so package.json alone would miss it. "
+        "Each of the four formats names its packages its own way, and each "
+        "is read for its names (ADR-0041): an npm v3 lockfile by its "
+        "node_modules paths, a yarn lockfile by its entry headers and a pnpm "
+        "lockfile by its package keys.",
+    roots=["code"],
+    files={
+        "code/npm/package.json": '{"name":"npm-proj","dependencies":{"react":"^18.0.0"}}\n',
+        "code/npm/package-lock.json":
+            '{"name":"npm-proj","lockfileVersion":3,"packages":{'
+            '"":{"name":"npm-proj","dependencies":{"react":"^18.0.0"}},'
+            '"node_modules/react":{"version":"18.2.0"},'
+            '"node_modules/react/node_modules/{{BADPKG}}":{"version":"1.0.0"}}}\n',
+        "code/yarn/yarn.lock":
+            "# yarn lockfile v1\n\n\nreact@^18.0.0:\n  version \"18.2.0\"\n"
+            "  dependencies:\n    {{BADPKG}} \"^1.0.0\"\n\n"
+            "{{BADPKG}}@^1.0.0:\n  version \"1.0.0\"\n",
+        "code/pnpm/pnpm-lock.yaml":
+            "lockfileVersion: '9.0'\n\nimporters:\n\n  .:\n    dependencies:\n"
+            "      react:\n        specifier: ^18.0.0\n        version: 18.2.0\n\n"
+            "packages:\n\n  react@18.2.0:\n    resolution: {integrity: sha512-x}\n\n"
+            "  {{BADPKG}}@1.0.0:\n    resolution: {integrity: sha512-y}\n",
+    },
+    expect={
+        "exit": 2,
+        "findings": [
+            {"level": "HIT", "match": "known-bad package referenced", "path": "package-lock.json"},
+            {"level": "HIT", "match": "known-bad package referenced", "path": "yarn.lock"},
+            {"level": "HIT", "match": "known-bad package referenced", "path": "pnpm-lock.yaml"},
+        ],
+        "must_not_report": ["npm/package.json", "could not be read as a manifest"],
+    },
+)
+
+case(
+    "bad-package-name-inside-a-longer-name-is-not-a-dependency",
+    why="Three campaign names were turned away on 2026-09-14 and five more "
+        "on 2026-10-05 because each is the start of a real, maintained "
+        "package (sass-format and sass-formatter), and a fixed-string match "
+        "would report every project using the real one as infected. A "
+        "dependency is its whole name. A project depending on a longer "
+        "package that merely begins with a campaign name depends on "
+        "something else, and saying INFECTED to it is the false positive "
+        "this repository ranks worst.",
+    roots=["code"],
+    files={
+        "code/proj/package.json":
+            '{"name":"proj","dependencies":{"{{BADPKG}}-utils":"^2.0.0",'
+            '"react":"^18.0.0"}}\n',
+        "code/proj/yarn.lock":
+            "# yarn lockfile v1\n\n\n\"{{BADPKG}}-utils@^2.0.0\":\n  version \"2.0.0\"\n",
+        "code/proj/pnpm-lock.yaml":
+            "lockfileVersion: '9.0'\n\npackages:\n\n  '{{BADPKG}}-utils@2.0.0':\n"
+            "    resolution: {integrity: sha512-x}\n",
+    },
+    expect={
+        "exit": 0,
+        "findings": [{"level": "ok", "match": "no known-bad package names in manifests"}],
+        "must_not_report": ["[HIT]", "package.json", "yarn.lock", "pnpm-lock.yaml"],
+    },
+)
+
+case(
+    "bad-package-name-in-a-description-is-not-a-dependency",
+    why="A package that replaces, wraps or warns about a campaign package "
+        "says so in its description and keywords. Text is not a dependency: "
+        "nothing in a description is installed, so a project carrying one is "
+        "clean. 1.x matched the whole file and called it infected.",
+    roots=["code"],
+    files={
+        "code/proj/package.json":
+            '{"name":"proj","description":"A safe replacement for {{BADPKG}}",'
+            '"keywords":["{{BADPKG}}"],"dependencies":{"react":"^18.0.0"}}\n',
+    },
+    expect={
+        "exit": 0,
+        "must_not_report": ["[HIT]", "package.json"],
+    },
+)
+
+case(
+    "unreadable-manifest-is-review-not-clean",
+    why="A manifest the reader cannot parse, here with a trailing comma npm "
+        "itself would refuse, is a file nobody can vouch for. Calling it "
+        "clean would be saying nothing is installed from a file that was "
+        "never understood, so it is a review line. It names no campaign "
+        "package, so it is not a confirmed one.",
+    roots=["code"],
+    files={
+        "code/plain/package.json": '{"name":"plain", "dependencies": {"react": "^18.0.0",}\n',
+    },
+    expect={
+        "exit": 1,
+        "findings": [
+            {"level": "review", "match": "could not be read as a manifest, so package names were matched as text",
+             "path": "plain/package.json"},
+        ],
+        "must_not_report": ["[HIT]"],
+    },
+)
+
+case(
+    "unreadable-manifest-naming-a-campaign-package-is-still-confirmed",
+    why="A lockfile left with merge conflict markers cannot be parsed, and "
+        "is one the package manager reads again the moment someone resolves "
+        "it. Its text is matched as 1.x matched it, so a campaign name in it "
+        "is still confirmed: a reader that gave up must not turn a finding "
+        "1.x made into a clean result. A review line says the confirmation "
+        "came from the text.",
+    roots=["code"],
+    files={
+        "code/named/package-lock.json":
+            '{"name":"named","lockfileVersion":3,"packages":{\n'
+            '<<<<<<< HEAD\n"node_modules/{{BADPKG}}":{"version":"1.0.0"}\n=======\n'
+            '"node_modules/react":{"version":"18.2.0"}\n>>>>>>> theirs\n}}\n',
+    },
+    expect={
+        "exit": 2,
+        "findings": [
+            {"level": "HIT", "match": "known-bad package referenced", "path": "named/package-lock.json"},
+            {"level": "review", "match": "could not be read as a manifest, so package names were matched as text",
+             "path": "named/package-lock.json"},
+        ],
+    },
+)
+
+case(
     "node-modules-is-not-scanned",
     why="ADR-0004 and ADR-0025: node_modules is pruned, so a payload living "
         "only there is invisible to the content scan. This case exists to make "
@@ -1228,6 +1357,44 @@ case(
             "branches": {
                 "main": {"src/index.js": "export const a = 1\n"},
                 "release": {"vite.config.js": ESCAPED_CONFIG},
+            },
+            "pushes": "refs/heads/release\taaa\tbbb\talice\t2026-09-12T10:00:00Z\t0",
+        },
+    }},
+    expect={
+        "exit": 2,
+        "tree_may_change": False,
+        "must_print": [
+            "Checked 2 repositories and 3 branches of acme.",
+            "CONFIRMED   1     repository carries the PolinRider payload",
+            "acme/shop   1 branch",
+        ],
+        "must_not_print": ["acme/blog   1 branch"],
+    },
+)
+
+case(
+    "guide-github-reads-package-names-from-manifests",
+    why="On GitHub every file is searched, and git grep -F for a campaign "
+        "package name also finds it inside a longer, legitimate name and in "
+        "a description. Each file it finds is read again: a manifest for the "
+        "names it installs, so a repository depending on a longer package "
+        "that begins with a campaign name is clean, and one that installs "
+        "the campaign package is confirmed (ADR-0041).",
+    command="guide",
+    roots=["code"],
+    files=ORDINARY_TREE,
+    stdin=["organization", "acme", "none"],
+    forge_files=SIGNED_IN,
+    forge={"acme": {
+        "blog": {"branches": {"main": {
+            "package.json": '{"name":"blog","description":"not {{BADPKG}}",'
+                            '"dependencies":{"{{BADPKG}}-utils":"^2.0.0"}}\n',
+        }}},
+        "shop": {
+            "branches": {
+                "main": {"src/index.js": "export const a = 1\n"},
+                "release": {"package.json": '{"name":"shop","dependencies":{"{{BADPKG}}":"^1.0.0"}}\n'},
             },
             "pushes": "refs/heads/release\taaa\tbbb\talice\t2026-09-12T10:00:00Z\t0",
         },

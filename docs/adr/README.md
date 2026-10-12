@@ -56,6 +56,7 @@ If you disagree with one, open an issue and quote its number.
 | [0038](./0038-windows-is-read-through-the-same-boundary-with-powershell-as-the-tool.md) | Windows is read through the same boundary, with PowerShell as the tool | Accepted |
 | [0039](./0039-the-shell-machine-check-is-removed-and-the-corpus-holds-one-engine.md) | The shell machine check is removed, and the corpus holds one engine | Accepted |
 | [0040](./0040-indicators-are-matched-through-escape-codes-as-well.md) | Indicators are matched through escape codes as well | Accepted |
+| [0041](./0041-package-names-are-read-from-manifests-and-compared-whole.md) | Package names are read from manifests and compared whole | Proposed |
 
 ## Adding one
 

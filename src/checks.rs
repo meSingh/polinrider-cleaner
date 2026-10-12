@@ -10,7 +10,8 @@
 
 use crate::host::Host;
 use crate::host_checks::{self, sh_quote, ProcessCheck};
-use crate::indicators::Indicators;
+use crate::indicators::{Indicators, ManifestMatch};
+use crate::manifest;
 use crate::quarantine::{Apply, DryRun, Quarantine};
 use crate::strip::{self, Plan};
 use crate::verdict::{Finding, Kind, Verdict};
@@ -90,13 +91,6 @@ pub(crate) fn is_build_config(name: &str) -> bool {
         || STEMS
             .iter()
             .any(|s| name.starts_with(s) && name[s.len()..].starts_with('.'))
-}
-
-fn is_manifest(name: &str) -> bool {
-    matches!(
-        name,
-        "package.json" | "package-lock.json" | "pnpm-lock.yaml" | "yarn.lock"
-    )
 }
 
 /// Obfuscation tells, used to qualify a "content after the module end"
@@ -350,26 +344,57 @@ pub fn fonts(walk: &Walk, v: &mut Verdict, sink: &mut Sink) {
     }
 }
 
+/// Campaign packages a project installs, read out of its manifests and
+/// lockfiles by name (ADR-0041). A name inside a longer one, or in a
+/// description, is not a dependency on it.
 pub fn packages(walk: &Walk, ind: &Indicators, v: &mut Verdict) {
     v.section("Known-bad packages");
     let mut found = false;
 
-    for path in walk.by_name(is_manifest) {
-        let Ok(body) = fs::read_to_string(path) else {
+    for path in walk.by_name(manifest::is_manifest) {
+        let Ok(bytes) = fs::read(path) else {
+            v.push(Finding::review(format!(
+                "could not read, so it was not checked: {}",
+                path.display()
+            )));
             continue;
         };
-        if ind.has_bad_package(&body) {
-            found = true;
-            v.push(
-                Finding::hit(
-                    Kind::Package,
-                    format!("known-bad package referenced: {}", path.display()),
-                )
-                .at(path)
-                .with_remedy(
-                    "remove the dependency, delete node_modules and the lockfile entry, reinstall.",
-                ),
-            );
+        let body = String::from_utf8_lossy(&bytes);
+        let name = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or_default();
+        let hit = || {
+            Finding::hit(
+                Kind::Package,
+                format!("known-bad package referenced: {}", path.display()),
+            )
+            .at(path)
+            .with_remedy(
+                "remove the dependency, delete node_modules and the lockfile entry, reinstall.",
+            )
+        };
+        match ind.manifest_packages(name, &body) {
+            ManifestMatch::Clean => {}
+            ManifestMatch::Names(names) => {
+                found = true;
+                for package in &names {
+                    v.detail(package);
+                }
+                v.push(hit());
+            }
+            ManifestMatch::Unreadable { text_match, .. } => {
+                // Never silently clean: the text is matched as 1.x matched
+                // it, and the reader is told why.
+                if text_match {
+                    found = true;
+                    v.push(hit());
+                }
+                v.push(Finding::review(format!(
+                    "could not be read as a manifest, so package names were matched as text: {}",
+                    path.display()
+                )));
+            }
         }
     }
 

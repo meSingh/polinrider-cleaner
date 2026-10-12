@@ -4,12 +4,15 @@
 //! not compiled in: an incident responder has to be able to add an indicator
 //! without rebuilding the tool, and the weekly review edits these files.
 //!
-//! `strong`, `bad_packages` and `weak` are matched as fixed substrings, the
-//! same as `grep -F` in the shell. No regex, so nothing in the indicator set
-//! can be a malformed pattern that silently matches nothing. `strong` and
-//! `bad_packages` are also matched against a copy of the text with its escape
-//! codes decoded, when it has any (ADR-0040).
+//! `strong` and `weak` are matched as fixed substrings, the same as `grep -F`
+//! in the shell. No regex, so nothing in the indicator set can be a malformed
+//! pattern that silently matches nothing. `bad_packages` are names, and are
+//! compared as whole names: read out of a manifest or a lockfile where the
+//! file is one, and bounded by characters a package name cannot hold where it
+//! is not (ADR-0041). Both are also matched against a copy of the text with
+//! its escape codes decoded, when it has any (ADR-0040).
 
+use crate::manifest;
 use crate::pattern::{BadPattern, Pattern};
 use crate::unescape;
 use std::fs;
@@ -102,13 +105,12 @@ impl Indicators {
                 dir: dir.to_path_buf(),
             });
         }
-        let mut strong = read_list(dir, "strong.txt", true)?;
+        let strong = read_list(dir, "strong.txt", true)?;
+        // A campaign package name found inside a file counts as a confirmed
+        // indicator, as it did when the shell grepped both lists together.
+        // It is held apart so that it can be compared as a whole name: see
+        // `has_strong` and ADR-0041.
         let bad_packages = read_list(dir, "bad-packages.txt", true)?;
-
-        // The shell greps strong.txt and bad-packages.txt together when asking
-        // "does this file contain an indicator", so a campaign package name
-        // found inside a file counts. Matched here for the same reason.
-        strong.extend(bad_packages.iter().cloned());
 
         let indicators = Indicators {
             strong,
@@ -122,7 +124,7 @@ impl Indicators {
                 .collect::<Result<_, _>>()?,
         };
 
-        if indicators.strong.is_empty() {
+        if indicators.strong.is_empty() && indicators.bad_packages.is_empty() {
             return Err(LoadError::Empty);
         }
         Ok(indicators)
@@ -131,34 +133,118 @@ impl Indicators {
     /// Does this text contain a confirmed indicator, as written or once its
     /// escape codes are decoded? The second only for text that has escapes,
     /// so a file without them is read once. See ADR-0040.
+    ///
+    /// A campaign package name counts when it stands as a whole name, never
+    /// as part of a longer one: `sass-format` is not in `sass-formatter`.
     pub fn has_strong(&self, haystack: &str) -> bool {
+        self.matches(haystack) || unescape::decode(haystack).is_some_and(|d| self.matches(&d))
+    }
+
+    /// `strong.txt` alone, as written or decoded: the question asked of a
+    /// manifest, whose package names are read rather than searched for.
+    fn has_strong_text(&self, haystack: &str) -> bool {
         matches_or_decoded(&self.strong, haystack)
+    }
+
+    fn matches(&self, haystack: &str) -> bool {
+        any_in(&self.strong, haystack) || self.names_package(haystack)
+    }
+
+    /// Does this text name a campaign package as a whole name? Bounded on both
+    /// sides by something that cannot be part of a package name, and not the
+    /// second half of a scoped name (`@other/name` is another package).
+    pub fn names_package(&self, haystack: &str) -> bool {
+        self.bad_packages
+            .iter()
+            .any(|name| whole_name_at(haystack, name).is_some())
     }
 
     /// Does this text contain a confirmed indicator only once its escape
     /// codes are decoded? The bytes of such a file do not hold the indicator,
     /// so nothing can be cut out of it by offset.
     pub fn has_strong_only_escaped(&self, haystack: &str) -> bool {
-        !any_in(&self.strong, haystack)
-            && unescape::decode(haystack).is_some_and(|d| any_in(&self.strong, &d))
+        !self.matches(haystack) && unescape::decode(haystack).is_some_and(|d| self.matches(&d))
     }
 
     /// The same question asked of bytes that need not be UTF-8. They are
     /// matched as they are first, and read as text only when they have an
-    /// escape in them to decode.
+    /// escape in them to decode or a package name to bound.
     pub fn bytes_have_strong(&self, bytes: &[u8]) -> bool {
-        self.strong
+        if self
+            .strong
             .iter()
             .any(|i| !i.is_empty() && contains(bytes, i.as_bytes()))
+        {
+            return true;
+        }
+        let text = String::from_utf8_lossy(bytes);
+        self.names_package(&text)
             || (unescape::has_escape(bytes)
-                && unescape::decode(&String::from_utf8_lossy(bytes))
-                    .is_some_and(|d| any_in(&self.strong, &d)))
+                && unescape::decode(&text).is_some_and(|d| self.matches(&d)))
     }
 
-    /// Does this text name a campaign package? A manifest is JSON, and JSON
-    /// lets a name be written in escape codes too.
-    pub fn has_bad_package(&self, haystack: &str) -> bool {
+    /// Where the first confirmed indicator starts, as written. For a cut,
+    /// which is made at a byte offset.
+    pub fn first_at(&self, bytes: &[u8]) -> Option<usize> {
+        let text = String::from_utf8_lossy(bytes);
+        let lossless = matches!(text, std::borrow::Cow::Borrowed(_));
+        let strong = self.strong.iter().filter_map(|i| find(bytes, i.as_bytes()));
+        // An offset into a lossy copy is not an offset into the bytes, so a
+        // package name is placed only in a file that is valid UTF-8.
+        let packages = self
+            .bad_packages
+            .iter()
+            .filter(|_| lossless)
+            .filter_map(|name| whole_name_at(&text, name));
+        strong.chain(packages).min()
+    }
+
+    /// Does this text name a campaign package anywhere, as a fixed string,
+    /// written or decoded? The 1.x question, kept for a manifest that cannot
+    /// be read as one: matching its text is better than not looking.
+    pub fn text_has_bad_package(&self, haystack: &str) -> bool {
         matches_or_decoded(&self.bad_packages, haystack)
+    }
+
+    /// The campaign packages a manifest or lockfile installs, read out of it
+    /// by name. See [`ManifestMatch`].
+    pub fn manifest_packages(&self, file_name: &str, text: &str) -> ManifestMatch {
+        match manifest::package_names(file_name, text) {
+            Ok(names) => {
+                let mut bad: Vec<String> = names
+                    .into_iter()
+                    .filter(|n| self.bad_packages.contains(n))
+                    .collect();
+                bad.sort_unstable();
+                bad.dedup();
+                if bad.is_empty() {
+                    ManifestMatch::Clean
+                } else {
+                    ManifestMatch::Names(bad)
+                }
+            }
+            Err(why) => ManifestMatch::Unreadable {
+                why,
+                text_match: self.text_has_bad_package(text),
+            },
+        }
+    }
+
+    /// Does this file, by its path and its bytes, carry a confirmed
+    /// indicator? A manifest is read for the names it installs; anything else
+    /// is matched as text. For the GitHub check, which meets files by path.
+    pub fn file_confirms(&self, path: &str, bytes: &[u8]) -> bool {
+        let name = path.rsplit('/').next().unwrap_or(path);
+        if !manifest::is_manifest(name) {
+            return self.bytes_have_strong(bytes);
+        }
+        let text = String::from_utf8_lossy(bytes);
+        self.has_strong_text(&text)
+            || match self.manifest_packages(name, &text) {
+                ManifestMatch::Names(_) => true,
+                ManifestMatch::Clean => false,
+                ManifestMatch::Unreadable { text_match, .. } => text_match,
+            }
     }
 
     /// The campaign host or address this line names, if it names one.
@@ -264,6 +350,55 @@ impl Indicators {
             Err(_) => false,
         }
     }
+}
+
+/// What reading a manifest for campaign packages found.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ManifestMatch {
+    /// It installs these campaign packages, by name.
+    Names(Vec<String>),
+    /// It was read and installs none of them.
+    Clean,
+    /// It could not be read as its format. `text_match` is whether its text
+    /// names a campaign package anywhere, which is what 1.x asked.
+    Unreadable { why: String, text_match: bool },
+}
+
+/// Could this character be part of a package name?
+fn in_a_name(c: char) -> bool {
+    c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.')
+}
+
+/// Where `name` first stands in `text` as a whole package name.
+fn whole_name_at(text: &str, name: &str) -> Option<usize> {
+    if name.is_empty() {
+        return None;
+    }
+    text.match_indices(name)
+        .find(|(at, found)| {
+            let before = text.get(..*at).unwrap_or_default();
+            let after = text.get(at + found.len()..).unwrap_or_default();
+            let ends = !after.chars().next().is_some_and(in_a_name);
+            let starts = match before.chars().next_back() {
+                None => true,
+                Some(c) if in_a_name(c) || c == '@' => false,
+                // `@other/name` is the scoped package `name` does not mean.
+                Some('/') => !before
+                    .trim_end_matches('/')
+                    .trim_end_matches(in_a_name)
+                    .ends_with('@'),
+                Some(_) => true,
+            };
+            starts && ends
+        })
+        .map(|(at, _)| at)
+}
+
+fn find(haystack: &[u8], needle: &[u8]) -> Option<usize> {
+    if needle.is_empty() || needle.len() > haystack.len() {
+        return None;
+    }
+    haystack.windows(needle.len()).position(|w| w == needle)
 }
 
 /// Whether `haystack` contains any of `list`, as a fixed string.
@@ -484,8 +619,67 @@ mod tests {
         );
         let ind = Indicators::load(&dir).expect("loads");
         assert!(ind.has_strong("something evil-pkg something"));
-        assert!(ind.has_bad_package(r#"{"deps":{"evil-pkg":"1.0.0"}}"#));
+        assert!(ind.has_strong("node_modules/evil-pkg/index.js"));
+        assert!(ind.has_strong(r#"{"deps":{"evil-pkg":"1.0.0"}}"#));
         assert!(!ind.has_strong("entirely ordinary content"));
+        // Part of a longer name, or the same name under somebody's scope, is
+        // another package (ADR-0041).
+        assert!(!ind.has_strong("npm i evil-pkg-utils"));
+        assert!(!ind.has_strong("npm i not-evil-pkg"));
+        assert!(!ind.has_strong("import x from '@other/evil-pkg'"));
+        assert!(ind.text_has_bad_package("npm i evil-pkg-utils"));
+    }
+
+    #[test]
+    fn a_manifest_is_read_for_the_names_it_installs() {
+        let ind = Indicators {
+            strong: vec!["MARKER-ALPHA".into()],
+            bad_packages: vec!["evil-pkg".into(), "@bad/scope".into()],
+            ..Indicators::default()
+        };
+        assert_eq!(
+            ind.manifest_packages(
+                "package.json",
+                r#"{"dependencies":{"evil-pkg":"1","@bad/scope":"2","react":"18"}}"#
+            ),
+            ManifestMatch::Names(vec!["@bad/scope".into(), "evil-pkg".into()])
+        );
+        // The name inside a longer one, and in a description.
+        let near = r#"{"description":"not evil-pkg","dependencies":{"evil-pkg-utils":"1"}}"#;
+        assert_eq!(
+            ind.manifest_packages("package.json", near),
+            ManifestMatch::Clean
+        );
+        assert!(!ind.file_confirms("app/package.json", near.as_bytes()));
+        // The same text in a file that is not a manifest is matched as text.
+        assert!(ind.file_confirms("app/notes.txt", near.as_bytes()));
+        // A manifest that cannot be read falls back to matching its text.
+        let broken = r#"{"dependencies":{"evil-pkg-utils":"1""#;
+        assert!(matches!(
+            ind.manifest_packages("package.json", broken),
+            ManifestMatch::Unreadable {
+                text_match: true,
+                ..
+            }
+        ));
+        assert!(ind.file_confirms("package.json", broken.as_bytes()));
+        // A strong indicator in a manifest is still one, as text.
+        assert!(ind.file_confirms(
+            "package.json",
+            br#"{"scripts":{"postinstall":"MARKER-ALPHA"}}"#
+        ));
+    }
+
+    #[test]
+    fn the_first_indicator_is_found_by_offset_for_a_cut() {
+        let ind = Indicators {
+            strong: vec!["MARKER-ALPHA".into()],
+            bad_packages: vec!["evil-pkg".into()],
+            ..Indicators::default()
+        };
+        assert_eq!(ind.first_at(b"ab evil-pkg MARKER-ALPHA"), Some(3));
+        assert_eq!(ind.first_at(b"evil-pkg-utils MARKER-ALPHA"), Some(15));
+        assert_eq!(ind.first_at(b"nothing"), None);
     }
 
     /// Every character of `text` as a `\uXXXX` escape, the way the 0xa322
@@ -514,7 +708,7 @@ mod tests {
         assert!(ind.has_strong("MARKER-\\x41LPHA"));
         // As written is not "only escaped".
         assert!(!ind.has_strong_only_escaped("MARKER-ALPHA \\u0041"));
-        assert!(ind.has_bad_package(&format!(
+        assert!(ind.has_strong(&format!(
             r#"{{"dependencies":{{"{}":"1.0.0"}}}}"#,
             escaped("evil-pkg")
         )));

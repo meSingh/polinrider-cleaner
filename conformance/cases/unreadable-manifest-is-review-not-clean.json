@@ -1,0 +1,22 @@
+{
+  "why": "A manifest the reader cannot parse, here with a trailing comma npm itself would refuse, is a file nobody can vouch for. Calling it clean would be saying nothing is installed from a file that was never understood, so it is a review line. It names no campaign package, so it is not a confirmed one.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/plain/package.json": "{\"name\":\"plain\", \"dependencies\": {\"react\": \"^18.0.0\",}\n"
+  },
+  "expect": {
+    "exit": 1,
+    "findings": [
+      {
+        "level": "review",
+        "match": "could not be read as a manifest, so package names were matched as text",
+        "path": "plain/package.json"
+      }
+    ],
+    "must_not_report": [
+      "[HIT]"
+    ]
+  }
+}

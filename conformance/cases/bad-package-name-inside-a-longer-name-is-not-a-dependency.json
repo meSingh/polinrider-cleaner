@@ -1,0 +1,26 @@
+{
+  "why": "Three campaign names were turned away on 2026-09-14 and five more on 2026-10-05 because each is the start of a real, maintained package (sass-format and sass-formatter), and a fixed-string match would report every project using the real one as infected. A dependency is its whole name. A project depending on a longer package that merely begins with a campaign name depends on something else, and saying INFECTED to it is the false positive this repository ranks worst.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/package.json": "{\"name\":\"proj\",\"dependencies\":{\"{{BADPKG}}-utils\":\"^2.0.0\",\"react\":\"^18.0.0\"}}\n",
+    "code/proj/yarn.lock": "# yarn lockfile v1\n\n\n\"{{BADPKG}}-utils@^2.0.0\":\n  version \"2.0.0\"\n",
+    "code/proj/pnpm-lock.yaml": "lockfileVersion: '9.0'\n\npackages:\n\n  '{{BADPKG}}-utils@2.0.0':\n    resolution: {integrity: sha512-x}\n"
+  },
+  "expect": {
+    "exit": 0,
+    "findings": [
+      {
+        "level": "ok",
+        "match": "no known-bad package names in manifests"
+      }
+    ],
+    "must_not_report": [
+      "[HIT]",
+      "package.json",
+      "yarn.lock",
+      "pnpm-lock.yaml"
+    ]
+  }
+}

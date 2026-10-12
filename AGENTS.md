@@ -153,7 +153,8 @@ the sandbox and the test harness.
 | `verdict.rs` | Finding levels and the exit-code contract |
 | `quarantine.rs` | The dry-run type-state |
 | `walk.rs` | One pruned filesystem walk, shared by every check |
-| `indicators.rs` | Loading `ioc/` and matching it, through escape codes as well: ADR-0040 |
+| `indicators.rs` | Loading `ioc/` and matching it, through escape codes as well: ADR-0040. Package names are compared whole: ADR-0041 |
+| `manifest.rs` | The package names a `package.json` or lockfile installs, read as data. A depth-limited JSON parser and line readers for yarn and pnpm. Pure: ADR-0041 |
 | `unescape.rs` | Decodes `\uXXXX`, `\u{...}` and `\xNN` so an escaped loader matches. Pure |
 | `checks.rs` | Implants, tasks.json, build configs, fonts, packages, git hooks, extensions, propagation |
 | `scan.rs` | One scan: the walk, every check that applies, and rendering. In the library so a session can run more than one |

@@ -1,0 +1,24 @@
+{
+  "why": "A lockfile left with merge conflict markers cannot be parsed, and is one the package manager reads again the moment someone resolves it. Its text is matched as 1.x matched it, so a campaign name in it is still confirmed: a reader that gave up must not turn a finding 1.x made into a clean result. A review line says the confirmation came from the text.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/named/package-lock.json": "{\"name\":\"named\",\"lockfileVersion\":3,\"packages\":{\n<<<<<<< HEAD\n\"node_modules/{{BADPKG}}\":{\"version\":\"1.0.0\"}\n=======\n\"node_modules/react\":{\"version\":\"18.2.0\"}\n>>>>>>> theirs\n}}\n"
+  },
+  "expect": {
+    "exit": 2,
+    "findings": [
+      {
+        "level": "HIT",
+        "match": "known-bad package referenced",
+        "path": "named/package-lock.json"
+      },
+      {
+        "level": "review",
+        "match": "could not be read as a manifest, so package names were matched as text",
+        "path": "named/package-lock.json"
+      }
+    ]
+  }
+}

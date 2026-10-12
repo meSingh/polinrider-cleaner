@@ -1,0 +1,53 @@
+{
+  "why": "On GitHub every file is searched, and git grep -F for a campaign package name also finds it inside a longer, legitimate name and in a description. Each file it finds is read again: a manifest for the names it installs, so a repository depending on a longer package that begins with a campaign name is clean, and one that installs the campaign package is confirmed (ADR-0041).",
+  "command": "guide",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "stdin": [
+    "organization",
+    "acme",
+    "none"
+  ],
+  "forge_files": {
+    "whoami": "tester\n",
+    "orgs": "acme\t2\nacme-labs\t7\n"
+  },
+  "forge": {
+    "acme": {
+      "blog": {
+        "branches": {
+          "main": {
+            "package.json": "{\"name\":\"blog\",\"description\":\"not {{BADPKG}}\",\"dependencies\":{\"{{BADPKG}}-utils\":\"^2.0.0\"}}\n"
+          }
+        }
+      },
+      "shop": {
+        "branches": {
+          "main": {
+            "src/index.js": "export const a = 1\n"
+          },
+          "release": {
+            "package.json": "{\"name\":\"shop\",\"dependencies\":{\"{{BADPKG}}\":\"^1.0.0\"}}\n"
+          }
+        },
+        "pushes": "refs/heads/release\taaa\tbbb\talice\t2026-09-12T10:00:00Z\t0"
+      }
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "tree_may_change": false,
+    "must_print": [
+      "Checked 2 repositories and 3 branches of acme.",
+      "CONFIRMED   1     repository carries the PolinRider payload",
+      "acme/shop   1 branch"
+    ],
+    "must_not_print": [
+      "acme/blog   1 branch"
+    ]
+  }
+}

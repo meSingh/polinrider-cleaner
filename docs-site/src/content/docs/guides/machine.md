@@ -64,7 +64,10 @@ Nothing is ever deleted.
 
 `node_modules`, `.git`, caches and trash are never walked. Malicious packages
 are caught by name from manifests and lockfiles, and the payload lives in the
-project's own files rather than inside a dependency.
+project's own files rather than inside a dependency. Each manifest and lockfile
+is read for the packages it installs, and each name is compared whole, so a
+package whose name merely starts with a campaign one is not reported. One that
+cannot be read is matched as text and listed for review.
 
 A long check shows how far it has come. 2.0 does not checkpoint a scan: there
 is no `--resume`. An interrupted check starts again from the beginning.
