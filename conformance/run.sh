@@ -18,9 +18,10 @@
 # Exit 0 all passed, 1 a case failed, 3 the harness could not run.
 #
 # NOTE ON FIXTURES. No case file contains a payload. Cases write {{STRONG}},
-# {{WEAK}} or {{BADPKG}} and this runner substitutes a real entry from ioc/ at
-# build time. That keeps working malware strings out of the repository, and
-# means the corpus cannot drift away from the indicator set it is testing.
+# {{STRONG_U}} (the same entry in \uXXXX escapes), {{WEAK}} or {{BADPKG}} and
+# this runner substitutes a real entry from ioc/ at build time. That keeps
+# working malware strings out of the repository, and means the corpus cannot
+# drift away from the indicator set it is testing.
 #
 # HOST CASES. A case with a "host" key describes a machine as well as a tree:
 # its process table, sockets, crontab and system directories, as files. They
@@ -66,6 +67,16 @@ STRONG="$(pick strong.txt 1)"
 WEAK="$(pick weak.txt 1)"
 BADPKG="$(pick bad-packages.txt 1)"
 [[ -n "$STRONG" && -n "$BADPKG" ]] || { echo "indicator set is empty or unreadable" >&2; exit 3; }
+# The same indicator with every character written as a \uXXXX escape, the way
+# the 0xa322 loader family writes its strings (ADR-0040). Built here from
+# ioc/, like the rest, so no escaped payload is committed either.
+STRONG_U=""
+for ((u_at = 0; u_at < ${#STRONG}; u_at++)); do
+  printf -v u_hex '\\u%04x' "'${STRONG:u_at:1}"
+  STRONG_U+="$u_hex"
+done
+# sed reads a backslash in a replacement as an escape of its own.
+STRONG_U_SED="$(printf '%s' "$STRONG_U" | sed 's/\\/\\\\/g')"
 # For the host cases: an implant process name, the same name as the Linux
 # kernel reports it (15 bytes, no more), and a campaign address.
 IMPLANT="$(pick implant-names.txt 1)"
@@ -141,7 +152,8 @@ snapshot() {
 }
 
 subst() { printf '%s' "$1" \
-  | sed -e "s|{{STRONG}}|$STRONG|g" -e "s|{{WEAK}}|$WEAK|g" \
+  | sed -e "s|{{STRONG_U}}|$STRONG_U_SED|g" \
+        -e "s|{{STRONG}}|$STRONG|g" -e "s|{{WEAK}}|$WEAK|g" \
         -e "s|{{BADPKG}}|$BADPKG|g" -e "s|{{PAD}}|$PAD|g" \
         -e "s|{{IMPLANT_CUT}}|$IMPLANT_CUT|g" -e "s|{{IMPLANT}}|$IMPLANT|g" \
         -e "s|{{NETIP}}|$NETIP|g"; }

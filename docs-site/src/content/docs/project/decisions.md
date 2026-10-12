@@ -54,3 +54,4 @@ reason to keep them.
 - [A GitHub fix is planned on the copy, pushed on a yes, and believed when GitHub shows it](https://github.com/meSingh/polinrider-cleaner/blob/main/docs/adr/0037-a-github-fix-is-planned-on-the-copy-pushed-on-a-yes-and-believed-when-github-shows-it.md) — Accepted
 - [Windows is read through the same boundary, with PowerShell as the tool](https://github.com/meSingh/polinrider-cleaner/blob/main/docs/adr/0038-windows-is-read-through-the-same-boundary-with-powershell-as-the-tool.md) — Accepted
 - [The shell machine check is removed, and the corpus holds one engine](https://github.com/meSingh/polinrider-cleaner/blob/main/docs/adr/0039-the-shell-machine-check-is-removed-and-the-corpus-holds-one-engine.md) — Accepted
+- [Indicators are matched through escape codes as well](https://github.com/meSingh/polinrider-cleaner/blob/main/docs/adr/0040-indicators-are-matched-through-escape-codes-as-well.md) — Accepted

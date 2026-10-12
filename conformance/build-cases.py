@@ -10,6 +10,11 @@ and {{PAD}}, and conformance/run.sh substitutes real values from ioc/ when it
 builds the tree. Working malware strings stay out of the repository, and the
 corpus cannot drift away from the indicator set it is testing.
 
+{{STRONG_U}} is the same strong indicator with every character written as a
+\\uXXXX escape, the way the 0xa322 loader family writes its strings
+(ADR-0040). It is built from ioc/ too, so no escaped payload is committed
+either.
+
 Host cases describe a machine as well as a tree. They add {{IMPLANT}} (an
 implant process name), {{IMPLANT_CUT}} (the same name as the Linux kernel
 reports it, 15 bytes) and {{NETIP}} (a campaign address), a `home` map written
@@ -824,6 +829,117 @@ case(
     },
 )
 
+# ---------------------------------------------------------------------------
+# Escaped loaders (ADR-0040). One loader family writes every character as a
+# \uXXXX escape, so the file does not contain the indicator and a fixed-string
+# match finds nothing in it. {{STRONG_U}} is that spelling.
+# ---------------------------------------------------------------------------
+
+ESCAPED_CONFIG = CLEAN_CONFIG + "{{PAD}}global.i='{{STRONG_U}}';\n"
+
+# Ordinary text written with escapes, as translations and minified bundles
+# are. Nothing in it decodes to an indicator.
+ORDINARY_ESCAPES = (
+    "// caf\\u00e9, na\\u00efve, \\u00fcber, \\x41\\x42\\x43, \\u{1F600}\n"
+    "export const labels = { yes: 'S\\u00ed', no: 'N\\u00e3o', sep: '\\x2c' }\n"
+)
+
+case(
+    "escaped-loader-in-a-build-config-is-found",
+    why="The 5 October review found 18 of 35 confirmed repositories carrying "
+        "a loader written entirely in \\u escapes. Node decodes it to the "
+        "same string the indicator set holds, so it is the same infection and "
+        "has to get the same answer: a confirmed hit and exit 2. Matching only "
+        "the bytes as written would call it clean.",
+    roots=["code"],
+    files={
+        "code/proj/postcss.config.mjs": ESCAPED_CONFIG,
+        "code/proj/src/index.js": "export const hello = () => 'world'\n",
+    },
+    expect={
+        "exit": 2,
+        "findings": [{
+            "level": "HIT",
+            "match": "config file contains an indicator",
+            "path": "postcss.config.mjs",
+        }],
+        "must_not_report": ["src/index.js"],
+    },
+)
+
+case(
+    "escaped-indicator-in-a-folder-open-task-is-found",
+    why="A tasks.json is JSON, and JSON lets any character in a string be a "
+        "\\u escape. The editor decodes the command before it runs it, so a "
+        "task whose command is the indicator in escapes, and whose folderOpen "
+        "is too, runs exactly what the plain one runs. Confirmed, not review.",
+    roots=["code"],
+    files={
+        "code/proj/.vscode/tasks.json":
+            '{"tasks":[{"runOptions":{"runOn":"\\u0066olderOpen"},'
+            '"command":"{{STRONG_U}}"}]}\n',
+    },
+    expect={
+        "exit": 2,
+        "findings": [{
+            "level": "HIT",
+            "match": "runs on folder open AND contains an indicator",
+            "path": "tasks.json",
+        }],
+    },
+)
+
+case(
+    "ordinary-escapes-are-not-an-indicator",
+    why="Decoding has to cost nothing in false positives. Accented words, "
+        "emoji and hex escapes are everywhere in real code, in configs and in "
+        "manifests. Decoded, none of them is an indicator, so the tree is "
+        "clean and exits 0 with no review line.",
+    roots=["code"],
+    files={
+        "code/proj/vite.config.js": ORDINARY_ESCAPES + "export default { plugins: [] }\n",
+        "code/proj/package.json":
+            '{"name":"proj","description":"caf\\u00e9 \\u00fcber",'
+            '"dependencies":{"react":"^18.0.0"}}\n',
+        "code/proj/src/i18n.js": ORDINARY_ESCAPES,
+    },
+    expect={
+        "exit": 0,
+        "findings": [{"level": "ok", "match": "build config files checked"}],
+        "must_not_report": ["[HIT]"],
+    },
+)
+
+case(
+    "clean-refuses-a-payload-written-in-escape-codes",
+    why="It is behind the padding after the module, the shape clean cuts. "
+        "But the indicator is only there once the escapes are decoded, so "
+        "there is no offset in the file to cut from, and a cut worked out on "
+        "the decoded copy would be applied to bytes that are not the same "
+        "length. It is still confirmed, it says why it was not stripped, and "
+        "the file is left byte for byte as it was.",
+    command="clean",
+    apply=True,
+    roots=["code"],
+    files={"code/proj/vite.config.js": ESCAPED_CONFIG},
+    expect={
+        "exit": 2,
+        "tree_may_change": False,
+        "findings": [{
+            "level": "HIT",
+            "match": "config file contains an indicator",
+            "path": "vite.config.js",
+        }],
+        "file_after": {"code/proj/vite.config.js": ESCAPED_CONFIG},
+        "must_print": [
+            "not stripped",
+            "the indicator is written in escape codes, so the payload cannot be located in the file to cut",
+            "re-clone",
+        ],
+        "must_not_print": ["original kept ->", "would strip"],
+    },
+)
+
 case(
     "clean-quarantines-what-check-would",
     why="clean is check plus one thing, not a different scanner. A fake font "
@@ -1091,6 +1207,40 @@ case(
             "Their computers need checking too.",
             "Check the computers of alice and bob",
         ],
+    },
+)
+
+case(
+    "guide-github-finds-a-payload-written-in-escape-codes",
+    why="git grep -F against the indicator set finds nothing in a loader "
+        "written in \\u escapes. The remote check lists the files that hold "
+        "an escape, reads them and matches them decoded, so the branch is "
+        "confirmed the same as the plain payload is. A file of ordinary "
+        "escapes on another repository is read the same way and is clean.",
+    command="guide",
+    roots=["code"],
+    files=ORDINARY_TREE,
+    stdin=["organization", "acme", "none"],
+    forge_files=SIGNED_IN,
+    forge={"acme": {
+        "blog": {"branches": {"main": {"src/i18n.js": ORDINARY_ESCAPES}}},
+        "shop": {
+            "branches": {
+                "main": {"src/index.js": "export const a = 1\n"},
+                "release": {"vite.config.js": ESCAPED_CONFIG},
+            },
+            "pushes": "refs/heads/release\taaa\tbbb\talice\t2026-09-12T10:00:00Z\t0",
+        },
+    }},
+    expect={
+        "exit": 2,
+        "tree_may_change": False,
+        "must_print": [
+            "Checked 2 repositories and 3 branches of acme.",
+            "CONFIRMED   1     repository carries the PolinRider payload",
+            "acme/shop   1 branch",
+        ],
+        "must_not_print": ["acme/blog   1 branch"],
     },
 )
 

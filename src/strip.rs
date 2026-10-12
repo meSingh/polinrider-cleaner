@@ -46,6 +46,9 @@ pub enum Refusal {
     CodeAfterPayload,
     /// What would remain has unbalanced brackets: the cut lands mid-statement.
     Incomplete,
+    /// The indicator is only there once escape codes are decoded, so it has
+    /// no position in the bytes of the file to cut from. See ADR-0040.
+    Escaped,
 }
 
 impl Refusal {
@@ -59,6 +62,9 @@ impl Refusal {
                 "there is code after the payload, so it was not simply appended"
             }
             Refusal::Incomplete => "the file would not be complete once the payload was cut",
+            Refusal::Escaped => {
+                "the indicator is written in escape codes, so the payload cannot be located in the file to cut"
+            }
         }
     }
 }
@@ -128,10 +134,19 @@ fn brackets_balance(text: &str) -> bool {
 }
 
 /// Plan the cut, or say why there is not one. `None` when the file carries no
-/// indicator at all.
+/// indicator at all, as written or in escape codes.
+///
+/// A file whose indicator is only there once its escapes are decoded is
+/// infected and has no offset to cut at. It is a refusal, not a `None`: a
+/// `None` here reads as "nothing in this config", and the file would drop to
+/// a review line at best.
 pub fn plan(bytes: &[u8], ind: &Indicators) -> Option<Result<Plan, Refusal>> {
-    let indicator_at = first_indicator(bytes, ind)?;
-    Some(plan_from(bytes, indicator_at, ind))
+    match first_indicator(bytes, ind) {
+        Some(indicator_at) => Some(plan_from(bytes, indicator_at, ind)),
+        None => ind
+            .has_strong_only_escaped(&String::from_utf8_lossy(bytes))
+            .then_some(Err(Refusal::Escaped)),
+    }
 }
 
 fn plan_from(bytes: &[u8], indicator_at: usize, ind: &Indicators) -> Result<Plan, Refusal> {
@@ -152,10 +167,12 @@ fn plan_from(bytes: &[u8], indicator_at: usize, ind: &Indicators) -> Result<Plan
     if !kept_text.lines().any(is_module_end) {
         return Err(Refusal::NoModuleEnd);
     }
-    // Cannot happen as the code stands: the cut is before the first
-    // indicator. Checked anyway, because this is the function that edits
-    // source and "the result is clean" should be observed, not deduced.
-    if first_indicator(&keep, ind).is_some() {
+    // As written this cannot happen: the cut is before the first indicator.
+    // Written in escape codes it can, above the padding where the offset
+    // search does not see it. Checked both ways, because this is the function
+    // that edits source and "the result is clean" should be observed, not
+    // deduced.
+    if first_indicator(&keep, ind).is_some() || ind.has_strong(&kept_text) {
         return Err(Refusal::IndicatorRemains);
     }
 
@@ -312,6 +329,44 @@ mod tests {
         assert_eq!(kept(&text), "export default {}\n");
     }
 
+    /// Every character as a `\uXXXX` escape.
+    fn escaped(text: &str) -> String {
+        text.chars()
+            .map(|c| format!("\\u{:04x}", c as u32))
+            .collect()
+    }
+
+    #[test]
+    fn an_indicator_only_in_escape_codes_is_refused_and_not_missed() {
+        // Behind the padding and after the module, the shape that is cut when
+        // it is written plainly. Written in escapes there is no offset to cut
+        // at, and returning None would call the file clean.
+        let text = format!("export default {{}}\n{}var x='{}';\n", pad(), escaped(MARK));
+        assert_eq!(planned(&text), Err(Refusal::Escaped));
+        assert_eq!(
+            Refusal::Escaped.reason(),
+            "the indicator is written in escape codes, so the payload cannot be located in the file to cut"
+        );
+    }
+
+    #[test]
+    fn ordinary_escapes_in_a_config_are_not_an_indicator() {
+        let text = "export default { title: 'caf\\u00e9 \\x41' }\n";
+        assert!(plan(text.as_bytes(), &ind()).is_none());
+    }
+
+    #[test]
+    fn an_escaped_copy_above_the_padding_stops_the_cut() {
+        // The plain payload is behind the padding and would be cut. The
+        // escaped one above it would stay, and the file would be called clean.
+        let text = format!(
+            "var y='{}';\nexport default {{}}\n{}var x='{MARK}';\n",
+            escaped(MARK),
+            pad()
+        );
+        assert_eq!(planned(&text), Err(Refusal::IndicatorRemains));
+    }
+
     #[test]
     fn every_refusal_says_why_in_words() {
         for r in [
@@ -320,6 +375,7 @@ mod tests {
             Refusal::IndicatorRemains,
             Refusal::CodeAfterPayload,
             Refusal::Incomplete,
+            Refusal::Escaped,
         ] {
             assert!(!r.reason().is_empty());
         }

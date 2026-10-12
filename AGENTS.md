@@ -90,9 +90,10 @@ lists is one nobody on the team claims.
 - **Read what matched, never the count.** `details` in the guided flow, or the
   saved report, lists every finding with its path.
 - **`clean` means the current indicator set is absent.** It is not proof the
-  code was never touched. 18 of 35 infected repositories in one published
-  analysis hold a loader written in Unicode escapes, which no fixed string in
-  `ioc/` matches.
+  code was never touched. Indicators are matched as written and through
+  `\uXXXX`, `\u{...}` and `\xNN` escapes (ADR-0040), which covers the loader
+  family 18 of 35 infected repositories in one published analysis carry. Other
+  encodings (base64, `fromCharCode`, concatenation) are still missed.
 - **A `[review]` line is a question for the human, not an infection.** A probe
   that could not run is a `[review]`, never an `[ok]`.
 - **"Rebuild" is said only on proof** that the payload ran on that machine.

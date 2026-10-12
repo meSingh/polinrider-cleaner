@@ -28,6 +28,9 @@ Exit `0` all passed · `1` a case failed · `3` the harness could not run.
 
 Cases write `{{STRONG}}`, `{{WEAK}}`, `{{BADPKG}}` and `{{PAD}}`. The runner
 substitutes real values out of [`ioc/`](../ioc/) when it builds the tree.
+`{{STRONG_U}}` is the same strong indicator with every character written as a
+`\uXXXX` escape, the way one loader family writes its strings
+([ADR-0040](../docs/adr/0040-indicators-are-matched-through-escape-codes-as-well.md)).
 
 Two reasons. Working malware strings stay out of the repository, so cloning
 this does not trip anyone's scanner. And the corpus cannot drift away from the

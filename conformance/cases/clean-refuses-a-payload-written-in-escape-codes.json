@@ -1,0 +1,34 @@
+{
+  "why": "It is behind the padding after the module, the shape clean cuts. But the indicator is only there once the escapes are decoded, so there is no offset in the file to cut from, and a cut worked out on the decoded copy would be applied to bytes that are not the same length. It is still confirmed, it says why it was not stripped, and the file is left byte for byte as it was.",
+  "command": "clean",
+  "apply": true,
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/vite.config.js": "export default { plugins: {} }\n{{PAD}}global.i='{{STRONG_U}}';\n"
+  },
+  "expect": {
+    "exit": 2,
+    "tree_may_change": false,
+    "findings": [
+      {
+        "level": "HIT",
+        "match": "config file contains an indicator",
+        "path": "vite.config.js"
+      }
+    ],
+    "file_after": {
+      "code/proj/vite.config.js": "export default { plugins: {} }\n{{PAD}}global.i='{{STRONG_U}}';\n"
+    },
+    "must_print": [
+      "not stripped",
+      "the indicator is written in escape codes, so the payload cannot be located in the file to cut",
+      "re-clone"
+    ],
+    "must_not_print": [
+      "original kept ->",
+      "would strip"
+    ]
+  }
+}

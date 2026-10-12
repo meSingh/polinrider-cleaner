@@ -19,8 +19,11 @@ the organization scanner, the account scanner and all three local checks at once
 
 Format: one entry per line. Lines starting with `#` and blank lines are ignored.
 `strong.txt`, `bad-packages.txt` and `weak.txt` are matched as fixed strings
-(`grep -F`), so no regex escaping is needed. `filenames.txt` is extended regex
-matched against the full path.
+(`grep -F`), so no regex escaping is needed. `strong.txt` and
+`bad-packages.txt` are also matched against a copy of each file with its
+`\uXXXX`, `\u{...}` and `\xNN` escapes decoded, because one loader family is
+written entirely in them. Add an indicator as it reads once decoded, never in
+escapes. `filenames.txt` is extended regex matched against the full path.
 
 ## The classification rule
 

@@ -1,0 +1,23 @@
+{
+  "why": "Decoding has to cost nothing in false positives. Accented words, emoji and hex escapes are everywhere in real code, in configs and in manifests. Decoded, none of them is an indicator, so the tree is clean and exits 0 with no review line.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/vite.config.js": "// caf\\u00e9, na\\u00efve, \\u00fcber, \\x41\\x42\\x43, \\u{1F600}\nexport const labels = { yes: 'S\\u00ed', no: 'N\\u00e3o', sep: '\\x2c' }\nexport default { plugins: [] }\n",
+    "code/proj/package.json": "{\"name\":\"proj\",\"description\":\"caf\\u00e9 \\u00fcber\",\"dependencies\":{\"react\":\"^18.0.0\"}}\n",
+    "code/proj/src/i18n.js": "// caf\\u00e9, na\\u00efve, \\u00fcber, \\x41\\x42\\x43, \\u{1F600}\nexport const labels = { yes: 'S\\u00ed', no: 'N\\u00e3o', sep: '\\x2c' }\n"
+  },
+  "expect": {
+    "exit": 0,
+    "findings": [
+      {
+        "level": "ok",
+        "match": "build config files checked"
+      }
+    ],
+    "must_not_report": [
+      "[HIT]"
+    ]
+  }
+}
