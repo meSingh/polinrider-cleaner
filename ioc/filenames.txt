@@ -42,5 +42,5 @@
 # implant's own name with a script extension, so it is INFECTED tier like the
 # binary names above.
 # Source: OpenSSF malicious-packages MAL-2026-5341 (`void-ulid`; Amazon
-# Inspector), June 2026. See docs/indicator-reviews/2026-10-12.md.
+# Inspector), June 2026. See docs-site/src/content/docs/indicator-reviews/2026-10-12.md.
 (^|/)MicrosoftSystem64\.vbs$

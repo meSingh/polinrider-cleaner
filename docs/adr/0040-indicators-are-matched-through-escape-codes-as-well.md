@@ -8,7 +8,7 @@
 ## Context
 
 The indicator review of 5 October
-([`docs/indicator-reviews/2026-10-05.md`](../indicator-reviews/2026-10-05.md),
+([the 2026-10-05 indicator review](https://mesingh.github.io/polinrider-cleaner/indicator-reviews/2026-10-05/),
 technique 2) found that the `0xa322` loader is ordinary JavaScript with its
 characters written as `\uXXXX` escapes. 18 of the 35 repositories SafeDep
 confirmed carry it. Node decodes the escapes before it runs anything, so the

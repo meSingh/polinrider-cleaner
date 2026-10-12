@@ -111,7 +111,7 @@ YU7m{rE/>|==b>#~
 # the literal as '0xa322E5f3D311D3080e6f0121063e9aDC2490Ef1a'.toLowerCase(),
 # and the OpenSSF record for `pybitjs` cites the same casing. Both forms are
 # carried; neither subsumes the other.
-# Source: as above. See docs/indicator-reviews/2026-10-05.md.
+# Source: as above. See docs-site/src/content/docs/indicator-reviews/2026-10-05.md.
 0xa322E5f3D311D3080e6f0121063e9aDC2490Ef1a
 
 # The Tron and Aptos dead drops of the paired "1-NN-1" loader -- a second
@@ -132,7 +132,7 @@ TFMryB9m6d4kBMRjEVyFRbqKSV1cV2NcpH
 # keys are sixteen characters. The shorter entry above is a prefix of this one
 # and is kept rather than replaced: it still matches, and it covers a build that
 # reuses only the first half.
-# Source: as above. See docs/indicator-reviews/2026-10-05.md.
+# Source: as above. See docs-site/src/content/docs/indicator-reviews/2026-10-05.md.
 q4FZkxX{!h,Sr3=@
 
 # Second-stage loader staging on GitLab. The account name is the indicator and

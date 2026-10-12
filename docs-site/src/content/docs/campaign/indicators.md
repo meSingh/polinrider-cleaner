@@ -41,7 +41,7 @@ The campaign rotates its signatures, so an indicator set that matched in
 September will not necessarily match in December. The set is reviewed weekly
 against the published sources, and **every review is recorded, including the
 weeks where nothing changed**, in
-[`docs/indicator-reviews/`](https://github.com/meSingh/polinrider-cleaner/tree/main/docs/indicator-reviews).
+[the indicator reviews](/polinrider-cleaner/indicator-reviews/).
 
 A scanner that has quietly stopped matching is worse than no scanner, because it
 returns a clean result somebody believes. The review log is how you check that

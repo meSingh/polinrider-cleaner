@@ -87,7 +87,7 @@ code.ok     { color: var(--green);  font-weight: 600; }
 /* The splash page. Lucode renders its body with no container, so the page
  * wraps each part in a ContainerSection; these give the headings and images
  * inside those sections the weight a landing page needs. */
-.hero .hero-image { max-width: 60rem; }
+:root .hero[data-layout] { padding-block-end: 1.5rem; }
 .container-section .sl-markdown-content h2 {
   font-size: 1.5rem; font-weight: 600; letter-spacing: -0.02em;
   margin-top: 0;

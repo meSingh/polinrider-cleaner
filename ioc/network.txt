@@ -73,5 +73,5 @@ copilot-ai.whisdev.org
 # Hetzner. The package installs the same MicrosoftSystem64 directories and the
 # same com.launchkeeper LaunchAgent this set already carries.
 # Source: OpenSSF malicious-packages MAL-2026-6672 (`ulid-xyz`; Amazon
-# Inspector, SafeDep), July 2026. See docs/indicator-reviews/2026-10-12.md.
+# Inspector, SafeDep), July 2026. See docs-site/src/content/docs/indicator-reviews/2026-10-12.md.
 95.216.232.162

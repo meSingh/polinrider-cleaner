@@ -1,9 +1,8 @@
 # AGENTS.md
 
-> **Picking this up fresh?** [`HANDOVER.md`](./HANDOVER.md) has the current state
-> of the 2.0.0 work, the branch layout, and the mistakes already made.
-> [`HACKING.md`](./HACKING.md) is how to run it. This file is the reference for
-> changing the repository.
+> **Picking this up fresh?** [`HACKING.md`](./HACKING.md) is how to run it and
+> [`CONTRIBUTING.md`](./CONTRIBUTING.md) how to test it. This file is the
+> reference for changing the repository, including the mistakes already made.
 
 Instructions for AI coding agents. Humans want [README.md](README.md).
 
@@ -138,13 +137,37 @@ the sandbox and the test harness.
 
 | Path | Contains |
 |---|---|
-| `src/` | the binary. `HANDOVER.md` has a table of what each module holds |
+| `src/` | the binary. What each module holds is below |
 | `ioc/` | the indicator set, single source of truth, read at runtime |
 | `conformance/` | the specification: fixture trees as data with the verdict each must produce |
 | `docs/adr/` | one record per design decision, with its reasoning and its cost |
-| `docs-site/` | the documentation site, Astro Starlight |
+| `docs-site/` | the documentation site, Astro Starlight, including the weekly indicator reviews |
 | `ci/` | the vendorable CI scanner, its workflow template and installer, and the sandbox demo |
 | `polinrider-sandbox`, `.devcontainer/` | the container every test runs in |
+
+### What each module holds
+
+| Module | What it holds |
+|---|---|
+| `cli.rs` | Argument parsing and the preflight that refuses before anything is read |
+| `verdict.rs` | Finding levels and the exit-code contract |
+| `quarantine.rs` | The dry-run type-state |
+| `walk.rs` | One pruned filesystem walk, shared by every check |
+| `indicators.rs` | Loading `ioc/` and matching it, through escape codes as well: ADR-0040 |
+| `unescape.rs` | Decodes `\uXXXX`, `\u{...}` and `\xNN` so an escaped loader matches. Pure |
+| `checks.rs` | Implants, tasks.json, build configs, fonts, packages, git hooks, extensions, propagation |
+| `scan.rs` | One scan: the walk, every check that applies, and rendering. In the library so a session can run more than one |
+| `guide.rs` | The guided flow. Four screens, one question on each, answered in words. A summary first, the full list on `details`. Every prompt goes through one `Console` trait so a test can drive a session: ADR-0035 |
+| `remote.rs` | GitHub through one boundary: `Forge` (`GitHub` through `gh` and `git`, or `Supplied` from a directory of bare repositories). Mirrors into an evidence directory and checks every branch and tag through git plumbing. Also the only four things that change GitHub: `push`, `set_description`, `archive` |
+| `remote_fix.rs` | The four fixes, each as a plan and the function that does it: `restore`, `erase`, `remove`, `archive`. Nothing is checked out, every push carries a lease, and GitHub is asked afterwards what it shows. ADR-0037 |
+| `guide_github.rs` | The GitHub screens that read: sign-in help, the organization list, the progress screen, the summary and the last screen. ADR-0036 |
+| `guide_fix.rs` | The GitHub screens that change something: `each`, `all`, one repository at a time, the dry run, the yes, and what was done |
+| `pattern.rs` | A small regular-expression matcher for `ioc/filenames.txt`, which is data written as patterns. A pattern it cannot honour stops the scan |
+| `ui.rs` | The wordmark and the colours, and nothing else. Runs no command, reads no file. Colour never changes a character: ADR-0033 |
+| `strip.rs` | Plans the cut for `clean`: what to keep of an infected build config, or why not to touch it. Pure, no I/O |
+| `host.rs` | The boundary. `Host`, with `LiveHost` (asks the machine) and `Snapshot` (holds the answers as data). The only module that runs a command |
+| `host_checks.rs` | Implant processes, persistence, shell startup files, global git config, npm config, resident interpreters, live connections |
+| `sha256.rs` | Written out rather than depended on, proven against NIST vectors |
 
 ### Record the decision
 
@@ -248,6 +271,80 @@ The shell that remains, `ci/scan-workspace.sh` above all since users vendor
 it, must run on bash 3.2, which is what macOS ships. No `mapfile`, no
 associative arrays, no `${var,,}`. Guard array expansion under `set -u` with
 `${arr[@]+"${arr[@]}"}`.
+
+### Gotchas, each of which cost real time
+
+**Linux cuts a process name to 15 bytes.** `ps -o comm=` shows
+`MicrosoftSystem`, not `MicrosoftSystem64`. Comparing whole names never
+matches. Found by running a binary under the implant's name in the sandbox and
+reading what `ps` printed; nothing else would have shown it.
+
+**Joining an absolute path replaces what it is joined to.** The quarantine
+destination was `root/files` joined with the source path minus a leading `/`.
+On Windows `C:\code\x` has no leading `/`, so the destination was the source:
+a move onto itself that reported success, and a strip that wrote the cleaned
+file over the only copy of the original. A root given as `../code` escaped the
+same way on any platform. Found by reading, the day before the first run on a
+real machine, and it is the kind of thing the Linux sandbox cannot show.
+Destinations are rebuilt from path components now.
+
+**A quarantine under a scanned root was scanned.** The default used to be
+`./polinrider-quarantine` in the working directory. Run from inside a project,
+that put live malware in a git checkout, and the next scan walked it and
+reported the machine still infected by its own evidence. The default is now a
+new timestamped directory in the home directory, and the walk never enters a
+quarantine.
+
+**The sandbox image lacked `rustfmt` and `clippy`.** `rust-toolchain.toml` asks
+for both and the slim image carries neither, so rustup tried to download them
+on every cargo invocation and the whole Rust half of `--all` failed offline.
+The Dockerfile installs them now. If the image predates 2026-10-03, rebuild it:
+`./polinrider-sandbox --build`.
+
+**The sandbox is read-only, so `cargo fmt` cannot run in it.** Format on the
+host (it rewrites source and executes nothing), then check in the sandbox.
+Compiling on the host with `cargo clippy` or `cargo build` is tolerated for
+the same reason. Running what was built is not.
+
+**`println!` panics on a closed pipe.** `polinrider --version | head -1`
+crashed with a Rust panic, and that was the first thing the beta printed for
+Mandeep. All output goes through `emit()` in `main.rs` now, `print_stdout` is
+denied by clippy, and two corpus checks pin it. Do not pipe the binary through
+`head` in a script and assume that is harmless.
+
+**An installed binary could not find its indicators on macOS.** It looked for
+`ioc/` beside the path it was started from, which through a link on the PATH
+is the link. Fixed by resolving the path first. `./polinrider-sandbox --beta`
+installs the binary through a link on purpose, so this layout stays tested.
+
+**The sandbox mounts the repository read-only**, so cargo cannot write
+`Cargo.lock`. The lockfile is generated on the host and committed; every sandbox
+invocation passes `--locked`.
+
+**`CARGO_TARGET_DIR` differs in the sandbox.** The conformance runner honours it
+now. Hardcoding `target/release` made every case fail in the container while
+passing on the host.
+
+**GitHub's events API lags and has lost fields.** It ran an hour or more
+behind and stopped carrying `payload.size`, so the push record came back empty
+and every push read as a force-push, which left `restore` never offered against
+real GitHub. The push record comes from `/repos/{repo}/activity` instead
+(`src/remote.rs`), which shows a push within minutes and marks `force_push`
+itself. Do not switch back.
+
+**`-not -path` does not prune.** It filters what `find` prints while still
+descending. That was the six-hour scan ([ADR-0025](./docs/adr/0025-walk-the-filesystem-once-with-prune-and-checkpoint-it.md)).
+
+### Outside this repository
+
+| Thing | Where | Note |
+|---|---|---|
+| Releases | GitHub Releases | Five attested binaries per tag, from `release.yml` |
+| Homebrew tap | `meSingh/homebrew-tap` | Installs the binary and `ioc/`. Bumped by hand on every release |
+| Scoop bucket | `meSingh/scoop-bucket` | Same. Bumped by hand on every release |
+| Weekly indicator review | claude.ai routine "PolinRider indicator watch (2.0)" | Mondays 08:00 IST. Opens a draft `ioc/YYYY-MM-DD` pull request every week with signed commits, change or no change |
+| Beta binaries | `.github/workflows/beta-build.yml` | Builds and exercises every platform on each push to `main`. The only place the macOS and Windows live checks run |
+| Documentation site | GitHub Pages, from `main` | `docs-site/`, including the indicator reviews |
 
 ### Cutting a release
 

@@ -90,7 +90,7 @@ rate-limits-flexible
 #   typeorm-encrypt is inside  typeorm-encrypted    (10 versions, since 2022)
 #   clsx-tailwind   is inside  clsx-tailwind-merge  (published 2023)
 # Matching them needs a whole-name check against a parsed manifest, not a fixed
-# string. See docs/indicator-reviews/2026-09-14.md.
+# string. See docs-site/src/content/docs/indicator-reviews/2026-09-14.md.
 
 # --- NullReceiver-branded packages: DPRK-linked clones of legitimate Tailwind
 # CSS plugins that resolve their C2 from the recipient address of an empty
@@ -126,7 +126,7 @@ fluid-type-ui
 # Sources: OpenSSF malicious-packages <https://github.com/ossf/malicious-packages>
 # at commit ae1ef409, read 2026-10-05; SafeDep, "PolinRider Switches to
 # Ethereum C2 in 30+ Repositories", September 2026.
-# See docs/indicator-reviews/2026-10-05.md.
+# See docs-site/src/content/docs/indicator-reviews/2026-10-05.md.
 @hoteldev/common
 @nasddatax/common
 @nasdtickets/common
@@ -199,7 +199,7 @@ pyservercheck
 #   tailwindcss-form            is inside  tailwindcss-forms, and is a prefix of
 #                                          three malicious names already above
 # This is the same trap as sass-format, typeorm-encrypt and clsx-tailwind,
-# recorded in docs/indicator-reviews/2026-09-14.md. Matching any of the five
+# recorded in docs-site/src/content/docs/indicator-reviews/2026-09-14.md. Matching any of the five
 # needs a whole-name check against a parsed manifest, not a fixed string.
 #
 # Hijacked packages from the same 71 records: legitimate projects whose
@@ -240,7 +240,7 @@ pyservercheck
 # at commit 30c251e691, read 2026-10-12 -- MAL-2026-2909, -2910 (Amazon
 # Inspector, indece), -4345, -4346, -4823 (Amazon Inspector, SafeDep), -5341,
 # -5827, -5877, -6672 (Amazon Inspector, ReversingLabs, SafeDep). April-July 2026.
-# See docs/indicator-reviews/2026-10-12.md.
+# See docs-site/src/content/docs/indicator-reviews/2026-10-12.md.
 tailwindthml-flips
 tailwind-typography-cssstyle
 eo-terminal

@@ -59,7 +59,7 @@ allowAutomaticTasks
 # port prefix is dropped here so the entry matches whether or not the literal in
 # the file carries it. The request header `Sec-V` is deliberately absent: five
 # characters is too short to match safely.
-# Source: as above. See docs/indicator-reviews/2026-09-28.md.
+# Source: as above. See docs-site/src/content/docs/indicator-reviews/2026-09-28.md.
 X-Payload-B64
 /0x/cls
 /0x/ls
@@ -103,5 +103,5 @@ files.catbox.moe
 # name is two ordinary words: `hex-type` is a phrase prose and stylesheets can
 # contain, and bad-packages.txt is matched as a fixed substring. Review tier.
 # Source: OpenSSF malicious-packages MAL-2026-5538 (Amazon Inspector), June 2026.
-# See docs/indicator-reviews/2026-10-12.md.
+# See docs-site/src/content/docs/indicator-reviews/2026-10-12.md.
 hex-type

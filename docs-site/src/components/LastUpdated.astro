@@ -1,0 +1,50 @@
+---
+// When the site last changed, worked out when it is built so it cannot go
+// stale by somebody forgetting to edit it: the date of the commit the site
+// was built from (the deploy checkout is shallow, which still has that one
+// commit). Outside a git checkout it falls back to the build date.
+import { execSync } from 'node:child_process';
+
+let updated: string;
+try {
+  updated = execSync('git log -1 --format=%cs', { encoding: 'utf8' }).trim();
+} catch {
+  updated = new Date().toISOString().slice(0, 10);
+}
+
+const long = (iso: string) =>
+  new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+---
+
+<p class="last-updated">
+  <span>Last updated <time datetime={updated}>{long(updated)}</time></span>
+</p>
+
+<style>
+  .last-updated {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.25rem 1.25rem;
+    margin: 0 0 2rem;
+    font-size: 0.875rem;
+    color: var(--muted-foreground);
+    text-align: center;
+  }
+  .last-updated span::before {
+    content: '';
+    display: inline-block;
+    width: 0.5rem;
+    height: 0.5rem;
+    margin-right: 0.45rem;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    vertical-align: 0.05rem;
+  }
+</style>

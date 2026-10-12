@@ -1,4 +1,9 @@
-# Indicator review — YYYY-MM-DD
+---
+title: Indicator review, YYYY-MM-DD
+sidebar:
+  label: "YYYY-MM-DD"
+  order: -YYYYMMDD
+---
 
 | | |
 |---|---|
