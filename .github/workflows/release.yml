@@ -1,7 +1,10 @@
 # Cuts a release from a signed tag: the polinrider binary for each platform,
-# each with its indicators beside it, a source archive, one SHA-256 file over
-# all of them, and a build-provenance attestation proving every archive was
-# produced by this workflow, from this repository, at that commit.
+# each with its indicators beside it, a Windows .zip for winget and Scoop, a
+# .deb for each Linux architecture, a source archive, one SHA-256 file over
+# all of them, and a build-provenance attestation proving every one was
+# produced by this workflow, from this repository, at that commit. After it
+# publishes, it opens pull requests moving the Homebrew tap and the Scoop
+# bucket to the release, and writes the winget manifests for submission.
 #
 # The point of this repository is recovering from tampered code. Publishing a
 # release nobody can verify would be inconsistent with that.
@@ -80,11 +83,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: linux-x86_64,   os: ubuntu-latest,    target: x86_64-unknown-linux-gnu,  exe: polinrider }
-          - { name: linux-arm64,    os: ubuntu-24.04-arm, target: aarch64-unknown-linux-gnu, exe: polinrider }
-          - { name: macos-arm64,    os: macos-latest,     target: aarch64-apple-darwin,      exe: polinrider }
-          - { name: macos-x86_64,   os: macos-latest,     target: x86_64-apple-darwin,       exe: polinrider }
-          - { name: windows-x86_64, os: windows-latest,   target: x86_64-pc-windows-msvc,    exe: polinrider.exe }
+          - { name: linux-x86_64,   os: ubuntu-latest,    target: x86_64-unknown-linux-gnu,  exe: polinrider,     deb: amd64 }
+          - { name: linux-arm64,    os: ubuntu-24.04-arm, target: aarch64-unknown-linux-gnu, exe: polinrider,     deb: arm64 }
+          - { name: macos-arm64,    os: macos-latest,     target: aarch64-apple-darwin,      exe: polinrider,     deb: '' }
+          - { name: macos-x86_64,   os: macos-latest,     target: x86_64-apple-darwin,       exe: polinrider,     deb: '' }
+          - { name: windows-x86_64, os: windows-latest,   target: x86_64-pc-windows-msvc,    exe: polinrider.exe, deb: '' }
     defaults:
       run:
         shell: bash
@@ -127,6 +130,36 @@ jobs:
           cp LICENSE DISCLAIMER.md "dist/$dir/"
           tar -C dist -czf "dist/$dir.tar.gz" "$dir"
 
+      - name: Package the Windows zip
+        # For winget, which installs only from a zip, and for Scoop, which
+        # unpacks a zip without 7-Zip. Flat, with polinrider.exe and ioc/ at
+        # the top: winget's portable install folder is then the folder the exe
+        # is in, so ioc/ is beside it however winget links the command.
+        # 7-Zip is on the Windows runner image.
+        if: matrix.name == 'windows-x86_64'
+        env:
+          TAG: ${{ needs.check.outputs.tag }}
+          NAME: ${{ matrix.name }}
+        run: |
+          dir="polinrider-${TAG}-${NAME}"
+          cd "dist/$dir"
+          7z a -tzip -bso0 -bsp0 "../$dir.zip" polinrider.exe ioc LICENSE DISCLAIMER.md
+          7z l "../$dir.zip"
+
+      - name: Package the .deb
+        # dpkg-deb alone. /usr/bin/polinrider with the indicators in
+        # /usr/share/polinrider/ioc, a layout the binary already searches.
+        # See packaging/deb.sh.
+        if: matrix.deb != ''
+        env:
+          TAG: ${{ needs.check.outputs.tag }}
+          NAME: ${{ matrix.name }}
+          TARGET: ${{ matrix.target }}
+          DEB_ARCH: ${{ matrix.deb }}
+        run: |
+          packaging/deb.sh "target/${TARGET}/release/polinrider" "${TAG#v}" "$DEB_ARCH" \
+            "dist/polinrider-${TAG}-${NAME}.deb"
+
       - name: The packaged binary runs and finds its indicators
         # From another directory, as an installed copy is run. A binary that
         # cannot find its indicators refuses every scan. The Intel macOS build
@@ -147,11 +180,71 @@ jobs:
             echo "the binary cannot use its indicators"; exit 1
           fi
 
+      - name: The zip runs and finds its indicators, through a link
+        # The way winget installs it: unpacked into a folder of its own, with a
+        # symbolic link to the exe in another folder on the PATH. The binary
+        # resolves the link before it looks for ioc/. The runner is
+        # disposable and runs as an administrator, so the link can be made.
+        if: matrix.name == 'windows-x86_64'
+        shell: pwsh
+        env:
+          TAG: ${{ needs.check.outputs.tag }}
+          NAME: ${{ matrix.name }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $zip = Join-Path $PWD "dist/polinrider-$env:TAG-$env:NAME.zip"
+          $root = Join-Path $env:RUNNER_TEMP 'winget-like'
+          $pkg = Join-Path $root 'package'
+          $links = Join-Path $root 'links'
+          Expand-Archive -Path $zip -DestinationPath $pkg
+          New-Item -ItemType Directory -Path $links | Out-Null
+          New-Item -ItemType SymbolicLink -Path (Join-Path $links 'polinrider.exe') `
+            -Target (Join-Path $pkg 'polinrider.exe') | Out-Null
+          Set-Location $env:RUNNER_TEMP
+          foreach ($exe in @((Join-Path $pkg 'polinrider.exe'), (Join-Path $links 'polinrider.exe'))) {
+            $out = & $exe --version | Out-String
+            Write-Output $out
+            if ($LASTEXITCODE -ne 0) { throw "$exe --version exited $LASTEXITCODE" }
+            if ($out -notmatch [regex]::Escape($env:TAG.Substring(1))) { throw "$exe does not report $env:TAG" }
+            if ($out -match 'NOT USABLE') { throw "$exe cannot find its indicators" }
+          }
+
+      - name: The .deb installs and finds its indicators
+        # GitHub's runners are disposable, so installing the package on one is
+        # the honest test of it: dpkg puts the files where the package says,
+        # and the binary on the PATH has to find /usr/share/polinrider/ioc.
+        if: matrix.deb != ''
+        env:
+          TAG: ${{ needs.check.outputs.tag }}
+          NAME: ${{ matrix.name }}
+        run: |
+          deb="dist/polinrider-${TAG}-${NAME}.deb"
+          dpkg-deb --info "$deb"
+          dpkg-deb --contents "$deb"
+          sudo dpkg -i "$deb"
+          [[ "$(command -v polinrider)" == /usr/bin/polinrider ]] \
+            || { echo "polinrider on the PATH is not /usr/bin/polinrider"; exit 1; }
+          cd "${RUNNER_TEMP}"
+          polinrider --version | tee deb-version.txt
+          grep -q "${TAG#v}" deb-version.txt || { echo "the packaged binary does not report $TAG"; exit 1; }
+          if grep -q 'NOT USABLE' deb-version.txt; then
+            echo "the packaged binary cannot find /usr/share/polinrider/ioc"; exit 1
+          fi
+          sudo dpkg -r polinrider-cleaner
+          [[ ! -e /usr/bin/polinrider && ! -e /usr/share/polinrider ]] \
+            || { echo "removing the package left files behind"; exit 1; }
+
       - name: Upload
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: polinrider-${{ matrix.name }}
-          path: dist/polinrider-${{ needs.check.outputs.tag }}-${{ matrix.name }}.tar.gz
+          # Only the tar.gz exists on every platform. if-no-files-found fires
+          # only when none of these match, so the zip and the .deb are checked
+          # by name in the release job.
+          path: |
+            dist/polinrider-${{ needs.check.outputs.tag }}-${{ matrix.name }}.tar.gz
+            dist/polinrider-${{ needs.check.outputs.tag }}-${{ matrix.name }}.zip
+            dist/polinrider-${{ needs.check.outputs.tag }}-${{ matrix.name }}.deb
           retention-days: 7
           if-no-files-found: error
 
@@ -181,7 +274,8 @@ jobs:
         run: |
           gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --dir artifacts --pattern 'polinrider-*'
           mkdir -p dist
-          find artifacts -name 'polinrider-*.tar.gz' -exec mv {} dist/ \;
+          find artifacts -type f \( -name 'polinrider-*.tar.gz' -o -name 'polinrider-*.zip' \
+            -o -name 'polinrider-*.deb' \) -exec mv {} dist/ \;
 
       - name: Source archive and checksums
         env:
@@ -191,16 +285,30 @@ jobs:
             -o "dist/polinrider-${TAG}-source.tar.gz" HEAD
           cd dist
           ls -l
-          [[ "$(ls polinrider-"${TAG}"-*.tar.gz | wc -l)" -eq 6 ]] \
-            || { echo "expected five binaries and the source, got:"; ls; exit 1; }
-          sha256sum polinrider-"${TAG}"-*.tar.gz > SHA256SUMS
+          # By name, so a missing package stops the release rather than
+          # publishing one platform short.
+          expected=(
+            linux-x86_64.tar.gz linux-arm64.tar.gz macos-arm64.tar.gz
+            macos-x86_64.tar.gz windows-x86_64.tar.gz source.tar.gz
+            windows-x86_64.zip linux-x86_64.deb linux-arm64.deb
+          )
+          for e in "${expected[@]}"; do
+            [[ -f "polinrider-${TAG}-${e}" ]] || { echo "missing polinrider-${TAG}-${e}"; ls; exit 1; }
+          done
+          assets=(polinrider-"${TAG}"-*)
+          [[ "${#assets[@]}" -eq "${#expected[@]}" ]] \
+            || { echo "expected exactly ${#expected[@]} assets, got:"; ls; exit 1; }
+          sha256sum polinrider-"${TAG}"-* > SHA256SUMS
           cat SHA256SUMS
 
       - name: Attest build provenance
         id: attest
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
-          subject-path: dist/polinrider-*.tar.gz
+          subject-path: |
+            dist/polinrider-*.tar.gz
+            dist/polinrider-*.zip
+            dist/polinrider-*.deb
 
       # `gh attestation verify` reads the attestation from GitHub's API, which
       # means it needs network access and it means anything scanning the release
@@ -222,8 +330,94 @@ jobs:
           TAG: ${{ needs.check.outputs.tag }}
         run: |
           sed "s/__TAG__/${TAG}/g" .github/release-notes.md > notes.md
-          gh release create "$TAG" dist/polinrider-"${TAG}"-*.tar.gz \
+          gh release create "$TAG" dist/polinrider-"${TAG}"-* \
             "dist/polinrider-${TAG}.intoto.jsonl" dist/SHA256SUMS \
             --title "$TAG" \
             --notes-file notes.md \
             --verify-tag
+
+      # For microsoft/winget-pkgs, submitted by hand. Kept as an artifact of
+      # this run rather than a release asset: it is a submission draft, not
+      # something a user downloads. packaging/winget.sh writes it again from
+      # any release's SHA256SUMS.
+      - name: winget manifests
+        env:
+          TAG: ${{ needs.check.outputs.tag }}
+        run: |
+          packaging/winget.sh "${TAG#v}" dist/SHA256SUMS winget
+          {
+            echo "### winget"
+            echo
+            echo "The manifests for ${TAG} are in the winget-manifests artifact of this run."
+            echo "Copy its manifests/ folder into a fork of microsoft/winget-pkgs and open the pull request by hand."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the winget manifests
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: winget-manifests
+          path: winget/
+          retention-days: 90
+          if-no-files-found: error
+
+  packages:
+    name: Tap and bucket pull requests
+    # After the release exists, so every URL in the pull requests resolves.
+    needs: [check, release]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+          persist-credentials: false
+
+      # PACKAGING_TOKEN is a fine-grained token that can write to the tap and
+      # the bucket and nothing else (AGENTS.md, "Maintaining PACKAGING_TOKEN").
+      # Without it this job says so and stops; the release is already out and
+      # the packages can be bumped by hand.
+      - name: Is there a token, and is this a final release
+        id: gate
+        env:
+          PACKAGING_TOKEN: ${{ secrets.PACKAGING_TOKEN }}
+          TAG: ${{ needs.check.outputs.tag }}
+        run: |
+          if [[ -z "$PACKAGING_TOKEN" ]]; then
+            echo "::notice title=Packages not bumped::PACKAGING_TOKEN is not set, so the Homebrew tap and the Scoop bucket were not touched. Bump them by hand."
+            echo "go=false" >> "$GITHUB_OUTPUT"
+          elif [[ "$TAG" == *-* ]]; then
+            echo "::notice title=Packages not bumped::${TAG} is a pre-release. The tap and the bucket follow final releases only."
+            echo "go=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: The release's checksums
+        if: steps.gate.outputs.go == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.check.outputs.tag }}
+        run: |
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern SHA256SUMS --dir release
+          cat release/SHA256SUMS
+
+      - name: Homebrew tap
+        if: steps.gate.outputs.go == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.PACKAGING_TOKEN }}
+          TAG: ${{ needs.check.outputs.tag }}
+        run: |
+          packaging/bump.sh meSingh/homebrew-tap Formula/polinrider-cleaner.rb \
+            "${TAG#v}" release/SHA256SUMS packaging/formula.sh
+
+      - name: Scoop bucket
+        if: steps.gate.outputs.go == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.PACKAGING_TOKEN }}
+          TAG: ${{ needs.check.outputs.tag }}
+        run: |
+          packaging/bump.sh meSingh/scoop-bucket bucket/polinrider-cleaner.json \
+            "${TAG#v}" release/SHA256SUMS packaging/scoop.sh

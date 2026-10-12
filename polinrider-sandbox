@@ -139,10 +139,10 @@ if [[ "$1" == "--all" ]]; then
     set -uo pipefail
     fail=0
     echo "== syntax =="
-    bash -n polinrider-sandbox ci/*.sh conformance/*.sh || fail=1
+    bash -n polinrider-sandbox ci/*.sh conformance/*.sh packaging/*.sh || fail=1
     echo "== shellcheck =="
     shellcheck --severity=warning --external-sources \
-      polinrider-sandbox ci/*.sh conformance/*.sh || fail=1
+      polinrider-sandbox ci/*.sh conformance/*.sh packaging/*.sh || fail=1
     echo "== self-tests =="
     for t in ci/selftest*.sh; do
       if ./"$t" >/dev/null 2>&1; then printf "  pass  %s\n" "$(basename "$t")"
