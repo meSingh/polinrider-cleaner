@@ -7,10 +7,7 @@ hero:
     The DPRK-linked campaign that backdates its own commits, so your history
     looks untouched. Find it and clean it up on a machine, a GitHub account or
     a whole organization.
-  layout: centered-top
-  image:
-    file: ../../assets/hero-lattice.jpg
-    alt: A rider inside a cyan lattice between two rows of servers, with purple flames held back on either side
+  layout: centered
   actions:
     - text: Start here
       link: /polinrider-cleaner/quick-start/
@@ -31,6 +28,14 @@ import LastUpdated from '../../components/LastUpdated.astro';
 
 <ContainerSection width="lg">
 
+<LastUpdated />
+
+![A rider inside a cyan lattice between two rows of servers, with purple flames held back on either side](../../assets/hero-lattice.jpg)
+
+</ContainerSection>
+
+<ContainerSection width="lg">
+
 <ul class="badges">
 <li><a href="https://github.com/meSingh/polinrider-cleaner/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/meSingh/polinrider-cleaner/actions/workflows/ci.yml/badge.svg" /></a></li>
 <li><a href="https://scorecard.dev/viewer/?uri=github.com/meSingh/polinrider-cleaner"><img alt="OpenSSF Scorecard" src="https://api.scorecard.dev/projects/github.com/meSingh/polinrider-cleaner/badge" /></a></li>
@@ -40,8 +45,6 @@ import LastUpdated from '../../components/LastUpdated.astro';
 <li><a href="/polinrider-cleaner/indicator-reviews/"><img alt="Indicators reviewed weekly" src="https://img.shields.io/badge/indicators-reviewed%20weekly-86307a" /></a></li>
 <li><img alt="Zero runtime dependencies" src="https://img.shields.io/badge/runtime%20deps-0-86307a" /></li>
 </ul>
-
-<LastUpdated />
 
 </ContainerSection>
 

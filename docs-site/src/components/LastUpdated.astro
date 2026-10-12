@@ -1,18 +1,9 @@
 ---
-// Two dates for the landing page, both worked out when the site is built so
-// neither can go stale by somebody forgetting to edit it:
-//
-// - the newest indicator review, from the file names of the review pages;
-// - the last change to the repository, from the commit the site was built
-//   from (the deploy checkout is shallow, which still has that one commit).
-//   Outside a git checkout it falls back to the build date.
+// When the site last changed, worked out when it is built so it cannot go
+// stale by somebody forgetting to edit it: the date of the commit the site
+// was built from (the deploy checkout is shallow, which still has that one
+// commit). Outside a git checkout it falls back to the build date.
 import { execSync } from 'node:child_process';
-
-const reviews = Object.keys(import.meta.glob('../content/docs/indicator-reviews/*.md'))
-  .map((path) => path.match(/(\d{4}-\d{2}-\d{2})\.md$/)?.[1])
-  .filter((date): date is string => Boolean(date))
-  .sort();
-const reviewed = reviews.at(-1);
 
 let updated: string;
 try {
@@ -21,7 +12,6 @@ try {
   updated = new Date().toISOString().slice(0, 10);
 }
 
-const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 const long = (iso: string) =>
   new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-GB', {
     day: 'numeric',
@@ -33,14 +23,6 @@ const long = (iso: string) =>
 
 <p class="last-updated">
   <span>Last updated <time datetime={updated}>{long(updated)}</time></span>
-  {
-    reviewed && (
-      <span>
-        Indicators reviewed weekly, last on{' '}
-        <a href={`${base}/indicator-reviews/${reviewed}/`}><time datetime={reviewed}>{long(reviewed)}</time></a>
-      </span>
-    )
-  }
 </p>
 
 <style>
@@ -49,7 +31,7 @@ const long = (iso: string) =>
     flex-wrap: wrap;
     justify-content: center;
     gap: 0.25rem 1.25rem;
-    margin: -1rem 0 0;
+    margin: 0 0 2rem;
     font-size: 0.875rem;
     color: var(--muted-foreground);
     text-align: center;
@@ -64,8 +46,5 @@ const long = (iso: string) =>
     background: var(--accent);
     box-shadow: 0 0 8px var(--accent);
     vertical-align: 0.05rem;
-  }
-  .last-updated a {
-    color: inherit;
   }
 </style>
