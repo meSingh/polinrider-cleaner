@@ -21,6 +21,7 @@ pub mod scan;
 pub mod sha256;
 pub mod strip;
 pub mod ui;
+pub mod unescape;
 pub mod verdict;
 pub mod walk;
 

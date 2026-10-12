@@ -6,9 +6,12 @@
 //!
 //! `strong`, `bad_packages` and `weak` are matched as fixed substrings, the
 //! same as `grep -F` in the shell. No regex, so nothing in the indicator set
-//! can be a malformed pattern that silently matches nothing.
+//! can be a malformed pattern that silently matches nothing. `strong` and
+//! `bad_packages` are also matched against a copy of the text with its escape
+//! codes decoded, when it has any (ADR-0040).
 
 use crate::pattern::{BadPattern, Pattern};
+use crate::unescape;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -125,16 +128,37 @@ impl Indicators {
         Ok(indicators)
     }
 
-    /// Does this text contain a confirmed indicator?
+    /// Does this text contain a confirmed indicator, as written or once its
+    /// escape codes are decoded? The second only for text that has escapes,
+    /// so a file without them is read once. See ADR-0040.
     pub fn has_strong(&self, haystack: &str) -> bool {
-        self.strong.iter().any(|i| haystack.contains(i.as_str()))
+        matches_or_decoded(&self.strong, haystack)
     }
 
-    /// Does this text name a campaign package?
-    pub fn has_bad_package(&self, haystack: &str) -> bool {
-        self.bad_packages
+    /// Does this text contain a confirmed indicator only once its escape
+    /// codes are decoded? The bytes of such a file do not hold the indicator,
+    /// so nothing can be cut out of it by offset.
+    pub fn has_strong_only_escaped(&self, haystack: &str) -> bool {
+        !any_in(&self.strong, haystack)
+            && unescape::decode(haystack).is_some_and(|d| any_in(&self.strong, &d))
+    }
+
+    /// The same question asked of bytes that need not be UTF-8. They are
+    /// matched as they are first, and read as text only when they have an
+    /// escape in them to decode.
+    pub fn bytes_have_strong(&self, bytes: &[u8]) -> bool {
+        self.strong
             .iter()
-            .any(|i| haystack.contains(i.as_str()))
+            .any(|i| !i.is_empty() && contains(bytes, i.as_bytes()))
+            || (unescape::has_escape(bytes)
+                && unescape::decode(&String::from_utf8_lossy(bytes))
+                    .is_some_and(|d| any_in(&self.strong, &d)))
+    }
+
+    /// Does this text name a campaign package? A manifest is JSON, and JSON
+    /// lets a name be written in escape codes too.
+    pub fn has_bad_package(&self, haystack: &str) -> bool {
+        matches_or_decoded(&self.bad_packages, haystack)
     }
 
     /// The campaign host or address this line names, if it names one.
@@ -240,6 +264,19 @@ impl Indicators {
             Err(_) => false,
         }
     }
+}
+
+/// Whether `haystack` contains any of `list`, as a fixed string.
+fn any_in(list: &[String], haystack: &str) -> bool {
+    list.iter().any(|i| haystack.contains(i.as_str()))
+}
+
+fn matches_or_decoded(list: &[String], haystack: &str) -> bool {
+    any_in(list, haystack) || unescape::decode(haystack).is_some_and(|d| any_in(list, &d))
+}
+
+fn contains(haystack: &[u8], needle: &[u8]) -> bool {
+    haystack.windows(needle.len()).any(|w| w == needle)
 }
 
 fn is_ipv4(s: &str) -> bool {
@@ -449,5 +486,58 @@ mod tests {
         assert!(ind.has_strong("something evil-pkg something"));
         assert!(ind.has_bad_package(r#"{"deps":{"evil-pkg":"1.0.0"}}"#));
         assert!(!ind.has_strong("entirely ordinary content"));
+    }
+
+    /// Every character of `text` as a `\uXXXX` escape, the way the 0xa322
+    /// loader family writes its strings.
+    fn escaped(text: &str) -> String {
+        text.chars()
+            .map(|c| format!("\\u{:04x}", c as u32))
+            .collect()
+    }
+
+    #[test]
+    fn an_indicator_written_in_escape_codes_is_still_an_indicator() {
+        // The 5 October finding: 18 of 35 confirmed repositories carried a
+        // loader that grep -F against ioc/ finds nothing in.
+        let ind = Indicators {
+            strong: vec!["MARKER-ALPHA".into()],
+            bad_packages: vec!["evil-pkg".into()],
+            ..Indicators::default()
+        };
+        let loader = format!("var a='{}';", escaped("MARKER-ALPHA"));
+        assert!(!loader.contains("MARKER-ALPHA"));
+        assert!(ind.has_strong(&loader));
+        assert!(ind.has_strong_only_escaped(&loader));
+        assert!(ind.bytes_have_strong(loader.as_bytes()));
+        // Half escaped, half not.
+        assert!(ind.has_strong("MARKER-\\x41LPHA"));
+        // As written is not "only escaped".
+        assert!(!ind.has_strong_only_escaped("MARKER-ALPHA \\u0041"));
+        assert!(ind.has_bad_package(&format!(
+            r#"{{"dependencies":{{"{}":"1.0.0"}}}}"#,
+            escaped("evil-pkg")
+        )));
+    }
+
+    #[test]
+    fn ordinary_escapes_are_not_an_indicator() {
+        let ind = with(&[], &[]);
+        let text = "const s = 'caf\\u00e9 na\\u00efve \\x41\\x42 \\u{1F600}';\n".repeat(50);
+        assert!(!ind.has_strong(&text));
+        assert!(!ind.bytes_have_strong(text.as_bytes()));
+        assert!(!ind.has_strong_only_escaped(&text));
+    }
+
+    #[test]
+    fn bytes_that_are_not_utf8_are_still_matched_both_ways() {
+        let ind = with(&[], &[]);
+        let mut bytes = vec![0xff, 0xfe];
+        bytes.extend_from_slice(escaped("MARKER-ALPHA").as_bytes());
+        assert!(ind.bytes_have_strong(&bytes));
+        let mut raw = vec![0xff];
+        raw.extend_from_slice(b"MARKER-ALPHA");
+        assert!(ind.bytes_have_strong(&raw));
+        assert!(!ind.bytes_have_strong(&[0xff, 0x00, b'x']));
     }
 }

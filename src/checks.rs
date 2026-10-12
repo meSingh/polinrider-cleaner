@@ -146,7 +146,7 @@ pub fn tasks_json(walk: &Walk, ind: &Indicators, v: &mut Verdict, sink: &mut Sin
         let Ok(body) = fs::read_to_string(path) else {
             continue;
         };
-        if !body.contains("folderOpen") {
+        if !crate::unescape::contains_decoded(&body, "folderOpen") {
             continue;
         }
         flagged += 1;
