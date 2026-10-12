@@ -5,9 +5,12 @@ template: splash
 hero:
   tagline: |
     The DPRK-linked campaign that backdates its own commits, so your history
-    looks untouched. Find it and clean it up — on a machine, a GitHub account,
-    or a whole organization.
-  layout: centered
+    looks untouched. Find it and clean it up on a machine, a GitHub account or
+    a whole organization.
+  layout: centered-top
+  image:
+    file: ../../assets/hero-lattice.jpg
+    alt: A rider inside a cyan lattice between two rows of servers, with purple flames held back on either side
   actions:
     - text: Start here
       link: /polinrider-cleaner/quick-start/
@@ -22,17 +25,24 @@ hero:
       variant: minimal
 ---
 
-import { Card, CardGrid, Code } from '@astrojs/starlight/components';
+import { Card, CardGrid } from '@astrojs/starlight/components';
+import { ContainerSection } from 'lucode-starlight/components';
+
+<ContainerSection width="lg">
 
 <ul class="badges">
 <li><a href="https://github.com/meSingh/polinrider-cleaner/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/meSingh/polinrider-cleaner/actions/workflows/ci.yml/badge.svg" /></a></li>
 <li><a href="https://scorecard.dev/viewer/?uri=github.com/meSingh/polinrider-cleaner"><img alt="OpenSSF Scorecard" src="https://api.scorecard.dev/projects/github.com/meSingh/polinrider-cleaner/badge" /></a></li>
 <li><a href="https://github.com/meSingh/polinrider-cleaner/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://github.com/meSingh/polinrider-cleaner/actions/workflows/codeql.yml/badge.svg" /></a></li>
-<li><a href="https://github.com/meSingh/polinrider-cleaner/commits/main"><img alt="Commits are signed" src="https://img.shields.io/badge/commits-signed-2c7048" /></a></li>
-<li><a href="https://github.com/meSingh/polinrider-cleaner/releases/latest"><img alt="Attested provenance" src="https://img.shields.io/badge/releases-attested%20provenance-2c7048" /></a></li>
-<li><a href="https://github.com/meSingh/polinrider-cleaner/tree/main/docs/indicator-reviews"><img alt="Indicators reviewed weekly" src="https://img.shields.io/badge/indicators-reviewed%20weekly-0f6d63" /></a></li>
-<li><img alt="Zero runtime dependencies" src="https://img.shields.io/badge/runtime%20deps-0-0f6d63" /></li>
+<li><a href="https://github.com/meSingh/polinrider-cleaner/commits/main"><img alt="Commits are signed" src="https://img.shields.io/badge/commits-signed-0e7490" /></a></li>
+<li><a href="https://github.com/meSingh/polinrider-cleaner/releases/latest"><img alt="Attested provenance" src="https://img.shields.io/badge/releases-attested%20provenance-0e7490" /></a></li>
+<li><a href="https://github.com/meSingh/polinrider-cleaner/tree/main/docs/indicator-reviews"><img alt="Indicators reviewed weekly" src="https://img.shields.io/badge/indicators-reviewed%20weekly-86307a" /></a></li>
+<li><img alt="Zero runtime dependencies" src="https://img.shields.io/badge/runtime%20deps-0-86307a" /></li>
 </ul>
+
+</ContainerSection>
+
+<ContainerSection width="md">
 
 ## One program
 
@@ -50,6 +60,10 @@ you need, one question at a time, and changes nothing until you type `yes`.
 <span class="figure-note">of backdating on one documented commit. <code>git log</code> showed nothing.</span>
 </div>
 
+</ContainerSection>
+
+<ContainerSection width="md">
+
 ## Why a tool rather than a checklist
 
 A script on the infected machine reads your last commit's timestamp, winds the
@@ -59,6 +73,10 @@ name on it.
 
 Detection has to be content scanning of every ref, reconciled against push
 events. Nobody does that by eye across fifty repositories.
+
+</ContainerSection>
+
+<ContainerSection width="lg">
 
 <CardGrid>
   <Card title="A machine" icon="laptop">
@@ -82,6 +100,21 @@ events. Nobody does that by eye across fifty repositories.
     [Set up CI](/polinrider-cleaner/guides/ci/)
   </Card>
 </CardGrid>
+
+</ContainerSection>
+
+<ContainerSection width="md">
+
+## Clean up in this order
+
+![1 Check the machines, 2 Rotate credentials, 3 Restore branches, 4 Scan every push](../../assets/steps.jpg)
+
+Cleaning GitHub while an infected machine still holds a valid token undoes
+the work within minutes. [Why the order is fixed](/polinrider-cleaner/guides/order/)
+
+</ContainerSection>
+
+<ContainerSection width="md">
 
 ## What it will not do
 
@@ -109,6 +142,7 @@ compromised. That deserves evidence rather than a promise.
 | **Every commit signed** | The direct counter to the campaign's own backdated-amend technique |
 | **Releases carry provenance** | A sigstore attestation proves each binary came from this repository's CI |
 | **It scans itself** | CI fails if the repository matches its own indicators once its detection code is excluded |
-| **Every decision is written down** | [28 records](/polinrider-cleaner/project/decisions/), each with its cost, not just its reasoning |
 
 [How to verify all of that yourself](/polinrider-cleaner/reference/verifying/)
+
+</ContainerSection>

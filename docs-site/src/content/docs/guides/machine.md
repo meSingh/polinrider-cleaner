@@ -2,11 +2,8 @@
 title: A machine
 ---
 
-> **2.0 beta.** On the `v2` branch the machine check is the `polinrider`
-> binary. The three per-system scripts under `machine-cleanup/` are gone:
-> macOS, Linux and Windows are checked by the same code, through one tested
-> boundary. See [the decisions](/project/decisions/), ADR-0026, ADR-0029 and
-> ADR-0038.
+> The machine check is the `polinrider` binary. macOS, Linux and Windows are
+> checked by the same code.
 
 **Read-only unless you say otherwise.** Check every machine that has touched
 the affected repositories, before you touch GitHub at all.
@@ -67,11 +64,10 @@ Nothing is ever deleted.
 
 `node_modules`, `.git`, caches and trash are never walked. Malicious packages
 are caught by name from manifests and lockfiles, and the payload lives in the
-project's own files rather than inside a dependency. See
-[ADR-0025](/project/decisions/) for what that misses.
+project's own files rather than inside a dependency.
 
 A long check shows how far it has come. 2.0 does not checkpoint a scan: there
-is no `--resume`, and ADR-0030 says why.
+is no `--resume`. An interrupted check starts again from the beginning.
 
 ## Exit codes
 

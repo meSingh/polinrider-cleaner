@@ -33,7 +33,6 @@ export default defineConfig({
           navLinks: [
             { label: 'Quick start', link: '/quick-start/' },
             { label: 'The campaign', link: '/campaign/what-it-is/' },
-            { label: 'Decisions', link: '/project/decisions/', badge: '28' },
           ],
         }),
       ],
@@ -83,7 +82,6 @@ export default defineConfig({
         {
           label: 'The project',
           items: [
-            { label: 'Why it works this way', link: '/project/decisions/' },
             { label: 'Contributing', link: '/project/contributing/' },
             { label: 'Reporting a vulnerability', link: '/project/security/' },
             { label: 'What this does not promise', link: '/project/disclaimer/' },

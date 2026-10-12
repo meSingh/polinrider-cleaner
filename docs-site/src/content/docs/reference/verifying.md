@@ -31,7 +31,4 @@ git log --show-signature -5
 None of this proves the tool is correct, only that it is the code this
 repository published. The source is deliberately readable for that reason: the
 binary is one Rust crate with no dependencies, the indicator set is plain text
-files, every behaviour is pinned by a case in the conformance corpus, and every
-design
-decision that could have gone the other way is
-[recorded with its cost](/project/decisions/).
+files, and every behaviour is pinned by a case in the conformance corpus.
