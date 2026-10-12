@@ -67,3 +67,11 @@ copilot-ai.whisdev.org
 # Source: Deception.Pro, "[Op Report] Hands-on-Keyboard Activity from the DPRK
 # PolinRider Supply Chain Attack", September 2026.
 150.251.113.223
+
+# --- MicrosoftSystem64 C2 of the ULID-impersonation cluster, WebSocket and HTTP
+# on port 8010 -- the same port as 195.201.194.107 above, and like it on
+# Hetzner. The package installs the same MicrosoftSystem64 directories and the
+# same com.launchkeeper LaunchAgent this set already carries.
+# Source: OpenSSF malicious-packages MAL-2026-6672 (`ulid-xyz`; Amazon
+# Inspector, SafeDep), July 2026. See docs/indicator-reviews/2026-10-12.md.
+95.216.232.162

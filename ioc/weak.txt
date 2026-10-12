@@ -96,3 +96,12 @@ x-payload-b64
 # Source: Deception.Pro, "[Op Report] Hands-on-Keyboard Activity from the DPRK
 # PolinRider Supply Chain Attack", September 2026.
 files.catbox.moe
+
+# A MicrosoftSystem64 dropper package, posing as a ULID library. Attacker-owned
+# (npm holds only the 0.0.1-security placeholder), and it would belong in
+# bad-packages.txt with the other eight from the same search, except that the
+# name is two ordinary words: `hex-type` is a phrase prose and stylesheets can
+# contain, and bad-packages.txt is matched as a fixed substring. Review tier.
+# Source: OpenSSF malicious-packages MAL-2026-5538 (Amazon Inspector), June 2026.
+# See docs/indicator-reviews/2026-10-12.md.
+hex-type
