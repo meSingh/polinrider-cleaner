@@ -39,6 +39,10 @@ pub struct Walk {
     /// `.git` directories, listed but never entered, so hooks can still be
     /// read without walking an object store.
     pub git_dirs: Vec<PathBuf>,
+    /// Python virtual environments (`.venv`, `venv`), listed but never
+    /// entered, so the startup files in their site-packages can still be
+    /// read without walking every installed package.
+    pub python_envs: Vec<PathBuf>,
     /// Roots that did not exist or could not be read. Reported rather than
     /// skipped silently: scanning nothing must not look like scanning clean.
     pub unreadable: Vec<PathBuf>,
@@ -123,6 +127,7 @@ pub fn walk_watched(roots: &[PathBuf], options: &Options, watch: &mut dyn FnMut(
     }
     out.files.sort();
     out.git_dirs.sort();
+    out.python_envs.sort();
     out
 }
 
@@ -153,6 +158,12 @@ fn descend(dir: &Path, out: &mut Walk, options: &Options, watch: &mut dyn FnMut(
                 continue;
             }
             if options.excludes(&path) {
+                if matches!(
+                    path.file_name().and_then(|n| n.to_str()),
+                    Some(".venv" | "venv")
+                ) {
+                    out.python_envs.push(path);
+                }
                 continue;
             }
             descend(&path, out, options, watch);

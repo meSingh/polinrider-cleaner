@@ -1199,11 +1199,31 @@ fn what_now(
     }
     if kinds_now.contains(&Kind::Registry) {
         let mut t = todo(
-            "Fix your npm registry setting",
-            &["Point it back at a registry you trust."],
+            "Fix your npm settings",
+            &["Edit ~/.npmrc and undo each setting the report names."],
         );
         t.paths = paths_of(current, session.home, |k| k == Kind::Registry);
         todos.push(t);
+    }
+    // From what was found, not what is left: once npm's file is in
+    // quarantine npm does not run at all, and it still has to be put back.
+    if found.kinds().any(|k| k == Kind::NpmProgram) {
+        todos.push(todo(
+            "Reinstall Node.js before you run npm again",
+            &[
+                "npm itself was changed to start the payload.",
+                "Install Node.js again, or this version of it in your version manager.",
+            ],
+        ));
+    }
+    if found.kinds().any(|k| k == Kind::PthFile) {
+        todos.push(todo(
+            "Remove the Python package that started the payload",
+            &[
+                "Uninstall it from that Python, or delete and recreate the",
+                "environment. The startup file it left is named in the report.",
+            ],
+        ));
     }
     todos.push(todo(
         "Change your passwords and keys, from a DIFFERENT computer",

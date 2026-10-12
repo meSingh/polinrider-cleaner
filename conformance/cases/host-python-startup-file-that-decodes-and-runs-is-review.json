@@ -1,0 +1,32 @@
+{
+  "why": "A .pth line that decodes base64 and executes it is not something a packaging tool writes, and it is how a stager hides. Without an indicator it is not confirmed, so it is review. It sits in Python installed for every user, read through the host's system root, so the corpus can supply it as a file.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "home": {},
+  "host": {
+    "platform": "linux\n",
+    "processes": "",
+    "connections": "",
+    "crontab": "",
+    "git-config": "",
+    "root/.keep": "",
+    "root/usr/lib/python3.12/site-packages/sitecheck.pth": "import base64;exec(base64.b64decode('cHJpbnQoMSk='))\n"
+  },
+  "expect": {
+    "exit": 1,
+    "findings": [
+      {
+        "level": "review",
+        "match": "Python startup file runs code that packages do not usually put there",
+        "path": "sitecheck.pth"
+      }
+    ],
+    "must_not_report": [
+      "[HIT]"
+    ]
+  }
+}

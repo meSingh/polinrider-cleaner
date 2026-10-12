@@ -1,0 +1,30 @@
+{
+  "why": "Python executes every line of a .pth file in site-packages that begins with import, each time any Python starts. That is how the pybitjs package re-runs itself (the 2026-10-05 review), and it is quieter than anything on the Node side. One carrying an indicator in this user's own site-packages is confirmed and can be quarantined: Python skips a .pth that is not there.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "home": {
+    ".local/lib/python3.12/site-packages/zz_helper.pth": "import os;exec('{{STRONG}}')\n"
+  },
+  "host": {
+    "platform": "linux\n",
+    "processes": "",
+    "connections": "",
+    "crontab": "",
+    "git-config": "",
+    "root/.keep": ""
+  },
+  "expect": {
+    "exit": 2,
+    "findings": [
+      {
+        "level": "HIT",
+        "match": "Python startup file contains an indicator",
+        "path": "site-packages/zz_helper.pth"
+      }
+    ]
+  }
+}

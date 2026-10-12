@@ -1,0 +1,36 @@
+{
+  "why": "The 2026-09-14 review: npm's lib/cli.js is replaced with a copy that carries the payload, so every npm and npx command starts it again and it survives every other step of a cleanup. An indicator in a file npm runs before anything else has no innocent reading. It is read through the host's system root like every other system path, and the advice is to reinstall Node.js, because quarantining the file leaves npm unable to run.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "home": {},
+  "host": {
+    "platform": "linux\n",
+    "processes": "",
+    "connections": "",
+    "crontab": "",
+    "git-config": "",
+    "root/.keep": "",
+    "root/usr/local/lib/node_modules/npm/lib/cli.js": "const validateEngines = require('./cli/validate-engines.js')\nconst cliEntry = require('node:path').resolve(__dirname, 'cli/entry.js')\n\nmodule.exports = (process) =>\n  validateEngines(process, () => require(cliEntry))\n{{PAD}}{{STRONG}}\n",
+    "root/usr/local/lib/node_modules/npm/bin/npm-cli.js": "#!/usr/bin/env node\nrequire('../lib/cli.js')(process)\n"
+  },
+  "expect": {
+    "exit": 2,
+    "findings": [
+      {
+        "level": "HIT",
+        "match": "npm's own program file contains an indicator",
+        "path": "node_modules/npm/lib/cli.js"
+      }
+    ],
+    "must_print": [
+      "Reinstall Node.js"
+    ],
+    "must_not_report": [
+      "npm-cli.js"
+    ]
+  }
+}

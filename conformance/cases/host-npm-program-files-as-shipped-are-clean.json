@@ -1,0 +1,35 @@
+{
+  "why": "npm installed for every user and npm installed by a version manager, both as npm ships them. Nothing to report, and the section says how many installations it looked at, so finding none is never mistaken for not looking.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "home": {
+    ".volta/tools/image/node/20.11.0/lib/node_modules/npm/lib/cli.js": "const validateEngines = require('./cli/validate-engines.js')\nconst cliEntry = require('node:path').resolve(__dirname, 'cli/entry.js')\n\nmodule.exports = (process) =>\n  validateEngines(process, () => require(cliEntry))\n"
+  },
+  "host": {
+    "platform": "linux\n",
+    "processes": "",
+    "connections": "",
+    "crontab": "",
+    "git-config": "",
+    "root/.keep": "",
+    "root/usr/lib/node_modules/npm/lib/cli.js": "const validateEngines = require('./cli/validate-engines.js')\nconst cliEntry = require('node:path').resolve(__dirname, 'cli/entry.js')\n\nmodule.exports = (process) =>\n  validateEngines(process, () => require(cliEntry))\n",
+    "root/usr/lib/node_modules/npm/bin/npm-cli.js": "#!/usr/bin/env node\nrequire('../lib/cli.js')(process)\n"
+  },
+  "expect": {
+    "exit": 0,
+    "findings": [
+      {
+        "level": "ok",
+        "match": "2 npm installations checked"
+      }
+    ],
+    "must_not_report": [
+      "[HIT]",
+      "[review]"
+    ]
+  }
+}

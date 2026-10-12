@@ -168,6 +168,7 @@ the sandbox and the test harness.
 | `strip.rs` | Plans the cut for `clean`: what to keep of an infected build config, or why not to touch it. Pure, no I/O |
 | `host.rs` | The boundary. `Host`, with `LiveHost` (asks the machine) and `Snapshot` (holds the answers as data). The only module that runs a command |
 | `host_checks.rs` | Implant processes, persistence, shell startup files, global git config, npm config, resident interpreters, live connections |
+| `runtimes.rs` | Persistence inside the runtimes: Python `.pth` startup files and npm's own program files, read under the home directory and the host's system root: ADR-0042 |
 | `sha256.rs` | Written out rather than depended on, proven against NIST vectors |
 
 ### Record the decision
