@@ -371,6 +371,9 @@ at the OpenSSF malicious-packages database, which gave fifty-five package names
 after five were rejected as substrings of real packages. Also added: the first
 fake-font indicator that matches a variant in circulation, a `.llf` file.
 
-The review also names what fixed strings cannot catch: 18 of 35 infected
-repositories carry the loader written in Unicode escapes. Read the entry before
-trusting a clean result on that family.
+The review also named what fixed strings cannot catch: 18 of 35 infected
+repositories carry the loader written in Unicode escapes. Every file a check
+reads for indicators is now also matched with its escapes decoded
+([ADR-0040](docs/adr/0040-indicators-are-matched-through-escape-codes-as-well.md)).
+`clean` confirms that family and will not cut it out: re-clone once the remote
+is clean.

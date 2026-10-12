@@ -55,6 +55,7 @@ If you disagree with one, open an issue and quote its number.
 | [0037](./0037-a-github-fix-is-planned-on-the-copy-pushed-on-a-yes-and-believed-when-github-shows-it.md) | A GitHub fix is planned on the copy, pushed on a yes, and believed when GitHub shows it | Accepted |
 | [0038](./0038-windows-is-read-through-the-same-boundary-with-powershell-as-the-tool.md) | Windows is read through the same boundary, with PowerShell as the tool | Accepted |
 | [0039](./0039-the-shell-machine-check-is-removed-and-the-corpus-holds-one-engine.md) | The shell machine check is removed, and the corpus holds one engine | Accepted |
+| [0040](./0040-indicators-are-matched-through-escape-codes-as-well.md) | Indicators are matched through escape codes as well | Accepted |
 
 ## Adding one
 
