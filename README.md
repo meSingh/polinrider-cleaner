@@ -366,9 +366,9 @@ This campaign rotates its signatures, so the indicator set is reviewed weekly
 against the published sources and every review is written down, including the
 weeks that found nothing. Each review keeps its own dated entry, and entries are
 never edited or removed:
-[`docs/indicator-reviews/`](docs/indicator-reviews/).
+[the indicator reviews](https://mesingh.github.io/polinrider-cleaner/indicator-reviews/).
 
-**Last reviewed: [12 October 2026](docs/indicator-reviews/2026-10-12.md).**
+**Last reviewed: [12 October 2026](https://mesingh.github.io/polinrider-cleaner/indicator-reviews/2026-10-12/).**
 
 Twelve indicators added from the OpenSSF malicious-packages database: nine
 package names that install the campaign's `MicrosoftSystem64` implant or are

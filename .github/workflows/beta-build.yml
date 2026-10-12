@@ -9,7 +9,7 @@ name: Every platform
 # The sandbox is Linux, and ci.yml builds on Linux only. And it is the only
 # place the live checks run against a real macOS: a runner is a machine nobody
 # minds a file-moving tool being let loose on, which the maintainer's own is
-# not. Nothing is ever run on a developer's host. See TESTING.md.
+# not. Nothing is ever run on a developer's host. See CONTRIBUTING.md.
 
 on:
   push:
@@ -61,7 +61,7 @@ jobs:
           mkdir -p "dist/$dir"
           cp "target/release/${{ matrix.exe }}" "dist/$dir/"
           cp -R ioc "dist/$dir/ioc"
-          cp TESTING.md "dist/$dir/"
+          cp CONTRIBUTING.md "dist/$dir/"
           tar -C dist -czf "dist/$dir.tar.gz" "$dir"
 
       - name: The packaged binary runs and finds its indicators

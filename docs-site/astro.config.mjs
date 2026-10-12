@@ -72,6 +72,11 @@ export default defineConfig({
           ],
         },
         {
+          label: 'Indicator reviews',
+          collapsed: true,
+          items: [{ autogenerate: { directory: 'indicator-reviews' } }],
+        },
+        {
           label: 'Reference',
           items: [
             { label: 'Exit codes', link: '/reference/exit-codes/' },

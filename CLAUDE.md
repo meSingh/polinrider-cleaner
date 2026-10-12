@@ -1,8 +1,9 @@
 # Working in this repository
 
-**Start with [`HANDOVER.md`](./HANDOVER.md).** It carries the current state of the
-work: which branch holds what, what is done, what is next, and the mistakes that
-already cost time. [`HACKING.md`](./HACKING.md) is how to run things.
+**Start with [`AGENTS.md`](./AGENTS.md).** Its second half is how to change
+this repository, including the mistakes that already cost time.
+[`HACKING.md`](./HACKING.md) is how to run things and
+[`CONTRIBUTING.md`](./CONTRIBUTING.md) how to test them.
 
 Two facts that change what you should do:
 
