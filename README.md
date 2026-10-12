@@ -361,16 +361,14 @@ weeks that found nothing. Each review keeps its own dated entry, and entries are
 never edited or removed:
 [`docs/indicator-reviews/`](docs/indicator-reviews/).
 
-**Last reviewed: [5 October 2026](docs/indicator-reviews/2026-10-05.md).**
+**Last reviewed: [12 October 2026](docs/indicator-reviews/2026-10-12.md).**
 
-Eighty-three indicators added after a second analyst team decoded the
-campaign's Ethereum dead drop. It exposed two entries that had never matched a
-sample: an operator wallet carried in the wrong case and an XOR key carried
-truncated. The same report filled in eight C2 servers off the chain and pointed
-at the OpenSSF malicious-packages database, which gave fifty-five package names
-after five were rejected as substrings of real packages. Also added: the first
-fake-font indicator that matches a variant in circulation, a `.llf` file.
+Twelve indicators added from the OpenSSF malicious-packages database: nine
+package names that install the campaign's `MicrosoftSystem64` implant or are
+named as PolinRider, one more at review tier, a C2 address and the implant's
+Windows launcher. No new primary analysis was found, and most sources could
+not be reached from the review environment this week.
 
-The review also names what fixed strings cannot catch: 18 of 35 infected
-repositories carry the loader written in Unicode escapes. Read the entry before
-trusting a clean result on that family.
+The review also found that the folder and machine checks have never read
+`weak.txt`; review-tier indicators reach only the CI scanner and the GitHub
+checks. Read the entry before relying on a review line from a local scan.

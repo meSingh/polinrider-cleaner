@@ -222,3 +222,31 @@ pyservercheck
 #                              reachable from the review sandbox; this line
 #                              comes from mallory.ai's aggregation of them and
 #                              is recorded as a comment for that reason.
+
+# --- records the 2026-10-05 search of the same database missed. That search
+# keyed on the Ethereum dead-drop indicators only; this one also searched for
+# MicrosoftSystem64, the TRON wallets, the campaign UUID and the word PolinRider.
+# Two records say "part of PolinRider campaign" in their own words; the other
+# seven install the MicrosoftSystem64 second stage already carried in
+# implant-names.txt and implant-paths.txt -- same directory names, same
+# com.launchkeeper plist, and for the toskypi packages the same C2,
+# 195.201.194.107:8010, already in network.txt. All nine were checked against
+# registry.npmjs.org on 2026-10-12: each is the 0.0.1-security placeholder, so
+# npm treats every one as wholly malicious, and none is a substring of a
+# published package name that a registry search or a direct lookup could find.
+# hex-type, from the same set, is in weak.txt instead: two ordinary English
+# words with a hyphen, which prose and CSS can contain.
+# Sources: OpenSSF malicious-packages <https://github.com/ossf/malicious-packages>
+# at commit 30c251e691, read 2026-10-12 -- MAL-2026-2909, -2910 (Amazon
+# Inspector, indece), -4345, -4346, -4823 (Amazon Inspector, SafeDep), -5341,
+# -5827, -5877, -6672 (Amazon Inspector, ReversingLabs, SafeDep). April-July 2026.
+# See docs/indicator-reviews/2026-10-12.md.
+tailwindthml-flips
+tailwind-typography-cssstyle
+eo-terminal
+logger-draft
+msc-terminal
+void-ulid
+index-ulid
+check-ulid
+ulid-xyz
