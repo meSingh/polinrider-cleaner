@@ -1,0 +1,122 @@
+# Keeps the repository's traffic beyond the 14 days GitHub itself holds.
+#
+# Once a day it reads views, clones, referrers, popular paths and the star
+# count, and merges them into JSON files on the `traffic` branch. That branch
+# holds data only, never code, and nothing builds from it. Without a record
+# like this there is no baseline to measure a launch or an outreach against:
+# by the time anyone asks, GitHub has forgotten.
+#
+# Reading traffic needs a token with Administration: read on this repository,
+# which the workflow token cannot have. TRAFFIC_TOKEN is a fine-grained
+# personal access token scoped to this one repository with that single
+# permission. Without it the job says so and stops, without failing.
+#
+# Writes go through the contents API with the workflow token, so every commit
+# on `traffic` is made and signed by GitHub. No third-party action is used.
+name: Traffic log
+
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+permissions: read-all
+
+concurrency:
+  group: traffic-log
+  cancel-in-progress: false
+
+jobs:
+  record:
+    name: Record traffic
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # commits to the traffic branch through the API
+    env:
+      REPO: ${{ github.repository }}
+      BRANCH: traffic
+      READ_TOKEN: ${{ secrets.TRAFFIC_TOKEN }}
+      WRITE_TOKEN: ${{ github.token }}
+    steps:
+      - name: Record
+        run: |
+          set -euo pipefail
+
+          if [ -z "$READ_TOKEN" ]; then
+            echo "::notice::TRAFFIC_TOKEN is not set, so traffic cannot be read. Nothing recorded."
+            exit 0
+          fi
+
+          read_api()  { GH_TOKEN="$READ_TOKEN"  gh api "$@"; }
+          write_api() { GH_TOKEN="$WRITE_TOKEN" gh api "$@"; }
+
+          # The data branch starts as a commit with one README and no parent,
+          # so it never carries a copy of the code.
+          if ! write_api "repos/$REPO/git/ref/heads/$BRANCH" >/dev/null 2>&1; then
+            readme='# Traffic log\n\nWritten daily by .github/workflows/traffic.yml on main. Data only.\n'
+            tree=$(jq -n --arg c "$(printf "$readme")" \
+              '{tree: [{path: "README.md", mode: "100644", type: "blob", content: $c}]}' |
+              write_api -X POST "repos/$REPO/git/trees" --input - --jq .sha)
+            commit=$(jq -n --arg t "$tree" '{message: "Start the traffic log", tree: $t, parents: []}' |
+              write_api -X POST "repos/$REPO/git/commits" --input - --jq .sha)
+            jq -n --arg s "$commit" --arg r "refs/heads/$BRANCH" '{ref: $r, sha: $s}' |
+              write_api -X POST "repos/$REPO/git/refs" --input - >/dev/null
+          fi
+
+          # Fetch a file from the data branch: prints its content, or the
+          # fallback when it does not exist yet. Its blob sha goes to $2.
+          fetch() {
+            local path=$1 fallback=$2 out
+            if out=$(write_api "repos/$REPO/contents/$path?ref=$BRANCH" 2>/dev/null); then
+              jq -r .sha <<<"$out" > "$RUNNER_TEMP/sha"
+              jq -r .content <<<"$out" | base64 -d
+            else
+              : > "$RUNNER_TEMP/sha"
+              printf '%s' "$fallback"
+            fi
+          }
+
+          store() {
+            local path=$1 file=$2 message=$3 sha
+            sha=$(cat "$RUNNER_TEMP/sha")
+            jq -n --arg m "$message" --arg c "$(base64 -w0 "$file")" --arg b "$BRANCH" --arg s "$sha" \
+              '{message: $m, content: $c, branch: $b} + (if $s == "" then {} else {sha: $s} end)' |
+              write_api -X PUT "repos/$REPO/contents/$path" --input - >/dev/null
+          }
+
+          today=$(date -u +%F)
+
+          # Views and clones: GitHub returns the last 14 days, one entry per
+          # day. Merge by day, so a day already recorded is updated with the
+          # newer, more complete count rather than duplicated.
+          for kind in views clones; do
+            read_api "repos/$REPO/traffic/$kind?per=day" > "$RUNNER_TEMP/new.json"
+            fetch "$kind.json" '[]' > "$RUNNER_TEMP/old.json"
+            jq -s --arg k "$kind" '
+              (.[0] + .[1][$k])
+              | group_by(.timestamp) | map(.[-1]) | sort_by(.timestamp)
+            ' "$RUNNER_TEMP/old.json" "$RUNNER_TEMP/new.json" > "$RUNNER_TEMP/merged.json"
+            store "$kind.json" "$RUNNER_TEMP/merged.json" "Record $kind to $today"
+          done
+
+          # Referrers and paths are rolling 14-day totals with no dates of
+          # their own, so each day's answer is kept whole.
+          for kind in popular/referrers popular/paths; do
+            name=${kind#popular/}
+            read_api "repos/$REPO/traffic/$kind" > "$RUNNER_TEMP/snap.json"
+            fetch "$name/$today.json" '' > /dev/null
+            store "$name/$today.json" "$RUNNER_TEMP/snap.json" "Record $name for $today"
+          done
+
+          # Stars, forks and watchers, one line a day.
+          read_api "repos/$REPO" --jq "[\"$today\", .stargazers_count, .forks_count, .subscribers_count] | @csv" \
+            > "$RUNNER_TEMP/line.csv"
+          fetch "stars.csv" '' > "$RUNNER_TEMP/stars.csv"
+          if [ ! -s "$RUNNER_TEMP/stars.csv" ]; then
+            echo '"date","stars","forks","watchers"' > "$RUNNER_TEMP/stars.csv"
+          fi
+          grep -v "^\"$today\"," "$RUNNER_TEMP/stars.csv" > "$RUNNER_TEMP/kept.csv" || true
+          cat "$RUNNER_TEMP/line.csv" >> "$RUNNER_TEMP/kept.csv"
+          store "stars.csv" "$RUNNER_TEMP/kept.csv" "Record stars for $today"
+
+          echo "Recorded traffic for $today on the $BRANCH branch."
