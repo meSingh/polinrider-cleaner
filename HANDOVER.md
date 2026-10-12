@@ -196,23 +196,13 @@ the whole home folder; `folder` suggests the code folders it finds.
 
 ## What is next, in order
 
-1. **Mandeep's verdicts on the open design choices.** Silence on an ADR means
-   accepted; each can still be changed in Rust if he rules against one.
-   - The eight deliberate differences from the shell in ADR-0029.
-   - The GitHub fix choices in ADR-0037: `restore` goes to the newest clean
-     state on record, where 1.x went to the earliest or to one before a time
-     the operator gave; `remove` cuts the payload out of a build config and
-     keeps the file, where 1.x deleted it; `erase` takes its paths from the
-     whole history, uses `git filter-branch` only, keeps empty commits and
-     puts the clean config back as a commit; a push carries a lease so one
-     that landed since the check is never overwritten; `none` and `fix` were
-     added to the choices after the summary; the exit code stays 2 after a
-     fix.
-   - Two more differences from 1.x: a `tasks.json` that runs on folder open
-     but carries no indicator is review in the remote check, as in the
-     machine check, where 1.x's remote scan called it infected; and a path
-     under `lib/` or `ci/` is no longer assumed to be the operator's own
-     detection tooling.
+1. **Design choices: settled.** On 2026-10-13 Mandeep accepted all of them:
+   the eight differences from the shell in ADR-0029, the GitHub fix choices
+   in ADR-0037 (`restore` to the newest clean state, `remove` keeps the
+   file, `erase` from the whole history with `filter-branch`, a lease on
+   every push, `none` and `fix` on the summary, exit 2 after a fix), and the
+   two further differences from 1.x (a `tasks.json` with no indicator is
+   review in the remote check; `lib/` and `ci/` are no longer discounted).
 2. **Unicode-escaped loaders.** The 5 October review found that 18 of the 35
    confirmed infected repositories carry a loader written entirely in
    `\uXXXX` escapes, so none of the fixed strings in `strong.txt` appear in
@@ -221,7 +211,9 @@ the whole home folder; `folder` suggests the code folders it finds.
    decodes escapes into a second buffer and matches both; a hit found only
    after decoding is reported but not stripped, since the strip works on byte
    offsets. The remote check would need to read blobs and match in Rust
-   instead of `git grep -F`. Needs Mandeep's decision before it is built.
+   instead of `git grep -F`. **Decided 2026-10-13: decode on the machine and
+   folder checks and in the remote check.** Being built on
+   `engine/escaped-loaders`, recorded as ADR-0040.
 3. **Install-test the packages once each**, in a disposable VM or on a test
    machine: `brew install meSingh/tap/polinrider-cleaner` and
    `scoop install polinrider-cleaner`. Version bumps in both repositories are
@@ -371,8 +363,6 @@ descending. That was the six-hour scan ([ADR-0025](./docs/adr/0025-walk-the-file
 
 ## Needing Mandeep
 
-- Verdicts on ADR-0029, ADR-0037 and the two further differences (item 1)
-- A decision on Unicode-escaped loaders (item 2)
 - Install-test Homebrew and Scoop once each (item 3)
 - AUR account, if Arch packaging matters
 - Whether `OpenSourceMalware/PolinRider` outreach happens, since it is the one
