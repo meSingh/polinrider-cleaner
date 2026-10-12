@@ -153,7 +153,8 @@ the sandbox and the test harness.
 | `verdict.rs` | Finding levels and the exit-code contract |
 | `quarantine.rs` | The dry-run type-state |
 | `walk.rs` | One pruned filesystem walk, shared by every check |
-| `indicators.rs` | Loading `ioc/` and matching it, through escape codes as well: ADR-0040 |
+| `indicators.rs` | Loading `ioc/` and matching it, through escape codes as well: ADR-0040. Package names are compared whole: ADR-0041 |
+| `manifest.rs` | The package names a `package.json` or lockfile installs, read as data. A depth-limited JSON parser and line readers for yarn and pnpm. Pure: ADR-0041 |
 | `unescape.rs` | Decodes `\uXXXX`, `\u{...}` and `\xNN` so an escaped loader matches. Pure |
 | `checks.rs` | Implants, tasks.json, build configs, fonts, packages, git hooks, extensions, propagation |
 | `scan.rs` | One scan: the walk, every check that applies, and rendering. In the library so a session can run more than one |
@@ -167,6 +168,7 @@ the sandbox and the test harness.
 | `strip.rs` | Plans the cut for `clean`: what to keep of an infected build config, or why not to touch it. Pure, no I/O |
 | `host.rs` | The boundary. `Host`, with `LiveHost` (asks the machine) and `Snapshot` (holds the answers as data). The only module that runs a command |
 | `host_checks.rs` | Implant processes, persistence, shell startup files, global git config, npm config, resident interpreters, live connections |
+| `runtimes.rs` | Persistence inside the runtimes: Python `.pth` startup files and npm's own program files, read under the home directory and the host's system root: ADR-0042 |
 | `sha256.rs` | Written out rather than depended on, proven against NIST vectors |
 
 ### Record the decision

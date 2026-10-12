@@ -902,8 +902,38 @@ impl Mirror<'_> {
         ind: &Indicators,
         known: &[String],
     ) -> Result<Vec<String>, String> {
-        let candidates: Vec<String> = self
-            .grep(git_ref, &["-E", "-e", ESCAPE_PATTERN])?
+        let candidates = self.grep(git_ref, &["-E", "-e", ESCAPE_PATTERN])?;
+        self.confirmed_among(git_ref, candidates, ind, known)
+    }
+
+    /// Paths in `git_ref` that name a campaign package the way a dependency
+    /// does, leaving out `known`. git lists the files whose text holds a
+    /// name anywhere, and each is read once: a manifest for the names it
+    /// installs, anything else for the name standing whole (ADR-0041).
+    fn naming_packages(
+        &self,
+        git_ref: &str,
+        packages: &Path,
+        ind: &Indicators,
+        known: &[String],
+    ) -> Result<Vec<String>, String> {
+        if ind.bad_packages.is_empty() {
+            return Ok(Vec::new());
+        }
+        let candidates = self.containing(git_ref, packages)?;
+        self.confirmed_among(git_ref, candidates, ind, known)
+    }
+
+    /// Of `candidates`, those that carry a confirmed indicator once read,
+    /// leaving out `known`. One `git cat-file --batch` for all of them.
+    fn confirmed_among(
+        &self,
+        git_ref: &str,
+        candidates: Vec<String>,
+        ind: &Indicators,
+        known: &[String],
+    ) -> Result<Vec<String>, String> {
+        let candidates: Vec<String> = candidates
             .into_iter()
             // A name with a newline in it cannot be asked for one per line.
             .filter(|path| !known.contains(path) && !path.contains('\n'))
@@ -920,7 +950,7 @@ impl Mirror<'_> {
         Ok(candidates
             .into_iter()
             .zip(bodies)
-            .filter(|(_, body)| body.is_some_and(|b| ind.bytes_have_strong(b)))
+            .filter(|(path, body)| body.is_some_and(|b| ind.file_confirms(path, b)))
             .map(|(path, _)| path)
             .collect())
     }
@@ -999,7 +1029,7 @@ impl Mirror<'_> {
             }
             // Decoded as well as written: a file the payload sat in as escape
             // codes has to come out of every commit too.
-            if ind.bytes_have_strong(body) || is_fake_font(path, body) {
+            if ind.file_confirms(path, body) || is_fake_font(path, body) {
                 found.push((*path).to_string());
                 carriers.push(id);
             }
@@ -1285,7 +1315,7 @@ pub fn check(
         Probe::NoTool(why) | Probe::Failed(why) => return Err(why),
     };
 
-    let (strong, weak) = indicator_files(request.evidence, request.ind)?;
+    let patterns = indicator_files(request.evidence, request.ind)?;
 
     let mut findings = Findings {
         repositories: repositories.len(),
@@ -1324,7 +1354,7 @@ pub fn check(
         let mut confirmed_refs: Vec<String> = Vec::new();
         for git_ref in &refs {
             findings.refs += 1;
-            let finding = check_ref(&mirror, repository, git_ref, request.ind, &strong, &weak)?;
+            let finding = check_ref(&mirror, repository, git_ref, request.ind, &patterns)?;
             if finding.is_confirmed() {
                 confirmed_refs.push(git_ref.clone());
                 findings.confirmed.push(finding);
@@ -1359,18 +1389,27 @@ pub fn check(
     Ok(findings)
 }
 
-/// Write the indicator lists where `git grep` can read them: it takes its
+/// The indicator lists, written where `git grep` can read them: it takes its
 /// fixed strings from files.
-pub(crate) fn indicator_files(
-    evidence: &Path,
-    ind: &Indicators,
-) -> Result<(PathBuf, PathBuf), String> {
-    let strong = evidence.join("indicators-strong.txt");
-    let weak = evidence.join("indicators-weak.txt");
-    fs::write(&strong, ind.strong.join("\n") + "\n")
-        .and_then(|()| fs::write(&weak, ind.weak.join("\n") + "\n"))
+pub(crate) struct Patterns {
+    strong: PathBuf,
+    /// Package names. Only a first pass: what `git grep` finds is read again
+    /// and the name compared whole.
+    packages: PathBuf,
+    weak: PathBuf,
+}
+
+pub(crate) fn indicator_files(evidence: &Path, ind: &Indicators) -> Result<Patterns, String> {
+    let patterns = Patterns {
+        strong: evidence.join("indicators-strong.txt"),
+        packages: evidence.join("indicators-packages.txt"),
+        weak: evidence.join("indicators-weak.txt"),
+    };
+    fs::write(&patterns.strong, ind.strong.join("\n") + "\n")
+        .and_then(|()| fs::write(&patterns.packages, ind.bad_packages.join("\n") + "\n"))
+        .and_then(|()| fs::write(&patterns.weak, ind.weak.join("\n") + "\n"))
         .map_err(|e| format!("cannot write to {}: {e}", evidence.display()))?;
-    Ok((strong, weak))
+    Ok(patterns)
 }
 
 /// What one branch, tag or commit of a copy holds. `git_ref` is anything git
@@ -1380,14 +1419,21 @@ pub(crate) fn check_ref(
     repository: &str,
     git_ref: &str,
     ind: &Indicators,
-    strong: &Path,
-    weak: &Path,
+    patterns: &Patterns,
 ) -> Result<RefFinding, String> {
     let mut finding = RefFinding {
         repository: repository.to_string(),
         git_ref: git_ref.to_string(),
         indicator_files: {
-            let mut found = mirror.containing(git_ref, strong)?;
+            // An empty list written to a file is one empty pattern, which
+            // git grep reads as matching every line.
+            let mut found = if ind.strong.is_empty() {
+                Vec::new()
+            } else {
+                mirror.containing(git_ref, &patterns.strong)?
+            };
+            let named = mirror.naming_packages(git_ref, &patterns.packages, ind, &found)?;
+            found.extend(named);
             let escaped = mirror.containing_escaped(git_ref, ind, &found)?;
             found.extend(escaped);
             found.sort_unstable();
@@ -1396,7 +1442,7 @@ pub(crate) fn check_ref(
         weak_files: if ind.weak.is_empty() {
             Vec::new()
         } else {
-            mirror.containing(git_ref, weak)?
+            mirror.containing(git_ref, &patterns.weak)?
         },
         ..RefFinding::default()
     };

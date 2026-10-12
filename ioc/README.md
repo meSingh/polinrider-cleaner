@@ -26,9 +26,18 @@ infrastructure. It is also the list to feed an egress blocklist. The IP addresse
 rotate, so block them but do not rely on them.
 
 Format: one entry per line. Lines starting with `#` and blank lines are ignored.
-`strong.txt`, `bad-packages.txt` and `weak.txt` are matched as fixed strings
-(`grep -F`), so no regex escaping is needed. `filenames.txt` is extended regex
-matched against the full path.
+`strong.txt` and `weak.txt` are matched as fixed strings (`grep -F`), so no
+regex escaping is needed. `filenames.txt` is extended regex matched against the
+full path.
+
+`bad-packages.txt` holds names, and a name is compared whole. A manifest or
+lockfile (`package.json`, `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`)
+is read for the packages it installs, so a description that mentions a name is
+not a dependency on it. Anywhere else a name counts only where it stands on its
+own, so `sass-format` is not found inside `sass-formatter`. See
+[ADR-0041](../docs/adr/0041-package-names-are-read-from-manifests-and-compared-whole.md).
+`ci/scan-workspace.sh` is still shell and still matches names as fixed strings,
+so a name that is the start of a live package will be reported there.
 
 `implant-names.txt` is matched against the **process name only**, never the full
 command line. Matching a command line would report this scanner, and anyone

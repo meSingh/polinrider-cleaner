@@ -18,8 +18,14 @@ the organization scanner, the account scanner and all three local checks at once
 | `hashes.txt` | SHA-256 of known implant binaries | `INFECTED` on a hash match, whatever the file is named |
 
 Format: one entry per line. Lines starting with `#` and blank lines are ignored.
-`strong.txt`, `bad-packages.txt` and `weak.txt` are matched as fixed strings
-(`grep -F`), so no regex escaping is needed. `strong.txt` and
+`strong.txt` and `weak.txt` are matched as fixed strings (`grep -F`), so no
+regex escaping is needed. `bad-packages.txt` holds names, compared whole: a
+`package.json`, `package-lock.json`, `yarn.lock` or `pnpm-lock.yaml` is read
+for the packages it installs, and anywhere else a name counts only where it
+stands on its own, so `sass-format` is not found inside `sass-formatter` and a
+description is not a dependency. A manifest that cannot be read is matched as
+text and reported for review. The CI scanner, `ci/scan-workspace.sh`, still
+matches names as fixed strings. `strong.txt` and
 `bad-packages.txt` are also matched against a copy of each file with its
 `\uXXXX`, `\u{...}` and `\xNN` escapes decoded, because one loader family is
 written entirely in them. Add an indicator as it reads once decoded, never in

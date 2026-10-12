@@ -1,0 +1,33 @@
+{
+  "why": "The campaign rotates its markers, and the shape of this change does not rotate with them: npm's entry file with code after a long run of blank space is not how npm ships it. Without an indicator it is not confirmed, and it is also not something to leave unread. Found under a version manager in the home directory, where most developers' npm lives.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "home": {
+    ".nvm/versions/node/v20.11.0/lib/node_modules/npm/lib/cli.js": "const validateEngines = require('./cli/validate-engines.js')\nconst cliEntry = require('node:path').resolve(__dirname, 'cli/entry.js')\n\nmodule.exports = (process) =>\n  validateEngines(process, () => require(cliEntry))\n{{PAD}}require('child_process').spawn('node', ['-e', 'x'])\n"
+  },
+  "host": {
+    "platform": "linux\n",
+    "processes": "",
+    "connections": "",
+    "crontab": "",
+    "git-config": "",
+    "root/.keep": ""
+  },
+  "expect": {
+    "exit": 1,
+    "findings": [
+      {
+        "level": "review",
+        "match": "npm's own program file looks altered (code after a long run of blank space)",
+        "path": "v20.11.0/lib/node_modules/npm/lib/cli.js"
+      }
+    ],
+    "must_not_report": [
+      "[HIT]"
+    ]
+  }
+}

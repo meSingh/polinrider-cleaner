@@ -244,13 +244,8 @@ fn about(ui: &Ui) -> String {
         Ok(i) => {
             let sep = if ui.unicode { " · " } else { ", " };
             let count = |n: usize, what: &str| format!("{} {what}", ui.accent(&n.to_string()));
-            // `strong` is held with the package names merged in, because a
-            // package name found in a file counts. Shown apart here.
             let counts = [
-                count(
-                    i.strong.len().saturating_sub(i.bad_packages.len()),
-                    "strong",
-                ),
+                count(i.strong.len(), "strong"),
                 count(i.bad_packages.len(), "packages"),
                 count(i.network.len(), "network"),
                 count(i.implant_names.len(), "implant names"),

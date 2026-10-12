@@ -1,0 +1,34 @@
+{
+  "why": "onload-script makes npm load a script every time it starts, which is the npm CLI persisting without any of npm's files changing. It has legitimate uses, so without an indicator it is review. A node-options line that only sizes the heap loads nothing and is not listed.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "home": {
+    ".npmrc": "onload-script=/home/dev/.config/npm/hook.js\nnode-options=--max-old-space-size=4096\n"
+  },
+  "host": {
+    "platform": "linux\n",
+    "processes": "",
+    "connections": "",
+    "crontab": "",
+    "git-config": "",
+    "root/.keep": ""
+  },
+  "expect": {
+    "exit": 1,
+    "findings": [
+      {
+        "level": "review",
+        "match": "~/.npmrc runs a script whenever npm starts (onload-script)",
+        "path": "hook.js"
+      }
+    ],
+    "must_not_report": [
+      "[HIT]",
+      "node-options"
+    ]
+  }
+}

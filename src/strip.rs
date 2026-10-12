@@ -69,18 +69,8 @@ impl Refusal {
     }
 }
 
-fn find(haystack: &[u8], needle: &[u8]) -> Option<usize> {
-    if needle.is_empty() || needle.len() > haystack.len() {
-        return None;
-    }
-    haystack.windows(needle.len()).position(|w| w == needle)
-}
-
 fn first_indicator(bytes: &[u8], ind: &Indicators) -> Option<usize> {
-    ind.strong
-        .iter()
-        .filter_map(|i| find(bytes, i.as_bytes()))
-        .min()
+    ind.first_at(bytes)
 }
 
 /// The start of the first run of at least [`MIN_PADDING`] spaces or tabs

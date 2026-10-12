@@ -31,11 +31,11 @@ drive or a mounted image.
 The second-stage implant first: its files, its process, and on Windows its
 scheduled task and Run entry. Then editor extensions, editor tasks that run on
 folder open, build configs, fake fonts, the script the payload spreads with,
-known-bad packages, what starts by itself, shell startup files and PowerShell
-profiles, git hooks, npm configuration, interpreters running inline code and
-live connections. Last, an inventory of the keys and credential files that
-would have to be changed if anything else is confirmed. They are counted and
-named, and never opened.
+known-bad packages, Python startup files, what starts by itself, shell startup
+files and PowerShell profiles, git hooks, npm configuration and npm's own
+program files, interpreters running inline code and live connections. Last,
+an inventory of the keys and credential files that would have to be changed if
+anything else is confirmed. They are counted and named, and never opened.
 
 "What starts by itself" depends on the system:
 
@@ -44,6 +44,19 @@ named, and never opened.
 | Linux | systemd units, autostart entries, the user crontab, system cron |
 | macOS | LaunchAgents and LaunchDaemons, the user crontab |
 | Windows | registry Run and RunOnce values, both Startup folders, scheduled tasks |
+
+Two kinds of persistence live inside a tool rather than beside it, and both
+survive cleaning every repository:
+
+- **Python startup files.** Python runs the `import` lines of every `.pth`
+  file in `site-packages` each time it starts. These are read in each
+  project's `.venv`, in your own Python installations and in Python installed
+  for every user. What packaging tools write there is ignored; a line that
+  decodes, downloads or starts a process is listed for review.
+- **npm itself.** The campaign has been seen replacing npm's `lib/cli.js` so
+  that every `npm` and `npx` command starts the payload again. npm's entry
+  files are read in each installation in the usual places, including version
+  managers. If one is confirmed, reinstall Node.js before running npm again.
 
 ## What changes, and when
 
@@ -64,7 +77,10 @@ Nothing is ever deleted.
 
 `node_modules`, `.git`, caches and trash are never walked. Malicious packages
 are caught by name from manifests and lockfiles, and the payload lives in the
-project's own files rather than inside a dependency.
+project's own files rather than inside a dependency. Each manifest and lockfile
+is read for the packages it installs, and each name is compared whole, so a
+package whose name merely starts with a campaign one is not reported. One that
+cannot be read is matched as text and listed for review.
 
 A long check shows how far it has come. 2.0 does not checkpoint a scan: there
 is no `--resume`. An interrupted check starts again from the beginning.

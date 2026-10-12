@@ -9,6 +9,7 @@ use crate::host::Host;
 use crate::host_checks;
 use crate::host_checks::sh_quote;
 use crate::indicators::Indicators;
+use crate::runtimes;
 use crate::verdict::{clean, Entry, Finding, Kind, Level, Verdict};
 use crate::walk;
 use std::path::{Path, PathBuf};
@@ -205,6 +206,7 @@ fn machine(
 
     watch.stage("packages", v);
     checks::packages(w, ind, v);
+    runtimes::python_startup(w, Some(home), host, ind, v, sink);
 
     watch.stage("login items and startup files", v);
     match host {
@@ -225,11 +227,13 @@ fn machine(
     match host {
         Some(host) => {
             host_checks::npm_config(home, ind, v);
+            runtimes::npm_program(home, host, ind, v, sink);
             host_checks::interpreters(host, ind, v);
             host_checks::connections(host, ind, v);
         }
         None => {
             skipped(v, "npm configuration");
+            skipped(v, "npm's own program files");
             skipped(v, "Resident interpreters");
             skipped(v, "Live connections");
         }
@@ -269,6 +273,7 @@ fn directories(w: &walk::Walk, scope: &Scope, v: &mut Verdict, sink: &mut Sink, 
     checks::named_files(w, ind, v, sink);
     watch.stage("packages", v);
     checks::packages(w, ind, v);
+    runtimes::python_startup(w, None, None, ind, v, sink);
     watch.stage("git hooks", v);
     checks::git_hooks(w, ind, None, v, sink);
     watch.stage("keys and passwords kept here", v);

@@ -1,0 +1,29 @@
+{
+  "why": "node-options with --require loads a module into every script npm runs. One whose value carries an indicator is the payload starting with every install, and is confirmed.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "home": {
+    ".npmrc": "node-options=--require /home/dev/.cache/{{STRONG}}.js\n"
+  },
+  "host": {
+    "platform": "linux\n",
+    "processes": "",
+    "connections": "",
+    "crontab": "",
+    "git-config": "",
+    "root/.keep": ""
+  },
+  "expect": {
+    "exit": 2,
+    "findings": [
+      {
+        "level": "HIT",
+        "match": "~/.npmrc loads code into every script npm runs, and it contains an indicator (node-options)"
+      }
+    ]
+  }
+}

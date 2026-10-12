@@ -1,0 +1,16 @@
+{
+  "why": "A package that replaces, wraps or warns about a campaign package says so in its description and keywords. Text is not a dependency: nothing in a description is installed, so a project carrying one is clean. 1.x matched the whole file and called it infected.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/package.json": "{\"name\":\"proj\",\"description\":\"A safe replacement for {{BADPKG}}\",\"keywords\":[\"{{BADPKG}}\"],\"dependencies\":{\"react\":\"^18.0.0\"}}\n"
+  },
+  "expect": {
+    "exit": 0,
+    "must_not_report": [
+      "[HIT]",
+      "package.json"
+    ]
+  }
+}

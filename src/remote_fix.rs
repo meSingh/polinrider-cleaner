@@ -87,8 +87,8 @@ impl<'a> Repo<'a> {
 
     /// Whether a branch, tag or commit of `mirror` carries the payload.
     fn carries_payload(&self, mirror: &Mirror, treeish: &str) -> Result<bool, String> {
-        let (strong, weak) = indicator_files(self.evidence, self.ind)?;
-        Ok(check_ref(mirror, self.name, treeish, self.ind, &strong, &weak)?.is_confirmed())
+        let patterns = indicator_files(self.evidence, self.ind)?;
+        Ok(check_ref(mirror, self.name, treeish, self.ind, &patterns)?.is_confirmed())
     }
 
     /// Every payload path at the tip of any affected branch or tag.

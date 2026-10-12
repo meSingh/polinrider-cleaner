@@ -892,7 +892,51 @@ pub fn npm_config(home: &Path, ind: &Indicators, v: &mut Verdict) {
             }
         }
     }
+    npmrc_runs_code(&text, &npmrc, ind, v);
     ignore_scripts_advice(Some(&text), v);
+}
+
+/// Two `~/.npmrc` settings make npm itself run code: `onload-script`, which
+/// npm 6 and earlier load every time npm starts, and `node-options` with a
+/// flag that loads a module into every script npm runs. Either is the npm
+/// CLI persisting without a file of npm's being changed (ADR-0042).
+fn npmrc_runs_code(text: &str, npmrc: &Path, ind: &Indicators, v: &mut Verdict) {
+    const PRELOADS: &[&str] = &[
+        "--require",
+        "-r ",
+        "--import",
+        "--loader",
+        "--experimental-loader",
+    ];
+    for (key, value) in text
+        .lines()
+        .filter(|l| !l.trim_start().starts_with([';', '#']))
+        .filter_map(|l| l.split_once('='))
+        .map(|(key, value)| (key.trim(), value.trim()))
+    {
+        let what = match key {
+            "onload-script" if !value.is_empty() => "runs a script whenever npm starts",
+            "node-options" if PRELOADS.iter().any(|p| format!("{value} ").contains(p)) => {
+                "loads code into every script npm runs"
+            }
+            _ => continue,
+        };
+        if ind.has_strong(value) || ind.infrastructure_in(value).is_some() {
+            v.push(
+                Finding::hit(
+                    Kind::Registry,
+                    format!("~/.npmrc {what}, and it contains an indicator ({key})"),
+                )
+                .at(npmrc)
+                .with_remedy("edit ~/.npmrc by hand and remove the line."),
+            );
+        } else {
+            v.push(Finding::review(format!(
+                "~/.npmrc {what} ({key}), verify it by hand: {}",
+                redact_userinfo(value)
+            )));
+        }
+    }
 }
 
 /// Hardening advice, never a finding. Read from `~/.npmrc` rather than by

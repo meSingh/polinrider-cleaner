@@ -73,8 +73,14 @@ pub enum Kind {
     Crontab,
     /// A shell startup file.
     StartupFile,
-    /// The npm registry setting.
+    /// The npm registry setting, or another `~/.npmrc` setting that runs
+    /// code.
     Registry,
+    /// One of npm's own program files, changed so that every npm or npx
+    /// command starts the payload.
+    NpmProgram,
+    /// A Python `.pth` file, which Python runs every time it starts.
+    PthFile,
     /// Windows: a registry Run entry or a scheduled task. Not a file, so it
     /// cannot be moved; a command removes it.
     Autostart,
@@ -111,6 +117,8 @@ impl Kind {
                 | Kind::NamedFile
                 | Kind::Extension
                 | Kind::LoginItem
+                | Kind::NpmProgram
+                | Kind::PthFile
         )
     }
 
@@ -183,6 +191,14 @@ impl Kind {
                 "npm setting pointing at the campaign",
                 "npm settings pointing at the campaign",
             ),
+            Kind::NpmProgram => (
+                "copy of npm changed to start the payload",
+                "copies of npm changed to start the payload",
+            ),
+            Kind::PthFile => (
+                "Python startup file that runs the payload",
+                "Python startup files that run the payload",
+            ),
             Kind::Autostart => (
                 "entry that starts the payload when Windows starts",
                 "entries that start the payload when Windows starts",
@@ -211,6 +227,8 @@ impl Kind {
             Kind::Crontab => "A scheduled job",
             Kind::StartupFile => "A shell startup file",
             Kind::Registry => "An npm setting",
+            Kind::NpmProgram => "A changed copy of npm",
+            Kind::PthFile => "A Python startup file",
             Kind::Autostart => "An entry that starts with Windows",
             Kind::Process => "A running program",
             Kind::Connection => "A live connection",

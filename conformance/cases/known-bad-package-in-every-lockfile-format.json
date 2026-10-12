@@ -1,0 +1,36 @@
+{
+  "why": "A lockfile is where a campaign package sits when it came in as a dependency of a dependency, so package.json alone would miss it. Each of the four formats names its packages its own way, and each is read for its names (ADR-0041): an npm v3 lockfile by its node_modules paths, a yarn lockfile by its entry headers and a pnpm lockfile by its package keys.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/npm/package.json": "{\"name\":\"npm-proj\",\"dependencies\":{\"react\":\"^18.0.0\"}}\n",
+    "code/npm/package-lock.json": "{\"name\":\"npm-proj\",\"lockfileVersion\":3,\"packages\":{\"\":{\"name\":\"npm-proj\",\"dependencies\":{\"react\":\"^18.0.0\"}},\"node_modules/react\":{\"version\":\"18.2.0\"},\"node_modules/react/node_modules/{{BADPKG}}\":{\"version\":\"1.0.0\"}}}\n",
+    "code/yarn/yarn.lock": "# yarn lockfile v1\n\n\nreact@^18.0.0:\n  version \"18.2.0\"\n  dependencies:\n    {{BADPKG}} \"^1.0.0\"\n\n{{BADPKG}}@^1.0.0:\n  version \"1.0.0\"\n",
+    "code/pnpm/pnpm-lock.yaml": "lockfileVersion: '9.0'\n\nimporters:\n\n  .:\n    dependencies:\n      react:\n        specifier: ^18.0.0\n        version: 18.2.0\n\npackages:\n\n  react@18.2.0:\n    resolution: {integrity: sha512-x}\n\n  {{BADPKG}}@1.0.0:\n    resolution: {integrity: sha512-y}\n"
+  },
+  "expect": {
+    "exit": 2,
+    "findings": [
+      {
+        "level": "HIT",
+        "match": "known-bad package referenced",
+        "path": "package-lock.json"
+      },
+      {
+        "level": "HIT",
+        "match": "known-bad package referenced",
+        "path": "yarn.lock"
+      },
+      {
+        "level": "HIT",
+        "match": "known-bad package referenced",
+        "path": "pnpm-lock.yaml"
+      }
+    ],
+    "must_not_report": [
+      "npm/package.json",
+      "could not be read as a manifest"
+    ]
+  }
+}
