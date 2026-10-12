@@ -70,6 +70,15 @@ scoop bucket add mesingh https://github.com/meSingh/scoop-bucket
 scoop install polinrider-cleaner               # Windows
 ```
 
+Releases after 2.0.0 also carry a `.deb` for Debian and Ubuntu, x86_64 and
+arm64, attested like the archives. Verify it as above, then:
+
+```bash
+sudo apt install ./polinrider-vX.Y.Z-linux-x86_64.deb
+```
+
+A winget package is being prepared and is not in the winget repository yet.
+
 1.x, the shell tool, is frozen and still available from
 [v1.0.9](https://github.com/meSingh/polinrider-cleaner/releases/tag/v1.0.9).
 

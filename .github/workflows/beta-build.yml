@@ -73,6 +73,43 @@ jobs:
           "$bin" --version | tee version.txt
           grep -q 'strong' version.txt
 
+      # The release packages, built and installed the way release.yml does,
+      # so a change that breaks them shows on the pull request and not on the
+      # day of a release. The runner is disposable, so installing is fine.
+      - name: The .deb installs and finds its indicators
+        if: runner.os == 'Linux'
+        run: |
+          arch="$(dpkg --print-architecture)"
+          packaging/deb.sh target/release/polinrider "$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -1)" \
+            "$arch" "${RUNNER_TEMP}/polinrider.deb"
+          dpkg-deb --info "${RUNNER_TEMP}/polinrider.deb"
+          dpkg-deb --contents "${RUNNER_TEMP}/polinrider.deb"
+          sudo dpkg -i "${RUNNER_TEMP}/polinrider.deb"
+          cd "${RUNNER_TEMP}"
+          polinrider --version | tee deb-version.txt
+          grep -q 'strong' deb-version.txt || { echo "the packaged binary cannot find its indicators"; exit 1; }
+          sudo dpkg -r polinrider-cleaner
+
+      - name: The flat zip finds its indicators through a link, as winget runs it
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $env:RUNNER_TEMP 'winget-like'
+          $pkg = Join-Path $root 'package'
+          $links = Join-Path $root 'links'
+          Push-Location "dist/polinrider-beta-${{ matrix.name }}"
+          7z a -tzip -bso0 -bsp0 (Join-Path $root 'p.zip') polinrider.exe ioc
+          Pop-Location
+          Expand-Archive -Path (Join-Path $root 'p.zip') -DestinationPath $pkg
+          New-Item -ItemType Directory -Path $links | Out-Null
+          New-Item -ItemType SymbolicLink -Path (Join-Path $links 'polinrider.exe') `
+            -Target (Join-Path $pkg 'polinrider.exe') | Out-Null
+          Set-Location $env:RUNNER_TEMP
+          $out = & (Join-Path $links 'polinrider.exe') --version | Out-String
+          Write-Output $out
+          if ($out -notmatch 'strong') { throw 'through a link, the binary cannot find its indicators' }
+
       - name: Find, strip and quarantine on this machine
         # The runner is the disposable machine. The sample is the one the
         # sandbox demo uses. It is a full check of the runner itself on every

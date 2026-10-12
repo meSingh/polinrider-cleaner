@@ -9,14 +9,26 @@ the archive for your machine:
 | macOS, Intel | `polinrider-__TAG__-macos-x86_64.tar.gz` |
 | Linux, x86_64 | `polinrider-__TAG__-linux-x86_64.tar.gz` |
 | Linux, arm64 | `polinrider-__TAG__-linux-arm64.tar.gz` |
-| Windows, x86_64 | `polinrider-__TAG__-windows-x86_64.tar.gz` |
+| Windows, x86_64 | `polinrider-__TAG__-windows-x86_64.zip` or `.tar.gz` |
+| Debian or Ubuntu, x86_64 | `polinrider-__TAG__-linux-x86_64.deb` |
+| Debian or Ubuntu, arm64 | `polinrider-__TAG__-linux-arm64.deb` |
 
 Unpack it and run `polinrider` with no arguments. It asks what to check, one
-question at a time, and changes nothing until you type `yes`.
+question at a time, and changes nothing until you type `yes`. The Windows zip
+has `polinrider.exe` and `ioc/` at its top level, so unpack it into a folder of
+its own.
+
+The `.deb` installs `/usr/bin/polinrider` with the indicators in
+`/usr/share/polinrider/ioc`, where the binary looks for them:
+
+```bash
+sudo apt install ./polinrider-__TAG__-linux-x86_64.deb
+```
 
 ## Verifying this release
 
-Every archive here is checksummed and carries a build-provenance attestation.
+Every archive and package here is checksummed and carries a build-provenance
+attestation.
 Verify before you run any of it. This is a tool for recovering from tampered
 code, so take it at its word about nothing.
 
