@@ -1,4 +1,4 @@
-# Testing the 2.0 beta
+# Testing 2.0 in the sandbox
 
 For the three-machine test before 2.0 is released.
 
@@ -20,8 +20,8 @@ Docker and git. Nothing else, and no Rust: the build happens in the container.
 ## 2. Start it
 
 ```bash
-git clone -b v2 https://github.com/meSingh/polinrider-cleaner.git polinrider-v2
-cd polinrider-v2
+git clone https://github.com/meSingh/polinrider-cleaner.git
+cd polinrider-cleaner
 ./polinrider-sandbox --beta
 ```
 
@@ -156,7 +156,7 @@ The container is Linux. **The macOS and Windows live checks, which read the
 real machine's processes, sockets, login items, registry Run keys and
 scheduled tasks, cannot run in it and are never run on your machine.** They
 run on GitHub's own disposable machines: the "Beta binaries" workflow builds
-the beta for Linux, macOS and Windows on every push to `v2`, and on each one
+the binary for Linux, macOS and Windows on every push to `main`, and on each one
 runs a full check of that machine, cleans the sample and verifies the original
 was kept. It fails if a probe of the machine does not answer. On macOS it also
 runs the unit tests and the conformance corpus. The `[review]` lines a real
@@ -196,9 +196,10 @@ extensions, as opposed to a clean runner.
   directories given is read once to compare against known implant hashes. On a
   directory full of media or disk images that takes a while. The progress
   screen counts them as it goes.
-- **Real GitHub is untried.** The GitHub screens and fixes have only ever
-  run against the pretend organization. Do not point this build at a real
-  organization yet.
+- **Real GitHub has been tried once**, against a throwaway organization.
+  It passed except that `restore` was never offered; that was fixed
+  afterwards and has not been re-run there. Try a throwaway organization
+  before a real one.
 - **"This machine cannot be trusted"** is printed under any `[HIT]`, including
   for a scan of one folder. The wording is carried over from 1.x and is wrong
   for a folder.

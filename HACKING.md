@@ -39,7 +39,8 @@ Nothing it does in there can reach your Mac.
 ./polinrider-sandbox --all
 ```
 
-Runs the linter, all nine self-tests, and the conformance corpus. Everything
+Runs the linter, the CI scanner self-test, clippy, the Rust tests and the
+conformance corpus. Everything
 should say `pass`. If something says `FAIL`, that is worth telling me about.
 
 ## Trying the tool for real

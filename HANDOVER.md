@@ -1,74 +1,63 @@
 # Handover
 
 Everything a new session needs to pick this up. Written 2026-10-02, updated
-2026-10-03 when the host-state checks landed.
+2026-10-12 after the 2.0.0 release.
 
 Read [`HACKING.md`](./HACKING.md) first if you just want to run it. This file is
-the state of the work and the reasoning behind it.
-
----
-
-## 2026-10-09: getting 2.0 out
-
-Mandeep asked to close 1.x and release 2.0 the same day. Done on the working
-branch `claude/v2-status-review-mo5tbh`, on top of `v2`:
-
-- main's 28 September and 5 October indicator reviews brought onto v2
-  (PR #35, 83 indicators, was still open on main at the time).
-- The pattern engine reads `{n}`, `{n,}` and `{n,m}`. #35's
-  `fa-solid-[0-9]{3}\.llf` line otherwise stopped every scan with exit 3.
-- Folder and machine checks now match `ioc/filenames.txt`, as 1.x's path scan
-  did. v2 had only ported the GitHub side.
-- `release.yml` builds and attests five binaries; version is 2.0.0.
-- README, AGENTS.md and the docs site describe 2.0.
-
-**Still to do before the tag:** the real-GitHub test (item 6 below), the
-remaining machine tests, and deleting the 1.x shell (`polinrider.sh`, `lib/`,
-`github-*-recovery/`, `ui/`, six `ci/selftest-*.sh` and their CI steps). The
-CI scan template, `ci/scan-workspace.sh`, stays shell in 2.0.0 because it also
-scans every ref of a repository's history, which the binary does not do for a
-local checkout. After release: Homebrew, Scoop, AUR and the weekly routine.
+the state of the work and the reasoning behind it. The sections from "The 2.0.0
+decision" to "What is done" are the record of how 2.0 was built and still read
+as history; the state sections above and below them are current.
 
 ---
 
 ## Where things stand in one paragraph
 
-`main` is **1.x**, the working shell tool, released at `v1.0.9` and still taking
-weekly indicator updates from an automated routine. A branch called **`v2`** holds
-a rewrite in progress: one Rust binary replacing seventeen shell scripts, a
-documentation site, a container sandbox, and a conformance corpus that both
-implementations answer to. **`v2` has never been pushed.** The Rust engine
-passes every conformance case, for the filesystem checks and now for the
-host-state checks too, and the local-repo cleaner and the guided flow are
-built. On 2026-10-03 Mandeep chose to test the machine side on his three
-machines now, with [`TESTING.md`](./TESTING.md) as the guide, and to have the
-GitHub tracks ported to Rust after that test, not before it. **The test runs
-inside the sandbox on each machine, never on the machine itself**: see the
-first standing instruction below. `v2` is pushed to GitHub as a backup from 2026-10-03 and is **not** to be
-merged to `main` until Mandeep has tested it on his three machines.
+**polinrider 2.0.0 is released.** On 2026-10-11 the `v2` work was squash-merged
+into `main` as #38 and tagged `v2.0.0`. The release workflow built, attested and
+published five binaries (Linux x86_64 and arm64, macOS arm64 and x86_64,
+Windows x86_64) with `SHA256SUMS`. `main` is now the Rust binary. 1.x is frozen
+at `v1.0.9` and takes no backports, including the three 1.x bugs found during
+the port. The Homebrew tap and Scoop bucket install the 2.0 binary but neither
+has been install-tested. Nothing is in flight; what is left is below under
+"What is next".
+
+### How 2.0 got out
+
+- **#36** (2026-10-09) brought main's 28 September and 5 October indicator
+  reviews onto `v2`, taught the pattern engine `{n}`, `{n,}` and `{n,m}` (the
+  5 October set otherwise stopped every scan with exit 3), made the folder and
+  machine checks match `ioc/filenames.txt` as 1.x did, built five attested
+  binaries in `release.yml`, and rewrote the README, `AGENTS.md` and the docs
+  site for 2.0.
+- **A real-GitHub test** against a throwaway organization passed except that
+  `restore` was never offered. The cause: the events API lags an hour or more
+  and no longer carries `payload.size`, so the push record came back empty and
+  every push read as a force-push. Fixed in #36 by reading
+  `/repos/{repo}/activity` instead (`src/remote.rs`), which shows a push within
+  minutes and marks `force_push` itself. **Do not switch back.** The `restore`
+  step was not re-run against real GitHub after the fix.
+- **#37** removed the 1.x shell tool (`polinrider.sh`, `lib/`,
+  `github-*-recovery/`, `ui/`, the shell self-tests). `ci/scan-workspace.sh`
+  and the CI scan template stay shell: they scan every ref of history, which
+  the binary does not do for a local checkout.
+- **#38** squash-merged `v2` into `main`; `v2.0.0` was tagged and signed.
 
 ---
 
 ## Branch and remote state
 
-| Ref | What it is | State |
-|---|---|---|
-| `origin/main` | 1.x, the released tool | `f58f2f7`, public. PRs #33 and #34 were squash-merged on 2026-10-03 |
-| `main` (local) | Same as `origin/main` | Reset on 2026-10-03, see below |
-| `v2` | The 2.0.0 work | Branched from `d418c54`. **Never pushed** |
-| `scanner/one-walk` + tag `scanner-single-walk-1.x` | Backup of the 1.x scanner fix | Kept deliberately. Verified to merge into current `main` cleanly. **Do not merge it to `main`** — Mandeep wants it as a restore point only |
-| `docs/social-preview` | Merged content, stale branch | Safe to delete |
+| Ref | What it is |
+|---|---|
+| `main` | 2.0, the released binary. Protected: PR, signed commits, linear history, required checks |
+| tag `v2.0.0` | The 2.0.0 release, on #38 |
+| tag `v1.0.9` | The last 1.x release. Frozen |
+| `v2` | Fully merged into `main`. Nothing new goes here |
+| `ioc/YYYY-MM-DD` | One branch per weekly indicator review, kept after merge |
+| `scanner/one-walk` + tag `scanner-single-walk-1.x` | Backup of the 1.x scanner fix. **Never merge it to `main`** |
 
-Nothing in this work has been pushed. That is intentional: Mandeep reviews
-before anything goes public.
-
-### The `main` divergence: resolved
-
-PRs #33 and #34 were squash-merged on GitHub on 2026-10-03 as `eb2b11a` and
-`f58f2f7`, and local `main` was reset to `origin/main` the same day at
-Mandeep's request. The two local commits it dropped, merge `c03419a` and
-`98cd24f`, had the same tree as `eb2b11a`, so nothing was lost. They are in the
-reflog if they are ever wanted.
+`main` requires these checks: Shell lint and self-test, Scan this repository,
+Static analysis, and the four platform builds (`linux-x86_64`, `linux-arm64`,
+`macos-arm64`, `windows-x86_64`).
 
 ---
 
@@ -77,7 +66,7 @@ reflog if they are ever wanted.
 Full detail in [`HACKING.md`](./HACKING.md). The three commands:
 
 ```bash
-./polinrider-sandbox --all     # lint, 7 self-tests, clippy, 178 Rust tests, 89 conformance cases
+./polinrider-sandbox --all     # lint, the CI scanner self-test, clippy, the Rust tests, the conformance corpus
 ./polinrider-sandbox --beta    # 2.0 installed in the container, on the PATH, with a sample
 ./ci/docs-serve.sh             # the documentation site, with live reload
 ```
@@ -207,130 +196,55 @@ the whole home folder; `folder` suggests the code folders it finds.
 
 ## What is next, in order
 
-1. **Review the eight deliberate differences in ADR-0029.** Each is a judgement
-   that the shell was mistaken. Three of them also apply to 1.x on `main`,
-   where people are running it today: the Linux process name, the npm registry
-   false positive and the `| shasum` false positive. Whether to fix those in
-   the shell or let 2.0.0 carry them is Mandeep's call.
-2. **The host checks are all in Rust, on three platforms.** The three that
-   were shell only were ported on 2026-10-03: the credential inventory, the
-   "stop it first" advice under an implant that starts itself, and the review
-   of an extension that names campaign infrastructure. Windows was ported the
-   same day (ADR-0038): Run keys, the Startup folders, scheduled tasks,
-   PowerShell profiles, processes and connections, through the same `Host`
-   boundary, with a Windows machine handed to the corpus as data. `LiveHost`
-   on macOS and on Windows runs on the CI runner on every push, and on no
-   developer's machine yet. **What has not been seen is a real Windows 11**:
-   a non-English locale, a restricted execution policy, years of startup
-   items.
-3. **The shell machine check is deleted** (ADR-0039, 2026-10-03). Mandeep
-   chose the removal once Windows was covered, on the decision card, and it
-   went the same day. Gone: `machine-cleanup/`, `lib/local-common.sh`,
-   `selftest-implant.sh`, `selftest-walk.sh`. `polinrider.sh --machine` says
-   where it went and exits 3. The corpus runs one engine and skips nothing.
-   **His review of the ADR-0029 differences is still open**: they are final
-   by default now, and each can still be changed in Rust if he rules against
-   one. What is left of the shell (`polinrider.sh`, `lib/gh-*.sh`, the two
-   recovery folders, `ci/scan-workspace.sh`) goes after the GitHub fixes have
-   run against real GitHub.
-4. **Rewrite the user-facing documentation for 2.0**, before it is released.
-   The README, `AGENTS.md` and most of the docs site on `v2` still describe
-   1.x: seventeen scripts, `--apply` that only moves files, "no new
-   dependencies". 2.0 edits source with `clean` and pushes to GitHub from the
-   guided flow, and ADR-0031 says the old claim has to be corrected and not
-   left to mislead. The one sentence on the site's front page is corrected.
-   The rest is one piece of work, and it is easier after item 3 is decided:
-   it describes either one tool or two.
-5. **The three-machine test, now.** [`TESTING.md`](./TESTING.md) is the guide:
-   `./polinrider-sandbox --beta` on each machine, the guided flow on a sample,
-   optionally real code mounted read-only, and what to send back. The results
-   come back in the project thread. What a container cannot show, the macOS
-   and Windows behaviour, comes from the "Beta binaries" workflow instead.
-6. **The GitHub tracks in Rust, now.** Scanning an organization or an
-   account, the push ledger, restore and remote cleaning are about 1,500 lines
-   of shell in `lib/gh-*.sh`. On 2026-10-03 this was first put after the
-   machine test; later the same day Mandeep tried the guided flow, missed the
-   GitHub choices 1.x has, and asked for them back, which moves the port up.
-   A mock of the screens was sent for his yes first (a first screen with
-   `computer`, `folder`, `organization`, `account`, `everything`, then one
-   repository at a time). Build in stages, and put a choice on the screen only
-   when it really works: checking and reporting first, which changes nothing
-   on GitHub; then `remove`; then `restore` and `erase`. It needs a boundary
-   like `Host` so the corpus can drive it with local repositories, and real
-   GitHub can only be tried from the sandbox with a network, a sign-in and a
-   throwaway repository, all of which are Mandeep's to give.
-
-   **Where it stands:** both stages are built and in the guided flow.
-   `organization` and `account` are on the first screen. It checks that `gh`
-   is installed and signed in and says what to run if not, lists the
-   organizations, shows a progress screen, checks every branch and tag of
-   every repository, and summarises: which repositories, how many branches,
-   who pushed. Then `each`, `all`, `details` or `none`. One repository at a
-   time offers `restore` (only where GitHub's push record gives a clean
-   state), `erase`, `remove`, `archive` and `skip`; each shows a dry run and
-   pushes only on a typed `yes`. `all` takes one fix for every repository
-   and goes ahead only on the owner's name. The last screen is written from
-   what was done. Mandeep approved the mock of all of it on 2026-10-03 ("The
-   rest all looks great. Go ahead."), with one instruction for `archive`:
-   the README notice goes at the very top, big and bold, and removes nothing
-   that is already there.
-
-   `./polinrider-sandbox --beta` builds a pretend organization with real
-   attack history, and `polinrider guide --forge-state ~/demo-github` runs
-   every screen and every fix against it with no network. `./ci/beta.sh`
-   puts it back.
-
-   `everything` on the first screen does this computer and then offers
-   GitHub, an organization or an account, one after the other until `done`.
-   The exit code is the more serious of the results. Computer and folder
-   checks show the same progress screen as GitHub: stages done, what it is
-   on, files listed, findings so far.
-
-   **Not built:** the push-event sweep that narrows the list before copying
-   every repository.
-
-   **Nothing here has touched real GitHub.** Every test pushes to local bare
-   repositories. The first real run is
-   `./polinrider-sandbox --net --beta`, `gh auth login` inside it, and a
-   throwaway repository, all of which are Mandeep's to give. Worth trying
-   there first: a protected branch, a repository with a pull request open,
-   and whether GitHub still serves the commit a branch was forced off.
-
-   **Choices made while building the fixes that Mandeep has not ruled on**,
-   all in ADR-0037: `restore` goes to the newest clean state on record, where
-   1.x went to the earliest or to one before a time the operator gave;
-   `remove` cuts the payload out of a build config and keeps the file, where
-   1.x and the mock deleted it; `erase` takes its paths from the whole
-   history, uses `git filter-branch` only, keeps empty commits and puts the
-   clean config back as a commit; a push carries a lease so one that landed
-   since the check is never overwritten; `none` and `fix` were added to the
-   choices after the summary; the exit code stays 2 after a fix.
-
-   **What Mandeep asked of the GitHub screens (2026-10-03), all agreed:** check that `gh` is installed and signed in
-   first, and walk the operator through it if not; list their organizations
-   to choose from; a progress screen while it works, the same one for every
-   long job including machine checks; an "all at once" choice behind a warning
-   and a second confirmation; `restore` only ever from GitHub's push record,
-   never "the last commit", because this malware forges commit dates and
-   scrambles history; `erase` from every commit as the alternative; and a new
-   `archive` choice that marks an unused repository as infected and makes it
-   read-only. The boundary already lists organizations and reports progress.
-
-   **Two more differences from 1.x, for Mandeep's list** (with the eight in
-   ADR-0029): a `tasks.json` that runs on folder open but carries no indicator
-   is review in the remote check, as it already is in the machine check, where
-   1.x's remote scan called it infected. And a path under `lib/` or `ci/` is
-   no longer assumed to be the operator's own detection tooling: 1.x discounts
-   every infected file in a directory with either name, in anybody's
-   repository. On `v2` the shell's list had also grown `src/` and
-   `conformance/`, added to quiet this repository's self-scan; that is a
-   false negative in the v2 shell and is not carried into Rust.
-7. **Release.** Only after 5 and 6, and only on Mandeep's word. 2.0.0 merges to
-   `main` then. No backport of the ADR-0029 fixes to 1.x: 2.0 carries them.
-
-`TASKS.md` in the repository root has the running list, including promotion work.
-**It is git-ignored**, so it exists only on this machine; it carries outreach
-notes that should not be public.
+1. **Mandeep's verdicts on the open design choices.** Silence on an ADR means
+   accepted; each can still be changed in Rust if he rules against one.
+   - The eight deliberate differences from the shell in ADR-0029.
+   - The GitHub fix choices in ADR-0037: `restore` goes to the newest clean
+     state on record, where 1.x went to the earliest or to one before a time
+     the operator gave; `remove` cuts the payload out of a build config and
+     keeps the file, where 1.x deleted it; `erase` takes its paths from the
+     whole history, uses `git filter-branch` only, keeps empty commits and
+     puts the clean config back as a commit; a push carries a lease so one
+     that landed since the check is never overwritten; `none` and `fix` were
+     added to the choices after the summary; the exit code stays 2 after a
+     fix.
+   - Two more differences from 1.x: a `tasks.json` that runs on folder open
+     but carries no indicator is review in the remote check, as in the
+     machine check, where 1.x's remote scan called it infected; and a path
+     under `lib/` or `ci/` is no longer assumed to be the operator's own
+     detection tooling.
+2. **Unicode-escaped loaders.** The 5 October review found that 18 of the 35
+   confirmed infected repositories carry a loader written entirely in
+   `\uXXXX` escapes, so none of the fixed strings in `strong.txt` appear in
+   the raw bytes and every content check misses it. This is the highest-value
+   engine change available. The likely shape is a normalisation pass that
+   decodes escapes into a second buffer and matches both; a hit found only
+   after decoding is reported but not stripped, since the strip works on byte
+   offsets. The remote check would need to read blobs and match in Rust
+   instead of `git grep -F`. Needs Mandeep's decision before it is built.
+3. **Install-test the packages once each**, in a disposable VM or on a test
+   machine: `brew install meSingh/tap/polinrider-cleaner` and
+   `scoop install polinrider-cleaner`. Version bumps in both repositories are
+   still manual on every release.
+4. **Re-run `restore` against real GitHub** in a throwaway organization, now
+   the push record comes from the activity API.
+5. **Run 2.0 on a real Windows 11 machine.** Only CI runners have run it so
+   far: no non-English locale, restricted execution policy or years of startup
+   items yet.
+6. **Engineering carried from 1.x**, none started:
+   - the hash sweep is bounded to 10 to 300 MB (`src/checks.rs`), so the
+     published small-file hashes cannot be carried;
+   - package names are substring-matched rather than parsed from manifests;
+   - no `.pth` / Python persistence check and no npm CLI persistence check;
+   - the push-event sweep that narrows the GitHub list before mirroring;
+   - `--purge-evidence` is not in the binary;
+   - macOS binaries are not signed or notarised, so users run
+     `xattr -d com.apple.quarantine`. Decide: sign, or keep documenting it;
+   - the `account` and `organization` track guides are pointers and could
+     move into the docs site.
+7. **Packaging for the binary**: a winget manifest from the Windows zip, a
+   `.deb`, and tap and bucket bumps from `release.yml`. AUR files are written
+   but unpublished.
 
 ---
 
@@ -338,23 +252,17 @@ notes that should not be public.
 
 | Thing | Where | State |
 |---|---|---|
-| 2.0 beta builds | "Beta binaries" workflow, `.github/workflows/beta-build.yml` | Builds Linux x86_64 and arm64, macOS arm64 and Windows x86_64 on every push to `v2`, and on each runner checks that machine, cleans a sample and verifies the original was kept. Workflow artifacts, not a release, 30-day expiry. The only place the binary runs on macOS and Windows, and the only place the macOS live checks run at all: a runner is disposable, a developer's machine is not |
-| Homebrew tap | `meSingh/homebrew-tap` | Live. **Never install-tested** — `brew install mesingh/tap/polinrider-cleaner` still needs running once |
-| Scoop bucket | `meSingh/scoop-bucket` | Live. Never tested on Windows |
-| AUR package files | `~/polinrider-promotion/aur/` | Written, not published. Needs an aur.archlinux.org account |
-| Weekly indicator routine | claude.ai routine `trig_01EGk2ww5vs9pqQpdYXaarz1` | **Running.** Mondays 08:00 IST, opens a draft PR when indicators change |
-| GitHub Pages | Enabled, source "GitHub Actions" | Publishes from `main` only, so the new site is not live until 2.0.0 merges |
+| 2.0.0 release | GitHub Releases, `v2.0.0` | Five binaries, `SHA256SUMS`, build attestations. Linux and Windows archives checked against the sums |
+| Homebrew tap | `meSingh/homebrew-tap` | Ships the 2.0 binary as `polinrider`. **Never install-tested** |
+| Scoop bucket | `meSingh/scoop-bucket` | Ships the 2.0 binary. Never tested on Windows |
+| AUR package files | outside the repository | Written, not published. Needs an aur.archlinux.org account |
+| Weekly indicator routine | claude.ai routine "PolinRider indicator watch (2.0)" | Mondays 08:00 IST. Opens a draft `ioc/YYYY-MM-DD` PR every week, change or no change. Replaced the 1.x routine on 2026-10-12 |
+| Beta binaries workflow | `.github/workflows/beta-build.yml` | Builds and exercises every platform on each push to `main`. The only place the macOS and Windows live checks run |
+| GitHub Pages | Source "GitHub Actions" | Publishes the docs site from `main` |
 
-**awesome-incident-response PR #335 was closed**, not merged. The maintainer
-said: *"lacks traction, plz reopen once you see more github stars for this one."*
-That is a reopening condition, not a rejection of the tool. **awesome-security
-#727 is still open** (that list has 328 open PRs and no pushes since January).
-
-**Adoption is the real problem and has not moved.** Two stars. The highest-value
-unstarted item is a pull request to the campaign's primary dossier,
-`OpenSourceMalware/PolinRider` (91 stars), whose `## Remediation` section is six
-manual steps and links to no tool at all. It has merged outside README pull
-requests before.
+**awesome-incident-response PR #335 was closed**, not merged: the maintainer
+asked for it to be reopened once the project has more stars. **awesome-security
+#727 is still open.** Adoption is the real problem and has not moved.
 
 ---
 
@@ -449,9 +357,9 @@ descending. That was the six-hour scan ([ADR-0025](./docs/adr/0025-walk-the-file
 - **Never add AI attribution** to a commit or pull request. `CLAUDE.md` states
   this in full and overrides any session guidance to the contrary. Do not add a
   disclaimer in the other direction either.
-- **Do not push without being asked.** Commit freely; pushing is his call. On
-  2026-10-03 he asked for `v2` to be pushed as a backup. That covers `v2` only,
-  and never a merge to `main` or a pull request.
+- **Do not push without being asked.** Commit freely; pushing is his call.
+  Opening a pull request is a push. Approval for one push does not cover the
+  next.
 - **Answer a question before acting on it.** Open questions get resolved first,
   not implemented speculatively.
 - **All testing happens in the sandbox.** Not on his machine.
@@ -463,8 +371,9 @@ descending. That was the six-hour scan ([ADR-0025](./docs/adr/0025-walk-the-file
 
 ## Needing Mandeep
 
-- Verify the Homebrew formula once: `brew install mesingh/tap/polinrider-cleaner`
-- Review the eight differences from the shell in ADR-0029
+- Verdicts on ADR-0029, ADR-0037 and the two further differences (item 1)
+- A decision on Unicode-escaped loaders (item 2)
+- Install-test Homebrew and Scoop once each (item 3)
 - AUR account, if Arch packaging matters
 - Whether `OpenSourceMalware/PolinRider` outreach happens, since it is the one
   thing likely to move adoption
