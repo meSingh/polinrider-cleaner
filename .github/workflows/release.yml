@@ -329,7 +329,26 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ needs.check.outputs.tag }}
         run: |
-          sed "s/__TAG__/${TAG}/g" .github/release-notes.md > notes.md
+          # What changed is the body of the signed tag's message: everything
+          # after its first line, without the signature. A tag with no body
+          # gets no such section.
+          tag_object=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" \
+            --jq 'select(.object.type == "tag") | .object.sha')
+          body=""
+          if [ -n "$tag_object" ]; then
+            body=$(gh api "repos/$GITHUB_REPOSITORY/git/tags/$tag_object" --jq .message |
+              sed '/^-----BEGIN PGP SIGNATURE-----/,$d; /^-----BEGIN SSH SIGNATURE-----/,$d' |
+              tail -n +2 | sed '/./,$!d')
+          fi
+          CHANGES=""
+          if [ -n "$body" ]; then
+            CHANGES=$(printf '## What changed\n\n%s\n\n.' "$body")
+            CHANGES=${CHANGES%.}
+          fi
+          export CHANGES
+          sed "s/__TAG__/${TAG}/g" .github/release-notes.md |
+            awk '/__CHANGES__/ { sub(/__CHANGES__/, ""); printf "%s", ENVIRON["CHANGES"] }
+                 { print }' > notes.md
           gh release create "$TAG" dist/polinrider-"${TAG}"-* \
             "dist/polinrider-${TAG}.intoto.jsonl" dist/SHA256SUMS \
             --title "$TAG" \

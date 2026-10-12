@@ -45,14 +45,14 @@
 
    ```bash
    sha256sum -c SHA256SUMS --ignore-missing
-   gh attestation verify polinrider-v2.0.0-macos-arm64.tar.gz --repo meSingh/polinrider-cleaner
+   gh attestation verify polinrider-v2.1.0-macos-arm64.tar.gz --repo meSingh/polinrider-cleaner
    ```
 
 3. **Unpack and run it**, with no arguments:
 
    ```bash
-   tar -xzf polinrider-v2.0.0-macos-arm64.tar.gz
-   cd polinrider-v2.0.0-macos-arm64
+   tar -xzf polinrider-v2.1.0-macos-arm64.tar.gz
+   cd polinrider-v2.1.0-macos-arm64
    ./polinrider
    ```
 
@@ -70,7 +70,7 @@ scoop bucket add mesingh https://github.com/meSingh/scoop-bucket
 scoop install polinrider-cleaner               # Windows
 ```
 
-Releases after 2.0.0 also carry a `.deb` for Debian and Ubuntu, x86_64 and
+Since 2.1.0, releases also carry a `.deb` for Debian and Ubuntu, x86_64 and
 arm64, attested like the archives. Verify it as above, then:
 
 ```bash
