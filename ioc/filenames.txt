@@ -36,3 +36,11 @@
 # Source: OpenSourceMalware, The OpenSourceMalware Show #23, 2026-10-02
 # (spoken transcript; over 120 versions reported live on GitHub on 2026-09-28).
 (^|/)fa-solid-[0-9]{3}\.llf$
+# The VBS launcher the JavaScript form of the MicrosoftSystem64 dropper writes
+# for its Windows persistence: a scheduled task and a Run-key fallback both run
+# `wscript MicrosoftSystem64.vbs`. Nothing legitimate is called this; it is the
+# implant's own name with a script extension, so it is INFECTED tier like the
+# binary names above.
+# Source: OpenSSF malicious-packages MAL-2026-5341 (`void-ulid`; Amazon
+# Inspector), June 2026. See docs/indicator-reviews/2026-10-12.md.
+(^|/)MicrosoftSystem64\.vbs$

@@ -62,8 +62,15 @@
 Keep the `ioc/` folder beside the binary. That is the indicator set, and the
 binary refuses to scan without it.
 
-Homebrew, Scoop and AUR packages for 2.0 follow the release. 1.x, the shell
-tool, is still available from
+Or through a package manager, which puts the binary and `ioc/` in place:
+
+```bash
+brew install meSingh/tap/polinrider-cleaner    # macOS and Linux
+scoop bucket add mesingh https://github.com/meSingh/scoop-bucket
+scoop install polinrider-cleaner               # Windows
+```
+
+1.x, the shell tool, is frozen and still available from
 [v1.0.9](https://github.com/meSingh/polinrider-cleaner/releases/tag/v1.0.9).
 
 ## What it asks
@@ -361,19 +368,14 @@ weeks that found nothing. Each review keeps its own dated entry, and entries are
 never edited or removed:
 [`docs/indicator-reviews/`](docs/indicator-reviews/).
 
-**Last reviewed: [5 October 2026](docs/indicator-reviews/2026-10-05.md).**
+**Last reviewed: [12 October 2026](docs/indicator-reviews/2026-10-12.md).**
 
-Eighty-three indicators added after a second analyst team decoded the
-campaign's Ethereum dead drop. It exposed two entries that had never matched a
-sample: an operator wallet carried in the wrong case and an XOR key carried
-truncated. The same report filled in eight C2 servers off the chain and pointed
-at the OpenSSF malicious-packages database, which gave fifty-five package names
-after five were rejected as substrings of real packages. Also added: the first
-fake-font indicator that matches a variant in circulation, a `.llf` file.
+Twelve indicators added from the OpenSSF malicious-packages database: nine
+package names that install the campaign's `MicrosoftSystem64` implant or are
+named as PolinRider, one more at review tier, a C2 address and the implant's
+Windows launcher. No new primary analysis was found, and most sources could
+not be reached from the review environment this week.
 
-The review also named what fixed strings cannot catch: 18 of 35 infected
-repositories carry the loader written in Unicode escapes. Every file a check
-reads for indicators is now also matched with its escapes decoded
-([ADR-0040](docs/adr/0040-indicators-are-matched-through-escape-codes-as-well.md)).
-`clean` confirms that family and will not cut it out: re-clone once the remote
-is clean.
+The review also found that the folder and machine checks have never read
+`weak.txt`; review-tier indicators reach only the CI scanner and the GitHub
+checks. Read the entry before relying on a review line from a local scan.
