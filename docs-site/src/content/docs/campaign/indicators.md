@@ -24,8 +24,8 @@ regex escaping is needed. `bad-packages.txt` holds names, compared whole: a
 for the packages it installs, and anywhere else a name counts only where it
 stands on its own, so `sass-format` is not found inside `sass-formatter` and a
 description is not a dependency. A manifest that cannot be read is matched as
-text and reported for review. The CI scanner, `ci/scan-workspace.sh`, still
-matches names as fixed strings. `strong.txt` and
+text and reported for review. The CI scanner, `ci/scan-workspace.sh`, does the
+same. `strong.txt` and
 `bad-packages.txt` are also matched against a copy of each file with its
 `\uXXXX`, `\u{...}` and `\xNN` escapes decoded, because one loader family is
 written entirely in them. Add an indicator as it reads once decoded, never in
