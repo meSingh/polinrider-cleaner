@@ -7,20 +7,56 @@
  * already defines, rather than inventing a second palette beside it.
  */
 
-/* A teal accent, in the theme's own OKLCH idiom so it sits with the rest of
- * the palette rather than on top of it. Hue 195 lands between the theme's
- * green (150) and blue (240), and matches the cyan of the project's artwork.
- * Deliberately not the indigo-on-slate that every generated docs site uses. */
+/* The palette is taken from the project's artwork (docs/img/hero-lattice.jpg):
+ * a deep navy night, cyan light from the lattice, and magenta flames held back
+ * at the edges. Grays carry a slight navy tint so surfaces sit inside the
+ * same night as the art instead of on neutral black. Everything is set on the
+ * theme's own tokens, so Lucode's components pick it up without overrides.
+ *
+ *   navy    #050b1f  background      cyan     #3aecf8  accent
+ *   surface #0b1a33  cards, code     magenta  #a53e8f  flames, --purple
+ */
 :root[data-theme='dark'] {
-  --accent: oklch(74% 0.115 195);
-  --accent-low: oklch(28% 0.055 195);
-  --accent-high: oklch(86% 0.075 195);
+  --background: oklch(14.5% 0.04 265);
+  --foreground: oklch(97% 0.008 210);
+  --gray-1: oklch(97% 0.008 210);
+  --gray-2: oklch(87% 0.015 220);
+  --gray-3: oklch(72% 0.025 230);
+  --gray-4: oklch(58% 0.03 240);
+  --gray-5: oklch(37% 0.04 245);
+  --gray-6: oklch(27% 0.045 250);
+  --gray-7: oklch(20% 0.045 255);
+
+  --accent: oklch(86% 0.14 203);
+  --accent-low: oklch(30% 0.07 210);
+  --accent-high: oklch(93% 0.08 200);
+
+  --purple: oklch(70% 0.2 330);
+  --purple-low: oklch(28% 0.1 330);
+  --purple-high: oklch(84% 0.11 330);
 }
 :root[data-theme='light'] {
-  --accent: oklch(52% 0.105 195);
-  --accent-low: oklch(97% 0.014 195);
-  --accent-high: oklch(40% 0.095 195);
+  --background: oklch(98.5% 0.006 230);
+  --foreground: oklch(18% 0.04 265);
+  --gray-1: oklch(22% 0.04 262);
+  --gray-2: oklch(29% 0.04 258);
+  --gray-3: oklch(39% 0.035 252);
+  --gray-4: oklch(55% 0.03 245);
+  --gray-5: oklch(71% 0.02 238);
+  --gray-6: oklch(87% 0.015 230);
+  --gray-7: oklch(95.5% 0.01 225);
+
+  --accent: oklch(52% 0.11 205);
+  --accent-low: oklch(95% 0.03 200);
+  --accent-high: oklch(40% 0.09 210);
+
+  --purple: oklch(52% 0.2 330);
+  --purple-low: oklch(96% 0.02 330);
+  --purple-high: oklch(42% 0.18 330);
 }
+
+/* The big number on the landing page glows like the lattice it is drawn from. */
+:root[data-theme='dark'] .figure { text-shadow: 0 0 24px oklch(86% 0.14 203 / 0.35); }
 
 /* The scanner prints [HIT], [review] and [ok]. The page uses the theme's own
  * red, orange and green for those, so a reader moving between terminal and
@@ -47,3 +83,13 @@ code.ok     { color: var(--green);  font-weight: 600; }
 
 /* Wide tables scroll inside the page instead of pushing the layout sideways. */
 .sl-markdown-content table { display: block; overflow-x: auto; }
+
+/* The splash page. Lucode renders its body with no container, so the page
+ * wraps each part in a ContainerSection; these give the headings and images
+ * inside those sections the weight a landing page needs. */
+.hero .hero-image { max-width: 60rem; }
+.container-section .sl-markdown-content h2 {
+  font-size: 1.5rem; font-weight: 600; letter-spacing: -0.02em;
+  margin-top: 0;
+}
+.container-section .sl-markdown-content img { border-radius: var(--radius); }

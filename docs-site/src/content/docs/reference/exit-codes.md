@@ -21,8 +21,7 @@ that reports nothing.
 
 `3` is the separate answer for "I was unable to tell you", and it covers a
 missing dependency, an unreadable path, an empty indicator set and an
-unauthenticated GitHub CLI. See
-[ADR-0002](/project/decisions/).
+unauthenticated GitHub CLI.
 
 :::caution
 A clean result is not proof.
