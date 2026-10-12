@@ -18,6 +18,7 @@ use crate::checks::{is_build_config, payload_shaped_tail};
 use crate::host::Probe;
 use crate::indicators::Indicators;
 use crate::pattern::Pattern;
+use crate::unescape;
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -885,11 +886,51 @@ impl Mirror<'_> {
     /// fixed string. Binary files are skipped, as the shell's `-I` does.
     fn containing(&self, git_ref: &str, patterns: &Path) -> Result<Vec<String>, String> {
         let file = patterns.display().to_string();
-        match run(
-            "git",
-            &["grep", "-I", "-F", "-l", "-z", "-f", &file, git_ref],
-            Some(self.dir),
-        ) {
+        self.grep(git_ref, &["-F", "-f", &file])
+    }
+
+    /// Paths in `git_ref` that carry a confirmed indicator only once their
+    /// escape codes are decoded, leaving out `known`, which the fixed-string
+    /// pass already found.
+    ///
+    /// Two steps, so the cost falls only on files that could need it. git
+    /// lists the text files that hold an escape at all, and those are read
+    /// in one batch and matched decoded. See ADR-0040.
+    fn containing_escaped(
+        &self,
+        git_ref: &str,
+        ind: &Indicators,
+        known: &[String],
+    ) -> Result<Vec<String>, String> {
+        let candidates: Vec<String> = self
+            .grep(git_ref, &["-E", "-e", ESCAPE_PATTERN])?
+            .into_iter()
+            // A name with a newline in it cannot be asked for one per line.
+            .filter(|path| !known.contains(path) && !path.contains('\n'))
+            .collect();
+        if candidates.is_empty() {
+            return Ok(Vec::new());
+        }
+        let names: String = candidates
+            .iter()
+            .map(|path| format!("{git_ref}:{path}\n"))
+            .collect();
+        let out = self.git_with(&["cat-file", "--batch"], &[], Some(names.as_bytes()))?;
+        let bodies = batch_bodies(&out, candidates.len())?;
+        Ok(candidates
+            .into_iter()
+            .zip(bodies)
+            .filter(|(_, body)| body.is_some_and(|b| ind.bytes_have_strong(b)))
+            .map(|(path, _)| path)
+            .collect())
+    }
+
+    /// `git grep -I -l -z` with `how` saying what to look for, as paths.
+    fn grep(&self, git_ref: &str, how: &[&str]) -> Result<Vec<String>, String> {
+        let mut args = vec!["grep", "-I", "-l", "-z"];
+        args.extend(how);
+        args.push(git_ref);
+        match run("git", &args, Some(self.dir)) {
             Ran::Finished {
                 ok: true, stdout, ..
             } => {
@@ -956,12 +997,9 @@ impl Mirror<'_> {
             if kind != Some("blob") {
                 continue;
             }
-            if ind
-                .strong
-                .iter()
-                .any(|s| !s.is_empty() && contains(body, s.as_bytes()))
-                || is_fake_font(path, body)
-            {
+            // Decoded as well as written: a file the payload sat in as escape
+            // codes has to come out of every commit too.
+            if ind.bytes_have_strong(body) || is_fake_font(path, body) {
                 found.push((*path).to_string());
                 carriers.push(id);
             }
@@ -995,8 +1033,43 @@ impl Mirror<'_> {
     }
 }
 
-fn contains(haystack: &[u8], needle: &[u8]) -> bool {
-    haystack.windows(needle.len()).any(|w| w == needle)
+/// What `git grep -E` is asked for to find a file worth decoding: a
+/// backslash and then `u` with four hex digits, `u{` with one, or `x` with
+/// two. An argument of its own, never through a shell, so the backslash is
+/// doubled for the regex and for nothing else.
+const ESCAPE_PATTERN: &str = r"\\(u[0-9a-fA-F]{4}|u[{][0-9a-fA-F]|x[0-9a-fA-F]{2})";
+
+/// The contents `git cat-file --batch` gave for each of `count` names, in
+/// the order asked. `None` for a name that resolved to nothing or to
+/// something that is not a file.
+fn batch_bodies(out: &[u8], count: usize) -> Result<Vec<Option<&[u8]>>, String> {
+    let mut bodies = Vec::with_capacity(count);
+    let mut rest = out;
+    for _ in 0..count {
+        let end = rest
+            .iter()
+            .position(|b| *b == b'\n')
+            .ok_or("git cat-file stopped answering part way")?;
+        let header = String::from_utf8_lossy(rest.get(..end).unwrap_or_default()).into_owned();
+        rest = rest.get(end + 1..).unwrap_or_default();
+        // "<name> missing" has nothing after it, and the name may hold spaces.
+        if header.ends_with(" missing") || header.ends_with(" ambiguous") {
+            bodies.push(None);
+            continue;
+        }
+        // "<id> <type> <size>", then the bytes and a newline.
+        let size = header
+            .rsplit(' ')
+            .next()
+            .and_then(|n| n.parse::<usize>().ok())
+            .ok_or_else(|| format!("git cat-file answered in a form this cannot read: {header}"))?;
+        let body = rest
+            .get(..size)
+            .ok_or("git cat-file answered with less than it said")?;
+        rest = rest.get(size + 1..).unwrap_or_default();
+        bodies.push((header.split(' ').nth(1) == Some("blob")).then_some(body));
+    }
+    Ok(bodies)
 }
 
 /// A file named as a web font whose first bytes are not a font's.
@@ -1313,7 +1386,13 @@ pub(crate) fn check_ref(
     let mut finding = RefFinding {
         repository: repository.to_string(),
         git_ref: git_ref.to_string(),
-        indicator_files: mirror.containing(git_ref, strong)?,
+        indicator_files: {
+            let mut found = mirror.containing(git_ref, strong)?;
+            let escaped = mirror.containing_escaped(git_ref, ind, &found)?;
+            found.extend(escaped);
+            found.sort_unstable();
+            found
+        },
         weak_files: if ind.weak.is_empty() {
             Vec::new()
         } else {
@@ -1336,9 +1415,9 @@ pub(crate) fn check_ref(
         // the corpus argues for, and this follows it.
         if (path == ".vscode/tasks.json" || path.ends_with("/.vscode/tasks.json"))
             && !finding.indicator_files.contains(&path)
-            && mirror
-                .blob(git_ref, &path)
-                .is_some_and(|b| String::from_utf8_lossy(&b).contains("folderOpen"))
+            && mirror.blob(git_ref, &path).is_some_and(|b| {
+                unescape::contains_decoded(&String::from_utf8_lossy(&b), "folderOpen")
+            })
         {
             finding.folder_open_tasks.push(path.clone());
         }
@@ -1641,6 +1720,59 @@ mod tests {
         assert_eq!(found.confirmed[0].real_paths(), vec!["postcss.config.mjs"]);
         assert!(found.review.is_empty());
         assert!(found.not_checked.is_empty());
+    }
+
+    /// Every character as a `\uXXXX` escape, the way the 0xa322 loader
+    /// family writes its strings.
+    fn escaped(text: &str) -> String {
+        text.chars()
+            .map(|c| format!("\\u{:04x}", c as u32))
+            .collect()
+    }
+
+    #[test]
+    fn a_payload_written_in_escape_codes_is_found_on_a_branch_and_in_history() {
+        // git grep -F finds nothing in it. The second pass lists files with
+        // escapes, reads them and matches them decoded.
+        let loader = format!(
+            "export default {{}}\n{}var x='{}';\n",
+            " ".repeat(280),
+            escaped(STRONG)
+        );
+        let w = World::new("escaped");
+        w.repo(
+            "shop",
+            &[
+                (
+                    "main",
+                    &[(
+                        "src/strings.js",
+                        b"export const s = 'caf\\u00e9 \\x41\\x42 \\u{1F600}'\n" as &[u8],
+                    )],
+                ),
+                ("release", &[("vite.config.js", loader.as_bytes())]),
+            ],
+        );
+        let found = run(&w);
+        assert_eq!(found.affected(), vec![("acme/shop", 1)]);
+        assert_eq!(found.confirmed[0].short_ref(), "release");
+        assert_eq!(found.confirmed[0].real_paths(), vec!["vite.config.js"]);
+
+        let bare = w.bare("shop");
+        let mirror = Mirror { dir: &bare };
+        assert_eq!(
+            mirror.payload_paths_in_history(&ind()).expect("history"),
+            vec!["vite.config.js".to_string()]
+        );
+    }
+
+    #[test]
+    fn a_batch_answer_is_read_back_in_the_order_asked() {
+        let out = b"0123 blob 3\nabc\nrefs/heads/x:a b missing\n4567 tree 2\nxy\n";
+        let bodies = batch_bodies(out, 3).expect("reads");
+        assert_eq!(bodies, vec![Some(b"abc" as &[u8]), None, None]);
+        assert!(batch_bodies(b"0123 blob 9\nabc\n", 1).is_err());
+        assert!(batch_bodies(b"", 1).is_err());
     }
 
     #[test]
