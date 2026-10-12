@@ -62,8 +62,15 @@
 Keep the `ioc/` folder beside the binary. That is the indicator set, and the
 binary refuses to scan without it.
 
-Homebrew, Scoop and AUR packages for 2.0 follow the release. 1.x, the shell
-tool, is still available from
+Or through a package manager, which puts the binary and `ioc/` in place:
+
+```bash
+brew install meSingh/tap/polinrider-cleaner    # macOS and Linux
+scoop bucket add mesingh https://github.com/meSingh/scoop-bucket
+scoop install polinrider-cleaner               # Windows
+```
+
+1.x, the shell tool, is frozen and still available from
 [v1.0.9](https://github.com/meSingh/polinrider-cleaner/releases/tag/v1.0.9).
 
 ## What it asks

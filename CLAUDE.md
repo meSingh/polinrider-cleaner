@@ -6,9 +6,9 @@ already cost time. [`HACKING.md`](./HACKING.md) is how to run things.
 
 Two facts that change what you should do:
 
-- `main` is **1.x**, the released shell tool. The **`v2`** branch holds a rewrite
-  in progress (one Rust binary, a docs site, a sandbox, a conformance corpus).
-  Check which branch you are on before changing anything.
+- `main` is **2.0**, the Rust binary, released as `v2.0.0` on 2026-10-11. The
+  1.x shell tool is frozen at `v1.0.9` and takes no backports. The `v2` branch
+  is merged and done; new work branches from `main`.
 - **Everything destructive runs in the container**, via `./polinrider-sandbox`.
   This tool moves files and rewrites git history, and its tests exercise those
   paths. Do not run the suite directly on the machine.
