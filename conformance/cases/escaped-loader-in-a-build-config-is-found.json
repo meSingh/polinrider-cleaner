@@ -1,0 +1,23 @@
+{
+  "why": "The 5 October review found 18 of 35 confirmed repositories carrying a loader written entirely in \\u escapes. Node decodes it to the same string the indicator set holds, so it is the same infection and has to get the same answer: a confirmed hit and exit 2. Matching only the bytes as written would call it clean.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/postcss.config.mjs": "export default { plugins: {} }\n{{PAD}}global.i='{{STRONG_U}}';\n",
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "expect": {
+    "exit": 2,
+    "findings": [
+      {
+        "level": "HIT",
+        "match": "config file contains an indicator",
+        "path": "postcss.config.mjs"
+      }
+    ],
+    "must_not_report": [
+      "src/index.js"
+    ]
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "why": "git grep -F against the indicator set finds nothing in a loader written in \\u escapes. The remote check lists the files that hold an escape, reads them and matches them decoded, so the branch is confirmed the same as the plain payload is. A file of ordinary escapes on another repository is read the same way and is clean.",
+  "command": "guide",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "stdin": [
+    "organization",
+    "acme",
+    "none"
+  ],
+  "forge_files": {
+    "whoami": "tester\n",
+    "orgs": "acme\t2\nacme-labs\t7\n"
+  },
+  "forge": {
+    "acme": {
+      "blog": {
+        "branches": {
+          "main": {
+            "src/i18n.js": "// caf\\u00e9, na\\u00efve, \\u00fcber, \\x41\\x42\\x43, \\u{1F600}\nexport const labels = { yes: 'S\\u00ed', no: 'N\\u00e3o', sep: '\\x2c' }\n"
+          }
+        }
+      },
+      "shop": {
+        "branches": {
+          "main": {
+            "src/index.js": "export const a = 1\n"
+          },
+          "release": {
+            "vite.config.js": "export default { plugins: {} }\n{{PAD}}global.i='{{STRONG_U}}';\n"
+          }
+        },
+        "pushes": "refs/heads/release\taaa\tbbb\talice\t2026-09-12T10:00:00Z\t0"
+      }
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "tree_may_change": false,
+    "must_print": [
+      "Checked 2 repositories and 3 branches of acme.",
+      "CONFIRMED   1     repository carries the PolinRider payload",
+      "acme/shop   1 branch"
+    ],
+    "must_not_print": [
+      "acme/blog   1 branch"
+    ]
+  }
+}

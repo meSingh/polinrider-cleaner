@@ -1,0 +1,19 @@
+{
+  "why": "A tasks.json is JSON, and JSON lets any character in a string be a \\u escape. The editor decodes the command before it runs it, so a task whose command is the indicator in escapes, and whose folderOpen is too, runs exactly what the plain one runs. Confirmed, not review.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/.vscode/tasks.json": "{\"tasks\":[{\"runOptions\":{\"runOn\":\"\\u0066olderOpen\"},\"command\":\"{{STRONG_U}}\"}]}\n"
+  },
+  "expect": {
+    "exit": 2,
+    "findings": [
+      {
+        "level": "HIT",
+        "match": "runs on folder open AND contains an indicator",
+        "path": "tasks.json"
+      }
+    ]
+  }
+}
