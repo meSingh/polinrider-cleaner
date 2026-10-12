@@ -27,6 +27,7 @@ hero:
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 import { ContainerSection } from 'lucode-starlight/components';
+import LastUpdated from '../../components/LastUpdated.astro';
 
 <ContainerSection width="lg">
 
@@ -39,6 +40,8 @@ import { ContainerSection } from 'lucode-starlight/components';
 <li><a href="/polinrider-cleaner/indicator-reviews/"><img alt="Indicators reviewed weekly" src="https://img.shields.io/badge/indicators-reviewed%20weekly-86307a" /></a></li>
 <li><img alt="Zero runtime dependencies" src="https://img.shields.io/badge/runtime%20deps-0-86307a" /></li>
 </ul>
+
+<LastUpdated />
 
 </ContainerSection>
 
