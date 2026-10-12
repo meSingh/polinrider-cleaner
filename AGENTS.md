@@ -370,12 +370,17 @@ request.
 
 ```bash
 git checkout main && git pull
-VERSION=v2.0.0   # the release you are cutting
+VERSION=v2.1.0   # the release you are cutting
 git tag -s "$VERSION" -m "polinrider-cleaner $VERSION
 
 Summarise what changed and why it matters to someone running this."
 git push origin "$VERSION"
 ```
+
+Everything after the tag message's first line becomes the release's "What
+changed" section, signature removed. Write it for someone running the tool,
+not for a reviewer of the code. A tag with only a subject line gets no such
+section.
 
 **4. The Release workflow does the rest.** It checks the tag against
 `Cargo.toml`, runs fmt, clippy, the unit tests and the corpus, builds five

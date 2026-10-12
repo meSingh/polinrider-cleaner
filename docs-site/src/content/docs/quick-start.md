@@ -13,14 +13,14 @@ anything.
 
    ```bash
    sha256sum -c SHA256SUMS --ignore-missing
-   gh attestation verify polinrider-v2.0.0-macos-arm64.tar.gz --repo meSingh/polinrider-cleaner
+   gh attestation verify polinrider-v2.1.0-macos-arm64.tar.gz --repo meSingh/polinrider-cleaner
    ```
 
 3. Unpack it and run it with no arguments:
 
    ```bash
-   tar -xzf polinrider-v2.0.0-macos-arm64.tar.gz
-   cd polinrider-v2.0.0-macos-arm64
+   tar -xzf polinrider-v2.1.0-macos-arm64.tar.gz
+   cd polinrider-v2.1.0-macos-arm64
    ./polinrider
    ```
 
@@ -38,7 +38,7 @@ scoop bucket add mesingh https://github.com/meSingh/scoop-bucket
 scoop install polinrider-cleaner               # Windows
 ```
 
-On Debian and Ubuntu, releases after 2.0.0 carry a `.deb` for x86_64 and arm64.
+On Debian and Ubuntu, releases since 2.1.0 carry a `.deb` for x86_64 and arm64.
 Verify it the same way, then `sudo apt install ./` followed by its file name.
 
 :::note
