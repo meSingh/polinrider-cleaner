@@ -52,6 +52,10 @@ export default defineConfig({
 
       customCss: ['./src/styles/custom.css'],
 
+      // Releases and indicator reviews each show their own list in the
+      // sidebar. See src/routeData.ts.
+      routeMiddleware: './src/routeData.ts',
+
       sidebar: [
         { label: 'Quick start', link: '/quick-start/' },
         {
