@@ -1,0 +1,50 @@
+---
+title: polinrider-cleaner 2.0.0
+description: One program in place of the 1.x shell scripts, with a guided flow, machine checks on macOS, Linux and Windows, and GitHub fixes from the push record.
+version: "2.0.0"
+slug: releases/v2.0.0
+date: "2026-10-11"
+breaking: the 1.x shell scripts are gone; download the binary instead of cloning.
+---
+
+import Downloads from '../../../components/Downloads.astro';
+
+Released 11 October 2026. The first release of the rewrite: one program,
+`polinrider`, in place of the 1.x shell scripts.
+
+## New
+
+- **A guided flow.** Run `polinrider` with no arguments. It asks what to check,
+  one question at a time, answered in words, and changes nothing until you type
+  `yes`.
+- **This computer, on macOS, Linux and Windows:** implant processes and
+  connections, persistence, shell startup files, editor extensions, git hooks,
+  build configs and fake fonts, all through one check.
+- **`clean`** cuts a payload appended to a build config out in place and keeps
+  the infected original in quarantine, instead of moving the whole file.
+- **GitHub accounts and organizations:** every branch and tag of every
+  repository is checked against GitHub's push record rather than commit dates,
+  which the campaign backdates. Each repository can then be restored to its
+  last clean pushed state, erased from history, cleaned with a new commit or
+  archived, each shown as a dry run first.
+- **Signed, attested downloads** for five systems, plus Homebrew and Scoop.
+
+## Breaking changes
+
+- **The 1.x shell scripts are gone:** `polinrider.sh`, the
+  `github-account-recovery/` and `github-org-recovery/` folders and
+  `machine-cleanup/`. Download the binary for your system instead of cloning
+  the repository.
+- `--state` and `--resume` are removed: 2.0 does not checkpoint a scan. Both
+  are still recognised, and say so, rather than being reported as unknown.
+- The exit codes are unchanged: `0` clean, `1` review, `2` compromised, `3`
+  could not run.
+
+The CI scanner, `ci/scan-workspace.sh`, is still shell and works as before.
+
+## Download
+
+<Downloads version="2.0.0" />
+
+[Verify what you downloaded](/polinrider-cleaner/reference/verifying/) before
+you run it.

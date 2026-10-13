@@ -1,0 +1,59 @@
+---
+title: polinrider-cleaner 2.1.0
+description: Finds loaders written in escape codes, checks Python startup files and npm's own files, reads package names from lockfiles, and adds a Windows zip and .deb packages.
+version: "2.1.0"
+slug: releases/v2.1.0
+date: "2026-10-12"
+---
+
+import Downloads from '../../../components/Downloads.astro';
+
+Released 12 October 2026. No breaking changes.
+
+## New
+
+- **Loaders written in escape codes are found.** The
+  [5 October review](/polinrider-cleaner/indicator-reviews/2026-10-05/) found
+  that 18 of 35 confirmed infected repositories carry a loader spelled entirely
+  in `\u` escapes, which 2.0.0 reported as clean. Files are now also matched
+  once decoded, on this computer, in folders and on GitHub.
+- **Two new places the campaign can persist are checked:** Python startup
+  files (`.pth`) in `site-packages`, and npm's own program files, plus the two
+  `~/.npmrc` settings that make npm run code (`onload-script` and
+  `node-options` with a preload).
+- **New downloads:** a Windows `.zip`, and `.deb` packages for Debian and
+  Ubuntu on x86_64 and arm64.
+- **12 more indicators**, from the
+  [12 October review](/polinrider-cleaner/indicator-reviews/2026-10-12/).
+
+## Changed
+
+- **Package names are read from manifests and compared whole.**
+  `package.json` and the npm, yarn and pnpm lockfiles are read for the
+  packages they install. A campaign name inside a longer package name, or in a
+  description, is no longer reported, so you may see fewer package findings
+  than with 2.0.0. A manifest that cannot be read is still matched as text,
+  with a review line that says so.
+- A payload found only once its escape codes are decoded is reported but not
+  cut out of a build config by `clean`, because it cannot be located byte for
+  byte. The finding says so.
+- Homebrew and Scoop are now updated automatically after each release.
+
+## Breaking changes
+
+None. Exit codes, commands and flags are as in 2.0.0.
+
+## Download
+
+<Downloads version="2.1.0" packages />
+
+Or through a package manager:
+
+```bash
+brew install meSingh/tap/polinrider-cleaner
+scoop bucket add mesingh https://github.com/meSingh/scoop-bucket
+scoop install polinrider-cleaner
+```
+
+[Verify what you downloaded](/polinrider-cleaner/reference/verifying/) before
+you run it.

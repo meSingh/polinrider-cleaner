@@ -1,0 +1,67 @@
+---
+// The list on the Releases page, built from the release pages themselves so
+// a new release only needs its own page. Each page carries `version`, `date`
+// and `description` in its frontmatter; newest first.
+const pages = import.meta.glob('../content/docs/releases/v*.{md,mdx}', { eager: true }) as Record<
+  string,
+  { frontmatter: { version: string; date: string; description: string; breaking?: string } }
+>;
+
+const parts = (v: string) => v.split('.').map(Number);
+const newerFirst = (a: string, b: string) => {
+  const [x, y] = [parts(a), parts(b)];
+  for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return y[i] - x[i];
+  return 0;
+};
+
+const releases = Object.values(pages)
+  // YAML reads an unquoted date as a Date; accept either.
+  .map((p) => ({
+    ...p.frontmatter,
+    version: String(p.frontmatter.version),
+    date: typeof p.frontmatter.date === 'string'
+      ? p.frontmatter.date
+      : new Date(p.frontmatter.date).toISOString().slice(0, 10),
+  }))
+  .sort((a, b) => newerFirst(a.version, b.version));
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const long = (iso: string) =>
+  new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-GB', {
+    day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC',
+  });
+---
+
+<ul class="release-list">
+  {releases.map((r, i) => (
+    <li>
+      <a href={`${base}/releases/v${r.version}/`}>
+        <span class="version">{r.version}</span>
+        {i === 0 && <span class="latest">latest</span>}
+        <time datetime={r.date}>{long(r.date)}</time>
+      </a>
+      <p>{r.description}</p>
+      {r.breaking && <p class="breaking"><strong>Breaking:</strong> {r.breaking}</p>}
+    </li>
+  ))}
+</ul>
+
+<style>
+  .release-list { list-style: none; padding: 0; margin: 1.5rem 0 0; display: grid; gap: 1rem; }
+  .release-list li {
+    margin: 0; padding: 1rem 1.25rem; border: 1px solid var(--border, var(--gray-6));
+    border-radius: var(--radius, 0.75rem); background: var(--gray-7);
+  }
+  .release-list a {
+    display: flex; align-items: baseline; gap: 0.75rem; flex-wrap: wrap;
+    text-decoration: none; color: var(--foreground);
+  }
+  .release-list .version { font-size: 1.25rem; font-weight: 600; }
+  .release-list .latest {
+    font-size: 0.75rem; padding: 0.1rem 0.5rem; border-radius: 999px;
+    background: var(--accent-low); color: var(--accent); font-weight: 600;
+  }
+  .release-list time { color: var(--muted-foreground); font-size: 0.875rem; }
+  .release-list p { margin: 0.5rem 0 0; color: var(--gray-2); }
+  .release-list .breaking { color: var(--orange); }
+</style>
