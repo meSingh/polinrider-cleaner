@@ -36,8 +36,8 @@ is read for the packages it installs, so a description that mentions a name is
 not a dependency on it. Anywhere else a name counts only where it stands on its
 own, so `sass-format` is not found inside `sass-formatter`. See
 [ADR-0041](../docs/adr/0041-package-names-are-read-from-manifests-and-compared-whole.md).
-`ci/scan-workspace.sh` is still shell and still matches names as fixed strings,
-so a name that is the start of a live package will be reported there.
+`ci/scan-workspace.sh` compares names the same way (it reads `package.json` and
+`package-lock.json` with `jq`, and matches them as text where `jq` is missing).
 
 `implant-names.txt` is matched against the **process name only**, never the full
 command line. Matching a command line would report this scanner, and anyone

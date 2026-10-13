@@ -247,9 +247,10 @@ and offers only what applies.
 
 That vendors a scanner and the indicator set into `.github/polinrider/` in your
 repository, so the scan runs from code you control, with no marketplace action
-fetched on every push. It commits nothing; review, then commit. In 2.0.0 this
-CI scanner is still the shell scanner from 1.x, which also scans every ref of
-the history. See [`ci/README.md`](ci/README.md).
+fetched on every push. It commits nothing; review, then commit. The CI scanner
+is shell, scans every ref of the history, and reads escape codes and package
+names the way the binary does. If you vendored it from 2.1.0 or earlier, re-run
+the installer with `--force`. See [`ci/README.md`](ci/README.md).
 
 <details>
 <summary><strong>Organization and machine hardening</strong></summary>

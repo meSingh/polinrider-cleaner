@@ -62,7 +62,7 @@ Files:
   .github/polinrider/ioc/strong.txt                    indicator data
   .github/polinrider/ioc/weak.txt                      indicator data
 
-Total: 10 files, about 17 KB. No dependencies are added.
+Total: 10 files, about 64 KB. No dependencies are added.
 ```
 
 Then run it for real:
@@ -78,12 +78,12 @@ Then run it for real:
 ├── workflows/
 │   └── polinrider-scan.yml      the workflow. Reads nothing from outside your repo
 └── polinrider/
-    ├── scan-workspace.sh        the scanner, ~200 lines of shell you can read
+    ├── scan-workspace.sh        the scanner, ~600 lines of shell you can read
     └── ioc/
         └── *.txt                the indicator set, plain text, one entry per line
 ```
 
-Ten files, about 17 KB. **No dependency is added to your project.** Nothing is
+Ten files, about 64 KB. **No dependency is added to your project.** Nothing is
 downloaded at scan time. No `package.json`, lockfile, submodule or container
 image is touched. If you delete `.github/polinrider/` and the workflow file, the
 installation is completely gone.
@@ -135,6 +135,13 @@ installer against each repo that has the vendored copy:
 ./install-workflow.sh /path/to/your/repo --force
 ```
 
+> [!IMPORTANT]
+> **Vendored a copy from 2.1.0 or earlier? Update it.** Those copies match
+> package names as plain substrings and do not decode escape codes, so they
+> miss the loader family written in `\uXXXX` escapes and report a project that
+> depends on a longer package (`sass-formatter` for `sass-format`) as infected.
+> Re-run the installer with `--force` as above.
+
 ### Removing it
 
 ```bash
@@ -156,6 +163,57 @@ for a payload to find.
 
 Findings appear as GitHub annotations on the run. `INFECTED` fails the job;
 `review` does not.
+
+---
+
+## What it checks
+
+In the working tree, and with `--all-refs` in every branch and tag:
+
+- **`strong.txt`**, as fixed strings.
+- **The same indicators written in escape codes.** Files holding `\uXXXX`,
+  `\u{...}` or `\xNN` are decoded and matched again, because one loader family
+  is written entirely in them
+  ([ADR-0040](../docs/adr/0040-indicators-are-matched-through-escape-codes-as-well.md)).
+  Only files with an escape are read twice. In history each file version is
+  decoded once, however many refs carry it.
+- **Campaign package names, compared whole**
+  ([ADR-0041](../docs/adr/0041-package-names-are-read-from-manifests-and-compared-whole.md)).
+  `package.json`, `package-lock.json`, `yarn.lock` and `pnpm-lock.yaml` are read
+  for the packages they install, so a name in a description is not a
+  dependency. Anywhere else a name counts only where it stands on its own, so
+  `sass-format` is not found in `sass-formatter` or under `@other/`. A manifest
+  that cannot be read is matched as text and gets a review line saying so.
+- In the working tree only: `weak.txt` (review), indicator filenames, a
+  `tasks.json` that runs on folder open, fonts that are not fonts, and build
+  configs with a payload after the module end.
+
+The lines the two newer checks print:
+
+```
+INFECTED  path/postcss.config.mjs: contains an indicator once its escape codes are decoded
+INFECTED  path/yarn.lock: known-bad package referenced: <name>
+review    path/package.json: could not be read as a manifest, so package names were matched as text
+```
+
+### What it needs
+
+bash 3.2 or later, git and standard POSIX tools. Two more are used where they
+are installed. GitHub's hosted runners carry both, and perl also ships with
+macOS and Git for Windows:
+
+| Tool | Used for | Without it |
+|---|---|---|
+| `perl` | decoding escape codes (core perl only, no modules) | not decoded, and a review line counts the files that were not: `N files hold escape codes and were not decoded because perl is not installed, ...` |
+| `jq` | reading `package.json` and `package-lock.json` | those two are matched as text, as before. A note says so, and any that names a campaign package gets a review line beside the finding |
+
+`yarn.lock` and `pnpm-lock.yaml` are read with awk and need neither.
+
+Where it still differs from the binary: names in an unreadable manifest are
+matched as written, not decoded; `jq` keeps the last of two duplicate keys
+where the binary's parser keeps every one; and the history pass reads only
+files that contain a campaign name, so an unreadable manifest that names none
+is reported in the working tree but not in history.
 
 ---
 
@@ -214,4 +272,6 @@ you trust the change:
 
 It plants one artifact of each class in a synthetic repository, asserts all of
 them are found, then asserts a clean control with the four known false-positive
-shapes produces no findings at all.
+shapes produces no findings at all. It then runs the escape-code and
+package-name cases of the conformance corpus against the shell scanner, with
+and without `perl` and `jq`, and an escaped payload left only on an older ref.

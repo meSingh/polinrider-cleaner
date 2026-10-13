@@ -275,6 +275,13 @@ it, must run on bash 3.2, which is what macOS ships. No `mapfile`, no
 associative arrays, no `${var,,}`. Guard array expansion under `set -u` with
 `${arr[@]+"${arr[@]}"}`.
 
+It answers to the same rules as the binary for escape codes (ADR-0040) and
+whole package names (ADR-0041), and `ci/selftest.sh` mirrors the corpus cases
+for both. It may use `perl` (core only, no modules) and `jq` where they are
+installed, never require them: a missing one is a line in the output, a review
+when it leaves something unread, and never a silent pass. `POLINRIDER_PERL`
+and `POLINRIDER_JQ` exist so the self-test can take each away.
+
 ### Gotchas, each of which cost real time
 
 **Linux cuts a process name to 15 bytes.** `ps -o comm=` shows
