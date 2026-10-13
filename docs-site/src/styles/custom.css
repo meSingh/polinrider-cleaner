@@ -93,3 +93,19 @@ code.ok     { color: var(--green);  font-weight: 600; }
   margin-top: 0;
 }
 .container-section .sl-markdown-content img { border-radius: var(--radius); }
+
+/* The current page in the sidebar. The theme fills it with the accent, which
+ * on this palette is a bright cyan that its own text cannot be read against.
+ * A dark tint of the same cyan with light text keeps it obvious and legible,
+ * and a bar on the left marks it without relying on colour alone. */
+:root .entry-link[aria-current='page'] .entry-link-inner {
+  background-color: var(--accent-low);
+  color: var(--accent-high);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+/* Badges in the sidebar ("latest") use the accent rather than the theme's
+ * fixed lime, which matched nothing else on the site. */
+:root .entry-badge {
+  background-color: var(--accent);
+  color: var(--background);
+}
