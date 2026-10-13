@@ -1,0 +1,41 @@
+---
+// The download table on a release page. Every link points at an asset of that
+// GitHub release, so the names here must match what release.yml publishes.
+// `packages` is true from 2.1.0, the first release with the Windows zip and
+// the .deb files.
+interface Props { version: string; packages?: boolean }
+const { version, packages = false } = Astro.props;
+const tag = `v${version}`;
+const dl = (file: string) =>
+  `https://github.com/meSingh/polinrider-cleaner/releases/download/${tag}/polinrider-${tag}-${file}`;
+
+const rows: [string, [string, string][]][] = [
+  ['macOS, Apple silicon', [['.tar.gz', dl('macos-arm64.tar.gz')]]],
+  ['macOS, Intel', [['.tar.gz', dl('macos-x86_64.tar.gz')]]],
+  ['Linux, x86_64', [['.tar.gz', dl('linux-x86_64.tar.gz')], ...(packages ? [['.deb (Debian, Ubuntu)', dl('linux-x86_64.deb')] as [string, string]] : [])]],
+  ['Linux, arm64', [['.tar.gz', dl('linux-arm64.tar.gz')], ...(packages ? [['.deb (Debian, Ubuntu)', dl('linux-arm64.deb')] as [string, string]] : [])]],
+  ['Windows, x86_64', [...(packages ? [['.zip', dl('windows-x86_64.zip')] as [string, string]] : []), ['.tar.gz', dl('windows-x86_64.tar.gz')]]],
+];
+const release = `https://github.com/meSingh/polinrider-cleaner/releases/tag/${tag}`;
+const sums = `https://github.com/meSingh/polinrider-cleaner/releases/download/${tag}/SHA256SUMS`;
+---
+
+<table class="downloads">
+  <thead><tr><th>System</th><th>Download</th></tr></thead>
+  <tbody>
+    {rows.map(([system, files]) => (
+      <tr>
+        <td>{system}</td>
+        <td>{files.map(([label, href], i) => (<>{i > 0 && ' · '}<a href={href}>{label}</a></>))}</td>
+      </tr>
+    ))}
+  </tbody>
+</table>
+
+<p class="download-extras">
+  <a href={sums}>SHA256SUMS</a> · <a href={release}>All files, the source archive and the provenance bundle on GitHub</a>
+</p>
+
+<style>
+  .download-extras { font-size: 0.875rem; color: var(--muted-foreground); }
+</style>

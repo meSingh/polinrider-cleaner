@@ -22,8 +22,28 @@ const long = (iso: string) =>
 ---
 
 <p class="last-updated">
-  <span>Last updated <time datetime={updated}>{long(updated)}</time></span>
+  <span>Last updated <time datetime={updated}>{long(updated)}</time><span class="ago" data-since={updated}></span></span>
 </p>
+
+<script>
+  // How long ago, worked out in the reader's browser: the page is built once,
+  // so a count baked in at build time would only ever say "today". Without
+  // JavaScript the date alone is shown.
+  for (const el of document.querySelectorAll<HTMLElement>('.last-updated .ago')) {
+    const since = Date.parse(`${el.dataset.since}T00:00:00Z`);
+    if (Number.isNaN(since)) continue;
+    const now = new Date();
+    const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+    const days = Math.max(0, Math.round((today - since) / 86_400_000));
+    const words =
+      days === 0 ? 'today'
+      : days === 1 ? 'yesterday'
+      : days < 60 ? `${days} days ago`
+      : days < 730 ? `${Math.round(days / 30)} months ago`
+      : `${Math.round(days / 365)} years ago`;
+    el.textContent = ` (${words})`;
+  }
+</script>
 
 <style>
   .last-updated {

@@ -369,6 +369,16 @@ refuses a tag that does not match `Cargo.toml`. Check with:
 grep -n '^version' Cargo.toml; grep -n 'v[0-9]\+\.[0-9]\+\.[0-9]\+' README.md
 ```
 
+**1a. Write the release page, in the same pull request.** Copy
+`docs-site/release-page-template.mdx` to
+`docs-site/src/content/docs/releases/vX.Y.Z.mdx` and fill it in: what is new,
+what changed, and breaking changes (say "None" when there are none). Quote
+`version` and `date` in the frontmatter and keep `slug: releases/vX.Y.Z`, or
+the dots are dropped from the URL. The Releases page lists it by itself, and
+the download links point at the assets the tag will publish. Write it for
+someone running the tool, not for a reviewer of the code; the tag message
+below can reuse it.
+
 **2. Merge everything first.** `main` is protected: no direct pushes, required
 checks, and the rule applies to admins. Every change goes through a pull
 request.

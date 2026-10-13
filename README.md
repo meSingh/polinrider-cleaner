@@ -79,6 +79,9 @@ sudo apt install ./polinrider-vX.Y.Z-linux-x86_64.deb
 
 A winget package is being prepared and is not in the winget repository yet.
 
+Every release since 2.0, with what it changes and downloads for each system, is on the
+[Releases page](https://mesingh.github.io/polinrider-cleaner/releases/).
+
 1.x, the shell tool, is frozen and still available from
 [v1.0.9](https://github.com/meSingh/polinrider-cleaner/releases/tag/v1.0.9).
 

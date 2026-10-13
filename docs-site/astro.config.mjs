@@ -33,6 +33,7 @@ export default defineConfig({
           navLinks: [
             { label: 'Quick start', link: '/quick-start/' },
             { label: 'The campaign', link: '/campaign/what-it-is/' },
+            { label: 'Releases', link: '/releases/' },
           ],
         }),
       ],
@@ -71,11 +72,10 @@ export default defineConfig({
             { label: 'Every future push', link: '/guides/ci/' },
           ],
         },
-        {
-          label: 'Indicator reviews',
-          collapsed: true,
-          items: [{ autogenerate: { directory: 'indicator-reviews' } }],
-        },
+        // Two growing lists, each with its own index page rather than a
+        // sidebar group that would grow by one entry a week.
+        { label: 'Indicator reviews', link: '/indicator-reviews/' },
+        { label: 'Releases', link: '/releases/' },
         {
           label: 'Reference',
           items: [
