@@ -43,7 +43,7 @@ Newest first.
 | [socket.dev tracker](https://socket.dev/supply-chain-attacks/polinrider) | current package counts | no, and it refuses automated fetches regardless |
 | [safedep.io](https://safedep.io/) | the second team publishing primary teardowns of this campaign. Its article pages embed the indicator table verbatim in a `data-csv` attribute, which is a better source than the rendered HTML | yes, since first tested 2026-10-05. Needs `curl -L`: the un-slashed URL returns 308 |
 | [OpenSSF `malicious-packages`](https://github.com/ossf/malicious-packages) | the machine-readable malicious-package database. Searching it for indicators already in `ioc/` finds the registry side of the campaign | yes, by git clone. Expect ~2 GB checked out, and do **not** use `--filter=blob:none` |
-| [registry.npmjs.org](https://registry.npmjs.org/) and [pypi.org](https://pypi.org/) | not sources of indicators — the way to check one. A name going into `bad-packages.txt` must not be a substring of a live package, and these answer that mechanically | yes, since first tested 2026-10-05, including the full `pypi.org/simple/` index |
+| [registry.npmjs.org](https://registry.npmjs.org/) and [pypi.org](https://pypi.org/) | not sources of indicators — the way to check one. A name going into `bad-packages.txt` must not itself be the name of a live legitimate package, and these answer that mechanically | yes, since first tested 2026-10-05, including the full `pypi.org/simple/` index |
 
 The blocked hosts are a property of the sandbox the weekly job runs in, not of
 the sources. Their content still reaches a review through search summaries,
@@ -77,6 +77,30 @@ choose `weak.txt`.
 
 Nothing is ever invented. Every indicator traces to a named public source that
 the reviewer actually read.
+
+### Package names, since 2.1.0
+
+The binary reads manifests and lockfiles for the packages they install and
+compares names whole ([ADR-0041](https://github.com/meSingh/polinrider-cleaner/blob/main/docs/adr/0041-package-names-are-read-from-manifests-and-compared-whole.md)).
+Outside a manifest a name counts only where it stands on its own. So the rule
+for `bad-packages.txt` changes:
+
+- **Add** a name a public source ties to the campaign, unless it is itself the
+  name of a live legitimate package. A registry that only serves the
+  `0.0.1-security` placeholder for it means npm took it down: that is the
+  attacker's name, and it goes in.
+- **Being a substring of a longer live package is no longer a reason to
+  reject.** `sass-format` is not found inside `sass-formatter` any more.
+- **Ordinary words still belong in `weak.txt`.** A name like `hex-type` can
+  stand on its own in prose or a stylesheet, where it would be a confirmed hit.
+  Whole-name matching does not change that.
+
+The eight names rejected on 2026-09-14 and 2026-10-05 as substrings of live
+packages (`sass-format`, `typeorm-encrypt`, `clsx-tailwind`, `tailwind-anim`,
+`tailwindcss-anim`, `tailwind-container-queries`, `webdev-conf`,
+`tailwindcss-form`) are open again. The next review should re-check each
+against its source and the registry under this rule, and record the outcome.
+Earlier entries stay as they were written.
 
 ## Adding an entry
 
