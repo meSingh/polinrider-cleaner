@@ -94,3 +94,6 @@ docs-site/book/
 
 # Rust build output
 /target/
+
+# Temporary git worktrees Claude Code creates for background agents.
+.claude/worktrees/

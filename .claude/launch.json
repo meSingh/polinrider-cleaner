@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "docs-site",
+      "runtimeExecutable": "./ci/docs-serve.sh",
+      "runtimeArgs": ["4321"],
+      "port": 4321
+    }
+  ]
+}
