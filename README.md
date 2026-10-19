@@ -381,14 +381,13 @@ weeks that found nothing. Each review keeps its own dated entry, and entries are
 never edited or removed:
 [the indicator reviews](https://mesingh.github.io/polinrider-cleaner/indicator-reviews/).
 
-**Last reviewed: [12 October 2026](https://mesingh.github.io/polinrider-cleaner/indicator-reviews/2026-10-12/).**
+**Last reviewed: [19 October 2026](https://mesingh.github.io/polinrider-cleaner/indicator-reviews/2026-10-19/).**
 
-Twelve indicators added from the OpenSSF malicious-packages database: nine
-package names that install the campaign's `MicrosoftSystem64` implant or are
-named as PolinRider, one more at review tier, a C2 address and the implant's
-Windows launcher. No new primary analysis was found, and most sources could
-not be reached from the review environment this week.
+Twelve indicators added: the eight package names earlier reviews turned away as
+substrings of live packages, now safe to carry since 2.1.0 compares names whole,
+two more `MicrosoftSystem64` dropper packages and the agent's renamed macOS
+LaunchAgent. A GhostAction copycat of the fake-font launcher was found and is
+already flagged by an existing indicator; its own indicators were not added.
 
-The review also found that the folder and machine checks have never read
-`weak.txt`; review-tier indicators reach only the CI scanner and the GitHub
-checks. Read the entry before relying on a review line from a local scan.
+The folder and machine checks still do not read `weak.txt`; review-tier
+indicators reach only the CI scanner and the GitHub checks.
