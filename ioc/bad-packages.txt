@@ -37,7 +37,8 @@ node-env-resolve
 #   Sources: OpenSourceMalware, "NPM Isn't Prepared For North Korean
 #   PolinRider Attack", August 2026; JFrog Security Research, June 2026.
 #     fetch-page-assets            1.2.9 through 1.2.16
-#     html-to-gutenberg            4.2.11 through 4.2.22
+#     html-to-gutenberg            4.2.11 through 4.2.22, and 4.2.24 through
+#                                  4.2.26 (see below)
 #     @lambda-platform/lambda-vue  3.3.24 (pulled from npm; the GitHub
 #                                  repository that builds it is still infected)
 #   Both version ranges above are wider than the August source reported, and
@@ -47,6 +48,15 @@ node-env-resolve
 #   the OpenSSF malicious-packages records MAL-2026-6358 and MAL-2026-6359,
 #   which list every affected version; the dist-tags were read from
 #   registry.npmjs.org the same day.
+#   html-to-gutenberg was published to again after that: 4.2.24 on 2026-10-11,
+#   and 4.2.25 and 4.2.26 on 2026-10-17, by the same publisher account
+#   (digelim). The same OpenSSF record took all three in on 2026-10-19 from
+#   GHSA-2gqj-wrf5-35w8; its Amazon Inspector section describes the payload as
+#   the fa-solid-500.woff2 folderOpen loader reading the 0xa322 wallet. npm has
+#   removed them and `latest` is still 4.2.10 on 2026-10-21. The account or its
+#   release automation is still in the attacker's hands: treat any version
+#   above 4.2.10 as malicious, including ones not listed here.
+#   See docs-site/src/content/docs/indicator-reviews/2026-10-21.md.
 #
 #   Packagist packages compromised through their backing GitHub repositories in
 #   the July 2026 expansion. Packagist resolves from the git repo, so the tagged
@@ -297,3 +307,15 @@ tailwindcss-form
 # Inspector), June 2026. See docs-site/src/content/docs/indicator-reviews/2026-10-19.md.
 pino-ulid
 redis-type-xyz
+
+# --- two more toskypi-authored MicrosoftSystem64 droppers, named by Microsoft
+# Threat Intelligence. Same author as eo-terminal and logger-draft above, and
+# the same RAT. Both names were created on 2026-06-01 with 3.2.0 as their first
+# version and have no earlier history, so they are attacker-owned rather than
+# hijacked despite the source's word "compromised"; both are the 0.0.1-security
+# placeholder on registry.npmjs.org on 2026-10-21. logger-active, from the same
+# post, is in weak.txt instead: it reads as an ordinary UI state or class name.
+# Source: Microsoft Threat Intelligence (@MsftSecIntel), post of 2026-06-03,
+# <https://x.com/MsftSecIntel/status/2062013269687054695>.
+# See docs-site/src/content/docs/indicator-reviews/2026-10-21.md.
+utils-terminal
