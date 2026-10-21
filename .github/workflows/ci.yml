@@ -1,7 +1,10 @@
 name: CI
 
 on:
+  # A pull request runs the checks once, as the pull_request event. Pushes
+  # to any other branch would run them a second time on the same commit.
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 

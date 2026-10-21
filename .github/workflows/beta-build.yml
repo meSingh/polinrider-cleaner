@@ -13,7 +13,7 @@ name: Every platform
 
 on:
   push:
-    branches: [main, v2]
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
