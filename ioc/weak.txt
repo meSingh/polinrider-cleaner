@@ -105,3 +105,15 @@ files.catbox.moe
 # Source: OpenSSF malicious-packages MAL-2026-5538 (Amazon Inspector), June 2026.
 # See docs-site/src/content/docs/indicator-reviews/2026-10-12.md.
 hex-type
+
+# A toskypi-authored MicrosoftSystem64 dropper, attacker-owned (npm holds only
+# the 0.0.1-security placeholder; every version was published between
+# 2026-06-01 and 2026-06-03). It would belong in bad-packages.txt beside
+# utils-terminal, from the same source, except that `logger-active` is an
+# ordinary state or class name a UI project could use as a whole word -- in a
+# className string, say -- where bad-packages.txt would call it a confirmed hit.
+# Review tier, for the same reason as hex-type above.
+# Source: Microsoft Threat Intelligence (@MsftSecIntel), post of 2026-06-03,
+# <https://x.com/MsftSecIntel/status/2062013269687054695>.
+# See docs-site/src/content/docs/indicator-reviews/2026-10-21.md.
+logger-active

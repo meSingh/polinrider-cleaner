@@ -381,13 +381,13 @@ weeks that found nothing. Each review keeps its own dated entry, and entries are
 never edited or removed:
 [the indicator reviews](https://mesingh.github.io/polinrider-cleaner/indicator-reviews/).
 
-**Last reviewed: [19 October 2026](https://mesingh.github.io/polinrider-cleaner/indicator-reviews/2026-10-19/).**
+**Last reviewed: [21 October 2026](https://mesingh.github.io/polinrider-cleaner/indicator-reviews/2026-10-21/).**
 
-Twelve indicators added: the eight package names earlier reviews turned away as
-substrings of live packages, now safe to carry since 2.1.0 compares names whole,
-two more `MicrosoftSystem64` dropper packages and the agent's renamed macOS
-LaunchAgent. A GhostAction copycat of the fake-font launcher was found and is
-already flagged by an existing indicator; its own indicators were not added.
+Two indicators added for June droppers of the campaign's `MicrosoftSystem64`
+implant, named by Microsoft Threat Intelligence. The hijacked `html-to-gutenberg`
+package was poisoned again as recently as 17 October: do not install any version
+above 4.2.10.
 
 The folder and machine checks still do not read `weak.txt`; review-tier
-indicators reach only the CI scanner and the GitHub checks.
+indicators reach only the CI scanner and the GitHub checks. Read the entry before
+relying on a review line from a local scan.
