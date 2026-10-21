@@ -41,3 +41,14 @@
 # Source: SafeDep, "PolinRider Switches to Ethereum C2 in 30+ Repositories",
 # September 2026.
 %LOCALAPPDATA%\Temp\tmp7A863DD1.tmp
+
+# --- the same agent under a new name. The pino-ulid dropper installs the
+# MicrosoftSystem64 agent's persistence as `pkg-agent`. Only the LaunchAgent is
+# carried: com.launchkeeper is the campaign's own reverse-DNS prefix, already in
+# the MicrosoftSystem64 plist above. ~/.config/systemd/user/pkg-agent.service and
+# ~/.config/autostart/pkg-agent.desktop are deliberately absent -- `pkg-agent`
+# is a name a legitimate tool could use, and this file is INFECTED tier.
+# Source: OpenSSF malicious-packages MAL-2026-16154 (`pino-ulid`; Amazon
+# Inspector, SafeDep), September 2026.
+# See docs-site/src/content/docs/indicator-reviews/2026-10-19.md.
+~/Library/LaunchAgents/com.launchkeeper.pkg-agent.plist

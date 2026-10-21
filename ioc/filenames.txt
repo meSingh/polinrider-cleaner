@@ -44,3 +44,8 @@
 # Source: OpenSSF malicious-packages MAL-2026-5341 (`void-ulid`; Amazon
 # Inspector), June 2026. See docs-site/src/content/docs/indicator-reviews/2026-10-12.md.
 (^|/)MicrosoftSystem64\.vbs$
+# The same LaunchAgent under the agent's new name, `pkg-agent`, from the
+# pino-ulid dropper. The com.launchkeeper prefix is what makes it INFECTED tier.
+# Source: OpenSSF malicious-packages MAL-2026-16154 (`pino-ulid`; Amazon
+# Inspector, SafeDep), September 2026. See docs-site/src/content/docs/indicator-reviews/2026-10-19.md.
+(^|/)com\.launchkeeper\.pkg-agent\.plist$

@@ -26,6 +26,7 @@ Newest first.
 
 | Date | Outcome | What it found |
 |---|---|---|
+| [2026-10-19](/polinrider-cleaner/indicator-reviews/2026-10-19/) | 12 indicators added | Every analysis host but socket.dev is reachable again. The eight names rejected as substrings of live packages were re-checked under 2.1.0's whole-name rule and all added. Searching the OpenSSF database for last week's C2 found two more of the ULID dropper family, one still live on npm, and the agent renamed to `pkg-agent`. OpenSourceMalware found a GhostAction copycat reusing the fake-font launcher with no shared indicators: not added, but the existing `fa-solid-400.woff2` entry already flags it |
 | [2026-10-12](/polinrider-cleaner/indicator-reviews/2026-10-12/) | 12 indicators added | The sandbox lost every analysis host except GitHub and the registries, so this is a weaker review than the last three. A wider search of the OpenSSF database found ten April–July package names the previous search shape missed: two named as PolinRider, eight installing the `MicrosoftSystem64` second stage. Nine to `bad-packages.txt`, one to `weak.txt`, plus a C2 address and the implant's `.vbs` launcher. Also found that the local check has never read `weak.txt` |
 | [2026-10-05](/polinrider-cleaner/indicator-reviews/2026-10-05/) | 83 indicators added | A second analyst team decoded the Ethereum dead drop end to end: two operator wallets, eleven C2 servers, 35 live repositories. It also showed that the `0xa322` wallet address in `strong.txt` has been in the wrong case since it was added, and settled the XOR-key boundary the 2026-09-28 entry could not. 55 package names lifted from the OpenSSF malicious-packages database, which turns out to be readable from here, five rejected as substrings of live packages. First current-variant font indicator. Two self-tests that failed for four weeks now pass |
 | [2026-09-28](/polinrider-cleaner/indicator-reviews/2026-09-28/) | 11 indicators added | The campaign is A/B testing three fake-font variants at once. Added the single-quoted `A8` marker, two XOR keys, the `.gitignore` machine fingerprint and `allowAutomaticTasks`. Reversed last week's rejection of the C2 paths: this build leaves them in plain text. The font indicators are a variant behind and cannot catch up as fixed strings. |
@@ -101,6 +102,10 @@ packages (`sass-format`, `typeorm-encrypt`, `clsx-tailwind`, `tailwind-anim`,
 `tailwindcss-form`) are open again. The next review should re-check each
 against its source and the registry under this rule, and record the outcome.
 Earlier entries stay as they were written.
+
+The [2026-10-19](/polinrider-cleaner/indicator-reviews/2026-10-19/) review did
+that: all eight are attacker-owned, none is a live legitimate package, and all
+eight are now in `bad-packages.txt`.
 
 ## Adding an entry
 

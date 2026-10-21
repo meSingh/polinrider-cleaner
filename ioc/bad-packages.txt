@@ -82,8 +82,10 @@ rate-limits-flexible
 @vite-ln/build-ts
 @uw010010/vite-tree
 #
-# Three names from those same two tables are deliberately NOT here. Each is a
-# strict substring of a legitimate, live package, and this file is matched with
+# Three names from those same two tables were deliberately left out until
+# 2026-10-19, when 2.1.0's whole-name matching (ADR-0041) removed the reason:
+# all three are now in the block at the end of this file. The original reasoning, kept for the record -- each is a
+# strict substring of a legitimate, live package, and this file was matched with
 # grep -F, so carrying them would report every project that depends on the real
 # one as INFECTED:
 #   sass-format     is inside  sass-formatter       (43 versions, maintained)
@@ -185,10 +187,12 @@ uibabai
 pybitjs
 pyservercheck
 #
-# Five names from the same 71 records are deliberately NOT above. Each is a
-# strict substring of a live, maintained package, and this file is matched with
-# grep -F, so carrying one would report every project that depends on the real
-# package as INFECTED. The real packages were fetched from the registry to
+# Five names from the same 71 records were deliberately left out until
+# 2026-10-19, when whole-name matching removed the reason; all five are now in
+# the block at the end of this file. The original reasoning, kept for the
+# record -- each is a strict substring of a live, maintained package, and this
+# file was matched with grep -F, so carrying one would report every project
+# that depends on the real package as INFECTED. The real packages were fetched from the registry to
 # confirm they are live and maintained, not placeholders:
 #   tailwind-anim               is inside  tailwind-animate (19 versions, live)
 #                                     and  tailwind-animations
@@ -250,3 +254,46 @@ void-ulid
 index-ulid
 check-ulid
 ulid-xyz
+
+# --- the substring rejections, reopened. 2.1.0 reads manifests for the names
+# they install and compares a name whole everywhere else (ADR-0041), so
+# `tailwind-anim` is no longer found inside `tailwind-animate`. Each name below
+# was re-checked against its source and against registry.npmjs.org on
+# 2026-10-19: every one is either the 0.0.1-security placeholder or fully
+# unpublished, so npm treats each as wholly malicious and none is the name of a
+# live legitimate package.
+#
+# sass-format was weighed for weak.txt, because it is also a conceivable task
+# label and a tasks.json is matched as content. It is here instead: weak.txt is
+# a substring match, so it would put a review line on every project that
+# installs sass-formatter (about 750,000 downloads a week), which is the noise
+# whole-name matching exists to remove.
+# Sources: OpenSourceMalware, "ChainVeil and ViteVenom are DPRK's PolinRider
+# Campaign", July 2026 (sass-format, typeorm-encrypt, clsx-tailwind); OpenSSF
+# malicious-packages <https://github.com/ossf/malicious-packages> at commit
+# c075548ad9 -- MAL-2026-11500, -11487, -15903, -12005, -16282 (Amazon
+# Inspector, GHSA), August-September 2026.
+# See docs-site/src/content/docs/indicator-reviews/2026-10-19.md.
+sass-format
+typeorm-encrypt
+clsx-tailwind
+tailwind-anim
+tailwindcss-anim
+tailwind-container-queries
+webdev-conf
+tailwindcss-form
+
+# --- two more of the ULID-impersonation MicrosoftSystem64 family, found by
+# searching the OpenSSF database for 95.216.232.162, the C2 added to
+# network.txt on 2026-10-12. pino-ulid carries the same postinstall dropper, the
+# same 8-byte XOR key and the same C2 as ulid-xyz, under a new agent name; it is
+# fully unpublished. redis-type-xyz is an empty copy of Redis OM whose only
+# effect is to depend on ulid-xyz. It is STILL LIVE on npm on 2026-10-19
+# (latest 2.1.1, which depends on ulid-xyz ^3.2.0), but every version comes
+# from one throwaway account (qmtijao982) and the name belongs to no legitimate
+# package, so the name alone is a finding.
+# Sources: OpenSSF malicious-packages MAL-2026-16154 (pino-ulid; Amazon
+# Inspector, SafeDep), September 2026; MAL-2026-11205 (redis-type-xyz; Amazon
+# Inspector), June 2026. See docs-site/src/content/docs/indicator-reviews/2026-10-19.md.
+pino-ulid
+redis-type-xyz
