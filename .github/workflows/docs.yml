@@ -12,7 +12,7 @@ name: Docs
 
 on:
   push:
-    branches: [main, v2]
+    branches: [main]
     paths: ['docs-site/**', 'docs/adr/**', '.github/workflows/docs.yml']
   pull_request:
     paths: ['docs-site/**', 'docs/adr/**', '.github/workflows/docs.yml']
