@@ -54,7 +54,7 @@ jobs:
           # so it never carries a copy of the code.
           if ! write_api "repos/$REPO/git/ref/heads/$BRANCH" >/dev/null 2>&1; then
             readme='# Traffic log\n\nWritten daily by .github/workflows/traffic.yml on main. Data only.\n'
-            tree=$(jq -n --arg c "$(printf "$readme")" \
+            tree=$(jq -n --arg c "$(printf '%b' "$readme")" \
               '{tree: [{path: "README.md", mode: "100644", type: "blob", content: $c}]}' |
               write_api -X POST "repos/$REPO/git/trees" --input - --jq .sha)
             commit=$(jq -n --arg t "$tree" '{message: "Start the traffic log", tree: $t, parents: []}' |
