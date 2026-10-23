@@ -1,12 +1,20 @@
 # The workflows here pin actions/checkout to a commit SHA, which is correct but
 # means the pin never updates on its own. This opens a pull request when a new
 # release exists, so the pin stays current without anyone tracking it by hand.
+#
+# A new release waits seven days before Dependabot proposes it. A compromised
+# release is usually caught and pulled within days, and this project's own
+# subject is a campaign that spreads through exactly that. GitHub applies
+# cooldown to version updates only: security updates, such as the npm pull
+# requests for docs-site/, still arrive at once and are checked by hand.
 version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: monthly
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: ci
     labels:
