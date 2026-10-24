@@ -334,7 +334,7 @@ run_case() {
     line="$(printf '%s\n' "$out" | grep -F "[$level]" | grep -F "$match" || true)"
     if [[ -z "$line" ]]; then
       errs+=("missing [$level] finding matching: $match")
-    elif [[ -n "$fpath" ]] && ! printf '%s\n' "$line" | grep -qF "$fpath"; then
+    elif [[ -n "$fpath" ]] && ! grep -qF "$fpath" <<<"$line"; then
       errs+=("[$level] '$match' did not name the expected path: $fpath")
     fi
   done
@@ -345,7 +345,7 @@ run_case() {
   findings_only="$(printf '%s\n' "$out" | grep -E '\[(HIT|review)\]' || true)"
   while IFS= read -r forbidden; do
     [[ -z "$forbidden" ]] && continue
-    printf '%s\n' "$findings_only" | grep -qF "$forbidden" \
+    grep -qF "$forbidden" <<<"$findings_only" \
       && errs+=("reported as a finding, and must not be: $forbidden")
   done < <(jq -r '.expect.must_not_report[]? // empty' "$cf")
 
@@ -356,15 +356,17 @@ run_case() {
   [[ -f "$tmp/out/report.txt" ]] && everything+="$(cat "$tmp/out/report.txt")"
   while IFS= read -r forbidden; do
     [[ -z "$forbidden" ]] && continue
-    printf '%s\n' "$everything" | grep -qF "$forbidden" \
+    grep -qF "$forbidden" <<<"$everything" \
       && errs+=("printed, and must never be: $forbidden")
   done < <(jq -r '.expect.must_not_print[]? // empty' "$cf")
 
   # strings that must appear somewhere in the output. For advice printed under
-  # a finding, which carries no level tag of its own to match on.
+  # a finding, which carries no level tag of its own to match on. Here-strings,
+  # not a pipe: with pipefail on, a grep -q that stops at its first match can
+  # break printf's pipe, and found would read as not found.
   while IFS= read -r wanted; do
     [[ -z "$wanted" ]] && continue
-    printf '%s\n' "$out" | grep -qF "$wanted" \
+    grep -qF "$wanted" <<<"$out" \
       || errs+=("not printed, and must be: $wanted")
   done < <(jq -r '.expect.must_print[]? // empty' "$cf")
 
