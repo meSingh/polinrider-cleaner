@@ -29,7 +29,7 @@ version=$1 sums=$2 out=$3 date=${4:-$(date -u +%Y-%m-%d)}
 [[ "$date" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || die "RELEASE_DATE must be YYYY-MM-DD, not $date"
 
 id=meSingh.PolinRiderCleaner
-schema=1.10.0
+schema=1.12.0
 repo=https://github.com/meSingh/polinrider-cleaner
 file="polinrider-v${version}-windows-x86_64.zip"
 hash=$(awk -v f="$file" '$2 == f || $2 == "*" f { print $1 }' "$sums")
