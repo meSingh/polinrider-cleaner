@@ -159,7 +159,7 @@ the sandbox and the test harness.
 | `unescape.rs` | Decodes `\uXXXX`, `\u{...}` and `\xNN` so an escaped loader matches. Pure |
 | `checks.rs` | Implants, tasks.json, build configs, fonts, packages, git hooks, extensions, propagation |
 | `scan.rs` | One scan: the walk, every check that applies, and rendering. In the library so a session can run more than one |
-| `guide.rs` | The guided flow. Four screens, one question on each, answered in words. A summary first, the full list on `details`. Every prompt goes through one `Console` trait so a test can drive a session: ADR-0035 |
+| `guide.rs` | The guided flow. Four screens, one question on each, answered in words. A summary first, the full list on `details`. Every prompt goes through one `Console` trait so a test can drive a session: ADR-0035. Step 4 offers the next check, and a session ends on a closing screen: ADR-0044 |
 | `remote.rs` | GitHub through one boundary: `Forge` (`GitHub` through `gh` and `git`, or `Supplied` from a directory of bare repositories). Mirrors into an evidence directory and checks every branch and tag through git plumbing. Also the only four things that change GitHub: `push`, `set_description`, `archive` |
 | `remote_fix.rs` | The four fixes, each as a plan and the function that does it: `restore`, `erase`, `remove`, `archive`. Nothing is checked out, every push carries a lease, and GitHub is asked afterwards what it shows. ADR-0037 |
 | `guide_github.rs` | The GitHub screens that read: sign-in help, the organization list, the progress screen, the summary and the last screen. ADR-0036 |
