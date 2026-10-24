@@ -1,4 +1,4 @@
-//! SHA-256, for matching files against the known implant hashes in
+//! SHA-256, for matching files against the known campaign file hashes in
 //! `ioc/hashes.txt`.
 //!
 //! Written out rather than pulled from a crate. This is the cleanup tool for a
@@ -181,6 +181,13 @@ pub fn hex(digest: &[u8; 32]) -> String {
         s.push_str(&format!("{b:02x}"));
     }
     s
+}
+
+/// Hash bytes already in memory, as lowercase hex.
+pub fn bytes(data: &[u8]) -> String {
+    let mut h = Sha256::new();
+    h.update(data);
+    hex(&h.finish())
 }
 
 /// Hash a file without reading it all into memory.

@@ -1,0 +1,31 @@
+{
+  "why": "A tasks.json is confirmed by its text only when that text carries an indicator; one that just runs something on folder open is review. A published campaign file is confirmed by what it is: a tasks.json whose SHA-256 is in hashes.txt is that file whatever it says. The fixture runs a command that is in no indicator list, so only its hash can confirm it, and a neighbour one byte different stays review. (The tasks.json OpenSourceMalware published also carries a strong.txt string today; its hash is a second, independent reason.) The runner adds the fixture's hash to a copy of ioc/ (ADR-0045).",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/victim/.vscode/tasks.json": "{\"version\":\"2.0.0\",\"tasks\":[{\"label\":\"fonts\",\"type\":\"shell\",\"command\":\"node ./public/fonts/inter.woff2\",\"runOptions\":{\"runOn\":\"folderOpen\"}}]}\n",
+    "code/neighbour/.vscode/tasks.json": "{\"version\":\"2.0.0\",\"tasks\":[{\"label\":\"fonts2\",\"type\":\"shell\",\"command\":\"node ./public/fonts/inter.woff2\",\"runOptions\":{\"runOn\":\"folderOpen\"}}]}\n"
+  },
+  "known_hashes": [
+    {
+      "path": "code/victim/.vscode/tasks.json",
+      "label": "corpus fixture: tasks.json"
+    }
+  ],
+  "expect": {
+    "exit": 2,
+    "findings": [
+      {
+        "level": "HIT",
+        "match": "tasks.json matches a known campaign file (corpus fixture: tasks.json)",
+        "path": "victim/.vscode/tasks.json"
+      },
+      {
+        "level": "review",
+        "match": "runs on folder open",
+        "path": "neighbour/.vscode/tasks.json"
+      }
+    ]
+  }
+}

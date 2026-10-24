@@ -194,7 +194,7 @@ fn machine(
     watch.stage("build configs", v);
     checks::build_configs(w, ind, scope.on_infected_config, v, sink);
     watch.stage("fonts", v);
-    checks::fonts(w, v, sink);
+    checks::fonts(w, ind, v, sink);
 
     watch.stage("the scripts the payload spreads with", v);
     if host.is_some() {
@@ -267,7 +267,7 @@ fn directories(w: &walk::Walk, scope: &Scope, v: &mut Verdict, sink: &mut Sink, 
     watch.stage("build configs", v);
     checks::build_configs(w, ind, scope.on_infected_config, v, sink);
     watch.stage("fonts", v);
-    checks::fonts(w, v, sink);
+    checks::fonts(w, ind, v, sink);
     watch.stage("the scripts the payload spreads with", v);
     checks::propagation(w, v, sink);
     checks::named_files(w, ind, v, sink);

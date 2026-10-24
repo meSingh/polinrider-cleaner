@@ -37,6 +37,9 @@ pub struct Indicators {
     /// Paths that are indicators on their own, as patterns. From
     /// `filenames.txt`, which the shell hands to `grep -E`.
     pub filenames: Vec<Pattern>,
+    /// SHA-256 of files known from the campaign, lowercase, each with its
+    /// label. From `hashes.txt`, `<sha256> <label>` per line.
+    pub hashes: Vec<(String, String)>,
 }
 
 /// Why the indicator set could not be used. Each of these is an exit code 3
@@ -122,12 +125,32 @@ impl Indicators {
                 .iter()
                 .map(|p| Pattern::parse(p).map_err(LoadError::Pattern))
                 .collect::<Result<_, _>>()?,
+            hashes: read_list(dir, "hashes.txt", false)?
+                .iter()
+                .filter_map(|l| {
+                    let (h, label) = l.split_once(char::is_whitespace)?;
+                    Some((h.to_ascii_lowercase(), label.trim().to_string()))
+                })
+                .collect(),
         };
 
         if indicators.strong.is_empty() && indicators.bad_packages.is_empty() {
             return Err(LoadError::Empty);
         }
         Ok(indicators)
+    }
+
+    /// The label of the known campaign file these bytes are, if they are one.
+    /// For files a check reads anyway, whatever their size: ADR-0045.
+    pub fn known_file(&self, bytes: &[u8]) -> Option<&str> {
+        if self.hashes.is_empty() {
+            return None;
+        }
+        let digest = crate::sha256::bytes(bytes);
+        self.hashes
+            .iter()
+            .find(|(h, _)| *h == digest)
+            .map(|(_, label)| label.as_str())
     }
 
     /// Does this text contain a confirmed indicator, as written or once its

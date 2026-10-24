@@ -60,6 +60,7 @@ If you disagree with one, open an issue and quote its number.
 | [0042](./0042-python-startup-files-and-npm-s-own-files-are-checked-as-persistence.md) | Python startup files and npm's own files are checked as persistence | Proposed |
 | [0043](./0043-packages-use-layouts-the-binary-already-searches-and-are-bumped-by-pull-request.md) | Package in layouts the binary already searches, and bump by pull request | Accepted |
 | [0044](./0044-a-guided-session-ends-on-what-it-came-to-and-offers-the-next-check.md) | End a guided session on what it came to, and offer the next check | Accepted |
+| [0045](./0045-small-files-the-checks-read-are-compared-by-hash.md) | Compare the small files the checks read against the known hashes | Accepted |
 
 ## Adding one
 

@@ -1,12 +1,23 @@
-# SHA-256 of known second-stage binaries. Any file matching one of these is the
-# implant, whatever it has been renamed to.
+# SHA-256 of files known from this campaign. A match is confirmed, whatever
+# the file is called.
+#
+# Where a match is looked for (ADR-0045):
+#   - every file of 10 MB to 300 MB, for the second-stage binaries
+#   - every .vscode/tasks.json, font file and build config, at any size,
+#     because the checks read those files anyway
+# A smaller file of any other kind is not hashed. The print.cjs dropper below
+# is matched only if it sits in one of those places or is renamed into one.
 #
 # Format: <sha256>  <label>
 # Sources: JFrog Security Research (four platform binaries and the dropper),
 # safedep.io (Linux ELF, build 1.0.8). April-May 2026.
+# OpenSourceMalware, PolinRider npm case study, "File SHA-256 hashes (as they
+# ship on npm today)": the tasks.json and the fake font. September 2026.
 f2c754a7f7b56e0e2a6dd429f06c42a1860c52c37b25d0a8e91c67d1239fa577  MicrosoftSystem64 Windows
 457a3323fe0cfa82d6e102074c6f07a399f55c7e0ce2d3b40643d9cfde0cf220  MicrosoftSystem64 macOS x64
 2fec04f2985510654d9656d57f6817de1ca0d6ae49e7085b1e33abb38f89cc55  MicrosoftSystem64 macOS arm64
 b505f1d1ca3dca8cb7e2b2dd99991b5a929ec9387f3de31ad36549823af07dfd  MicrosoftSystem64 Linux
 b2954c945b51dbd6fa88ac72338b7fbf76dec7d9909ceada9d36b21330842c97  MicrosoftSystem64 Linux build 1.0.8
 33401580619ae79bf3f87aab16208f169a44a038f18671b1def7836fb2682c9a  print.cjs dropper
+f5c6be4753d6613c97f1b10c4d93a5d97a8f4fb21eb13da0ed04b23a8a61c2f6  .vscode/tasks.json that runs the fake font on folder open
+9fbb31129c04e8eb1a50519fc864c74d1b20d57c07d4099348f8fbc9a1a1eae6  fake font public/fonts/fa-solid-400.woff2

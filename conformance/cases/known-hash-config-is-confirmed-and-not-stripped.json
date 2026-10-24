@@ -1,0 +1,30 @@
+{
+  "why": "A build config that is, byte for byte, a published campaign file is confirmed even with no indicator string in it. There is nothing to cut at, so clean must not try: the finding says it was not stripped, and the file is exactly as it was. The runner adds the fixture's hash to a copy of ioc/ (ADR-0045).",
+  "command": "clean",
+  "roots": [
+    "code/proj"
+  ],
+  "files": {
+    "code/proj/postcss.config.mjs": "export default { plugins: { 'campaign-shaped': {} } }\n"
+  },
+  "known_hashes": [
+    {
+      "path": "code/proj/postcss.config.mjs",
+      "label": "corpus fixture: config"
+    }
+  ],
+  "expect": {
+    "exit": 2,
+    "tree_may_change": false,
+    "findings": [
+      {
+        "level": "HIT",
+        "match": "config file matches a known campaign file (corpus fixture: config)",
+        "path": "postcss.config.mjs"
+      }
+    ],
+    "must_print": [
+      "not stripped: the whole file is a known campaign file."
+    ]
+  }
+}
