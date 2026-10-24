@@ -51,6 +51,12 @@ fn main() -> ProcExit {
         }
     };
 
+    // Not a scan: no indicator set, no host. Settled before either is read.
+    if args.command == Command::PurgeEvidence {
+        emit(&format!("{}\n", ui.banner(&cli::version())));
+        return purge_evidence(&args, ui);
+    }
+
     let ind = match Indicators::load(&args.ioc) {
         Ok(i) => i,
         Err(e) => {
@@ -311,6 +317,89 @@ impl Console for Terminal {
                 None
             }
             Ok(_) => Some(line.trim().to_string()),
+        }
+    }
+}
+
+/// `--purge-evidence`: one question, and the only thing this tool deletes:
+/// its own copies of repositories, and only from a folder that holds
+/// nothing else. ADR-0046.
+fn purge_evidence(args: &cli::Args, ui: Ui) -> ProcExit {
+    let dir = args
+        .evidence
+        .clone()
+        .unwrap_or_else(remote::default_evidence_dir);
+    let shown = polinrider::verdict::clean(&dir.display().to_string());
+    let exit = |code: ExitCode| ProcExit::from(code.code() as u8);
+    let refused = |why: remote::PurgeRefusal| {
+        emit("  Not deleted.\n\n");
+        for line in why.to_string().lines() {
+            emit(&format!("  {}\n", polinrider::verdict::clean(line)));
+        }
+        emit("\n  Nothing was deleted.\n\n");
+        exit(ExitCode::CouldNotRun)
+    };
+    let nothing = || {
+        emit(&format!(
+            "  Nothing to delete. There are no copies in {shown}.\n\n"
+        ));
+        exit(ExitCode::Clean)
+    };
+    let (copies, bytes) = match remote::plan_purge(&dir) {
+        Ok(remote::Purge::Nothing) => return nothing(),
+        Ok(remote::Purge::Copies { copies, bytes }) => (copies, bytes),
+        Err(why) => return refused(why),
+    };
+    let held = format!(
+        "{copies} {}, {}",
+        if copies == 1 {
+            "repository copy"
+        } else {
+            "repository copies"
+        },
+        remote::size(bytes)
+    );
+    emit(&format!(
+        "  Delete the repository copies polinrider kept.\n\n  Folder   {shown}\n  Holds    {held}\n\n  These copies hold live malware. They are also the only copy of the\n  commits from before the attack, if a restore is still to be done.\n\n  Delete them? Type yes or no.\n"
+    ));
+    let mut terminal = Terminal { ui, drawn: 0 };
+    loop {
+        emit("\n");
+        match terminal.ask().map(|a| a.to_ascii_lowercase()) {
+            // Only the whole word. This is the one delete.
+            Some(a) if a == "yes" => break,
+            Some(a) if matches!(a.as_str(), "no" | "n" | "q" | "quit") => {
+                emit("\n  Left as it is. Nothing was deleted.\n\n");
+                return exit(ExitCode::Clean);
+            }
+            None => {
+                emit("\n  Input ended. Nothing was deleted.\n\n");
+                return exit(ExitCode::CouldNotRun);
+            }
+            Some(_) => emit("\n  Type yes or no. Nothing happens until you do.\n"),
+        }
+    }
+    // Read again: the answer may have come long after the question, and the
+    // folder must still hold nothing but copies when it is deleted.
+    match remote::plan_purge(&dir) {
+        Ok(remote::Purge::Copies { .. }) => {}
+        Ok(remote::Purge::Nothing) => return nothing(),
+        Err(why) => return refused(why),
+    }
+    match remote::purge(&dir) {
+        Ok(()) => {
+            emit(&format!(
+                "\n  Deleted. {copies} {}, {}.\n\n",
+                if copies == 1 { "copy" } else { "copies" },
+                remote::size(bytes)
+            ));
+            exit(ExitCode::Clean)
+        }
+        Err(e) => {
+            emit(&format!(
+                "\n  Could not delete all of it: {e}\n  Part of {shown} may be left. Run polinrider --purge-evidence again.\n\n"
+            ));
+            exit(ExitCode::CouldNotRun)
         }
     }
 }

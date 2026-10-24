@@ -78,6 +78,7 @@ removed in 2.0. It is available from the `v1.0.9` tag for anyone who needs it.
 | `polinrider clean --apply` | cuts an appended payload out of a build config, in place |
 | A `yes` in the guided flow | on GitHub this pushes: `restore` moves branches, `erase` rewrites every commit and force-pushes, `remove` commits, `archive` edits the README and makes the repository read-only |
 | `all` followed by the organization's name | applies one fix to every repository that can take it |
+| `polinrider --purge-evidence`, then `yes` | deletes the copies of repositories the GitHub checks kept, including the pre-attack commits a restore may still need |
 | Any command the tool prints for a human to run | it prints them deliberately so a human runs them |
 
 Before a GitHub fix, confirm rather than assume: the compromised account's
@@ -252,7 +253,10 @@ that the step does not apply and print nothing runnable.
 
 
 1. **Nothing is deleted, ever.** Quarantine moves files and writes a manifest.
-   Restore moves a branch pointer to a commit that still exists.
+   Restore moves a branch pointer to a commit that still exists. The one
+   exception is `--purge-evidence`, which deletes polinrider's own copies of
+   repositories, only from a folder that holds nothing else, and only on a
+   typed `yes`. Do not widen it. ADR-0046.
 2. **Dry run by default.** Anything that changes state requires `--apply`, or
    a typed `yes` in the guided flow. ADR-0032.
 3. **No new dependencies.**

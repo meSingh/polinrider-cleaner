@@ -768,6 +768,173 @@ pub fn prepare_evidence(dir: &Path) -> Result<PathBuf, EvidenceError> {
     Ok(absolute)
 }
 
+// --- deleting the evidence directory ------------------------------------------
+
+/// The lists a check writes into the evidence directory before it copies
+/// anything. Their presence is how a folder is known to be one polinrider made.
+const INDICATOR_FILES: [&str; 3] = [
+    "indicators-strong.txt",
+    "indicators-packages.txt",
+    "indicators-weak.txt",
+];
+
+/// What `--purge-evidence` would delete.
+#[derive(Debug, PartialEq, Eq)]
+pub enum Purge {
+    /// No folder, or no copy in it.
+    Nothing,
+    Copies {
+        copies: usize,
+        bytes: u64,
+    },
+}
+
+/// Why a folder is not deleted. Every case leaves it exactly as it was.
+#[derive(Debug)]
+pub enum PurgeRefusal {
+    NotAFolder(PathBuf),
+    /// A link is never followed to something to delete.
+    Link(PathBuf),
+    /// Something polinrider did not put there: the first one found.
+    Foreign {
+        dir: PathBuf,
+        entry: PathBuf,
+    },
+    /// Copies of repositories, but not the lists polinrider writes first.
+    NotOurs(PathBuf),
+    Unreadable {
+        dir: PathBuf,
+        why: String,
+    },
+}
+
+impl std::fmt::Display for PurgeRefusal {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PurgeRefusal::NotAFolder(dir) => write!(f, "{} is not a folder.", dir.display()),
+            PurgeRefusal::Link(dir) => write!(
+                f,
+                "{} is a link. Give the folder it points to, if that is the one you mean.",
+                dir.display()
+            ),
+            PurgeRefusal::Foreign { dir, entry } => write!(
+                f,
+                "{} holds {}, which polinrider did not put there.\nOnly a folder that holds nothing but polinrider's own copies is deleted.",
+                dir.display(),
+                entry.display()
+            ),
+            PurgeRefusal::NotOurs(dir) => write!(
+                f,
+                "{} does not look like a folder polinrider made: the indicator\nlists it writes before any copy are not in it.",
+                dir.display()
+            ),
+            PurgeRefusal::Unreadable { dir, why } => {
+                write!(f, "cannot read {}: {why}", dir.display())
+            }
+        }
+    }
+}
+
+/// Read the evidence directory and say what deleting it would remove, or
+/// why it will not be deleted. Reads only; nothing is changed. ADR-0046.
+pub fn plan_purge(dir: &Path) -> Result<Purge, PurgeRefusal> {
+    let unreadable = |e: io::Error| PurgeRefusal::Unreadable {
+        dir: dir.to_path_buf(),
+        why: e.to_string(),
+    };
+    let meta = match fs::symlink_metadata(dir) {
+        Ok(m) => m,
+        Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(Purge::Nothing),
+        Err(e) => return Err(unreadable(e)),
+    };
+    if meta.file_type().is_symlink() {
+        return Err(PurgeRefusal::Link(dir.to_path_buf()));
+    }
+    if !meta.is_dir() {
+        return Err(PurgeRefusal::NotAFolder(dir.to_path_buf()));
+    }
+
+    let (mut copies, mut marked, mut any) = (0usize, false, false);
+    for entry in fs::read_dir(dir).map_err(unreadable)? {
+        let entry = entry.map_err(unreadable)?;
+        any = true;
+        let path = entry.path();
+        let name = entry.file_name().to_string_lossy().into_owned();
+        let kind = entry.file_type().map_err(unreadable)?;
+        let ours = if INDICATOR_FILES.contains(&name.as_str()) {
+            marked |= kind.is_file();
+            kind.is_file()
+        } else if name == "rewrite" {
+            // What an erase leaves if it is stopped half way.
+            kind.is_dir()
+        } else if name.ends_with(".git") && kind.is_dir() && path.join("HEAD").is_file() {
+            copies += 1;
+            true
+        } else {
+            false
+        };
+        if !ours {
+            return Err(PurgeRefusal::Foreign {
+                dir: dir.to_path_buf(),
+                entry: path,
+            });
+        }
+    }
+    if !any || copies == 0 {
+        return Ok(Purge::Nothing);
+    }
+    if !marked {
+        return Err(PurgeRefusal::NotOurs(dir.to_path_buf()));
+    }
+    Ok(Purge::Copies {
+        copies,
+        bytes: size_of(dir),
+    })
+}
+
+/// Bytes under a folder, links counted as links and never followed.
+fn size_of(path: &Path) -> u64 {
+    let Ok(meta) = fs::symlink_metadata(path) else {
+        return 0;
+    };
+    if !meta.is_dir() {
+        return meta.len();
+    }
+    fs::read_dir(path).map_or(0, |entries| {
+        entries
+            .filter_map(Result::ok)
+            .map(|e| size_of(&e.path()))
+            .sum()
+    })
+}
+
+/// Delete the evidence directory. Only after `plan_purge` found it to be
+/// polinrider's own and a person typed yes.
+pub fn purge(dir: &Path) -> io::Result<()> {
+    fs::remove_dir_all(dir)
+}
+
+/// 1468006400 as "1.4 GB".
+pub fn size(bytes: u64) -> String {
+    const UNITS: [&str; 4] = ["KB", "MB", "GB", "TB"];
+    if bytes < 1024 {
+        return format!("{bytes} bytes");
+    }
+    #[allow(clippy::cast_precision_loss)]
+    let mut n = bytes as f64 / 1024.0;
+    let mut unit = 0;
+    while n >= 1024.0 && unit + 1 < UNITS.len() {
+        n /= 1024.0;
+        unit += 1;
+    }
+    let shown = if n < 10.0 {
+        format!("{n:.1}")
+    } else {
+        format!("{n:.0}")
+    };
+    format!("{shown} {}", UNITS.get(unit).copied().unwrap_or("TB"))
+}
+
 // --- reading a mirror ---------------------------------------------------------
 
 /// Where the copy of `owner/name` is kept.
@@ -1400,10 +1567,11 @@ pub(crate) struct Patterns {
 }
 
 pub(crate) fn indicator_files(evidence: &Path, ind: &Indicators) -> Result<Patterns, String> {
+    let [strong, packages, weak] = INDICATOR_FILES;
     let patterns = Patterns {
-        strong: evidence.join("indicators-strong.txt"),
-        packages: evidence.join("indicators-packages.txt"),
-        weak: evidence.join("indicators-weak.txt"),
+        strong: evidence.join(strong),
+        packages: evidence.join(packages),
+        weak: evidence.join(weak),
     };
     fs::write(&patterns.strong, ind.strong.join("\n") + "\n")
         .and_then(|()| fs::write(&patterns.packages, ind.bad_packages.join("\n") + "\n"))
@@ -1709,6 +1877,83 @@ mod tests {
     use super::*;
 
     const STRONG: &str = "MARKER-ALPHA";
+
+    fn evidence_fixture(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("prc-purge-{}-{name}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(dir.join("acme__shop.git/objects")).expect("mkdir");
+        fs::write(dir.join("acme__shop.git/HEAD"), "ref: refs/heads/main\n").expect("write");
+        fs::write(dir.join("acme__shop.git/objects/blob"), vec![0u8; 3000]).expect("write");
+        for name in INDICATOR_FILES {
+            fs::write(dir.join(name), "x\n").expect("write");
+        }
+        dir
+    }
+
+    #[test]
+    fn a_folder_of_polinriders_own_copies_can_be_purged_and_nothing_else_can() {
+        // Ours: one copy, the lists, and what a stopped erase leaves.
+        let dir = evidence_fixture("ours");
+        fs::create_dir_all(dir.join("rewrite")).expect("mkdir");
+        let planned = plan_purge(&dir).expect("ours");
+        assert!(
+            matches!(planned, Purge::Copies { copies: 1, bytes } if bytes >= 3000),
+            "{planned:?}"
+        );
+        purge(&dir).expect("deleted");
+        assert!(!dir.exists());
+        // Gone, or never there, is nothing to delete.
+        assert_eq!(plan_purge(&dir).expect("missing"), Purge::Nothing);
+
+        // One stray file and the whole folder is left alone.
+        let dir = evidence_fixture("foreign");
+        fs::write(dir.join("notes.txt"), "mine\n").expect("write");
+        let e = plan_purge(&dir).expect_err("not ours");
+        assert!(
+            matches!(e, PurgeRefusal::Foreign { ref entry, .. } if entry.ends_with("notes.txt"))
+        );
+        assert!(e.to_string().contains("which polinrider did not put there"));
+
+        // A .git folder that is not a repository is not a copy.
+        let dir = evidence_fixture("not-a-repo");
+        fs::create_dir_all(dir.join("photos.git")).expect("mkdir");
+        assert!(matches!(
+            plan_purge(&dir),
+            Err(PurgeRefusal::Foreign { .. })
+        ));
+
+        // Bare repositories without the lists polinrider writes first are
+        // somebody's own.
+        let dir = evidence_fixture("unmarked");
+        for name in INDICATOR_FILES {
+            fs::remove_file(dir.join(name)).expect("rm");
+        }
+        assert!(matches!(plan_purge(&dir), Err(PurgeRefusal::NotOurs(_))));
+
+        #[cfg(unix)]
+        {
+            let target = evidence_fixture("target");
+            let link = target.with_file_name(format!("prc-purge-{}-link", std::process::id()));
+            let _ = fs::remove_file(&link);
+            std::os::unix::fs::symlink(&target, &link).expect("link");
+            assert!(matches!(plan_purge(&link), Err(PurgeRefusal::Link(_))));
+            let _ = fs::remove_file(&link);
+            let _ = fs::remove_dir_all(&target);
+        }
+        for name in ["foreign", "not-a-repo", "unmarked"] {
+            let _ = fs::remove_dir_all(
+                std::env::temp_dir().join(format!("prc-purge-{}-{name}", std::process::id())),
+            );
+        }
+    }
+
+    #[test]
+    fn a_size_is_said_the_way_a_person_says_it() {
+        assert_eq!(size(512), "512 bytes");
+        assert_eq!(size(2048), "2.0 KB");
+        assert_eq!(size(23 * 1024 * 1024), "23 MB");
+        assert_eq!(size(1_468_006_400), "1.4 GB");
+    }
 
     fn ind() -> Indicators {
         Indicators {

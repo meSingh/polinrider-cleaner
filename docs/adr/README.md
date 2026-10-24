@@ -61,6 +61,7 @@ If you disagree with one, open an issue and quote its number.
 | [0043](./0043-packages-use-layouts-the-binary-already-searches-and-are-bumped-by-pull-request.md) | Package in layouts the binary already searches, and bump by pull request | Accepted |
 | [0044](./0044-a-guided-session-ends-on-what-it-came-to-and-offers-the-next-check.md) | End a guided session on what it came to, and offer the next check | Accepted |
 | [0045](./0045-small-files-the-checks-read-are-compared-by-hash.md) | Compare the small files the checks read against the known hashes | Accepted |
+| [0046](./0046-purge-evidence-deletes-only-polinriders-own-copies.md) | Let `--purge-evidence` delete polinrider's own copies, and nothing else | Accepted |
 
 ## Adding one
 
