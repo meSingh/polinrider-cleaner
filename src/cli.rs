@@ -51,6 +51,10 @@ pub const ACCEPTED: &[(&str, &str)] = &[
         "guided flow: where copies of GitHub repositories are kept",
     ),
     (
+        "--purge-evidence",
+        "delete those copies, after a typed yes. Nothing else",
+    ),
+    (
         "--forge-state DIR",
         "guided flow: read GitHub's answers from DIR, not from GitHub",
     ),
@@ -201,6 +205,10 @@ pub enum Command {
     /// The guided flow: asks what to check, scans, and changes something only
     /// on an explicit yes. What running with no arguments does. ADR-0032.
     Guide,
+    /// Delete the copies of repositories the GitHub checks kept, after a
+    /// typed yes, and only if the folder holds nothing else. Scans nothing.
+    /// ADR-0046.
+    PurgeEvidence,
 }
 
 impl Command {
@@ -209,6 +217,7 @@ impl Command {
             Command::Check => "check",
             Command::Clean => "clean",
             Command::Guide => "guide",
+            Command::PurgeEvidence => "--purge-evidence",
         }
     }
 }
@@ -237,7 +246,12 @@ pub struct Args {
 
 /// Parse and validate. Returns only arguments it is safe to act on.
 pub fn parse<I: Iterator<Item = String>>(argv: I, default_ioc: PathBuf) -> Result<Args, Rejection> {
-    let mut args = argv.peekable();
+    let argv: Vec<String> = argv.collect();
+    // Not a scan, so not a subcommand of one: spelled as 1.x spelled it, and
+    // recognised wherever it is on the line so that no flag before it is
+    // judged as belonging to a check.
+    let purge = argv.iter().any(|a| a == "--purge-evidence");
+    let mut args = argv.into_iter().peekable();
     let mut roots: Vec<PathBuf> = Vec::new();
     let (mut fs_only, mut apply) = (false, false);
     let (mut quarantine, mut report, mut ioc, mut home) = (None, None, None, None);
@@ -259,6 +273,7 @@ pub fn parse<I: Iterator<Item = String>>(argv: I, default_ioc: PathBuf) -> Resul
             args.next();
             Command::Guide
         }
+        _ if purge => Command::PurgeEvidence,
         // Nothing at all: the guided flow, which asks. Anything else without
         // a command is a check, as it always was.
         None => Command::Guide,
@@ -276,7 +291,10 @@ pub fn parse<I: Iterator<Item = String>>(argv: I, default_ioc: PathBuf) -> Resul
         }
         Ok(())
     };
-    let not_for_clean = |flag: &str| not_for(flag, &[Command::Clean]);
+    let not_for_clean = |flag: &str| not_for(flag, &[Command::Clean, Command::PurgeEvidence]);
+    // --purge-evidence takes --evidence and nothing else that changes what
+    // it does.
+    let not_for_purge = |flag: &str| not_for(flag, &[Command::PurgeEvidence]);
 
     while let Some(arg) = args.next() {
         let mut value = |flag: &str| {
@@ -285,17 +303,27 @@ pub fn parse<I: Iterator<Item = String>>(argv: I, default_ioc: PathBuf) -> Resul
         };
         match arg.as_str() {
             "--fs-only" => {
-                not_for("--fs-only", &[Command::Clean, Command::Guide])?;
+                not_for(
+                    "--fs-only",
+                    &[Command::Clean, Command::Guide, Command::PurgeEvidence],
+                )?;
                 fs_only = true;
                 scope_flags.push(("--fs-only".into(), None));
             }
             "--apply" => {
-                not_for("--apply", &[Command::Guide])?;
+                not_for("--apply", &[Command::Guide, Command::PurgeEvidence])?;
                 apply = true;
             }
-            "--quarantine" => quarantine = Some(PathBuf::from(value("--quarantine")?)),
-            "--report" => report = Some(PathBuf::from(value("--report")?)),
+            "--quarantine" => {
+                not_for_purge("--quarantine")?;
+                quarantine = Some(PathBuf::from(value("--quarantine")?));
+            }
+            "--report" => {
+                not_for_purge("--report")?;
+                report = Some(PathBuf::from(value("--report")?));
+            }
             "--ioc" => {
+                not_for_purge("--ioc")?;
                 let dir = value("--ioc")?;
                 scope_flags.push(("--ioc".into(), Some(dir.clone())));
                 ioc = Some(PathBuf::from(dir));
@@ -313,13 +341,21 @@ pub fn parse<I: Iterator<Item = String>>(argv: I, default_ioc: PathBuf) -> Resul
                 host_state = Some(PathBuf::from(dir));
             }
             "--forge-state" => {
-                not_for("--forge-state", &[Command::Check, Command::Clean])?;
+                not_for(
+                    "--forge-state",
+                    &[Command::Check, Command::Clean, Command::PurgeEvidence],
+                )?;
                 forge_state = Some(PathBuf::from(value("--forge-state")?));
             }
             "--evidence" => {
                 not_for("--evidence", &[Command::Check, Command::Clean])?;
                 evidence = Some(PathBuf::from(value("--evidence")?));
             }
+            // Given with a subcommand, it is refused: it is not part of one.
+            "--purge-evidence" => not_for(
+                "--purge-evidence",
+                &[Command::Check, Command::Clean, Command::Guide],
+            )?,
             "-h" | "--help" => return Err(Rejection::HelpRequested),
             "-V" | "--version" => return Err(Rejection::VersionRequested),
             other if other.starts_with('-') => {
@@ -341,14 +377,17 @@ pub fn parse<I: Iterator<Item = String>>(argv: I, default_ioc: PathBuf) -> Resul
                 return Err(Rejection::Unknown(other.to_string()));
             }
             root => {
-                not_for("a directory on the command line", &[Command::Guide])?;
+                not_for(
+                    "a directory on the command line",
+                    &[Command::Guide, Command::PurgeEvidence],
+                )?;
                 roots.push(PathBuf::from(root));
             }
         }
     }
 
     // --- preflight. Nothing above this point touched the filesystem. -------
-    if roots.is_empty() && command != Command::Guide {
+    if roots.is_empty() && !matches!(command, Command::Guide | Command::PurgeEvidence) {
         return Err(Rejection::NoRoots);
     }
     for root in &roots {
@@ -370,7 +409,8 @@ pub fn parse<I: Iterator<Item = String>>(argv: I, default_ioc: PathBuf) -> Resul
     }
 
     let ioc = ioc.unwrap_or(default_ioc);
-    if !ioc.join("strong.txt").is_file() {
+    // Deleting copies reads no indicator, so a missing set does not stop it.
+    if command != Command::PurgeEvidence && !ioc.join("strong.txt").is_file() {
         return Err(Rejection::BadIoc { path: ioc });
     }
 
@@ -519,6 +559,44 @@ mod tests {
             msg.contains("--fs-only"),
             "the message must list real flags: {msg}"
         );
+    }
+
+    #[test]
+    fn purge_evidence_takes_only_where_the_copies_are_and_needs_no_indicators() {
+        // No indicator set is needed: it reads none.
+        let missing = std::env::temp_dir().join("prc-cli-no-ioc-for-purge");
+        for argv in [
+            vec!["--purge-evidence"],
+            vec!["--purge-evidence", "--evidence", "/tmp/e"],
+            // --evidence first is not judged as a check's flag.
+            vec!["--evidence", "/tmp/e", "--purge-evidence"],
+        ] {
+            let a = parse(args(&argv).into_iter(), missing.clone()).expect("accepted");
+            assert_eq!(a.command, Command::PurgeEvidence, "{argv:?}");
+            assert!(a.roots.is_empty());
+        }
+        let ioc = ioc_fixture("purge");
+        for (argv, flag) in [
+            (
+                vec!["--purge-evidence", "/tmp"],
+                "a directory on the command line",
+            ),
+            (vec!["--purge-evidence", "--apply"], "--apply"),
+            (vec!["--purge-evidence", "--home", "/tmp"], "--home"),
+            (vec!["--purge-evidence", "--report", "/tmp/r"], "--report"),
+            (
+                vec!["check", "--purge-evidence", "/tmp"],
+                "--purge-evidence",
+            ),
+            (vec!["guide", "--purge-evidence"], "--purge-evidence"),
+        ] {
+            let e = parse(args(&argv).into_iter(), ioc.clone()).expect_err("must refuse");
+            assert!(
+                matches!(e, Rejection::NotForCommand { flag: ref f, .. } if f == flag),
+                "{argv:?}: {e:?}"
+            );
+        }
+        assert!(usage().contains("--purge-evidence"));
     }
 
     #[test]

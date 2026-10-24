@@ -19,7 +19,9 @@ that first and says what to run if not. It lists the organizations your `gh` sig
 
 1. **Copies every repository** into an evidence folder outside any git working
    tree, before anything changes. Those copies hold live malware, so do not
-   open them in an editor.
+   open them in an editor. The default folder is temporary and cleared on
+   restart. Once every restore is done, `polinrider --purge-evidence` deletes
+   the copies after asking; add `--evidence DIR` if you chose the folder.
 2. **Checks every branch and tag** against the indicator set, and reads
    GitHub's push record for each repository.
 3. **Shows a summary**: which repositories, how many branches, who pushed.

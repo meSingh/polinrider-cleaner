@@ -544,6 +544,40 @@ refusals() {
   check_refusal "the guided flow told to --apply"    guide --apply
   check_refusal "the guided flow handed a directory" guide "$tmp"
   check_refusal "clean with no directory"            clean
+  check_refusal "--purge-evidence handed a directory" --purge-evidence "$tmp"
+  check_refusal "--purge-evidence told to --apply"   --purge-evidence --apply
+
+  # --purge-evidence, the one delete (ADR-0046). A folder of polinrider's own
+  # copies goes on a typed yes and on nothing else. A folder holding anything
+  # else is refused whole, and input that ends deletes nothing.
+  check_purge() {
+    local why="$1" want="$2" answer="$3" stray="$4" kept="$5"
+    local dir="$tmp/evidence-$PASS-$FAIL" out rc
+    rm -rf "$dir"; mkdir -p "$dir"
+    git init -q --bare "$dir/acme__shop.git"
+    : > "$dir/indicators-strong.txt"; : > "$dir/indicators-packages.txt"; : > "$dir/indicators-weak.txt"
+    [[ -n "$stray" ]] && printf 'mine\n' > "$dir/$stray"
+    if [[ "$answer" == "<eof>" ]]; then
+      out="$("$bin" --purge-evidence --evidence "$dir" 2>&1 </dev/null)"; rc=$?
+    else
+      out="$(printf '%s\n' "$answer" | "$bin" --purge-evidence --evidence "$dir" 2>&1)"; rc=$?
+    fi
+    local there=no; [[ -d "$dir" ]] && there=yes
+    if [[ $rc -eq $want && "$there" == "$kept" ]]; then
+      PASS=$((PASS+1)); printf '  \033[32mpass\033[0m  %-38s %s\n' "purge" "$why"
+    else
+      FAIL=$((FAIL+1)); FAILED_CASES+=("purge:$why")
+      printf '  \033[31mFAIL\033[0m  %-38s %s\n' "purge" "$why"
+      printf '        exit %s (expected %s), folder still there: %s (expected %s)\n' "$rc" "$want" "$there" "$kept"
+      printf '%s\n' "$out" | sed 's/^/        /'
+    fi
+    rm -rf "$dir"
+  }
+  check_purge "its own copies go on yes"                 0 yes   ""          no
+  check_purge "no leaves them"                           0 no    ""          yes
+  check_purge "Enter is not yes, and input then ends"    3 ""    ""          yes
+  check_purge "input that ends deletes nothing"          3 "<eof>" ""        yes
+  check_purge "a folder holding anything else is refused" 3 yes  "notes.txt" yes
 
   # A reader that goes away. `polinrider | head` is an ordinary thing to type,
   # and Rust's println! panics on a closed pipe. The run must end without a
