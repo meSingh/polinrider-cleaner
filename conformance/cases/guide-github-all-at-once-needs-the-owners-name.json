@@ -68,7 +68,8 @@
       "This is a big step. Read this before you answer.",
       "one after another, without asking again.",
       "Type acme to go ahead, or no. yes is not enough here.",
-      "Both repositories are fixed."
+      "GitHub is clean again.",
+      "fixed      2 repositories, payload taken out in a new commit"
     ],
     "forge_after": {
       "acme/shop": {

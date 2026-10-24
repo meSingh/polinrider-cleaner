@@ -62,7 +62,8 @@
       "Nothing has been pushed yet.",
       "Done. 1 branch of acme/shop put back.",
       "Checked on GitHub afterwards: it matches.",
-      "The repository is fixed.",
+      "GitHub is clean again.",
+      "fixed      1 repository, 1 branch, put back",
       "Delete old clones and clone again"
     ],
     "forge_after": {

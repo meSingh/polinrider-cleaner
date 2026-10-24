@@ -1,5 +1,5 @@
 {
-  "why": "The choice for somebody who thinks they were hit: this computer first, then GitHub, in one session. The computer here is clean and the organization is not. The exit code is 2: a clean result for one half must never be written over a payload found in the other, in either order. A word that is not on the screen asks again, and done ends it with GitHub left exactly as it was.",
+  "why": "The choice for somebody who thinks they were hit: this computer first, then GitHub, in one session. The computer here is clean and the organization is not. The exit code is 2: a clean result for one half must never be written over a payload found in the other, in either order. After each check the next one is offered under its list, and once this computer is done GitHub stays on offer. A word that is not on the screen asks again, and done ends it on a closing screen with GitHub left exactly as it was (ADR-0044).",
   "roots": [
     "code"
   ],
@@ -22,10 +22,11 @@
       "everything     This computer first, then GitHub.",
       "Checking this computer",
       "12 of 12",
-      "This computer is done. GitHub is next.",
+      "organization   Every repository and branch of a",
       "Type organization, account or done. q quits.",
       "Checked 1 repository and 1 branch of acme.",
-      "More on GitHub?"
+      "done           Finish here.",
+      "Finished. Nothing found on this computer."
     ]
   },
   "command": "guide",
