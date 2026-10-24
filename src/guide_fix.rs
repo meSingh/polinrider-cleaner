@@ -178,7 +178,7 @@ fn option(io: &mut dyn Console, name: &str, about: &[Span]) {
 }
 
 /// "it matches", "both match", "all 4 match".
-fn matching(n: usize) -> String {
+pub(crate) fn matching(n: usize) -> String {
     match n {
         1 => "it matches".into(),
         2 => "both match".into(),

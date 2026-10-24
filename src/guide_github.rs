@@ -17,10 +17,11 @@
 //! which this hands over to once the summary is on the screen.
 
 use crate::guide::{
-    bad, blank, count, dim, good, header, line, meter, numbered, p, read, strong, thousands, tilde,
-    todo, warn, word, Console, Meter, Session, Stop, Todo,
+    bad, blank, blank_lines, count, dim, good, header, line, meter, numbered, p, read, row,
+    still_yours, strong, thousands, tilde, todo, warn, word, Console, Finished, Meter, Session,
+    Stop, Todo,
 };
-use crate::guide_fix::{Context, Fix, Outcome, What};
+use crate::guide_fix::{matching, Context, Fix, Outcome, What};
 use crate::host::Probe;
 use crate::remote::{self, Check, Findings, OwnerKind, Progress, RefFinding};
 use crate::ui::{text_of, Span};
@@ -34,7 +35,7 @@ pub(crate) fn run(
     io: &mut dyn Console,
     report: &mut String,
     worst: &mut Option<ExitCode>,
-) -> Result<(), Stop> {
+) -> Result<Option<Finished>, Stop> {
     let login = ready(session, io)?;
     let owner = choose_owner(session, kind, &login, io)?;
 
@@ -45,7 +46,7 @@ pub(crate) fn run(
             for text in e.to_string().lines() {
                 io.say(&[warn(format!("  {text}"))]);
             }
-            return Ok(());
+            return Ok(None);
         }
     };
 
@@ -90,7 +91,7 @@ pub(crate) fn run(
                 "  I could not list the repositories of {owner}: {}",
                 clean(&why)
             ))]);
-            return Ok(());
+            return Ok(None);
         }
     };
 
@@ -140,17 +141,13 @@ pub(crate) fn run(
     }
 
     header(io, session, 4, "What to do now", false);
-    for spans in what_now(&found, &outcomes) {
+    let (last, finished) = what_now(&owner, &found, &outcomes);
+    for spans in last {
         report.push_str(&text_of(&spans));
         report.push('\n');
         io.say(&spans);
     }
-    blank(io, 2);
-    line(io, "  The full report, with every branch and file:");
-    io.say(&[p(format!("  {}", tilde(session.report, session.home)))]);
-    blank(io, 1);
-    io.say(&[p("  To check again:   "), word("polinrider")]);
-    Ok(())
+    Ok(Some(finished))
 }
 
 /// What the whole check comes to. A repository that could not be copied was
@@ -539,10 +536,22 @@ fn names(list: &[&str]) -> String {
     }
 }
 
-/// The last screen, written from what was found and what was done about it.
-fn what_now(found: &Findings, outcomes: &[Outcome]) -> Vec<Vec<Span>> {
+/// The last screen, written from what was found and what was done about it,
+/// and what it comes to for the closing screen.
+fn what_now(owner: &str, found: &Findings, outcomes: &[Outcome]) -> (Vec<Vec<Span>>, Finished) {
     let mut out: Vec<Vec<Span>> = Vec::new();
+    let listed = "every branch and file";
     let affected = found.affected();
+    let repositories = |n: usize| count(n, "repository", "repositories");
+    let checked = row(
+        "checked",
+        p(format!(
+            "{} and {} of {}",
+            repositories(found.repositories),
+            count(found.refs, "branch", "branches"),
+            clean(owner)
+        )),
+    );
     let unchecked = || -> Todo {
         let mut t = todo(
             "Check again for what could not be copied",
@@ -558,13 +567,18 @@ fn what_now(found: &Findings, outcomes: &[Outcome]) -> Vec<Vec<Span>> {
 
     if affected.is_empty() {
         let mut todos: Vec<Todo> = Vec::new();
+        let said;
         if found.review.is_empty() {
-            out.push(vec![if found.not_checked.is_empty() {
-                good("  Nothing found.")
+            said = if found.not_checked.is_empty() {
+                good("Nothing found on GitHub.")
             } else {
-                warn("  Nothing found in what could be checked.")
-            }]);
+                warn("Nothing found in what could be checked.")
+            };
+            out.push(vec![p("  "), said.clone()]);
+            out.push(vec![]);
+            out.push(checked);
             if found.not_checked.is_empty() {
+                out.push(row("found", p("nothing against today's indicators")));
                 out.push(vec![]);
                 for text in [
                     "  Clean against today's indicators is not proof that nothing",
@@ -573,10 +587,17 @@ fn what_now(found: &Findings, outcomes: &[Outcome]) -> Vec<Vec<Span>> {
                 ] {
                     out.push(vec![dim(text)]);
                 }
+            } else {
+                out.push(row(
+                    "not copied",
+                    warn(repositories(found.not_checked.len())),
+                ));
             }
         } else {
+            said = warn("Nothing is confirmed.");
             out.push(vec![
-                warn("  Nothing is confirmed."),
+                p("  "),
+                said.clone(),
                 p(format!(
                     " {} your eyes.",
                     if found.review.len() == 1 {
@@ -586,6 +607,8 @@ fn what_now(found: &Findings, outcomes: &[Outcome]) -> Vec<Vec<Span>> {
                     }
                 )),
             ]);
+            out.push(vec![]);
+            out.push(checked);
             todos.push(todo(
                 "Look at each file listed under details",
                 &["Ask whether you put it there."],
@@ -598,8 +621,13 @@ fn what_now(found: &Findings, outcomes: &[Outcome]) -> Vec<Vec<Span>> {
         if !found.not_checked.is_empty() {
             todos.push(unchecked());
         }
+        if !todos.is_empty() {
+            blank_lines(&mut out, 2);
+            out.push(still_yours(todos.len()));
+        }
         numbered(&mut out, &todos);
-        return out;
+        let left = todos.len();
+        return (out, Finished { said, left, listed });
     }
 
     let fixed = outcomes.iter().filter(|o| o.is_fixed()).count();
@@ -619,36 +647,27 @@ fn what_now(found: &Findings, outcomes: &[Outcome]) -> Vec<Vec<Span>> {
                 .any(|o| o.repository == *repository && (o.is_fixed() || o.what == What::Archived))
         })
         .collect();
-    let repositories = |n: usize| count(n, "repository", "repositories");
 
-    out.push(if fixed == 0 && archived.is_empty() {
-        vec![
-            bad(format!(
-                "  {} on GitHub {} the payload.",
-                repositories(affected.len()),
-                if affected.len() == 1 {
-                    "carries"
-                } else {
-                    "carry"
-                }
-            )),
-            p(" Do these in order."),
-        ]
+    // The headline, and the same in a few words for the closing screen.
+    let (headline, said) = if fixed == 0 && archived.is_empty() {
+        let s = bad(format!(
+            "{} on GitHub {} the payload.",
+            repositories(affected.len()),
+            if affected.len() == 1 {
+                "carries"
+            } else {
+                "carry"
+            }
+        ));
+        (s.clone(), s)
     } else if open.is_empty() && archived.is_empty() {
-        vec![
-            good(match affected.len() {
-                1 => "  The repository is fixed.".to_string(),
-                2 => "  Both repositories are fixed.".to_string(),
-                n => format!("  All {n} repositories are fixed."),
-            }),
-            p(" Do these next, in order."),
-        ]
+        (good("GitHub is clean again."), good("GitHub is fixed."))
     } else {
         let mut said = if fixed == 0 {
-            "  No repository is fixed yet.".to_string()
+            "No repository is fixed yet.".to_string()
         } else {
             format!(
-                "  {fixed} of {} {} fixed.",
+                "{fixed} of {} {} fixed.",
                 repositories(affected.len()),
                 if fixed == 1 { "is" } else { "are" }
             )
@@ -656,15 +675,54 @@ fn what_now(found: &Findings, outcomes: &[Outcome]) -> Vec<Vec<Span>> {
         if !archived.is_empty() {
             said.push_str(&format!(" {} archived.", archived.len()));
         }
-        vec![
-            if open.is_empty() {
-                good(said)
-            } else {
-                warn(said)
+        let s = if open.is_empty() {
+            good(said)
+        } else {
+            warn(said)
+        };
+        (s.clone(), s)
+    };
+    out.push(vec![p("  "), headline]);
+    out.push(vec![]);
+    out.push(checked);
+
+    // What the fixes did, as GitHub showed it afterwards.
+    let fixes: Vec<(Fix, usize)> = outcomes
+        .iter()
+        .filter(|o| o.is_fixed())
+        .filter_map(|o| match o.what {
+            What::Fixed { fix, moved, .. } => Some((fix, moved)),
+            _ => None,
+        })
+        .collect();
+    let moved: usize = fixes.iter().map(|(_, m)| m).sum();
+    if fixed > 0 {
+        let how = match fixes.first() {
+            Some((first, _)) if fixes.iter().all(|(f, _)| f == first) => match first {
+                Fix::Restore => format!(", {}, put back", count(moved, "branch", "branches")),
+                Fix::Erase => ", erased from the history".to_string(),
+                Fix::Remove => ", payload taken out in a new commit".to_string(),
+                Fix::Archive => String::new(),
             },
-            p(" Do these in order."),
-        ]
-    });
+            _ => String::new(),
+        };
+        out.push(row("fixed", good(format!("{}{how}", repositories(fixed)))));
+        if moved > 0 {
+            out.push(row(
+                "verified",
+                p(format!("on GitHub afterwards: {}", matching(moved))),
+            ));
+        }
+    }
+    if !archived.is_empty() {
+        out.push(row(
+            "archived",
+            p(format!("{}, read-only", repositories(archived.len()))),
+        ));
+    }
+    if !open.is_empty() && (fixed > 0 || !archived.is_empty()) {
+        out.push(row("not fixed", bad(repositories(open.len()))));
+    }
 
     let mut todos: Vec<Todo> = Vec::new();
     if !open.is_empty() {
@@ -764,8 +822,11 @@ fn what_now(found: &Findings, outcomes: &[Outcome]) -> Vec<Vec<Span>> {
     if !found.not_checked.is_empty() {
         todos.push(unchecked());
     }
+    blank_lines(&mut out, 2);
+    out.push(still_yours(todos.len()));
     numbered(&mut out, &todos);
-    out
+    let left = todos.len();
+    (out, Finished { said, left, listed })
 }
 
 /// The whole of it, for the report file: every branch and every path.
@@ -1176,7 +1237,8 @@ mod tests {
             Some("export default {}\n")
         );
 
-        assert!(io.said.contains("  Both repositories are fixed."));
+        assert!(io.said.contains("  GitHub is clean again."));
+        assert!(io.said.contains("      fixed      2 repositories"));
         assert!(io.said.contains("Delete old clones and clone again"));
         assert!(io
             .said
@@ -1194,6 +1256,99 @@ mod tests {
             .report
             .contains("removed from every commit: vite.config.js"));
         assert!(outcome.report.contains("git reset --hard origin/main"));
+    }
+
+    #[test]
+    fn a_fixed_organization_ends_on_what_was_done_what_is_left_and_the_next_check() {
+        use crate::host::{Platform, Snapshot};
+        let w = attacked("guide-ending");
+        let host = Snapshot::quiet(Platform::Linux, w.dir.join("root"));
+        let (outcome, io) = session_on(
+            &w,
+            Some(&host),
+            &[
+                "organization",
+                "acme",
+                "each",
+                "restore",
+                "yes",
+                "",
+                "erase",
+                "yes",
+                "",
+                // q under the list leaves, and is not a stop: it ends on the
+                // closing screen.
+                "q",
+            ],
+        );
+        assert!(io.said.contains("  GitHub is clean again."), "{}", io.said);
+        assert!(io
+            .said
+            .contains("      checked    2 repositories and 2 branches of acme"));
+        assert!(io.said.contains("      fixed      2 repositories"));
+        assert!(io.said.contains("      verified   on GitHub afterwards: "));
+        assert!(io.said.contains("  Four things are still yours, in order:"));
+        assert!(io
+            .said
+            .contains("      computer    Check this computer now."));
+        assert!(io.said.contains("  Type computer or done."));
+        assert!(io
+            .said
+            .contains("  Finished. GitHub is fixed. Four steps are still yours."));
+        assert!(io.said.contains("  The list, with every branch and file:"));
+        assert!(io.said.contains("  ~/polinrider-report.txt"));
+        assert!(io.said.contains("  Run polinrider again after each step."));
+        assert!(!io.said.contains("Stopped."));
+        assert!(!io.said.contains("To check again"));
+        assert_eq!(outcome.exit, ExitCode::Confirmed);
+    }
+
+    #[test]
+    fn the_computer_can_be_checked_next_and_the_exit_keeps_the_worse_result() {
+        use crate::host::{Platform, Snapshot};
+        let w = attacked("guide-then-computer");
+        let host = Snapshot::quiet(Platform::Linux, w.dir.join("root"));
+        let (outcome, io) = session_on(
+            &w,
+            Some(&host),
+            &[
+                "organization",
+                "acme",
+                "each",
+                "restore",
+                "yes",
+                "",
+                "skip",
+                // Under the list: this computer next, then done.
+                "computer",
+                "",
+                "done",
+            ],
+        );
+        assert!(
+            io.said.contains("  1 of 2 repositories is fixed."),
+            "{}",
+            io.said
+        );
+        assert!(io
+            .said
+            .contains("      fixed      1 repository, 1 branch, put back"));
+        assert!(io
+            .said
+            .contains("      verified   on GitHub afterwards: it matches"));
+        assert!(io.said.contains("      not fixed  1 repository"));
+        assert!(io.said.contains("STEP 3 OF 4   Checking this computer"));
+        assert!(io.said.contains("  Nothing found on this computer."));
+        // The computer is done, so what is offered after it is GitHub.
+        assert!(io.said.contains("  Type organization, account or done."));
+        assert!(io
+            .said
+            .contains("  Finished. 1 of 2 repositories is fixed. Nothing found on this computer."));
+        assert!(io.said.contains("  The report: ~/polinrider-report.txt"));
+        // A clean computer does not take back what GitHub carried.
+        assert_eq!(outcome.exit, ExitCode::Confirmed);
+        assert!(outcome.report.contains("GitHub check of acme"));
+        assert!(outcome.report.contains("first check, read-only"));
     }
 
     #[test]
@@ -1301,7 +1456,7 @@ mod tests {
             w.file("website", "main", "vite.config.js").as_deref(),
             Some("export default {}\n")
         );
-        assert!(io.said.contains("  Both repositories are fixed."));
+        assert!(io.said.contains("  GitHub is clean again."));
         assert!(io
             .said
             .contains("Pull the fix into every clone, once its computer is checked"));
@@ -1415,15 +1570,24 @@ mod tests {
             io.said
         );
         assert!(io.said.contains("12 of 12"));
-        assert!(io.said.contains("  NEXT   GitHub"));
-        assert!(io.said.contains("  This computer is done. GitHub is next."));
+        assert!(io
+            .said
+            .contains("      organization   Every repository and branch of a"));
         assert!(io
             .said
             .contains("  Type organization, account or done. q quits."));
         assert!(io
             .said
             .contains("Checked 2 repositories and 2 branches of acme."));
-        assert!(io.said.contains("  NEXT   More on GitHub?"));
+        // After the computer, after acme and after the account: GitHub
+        // again each time, since the computer is done.
+        assert_eq!(
+            io.said.matches("      done           Finish here.").count(),
+            3
+        );
+        assert!(io
+            .said
+            .contains("  Finished. Nothing found on this computer."));
         assert!(io
             .said
             .contains("Checked 0 repositories and 0 branches of tester."));
@@ -1441,9 +1605,10 @@ mod tests {
         let w = attacked("guide-everything-done");
         let host = Snapshot::quiet(Platform::Linux, w.dir.join("root"));
         let (outcome, io) = session_on(&w, Some(&host), &["everything", "", "done"]);
+        assert!(io.said.contains("      done           Finish here."));
         assert!(io
             .said
-            .contains("      done           Stop here. GitHub is not checked."));
+            .contains("  Finished. Nothing found on this computer."));
         assert!(!io.said.contains("Signed in to GitHub"));
         assert_eq!(outcome.exit, ExitCode::Clean);
 

@@ -82,6 +82,16 @@ pub struct Outcome {
     pub report: String,
 }
 
+/// What one finished check comes to, for the closing screen.
+pub(crate) struct Finished {
+    /// The check in one sentence: "GitHub is fixed."
+    pub(crate) said: Span,
+    /// How many things on its list are still the operator's.
+    pub(crate) left: usize,
+    /// What its report lists: "every finding".
+    pub(crate) listed: &'static str,
+}
+
 /// Why a step did not produce a value.
 pub(crate) enum Stop {
     /// The operator typed `q`.
@@ -203,6 +213,31 @@ pub(crate) fn count(n: usize, one: &str, many: &str) -> String {
     format!("{n} {}", if n == 1 { one } else { many })
 }
 
+/// 4 as Four, for a count said at the start of a sentence. Past ten, digits.
+pub(crate) fn in_words(n: usize) -> String {
+    const WORDS: [&str; 11] = [
+        "No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten",
+    ];
+    WORDS
+        .get(n)
+        .map_or_else(|| n.to_string(), |w| (*w).to_string())
+}
+
+/// The line above the last screen's list: "Four things are still yours, in
+/// order:".
+pub(crate) fn still_yours(n: usize) -> Vec<Span> {
+    vec![p(if n == 1 {
+        "  One thing is still yours:".to_string()
+    } else {
+        format!("  {} things are still yours, in order:", in_words(n))
+    })]
+}
+
+/// One line of what a check did, under a label: `checked    48 files ...`.
+pub(crate) fn row(label: &str, value: Span) -> Vec<Span> {
+    vec![p(format!("      {label:<11}")), value]
+}
+
 /// How far a long job has come, in the words the progress screen uses.
 pub(crate) struct Meter<'a> {
     pub(crate) done: usize,
@@ -270,7 +305,9 @@ pub fn run(session: &Session, io: &mut dyn Console) -> Outcome {
     io.say(&[good("  Nothing will be changed unless you type yes.")]);
 
     let mut worst: Option<ExitCode> = None;
-    match steps(session, io, &mut report, &mut worst) {
+    let mut finished: Vec<Finished> = Vec::new();
+    match steps(session, io, &mut report, &mut worst, &mut finished) {
+        Ok(()) => closing(session, io, &finished),
         Err(Stop::Quit) => {
             blank(io, 2);
             line(io, "  Stopped. Nothing further was changed.");
@@ -282,7 +319,7 @@ pub fn run(session: &Session, io: &mut dyn Console) -> Outcome {
                 "  Input ended. Stopped here, and nothing further was changed.",
             );
         }
-        Err(Stop::Back) | Ok(()) => {}
+        Err(Stop::Back) => {}
     }
 
     let exit = match worst {
@@ -305,24 +342,173 @@ fn steps(
     io: &mut dyn Console,
     report: &mut String,
     worst: &mut Option<ExitCode>,
+    finished: &mut Vec<Finished>,
 ) -> Result<(), Stop> {
     // --- 1: what. A step that is backed out of returns here. --------------
-    loop {
+    let mut last = loop {
         let what = choose_what(session, io)?;
-        let outcome = match what {
-            What::Computer | What::Folders => local(session, what, io, report, worst),
-            What::Everything => everything(session, io, report, worst),
-            What::Organization => {
-                crate::guide_github::run(session, OwnerKind::Organization, io, report, worst)
-            }
-            What::Account => {
-                crate::guide_github::run(session, OwnerKind::Account, io, report, worst)
-            }
-        };
-        match outcome {
+        match track(session, what, io, report, worst) {
             Err(Stop::Back) => continue,
-            other => return other,
+            Err(stop) => return Err(stop),
+            Ok(done) => {
+                finished.extend(done);
+                break what;
+            }
         }
+    };
+    let mut computer_done = matches!(last, What::Computer | What::Everything);
+
+    // --- then the check that usually comes next, until done ---------------
+    while let Some(next) = offer_next(session, io, last, computer_done)? {
+        match track(session, next, io, report, worst) {
+            // back, from a later check, returns to the offer.
+            Err(Stop::Back) => {}
+            Err(stop) => return Err(stop),
+            Ok(done) => {
+                finished.extend(done);
+                last = next;
+                computer_done |= next == What::Computer;
+            }
+        }
+    }
+    Ok(())
+}
+
+/// One check, steps 2 to 4. Its result is weighed against the session's,
+/// never written over it: a later clean check does not take back a payload.
+fn track(
+    session: &Session,
+    what: What,
+    io: &mut dyn Console,
+    report: &mut String,
+    worst: &mut Option<ExitCode>,
+) -> Result<Option<Finished>, Stop> {
+    let mut theirs: Option<ExitCode> = None;
+    let outcome = match what {
+        What::Computer | What::Everything => {
+            local(session, What::Computer, io, report, &mut theirs).map(Some)
+        }
+        What::Folders => local(session, what, io, report, &mut theirs).map(Some),
+        What::Organization => {
+            crate::guide_github::run(session, OwnerKind::Organization, io, report, &mut theirs)
+        }
+        What::Account => {
+            crate::guide_github::run(session, OwnerKind::Account, io, report, &mut theirs)
+        }
+    };
+    *worst = worse(*worst, theirs);
+    outcome
+}
+
+/// Under the last screen's list: the check that usually comes next, as a
+/// word to type, or done. After GitHub that is this computer; after this
+/// computer or a folder it is GitHub. `None` is done, and so is q here,
+/// since nothing is left to stop.
+fn offer_next(
+    session: &Session,
+    io: &mut dyn Console,
+    last: What,
+    computer_done: bool,
+) -> Result<Option<What>, Stop> {
+    let computer = session.host.is_some() && !computer_done;
+    let github = matches!(last, What::Computer | What::Everything | What::Folders) || computer_done;
+    if !computer && !github {
+        return Ok(None);
+    }
+    // Wide enough for "organization" when it is on the screen.
+    let width = if github { 15 } else { 12 };
+    let choice = |io: &mut dyn Console, name: &str, about: &[&str]| {
+        for (n, text) in about.iter().enumerate() {
+            io.say(&[
+                if n == 0 {
+                    word(format!("      {name:<width$}"))
+                } else {
+                    p(" ".repeat(6 + width))
+                },
+                p(*text),
+            ]);
+        }
+        blank(io, 1);
+    };
+    blank(io, 3);
+    if computer {
+        choice(io, "computer", &["Check this computer now."]);
+    }
+    if github {
+        choice(
+            io,
+            "organization",
+            &["Every repository and branch of a", "GitHub organization."],
+        );
+        choice(io, "account", &["Every repository you own on GitHub."]);
+    }
+    choice(io, "done", &["Finish here."]);
+    let words = match (computer, github) {
+        (true, true) => "computer, organization, account or done",
+        (true, false) => "computer or done",
+        _ => "organization, account or done",
+    };
+    io.say(&[p(format!("  Type {words}."))]);
+    loop {
+        let answer = match read(io) {
+            Err(Stop::Quit) => return Ok(None),
+            other => other?,
+        };
+        match answer.as_str() {
+            "computer" | "c" if computer => return Ok(Some(What::Computer)),
+            "organization" | "organisation" | "org" | "o" if github => {
+                return Ok(Some(What::Organization))
+            }
+            "account" | "a" if github => return Ok(Some(What::Account)),
+            "done" | "d" => return Ok(None),
+            _ => {
+                blank(io, 1);
+                io.say(&[warn(format!("  Type {words}. q quits."))]);
+            }
+        }
+    }
+}
+
+/// The end of a session that ran to its end: what it all came to, what is
+/// left, and where the list is. It ends on a sentence, not on a prompt.
+fn closing(session: &Session, io: &mut dyn Console, finished: &[Finished]) {
+    let Some(last) = finished.last() else {
+        return;
+    };
+    let rule = if session.unicode { "─" } else { "-" }.repeat(56);
+    blank(io, 2);
+    io.say(&[dim(format!("  {rule}"))]);
+    blank(io, 1);
+    let mut said = vec![p("  Finished.")];
+    for f in finished {
+        said.push(p(" "));
+        said.push(f.said.clone());
+    }
+    if last.left > 0 {
+        said.push(p(format!(
+            " {} still yours.",
+            if last.left == 1 {
+                "One step is".to_string()
+            } else {
+                format!("{} steps are", in_words(last.left))
+            }
+        )));
+    }
+    io.say(&said);
+    blank(io, 1);
+    let report = tilde(session.report, session.home);
+    if last.left > 0 {
+        line(io, &format!("  The list, with {}:", last.listed));
+        line(io, &format!("  {report}"));
+        blank(io, 1);
+        line(io, "  Run polinrider again after each step.");
+    } else {
+        line(io, &format!("  The report: {report}"));
+        blank(io, 1);
+        line(
+            io,
+            "  Indicators change every week. Check again after an update.",
+        );
     }
 }
 
@@ -341,81 +527,6 @@ fn worse(a: Option<ExitCode>, b: Option<ExitCode>) -> Option<ExitCode> {
     }
 }
 
-/// This computer first, then GitHub: an organization, an account, or one
-/// after the other, until the operator says done.
-fn everything(
-    session: &Session,
-    io: &mut dyn Console,
-    report: &mut String,
-    worst: &mut Option<ExitCode>,
-) -> Result<(), Stop> {
-    local(session, What::Computer, io, report, worst)?;
-    let mut checked = false;
-    loop {
-        let rule = if session.unicode { "─" } else { "-" }.repeat(56);
-        blank(io, 2);
-        io.say(&[dim(format!("  {rule}"))]);
-        io.say(&[
-            strong("  NEXT"),
-            p(if checked {
-                "   More on GitHub?"
-            } else {
-                "   GitHub"
-            }),
-        ]);
-        io.say(&[dim(format!("  {rule}"))]);
-        blank(io, 1);
-        io.say(&[dim("  Nothing is changed in this step.")]);
-        blank(io, 2);
-        if !checked {
-            line(io, "  This computer is done. GitHub is next.");
-            blank(io, 1);
-        }
-        io.say(&[
-            word("      organization"),
-            p("   Every repository and branch of a"),
-        ]);
-        line(io, "                     GitHub organization.");
-        blank(io, 1);
-        io.say(&[
-            word("      account"),
-            p("        Every repository you own on GitHub."),
-        ]);
-        blank(io, 1);
-        io.say(&[
-            word("      done"),
-            p(if checked {
-                "           Nothing more to check."
-            } else {
-                "           Stop here. GitHub is not checked."
-            }),
-        ]);
-        blank(io, 2);
-        line(io, "  Type organization, account or done.");
-        let kind = loop {
-            match read(io)?.as_str() {
-                "organization" | "organisation" | "org" | "o" => break OwnerKind::Organization,
-                "account" | "a" => break OwnerKind::Account,
-                "done" | "d" => return Ok(()),
-                _ => {
-                    blank(io, 1);
-                    io.say(&[warn("  Type organization, account or done. q quits.")]);
-                }
-            }
-        };
-        // Its result is weighed against the computer's, never written over it.
-        let mut theirs: Option<ExitCode> = None;
-        let outcome = crate::guide_github::run(session, kind, io, report, &mut theirs);
-        *worst = worse(*worst, theirs);
-        match outcome {
-            // back, from a GitHub screen, returns to this question.
-            Err(Stop::Back) => {}
-            Err(stop) => return Err(stop),
-            Ok(()) => checked = true,
-        }
-    }
-}
-
 /// This computer, or folders on it: steps 2 to 4.
 fn local(
     session: &Session,
@@ -423,7 +534,7 @@ fn local(
     io: &mut dyn Console,
     report: &mut String,
     worst: &mut Option<ExitCode>,
-) -> Result<(), Stop> {
+) -> Result<Finished, Stop> {
     let roots = choose_roots(session, what, io)?;
 
     let scope = Scope {
@@ -539,18 +650,13 @@ fn local(
 
     // --- 4: what to do now --------------------------------------------------
     header(io, session, 4, "What to do now", false);
-    let last = what_now(session, &found, &current, declined, what);
+    let (last, finished) = what_now(session, &found, &current, declined, what, roots.len());
     for spans in &last {
         io.say(spans);
         report.push_str(&text_of(spans));
         report.push('\n');
     }
-    blank(io, 2);
-    line(io, "  The full report, with every finding:");
-    io.say(&[p(format!("  {}", tilde(session.report, session.home)))]);
-    blank(io, 1);
-    io.say(&[p("  To check again:   "), word("polinrider")]);
-    Ok(())
+    Ok(finished)
 }
 
 fn choose_what(session: &Session, io: &mut dyn Console) -> Result<What, Stop> {
@@ -1069,20 +1175,46 @@ fn paths_of(findings: &[Finding], home: &Path, want: fn(Kind) -> bool) -> Vec<St
         .collect()
 }
 
-/// The last screen, as lines. Written from what was found at the start and
-/// what is still there now.
+/// The last screen, as lines, and what it comes to for the closing screen.
+/// Written from what was found at the start and what is still there now.
 fn what_now(
     session: &Session,
     found: &Verdict,
     current: &[Finding],
     declined: usize,
     what: What,
-) -> Vec<Vec<Span>> {
+    roots: usize,
+) -> (Vec<Vec<Span>>, Finished) {
     let mut out: Vec<Vec<Span>> = Vec::new();
+    let listed = "every finding";
+    let checked = row(
+        "checked",
+        p(format!(
+            "{} {} in {}{}",
+            thousands(found.files()),
+            if found.files() == 1 { "file" } else { "files" },
+            count(roots, "folder", "folders"),
+            if what == What::Computer {
+                ", and this computer"
+            } else {
+                ""
+            }
+        )),
+    );
 
     if found.hits() == 0 {
         if found.reviews() == 0 {
-            out.push(vec![good("  Nothing found.")]);
+            let said = good(if what == What::Computer {
+                "Nothing found on this computer."
+            } else if roots == 1 {
+                "Nothing found in this folder."
+            } else {
+                "Nothing found in these folders."
+            });
+            out.push(vec![p("  "), said.clone()]);
+            out.push(vec![]);
+            out.push(checked);
+            out.push(row("found", p("nothing against today's indicators")));
             out.push(vec![]);
             for text in [
                 "  Clean against today's indicators is not proof that nothing",
@@ -1091,10 +1223,19 @@ fn what_now(
             ] {
                 out.push(vec![dim(text)]);
             }
-            return out;
+            return (
+                out,
+                Finished {
+                    said,
+                    left: 0,
+                    listed,
+                },
+            );
         }
+        let said = warn("Nothing is confirmed.");
         out.push(vec![
-            warn("  Nothing is confirmed."),
+            p("  "),
+            said.clone(),
             p(format!(
                 " {} your eyes.",
                 if found.reviews() == 1 {
@@ -1104,6 +1245,9 @@ fn what_now(
                 }
             )),
         ]);
+        out.push(vec![]);
+        out.push(checked);
+        out.push(row("found", p(format!("{} to review", found.reviews()))));
         let todos = [
             todo(
                 "Look at each item listed above",
@@ -1117,8 +1261,17 @@ fn what_now(
                 ],
             ),
         ];
+        blank_lines(&mut out, 2);
+        out.push(still_yours(todos.len()));
         numbered(&mut out, &todos);
-        return out;
+        return (
+            out,
+            Finished {
+                said,
+                left: todos.len(),
+                listed,
+            },
+        );
     }
 
     let ran_here = found.kinds().any(Kind::ran_here);
@@ -1127,17 +1280,39 @@ fn what_now(
     } else {
         "These folders are"
     };
-    out.push(if ran_here {
-        vec![
-            bad(format!("  {here} not safe yet.")),
-            p(" Do these in order."),
-        ]
+    let said = if ran_here {
+        bad(format!("{here} not safe yet."))
     } else {
-        vec![
-            warn("  The payload was in your project files."),
-            p(" Do these in order."),
-        ]
-    });
+        warn("The payload was in your project files.")
+    };
+    out.push(vec![p("  "), said.clone()]);
+    out.push(vec![]);
+    out.push(checked);
+    out.push(row(
+        "found",
+        p(if found.reviews() == 0 {
+            format!("{} confirmed", found.hits())
+        } else {
+            format!("{} confirmed, {} to review", found.hits(), found.reviews())
+        }),
+    ));
+    let left_hits = current.iter().filter(|f| f.level == Level::Hit).count();
+    let contained = found.hits().saturating_sub(left_hits);
+    if contained > 0 {
+        out.push(row(
+            "contained",
+            good(format!(
+                "{contained} of {}, originals kept in quarantine",
+                found.hits()
+            )),
+        ));
+    }
+    if declined > 0 {
+        out.push(row(
+            "left",
+            warn(format!("{declined} in place, as you chose")),
+        ));
+    }
 
     let kinds_now: Vec<Kind> = current.iter().filter_map(|f| f.kind).collect();
     let mut todos: Vec<Todo> = Vec::new();
@@ -1254,10 +1429,17 @@ fn what_now(
     });
     todos.push(todo(
         "Clean your repositories on GitHub",
-        &["This beta cannot do that yet. The released tool can."],
+        &["Choose organization or account below."],
     ));
+    blank_lines(&mut out, 2);
+    out.push(still_yours(todos.len()));
     numbered(&mut out, &todos);
-    out
+    let left = todos.len();
+    (out, Finished { said, left, listed })
+}
+
+pub(crate) fn blank_lines(out: &mut Vec<Vec<Span>>, n: usize) {
+    out.extend(std::iter::repeat_n(Vec::new(), n));
 }
 
 pub(crate) fn numbered(out: &mut Vec<Vec<Span>>, todos: &[Todo]) {
@@ -1414,12 +1596,24 @@ mod tests {
             "clean",
             &[("repo/postcss.config.mjs", "export default {}\n")],
         );
-        let (outcome, io) = w.run(&["folder", &w.repo(), ""]);
+        let (outcome, io) = w.run(&["folder", &w.repo(), "", "done"]);
         assert_eq!(outcome.exit, ExitCode::Clean);
         assert!(io.said.contains("NOTHING FOUND"), "{}", io.said);
         assert!(!io.said.contains("Type yes"), "{}", io.said);
         assert!(io.said.contains("STEP 4 OF 4"));
-        assert!(io.said.contains("To check again:   polinrider"));
+        assert!(io.said.contains("  Nothing found in this folder."));
+        assert!(io
+            .said
+            .contains("      found      nothing against today's indicators"));
+        // Without this computer to offer, GitHub comes next, or done.
+        assert!(io.said.contains("  Type organization, account or done."));
+        assert!(io
+            .said
+            .contains("  Finished. Nothing found in this folder."));
+        assert!(io.said.contains("  The report: ~/polinrider-report.txt"));
+        assert!(io
+            .said
+            .contains("Indicators change every week. Check again after an update."));
     }
 
     #[test]
