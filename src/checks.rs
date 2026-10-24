@@ -137,9 +137,28 @@ pub fn tasks_json(walk: &Walk, ind: &Indicators, v: &mut Verdict, sink: &mut Sin
                 == Some(".vscode")
     }) {
         seen += 1;
-        let Ok(body) = fs::read_to_string(path) else {
+        let Ok(bytes) = fs::read(path) else {
             continue;
         };
+        // A published campaign tasks.json is confirmed by what it is, even
+        // where it carries no indicator string: ADR-0045.
+        if let Some(label) = ind.known_file(&bytes) {
+            flagged += 1;
+            let line = sink.take(path, "malicious-tasks-json");
+            v.push(
+                Finding::hit(
+                    Kind::TasksJson,
+                    format!(
+                        "tasks.json matches a known campaign file ({label}): {}",
+                        path.display()
+                    ),
+                )
+                .at(path)
+                .with_remedy(line),
+            );
+            continue;
+        }
+        let body = String::from_utf8_lossy(&bytes);
         if !crate::unescape::contains_decoded(&body, "folderOpen") {
             continue;
         }
@@ -235,6 +254,26 @@ pub fn build_configs(
             continue;
         }
 
+        // A whole file known from the campaign, with no indicator string to
+        // cut at: confirmed, and not one strip will touch. ADR-0045.
+        if let Some(label) = ind.known_file(&bytes) {
+            flagged += 1;
+            v.push(
+                Finding::hit(
+                    Kind::Config { strippable: false },
+                    format!(
+                        "config file matches a known campaign file ({label}): {}",
+                        path.display()
+                    ),
+                )
+                .at(path)
+                .with_remedy(
+                    "not stripped: the whole file is a known campaign file. Delete the clone and re-clone after the remote is clean.",
+                ),
+            );
+            continue;
+        }
+
         let lines: Vec<&str> = body.lines().collect();
         if let Some((total, end)) = payload_shaped_tail(&body) {
             flagged += 1;
@@ -288,7 +327,7 @@ fn show_cut(plan: &Plan, v: &mut Verdict) {
     ));
 }
 
-pub fn fonts(walk: &Walk, v: &mut Verdict, sink: &mut Sink) {
+pub fn fonts(walk: &Walk, ind: &Indicators, v: &mut Verdict, sink: &mut Sink) {
     v.section("Font files that are not fonts");
     let mut seen = 0usize;
     let mut flagged = 0usize;
@@ -301,6 +340,25 @@ pub fn fonts(walk: &Walk, v: &mut Verdict, sink: &mut Sink) {
         }
         seen += 1;
         let Ok(bytes) = fs::read(path) else { continue };
+
+        // A published fake font, by its hash: named, and caught even if it
+        // ever starts with a font's magic bytes. ADR-0045.
+        if let Some(label) = ind.known_file(&bytes) {
+            flagged += 1;
+            let line = sink.take(path, "font-masquerade");
+            v.push(
+                Finding::hit(
+                    Kind::FakeFont,
+                    format!(
+                        "font file matches a known campaign file ({label}): {}",
+                        path.display()
+                    ),
+                )
+                .at(path)
+                .with_remedy(line),
+            );
+            continue;
+        }
 
         // An empty file has no magic bytes to check, and a Git LFS pointer is
         // a text stub standing in for the font. Both are known false
@@ -565,7 +623,7 @@ pub fn implants(
 
     // 2. a renamed binary still hashes the same. Bounded by size so the sweep
     //    does not read every file on the disk.
-    let known = load_hashes(ioc_dir);
+    let known = &ind.hashes;
     if !known.is_empty() {
         let large: Vec<&PathBuf> = walk
             .files
@@ -622,21 +680,6 @@ pub fn implants(
         }
         ProcessCheck::NoneRunning | ProcessCheck::NotRead => {}
     }
-}
-
-/// `hashes.txt` is `<sha256><space><label>` per line.
-fn load_hashes(ioc_dir: &Path) -> Vec<(String, String)> {
-    let Ok(text) = fs::read_to_string(ioc_dir.join("hashes.txt")) else {
-        return Vec::new();
-    };
-    text.lines()
-        .map(str::trim)
-        .filter(|l| !l.is_empty() && !l.starts_with('#'))
-        .filter_map(|l| {
-            let (h, label) = l.split_once(char::is_whitespace)?;
-            Some((h.to_ascii_lowercase(), label.trim().to_string()))
-        })
-        .collect()
 }
 
 /// The propagation script the campaign drops to spread to other remotes.
@@ -960,6 +1003,69 @@ mod tests {
     fn put(path: &Path, body: &str) {
         fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
         fs::write(path, body).expect("write");
+    }
+
+    #[test]
+    fn a_small_file_known_by_its_hash_is_confirmed_in_each_check_that_reads_it() {
+        // Harmless bytes stand in for the published files: what is under
+        // test is that a check which reads a file compares its hash, at any
+        // size. Nothing here is an indicator string.
+        let dir = scratch("known-hash");
+        let tasks = dir.join("repo/.vscode/tasks.json");
+        let font = dir.join("repo/public/fonts/fa-solid-400.woff2");
+        let config = dir.join("repo/postcss.config.mjs");
+        let other_tasks = dir.join("other/.vscode/tasks.json");
+        put(&tasks, "{\"version\":\"2.0.0\",\"tasks\":[]}\n");
+        // Starts like a real font, so only the hash can catch it.
+        put(&font, "wOF2 not really a font\n");
+        put(&config, "export default { plugins: {} }\n");
+        // Same name, different bytes: not known, and no folderOpen, so silent.
+        put(&other_tasks, "{\"version\":\"2.0.0\"}\n");
+        let known = |path: &Path, label: &str| {
+            (crate::sha256::file(path).expect("hash"), label.to_string())
+        };
+        let ind = Indicators {
+            strong: vec!["MARKER-ALPHA".into()],
+            hashes: vec![
+                known(&tasks, "tasks.json fixture"),
+                known(&font, "font fixture"),
+                known(&config, "config fixture"),
+            ],
+            ..Indicators::default()
+        };
+        let walk = Walk {
+            files: vec![tasks.clone(), font.clone(), config.clone(), other_tasks],
+            ..Walk::default()
+        };
+        let q = Quarantine::<DryRun>::new(dir.join("q"));
+        let mut v = Verdict::new();
+        tasks_json(&walk, &ind, &mut v, &mut Sink::Dry(&q));
+        fonts(&walk, &ind, &mut v, &mut Sink::Dry(&q));
+        build_configs(
+            &walk,
+            &ind,
+            OnInfectedConfig::Strip,
+            &mut v,
+            &mut Sink::Dry(&q),
+        );
+
+        let hits: Vec<(Option<Kind>, &str)> = v
+            .findings()
+            .filter(|f| f.level == crate::verdict::Level::Hit)
+            .map(|f| (f.kind, f.message.as_str()))
+            .collect();
+        assert_eq!(hits.len(), 3, "{hits:?}");
+        assert!(hits.iter().any(|(k, m)| *k == Some(Kind::TasksJson)
+            && m.starts_with("tasks.json matches a known campaign file (tasks.json fixture): ")));
+        assert!(hits.iter().any(|(k, m)| *k == Some(Kind::FakeFont)
+            && m.starts_with("font file matches a known campaign file (font fixture): ")));
+        assert!(hits
+            .iter()
+            .any(|(k, m)| *k == Some(Kind::Config { strippable: false })
+                && m.starts_with("config file matches a known campaign file (config fixture): ")));
+        // None of the three is a sign that the payload ran on this machine.
+        assert!(hits.iter().all(|(k, _)| !k.is_some_and(Kind::ran_here)));
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]

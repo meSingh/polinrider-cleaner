@@ -1,0 +1,22 @@
+{
+  "why": "A small file is hashed only where a check reads it anyway: a .vscode/tasks.json, a font file or a build config. Anything else under 10 MB is not, so a known small loader script elsewhere is not found by its hash, the print.cjs dropper included. This case pins that limit so it is a decision and not a surprise (ADR-0045). Hashing every small file would make a home folder scan read every file it lists.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/lib/loader.cjs": "module.exports = function () { return 1 }\n"
+  },
+  "known_hashes": [
+    {
+      "path": "code/proj/lib/loader.cjs",
+      "label": "corpus fixture: loader"
+    }
+  ],
+  "expect": {
+    "exit": 0,
+    "must_not_report": [
+      "loader.cjs",
+      "[HIT]"
+    ]
+  }
+}

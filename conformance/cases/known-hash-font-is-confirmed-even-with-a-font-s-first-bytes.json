@@ -1,0 +1,29 @@
+{
+  "why": "The fake-font check reads a font's first four bytes, and a payload that began with wOF2 would pass it. A font file whose SHA-256 is a published campaign file is confirmed whatever its first bytes say. The fixture begins with wOF2 so that only the hash can catch it; the runner adds its hash to a copy of ioc/ (ADR-0045). A real font beside it is not reported.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/public/fonts/fa-solid-400.woff2": "wOF2 then a script that is not a font\n",
+    "code/proj/public/fonts/inter.woff2": "wOF2 followed by bytes that are not checked\n"
+  },
+  "known_hashes": [
+    {
+      "path": "code/proj/public/fonts/fa-solid-400.woff2",
+      "label": "corpus fixture: fake font"
+    }
+  ],
+  "expect": {
+    "exit": 2,
+    "findings": [
+      {
+        "level": "HIT",
+        "match": "font file matches a known campaign file (corpus fixture: fake font)",
+        "path": "fa-solid-400.woff2"
+      }
+    ],
+    "must_not_report": [
+      "inter.woff2"
+    ]
+  }
+}

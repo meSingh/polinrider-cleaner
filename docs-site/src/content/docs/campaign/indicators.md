@@ -15,7 +15,7 @@ the organization scanner, the account scanner and all three local checks at once
 | `network.txt` | Campaign hosts and IP addresses | `INFECTED` if a live connection matches |
 | `implant-paths.txt` | Second-stage install, persistence and working paths | `INFECTED` if the path exists |
 | `implant-names.txt` | Implant binary and process names | `INFECTED` on an exact process-name match |
-| `hashes.txt` | SHA-256 of known implant binaries | `INFECTED` on a hash match, whatever the file is named |
+| `hashes.txt` | SHA-256 of known campaign files: implant binaries, and small files such as a poisoned `tasks.json` or a fake font | `INFECTED` on a hash match, whatever the file is named. Files of 10 to 300 MB are hashed, and every `tasks.json`, font file and build config at any size (ADR-0045) |
 
 Format: one entry per line. Lines starting with `#` and blank lines are ignored.
 `strong.txt` and `weak.txt` are matched as fixed strings (`grep -F`), so no

@@ -43,6 +43,13 @@
 #
 # CLEAN CASES. A case with "command": "clean" runs the clean command, which
 # strips an appended payload out of a build config in place.
+#
+# KNOWN-HASH CASES. A published file is matched by its SHA-256, and its bytes
+# cannot be committed. A case's "known_hashes" lists fixture files, each with
+# a label: the runner copies ioc/ to the case's own directory, adds the hash
+# of each fixture to that copy's hashes.txt, and runs with --ioc pointing at
+# it. ioc/ itself is never written. What is tested is that a file the checks
+# read is compared by its hash, at any size (ADR-0045).
 
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -116,6 +123,7 @@ impl_rust() {
     # from the case. The quarantine is always named, because whether anything
     # goes into it is decided by an answer and not by a flag.
     args=(guide --home "$FAKE_HOME" --report "$report" --quarantine "$(dirname "$report")/quarantine")
+    [[ -n "$IOC_DIR" ]] && args+=(--ioc "$IOC_DIR")
     [[ -n "$HOST_STATE" ]] && args+=(--host-state "$HOST_STATE")
     # Copies of repositories go beside the report, which is outside every
     # checkout: the engine refuses anywhere that is not.
@@ -133,6 +141,7 @@ impl_rust() {
     if [[ -n "$HOST_STATE" ]]; then args+=(--host-state "$HOST_STATE"); else args+=(--fs-only); fi
   fi
   [[ -n "$qdir" ]] && args+=(--apply --quarantine "$qdir")
+  [[ -n "$IOC_DIR" ]] && args+=(--ioc "$IOC_DIR")
   "$bin" "${args[@]}" "$@" 2>&1
 }
 
@@ -287,6 +296,17 @@ run_case() {
   if [[ "$(jq -r 'has("forge") or has("forge_files")' "$cf")" == "true" ]]; then
     FORGE_STATE="$tmp/forge"
     build_forge "$cf" "$FORGE_STATE"
+  fi
+  IOC_DIR=""
+  if [[ "$(jq -r 'has("known_hashes")' "$cf")" == "true" ]]; then
+    IOC_DIR="$tmp/ioc"
+    cp -R "$ROOT/ioc" "$IOC_DIR"
+    local known_path known_label known_sum
+    while IFS=$'\t' read -r known_path known_label; do
+      known_sum="$( { sha256sum "$tmp/tree/$known_path" 2>/dev/null \
+        || shasum -a 256 "$tmp/tree/$known_path"; } | cut -d' ' -f1)"
+      printf '%s  %s\n' "$known_sum" "$known_label" >> "$IOC_DIR/hashes.txt"
+    done < <(jq -r '.known_hashes[] | [.path, .label] | @tsv' "$cf")
   fi
   HOST_STATE=""
   if [[ "$is_host" == "true" ]]; then
