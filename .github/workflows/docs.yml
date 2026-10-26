@@ -8,6 +8,10 @@
 #
 # Built with Astro + Starlight. Astro fails the build on a broken internal
 # link by itself, so there is no separate link-checking step.
+#
+# Release pages are dated from their tags (docs-site/src/releaseDate.ts), so
+# the build fetches the tags, and the Release workflow runs this on main once
+# a release is published, which is when that date first exists.
 name: Docs
 
 on:
@@ -33,6 +37,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # The release pages read their dates from the tags.
+          fetch-tags: true
 
       - name: Node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -50,14 +56,16 @@ jobs:
         run: npm run build --prefix docs-site
 
       - name: Upload the site
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
         with:
           path: docs-site/dist
 
   deploy:
     name: Publish to GitHub Pages
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    # A push to main, or a run of main asked for by hand or by the Release
+    # workflow.
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 10
