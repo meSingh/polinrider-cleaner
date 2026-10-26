@@ -544,6 +544,10 @@ refusals() {
   check_refusal "the guided flow told to --apply"    guide --apply
   check_refusal "the guided flow handed a directory" guide "$tmp"
   check_refusal "clean with no directory"            clean
+  # A content pattern with no fixed part could make a long line slow, so it
+  # stops the scan rather than run (ADR-0052).
+  cp -R "$ROOT/ioc" "$tmp/badioc" && printf '[0-9]+\n' >> "$tmp/badioc/strong-patterns.txt"
+  check_refusal "a content pattern with no fixed part" check --fs-only --ioc "$tmp/badioc" "$tmp"
   check_refusal "--purge-evidence handed a directory" --purge-evidence "$tmp"
   check_refusal "--purge-evidence told to --apply"   --purge-evidence --apply
 

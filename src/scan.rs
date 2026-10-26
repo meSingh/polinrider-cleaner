@@ -109,7 +109,7 @@ pub fn run_watched(scope: &Scope, sink: &mut Sink, tell: &mut dyn FnMut(Step)) -
     let mut watch = Watch {
         done: 0,
         // The walk, then the checks.
-        total: if scope.home.is_some() { 12 } else { 9 },
+        total: if scope.home.is_some() { 13 } else { 10 },
         files: 0,
         found: 0,
         tell,
@@ -209,6 +209,9 @@ fn machine(
     runtimes::python_startup(w, Some(home), host, ind, v, sink);
 
     watch.stage("login items and startup files", v);
+    // A file under the home directory: read on a disk checked with --fs-only
+    // too.
+    checks::ssh_keys(home, ind, v);
     match host {
         Some(host) => {
             host_checks::persistence(host, home, ind, v, sink);
@@ -238,6 +241,9 @@ fn machine(
             skipped(v, "Live connections");
         }
     }
+
+    watch.stage("weak signals", v);
+    checks::weak_signals(w, scope.roots, ind, v);
 
     watch.stage("keys and passwords kept here", v);
     // The home directory is swept only when this machine is being read. A
@@ -276,6 +282,8 @@ fn directories(w: &walk::Walk, scope: &Scope, v: &mut Verdict, sink: &mut Sink, 
     runtimes::python_startup(w, None, None, ind, v, sink);
     watch.stage("git hooks", v);
     checks::git_hooks(w, ind, None, v, sink);
+    watch.stage("weak signals", v);
+    checks::weak_signals(w, scope.roots, ind, v);
     watch.stage("keys and passwords kept here", v);
     checks::credentials(w, None, v);
 }

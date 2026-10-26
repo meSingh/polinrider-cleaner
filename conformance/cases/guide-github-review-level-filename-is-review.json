@@ -1,0 +1,45 @@
+{
+  "why": "The GitHub check reads the same filenames-review.txt as the folder check: a branch carrying a name the campaign also uses, here a solid font named for a weight Font Awesome does not ship, is a branch to look at, not one carrying the payload. Nothing is confirmed, so nothing is offered for fixing, and the exit is 1 (ADR-0048).",
+  "command": "guide",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "stdin": [
+    "organization",
+    "acme",
+    "details",
+    "",
+    "done"
+  ],
+  "forge_files": {
+    "whoami": "tester\n",
+    "orgs": "acme\t1\n"
+  },
+  "forge": {
+    "acme": {
+      "site": {
+        "branches": {
+          "main": {
+            "public/fonts/fa-solid-500.woff2": "wOF2 then bytes that are not checked\n",
+            "src/index.js": "export const a = 1\n"
+          }
+        }
+      }
+    }
+  },
+  "expect": {
+    "exit": 1,
+    "tree_may_change": false,
+    "must_print": [
+      "Checked 1 repository and 1 branch of acme.",
+      "public/fonts/fa-solid-500.woff2   a file name the campaign also uses",
+      "Nothing is confirmed."
+    ],
+    "must_not_print": [
+      "CONFIRMED   1"
+    ]
+  }
+}

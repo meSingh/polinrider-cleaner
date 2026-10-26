@@ -1,0 +1,27 @@
+{
+  "why": "The toskypi build of the MicrosoftSystem64 RAT appends its own key to ~/.ssh/authorized_keys, with the comment bink@DESKTOP-N8JGD6T (MAL-2026-4345). A machine cleaned of the implant still lets the attacker in over SSH, so that key is confirmed. The file also holds the owner's own keys, so nothing is moved or edited: the line is named, and the owner removes it. The comparison is with each key's comment field, never the whole line: the third line carries the same string inside its options and is not the attacker's key (ADR-0049).",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "home": {
+    ".ssh/authorized_keys": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOwnerOwnKeyAAAAAAAAAAAAAAAAAAAAAAAAAAAA owner@laptop\nssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCattackerKeyStandInAAAAAAAAAAAAAAAAAAAA bink@DESKTOP-N8JGD6T\nenvironment=\"NOTE=bink@DESKTOP-N8JGD6T\" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBackupKeyAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA backup@server\n"
+  },
+  "expect": {
+    "exit": 2,
+    "tree_may_change": false,
+    "findings": [
+      {
+        "level": "HIT",
+        "match": "an SSH key known from the campaign is allowed to log in (bink@DESKTOP-N8JGD6T)",
+        "path": "authorized_keys, line 2"
+      }
+    ],
+    "must_not_report": [
+      "line 3",
+      "line 1"
+    ]
+  }
+}

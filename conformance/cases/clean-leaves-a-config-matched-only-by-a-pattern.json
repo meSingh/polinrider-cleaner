@@ -1,0 +1,24 @@
+{
+  "why": "A content pattern says the payload is there but not where it starts, so clean has no point to cut from. The config is confirmed, and left exactly as it was with the reason said, the same as a payload found only once its escape codes are decoded (ADR-0052).",
+  "command": "clean",
+  "roots": [
+    "code/proj"
+  ],
+  "files": {
+    "code/proj/vite.config.js": "export default { plugins: [] }\n// node ./public/fonts/fa-solid-500.woff2\n"
+  },
+  "expect": {
+    "exit": 2,
+    "tree_may_change": false,
+    "findings": [
+      {
+        "level": "HIT",
+        "match": "config file contains an indicator",
+        "path": "vite.config.js"
+      }
+    ],
+    "must_print": [
+      "only a campaign pattern matched, which gives no point in the file to cut from"
+    ]
+  }
+}

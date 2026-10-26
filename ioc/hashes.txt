@@ -1,10 +1,11 @@
 # SHA-256 of files known from this campaign. A match is confirmed, whatever
 # the file is called.
 #
-# Where a match is looked for (ADR-0045):
+# Where a match is looked for (ADR-0045, ADR-0051):
 #   - every file of 10 MB to 300 MB, for the second-stage binaries
 #   - every .vscode/tasks.json, font file and build config, at any size,
-#     because the checks read those files anyway
+#     because the checks read those files anyway, on this computer, in
+#     folders, and on every branch, tag and commit of a GitHub repository
 # A smaller file of any other kind is not hashed. The print.cjs dropper below
 # is matched only if it sits in one of those places or is renamed into one.
 #

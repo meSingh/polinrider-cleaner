@@ -62,6 +62,12 @@ If you disagree with one, open an issue and quote its number.
 | [0044](./0044-a-guided-session-ends-on-what-it-came-to-and-offers-the-next-check.md) | End a guided session on what it came to, and offer the next check | Accepted |
 | [0045](./0045-small-files-the-checks-read-are-compared-by-hash.md) | Compare the small files the checks read against the known hashes | Accepted |
 | [0046](./0046-purge-evidence-deletes-only-polinriders-own-copies.md) | Let `--purge-evidence` delete polinrider's own copies, and nothing else | Accepted |
+| [0047](./0047-the-folder-and-computer-checks-read-weak-txt.md) | The folder and computer checks read `weak.txt` | Accepted |
+| [0048](./0048-a-review-level-filename-list.md) | Add a review-level filename list | Accepted |
+| [0049](./0049-the-computer-check-reads-authorized-keys.md) | The computer check reads `~/.ssh/authorized_keys` | Accepted |
+| [0050](./0050-a-node-process-running-the-implants-script-is-the-implant.md) | A `node` process running a script from the implant's folder is the implant | Accepted |
+| [0051](./0051-the-github-check-compares-known-hashes.md) | The GitHub check compares the small files against the known hashes | Accepted |
+| [0052](./0052-content-patterns-at-the-confirmed-tier.md) | Match campaign patterns in file contents | Accepted |
 
 ## Adding one
 
