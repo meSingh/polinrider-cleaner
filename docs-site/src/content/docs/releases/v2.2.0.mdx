@@ -1,0 +1,67 @@
+---
+title: polinrider-cleaner 2.2.0
+description: Ends every guided check on where things stand and offers the next one, matches published small campaign files by their hash, and can delete its own copies of repositories when you are done.
+version: "2.2.0"
+slug: releases/v2.2.0
+date: "2026-10-26"
+---
+
+import Downloads from '../../../components/Downloads.astro';
+import Released from '../../../components/Released.astro';
+
+<Released version="2.2.0" date="2026-10-26" /> No breaking changes.
+
+## New
+
+- **The guided flow ends on where things stand.** The last screen now opens
+  with one sentence ("GitHub is clean again.", "Nothing found on this
+  computer.") and a few lines of what the run did: what was checked, found,
+  fixed and confirmed on GitHub afterwards. Then the list of what is still
+  yours to do.
+- **The next check is offered as a word.** After GitHub, type `computer` to
+  check this computer in the same session; after this computer or a folder,
+  `organization` or `account`. Type `done` to finish, and the session ends on
+  a short closing screen with where the list is saved. A later check never
+  takes back what an earlier one found: the exit code is the worse of the two.
+- **`polinrider --purge-evidence`** deletes the copies of repositories the
+  GitHub checks kept, after you type `yes`. Add `--evidence DIR` if you chose
+  the folder. It deletes only a folder that holds nothing but polinrider's own
+  copies, and refuses anything else without touching it. The copies are the
+  only copy of the commits from before the attack, so run it after every
+  restore is done.
+- **Small campaign files are matched by their hash.** A `.vscode/tasks.json`,
+  font file or build config whose SHA-256 is a published campaign file is
+  confirmed, whatever it holds. Two published hashes are added: the
+  `tasks.json` that runs a fake font on folder open, and the fake font.
+- **14 more indicators**, from the
+  [19 October](/polinrider-cleaner/indicator-reviews/2026-10-19/) and
+  [21 October](/polinrider-cleaner/indicator-reviews/2026-10-21/) reviews.
+
+## Changed
+
+- **The CI scanner matches what 2.1.0 matches:** loaders written in escape
+  codes, and package names read from manifests and compared whole. If you
+  vendored `ci/scan-workspace.sh` into a repository from 2.1.0 or earlier,
+  run `ci/install-workflow.sh` again to update it.
+- The winget manifests are written against schema 1.12.
+
+## Breaking changes
+
+None. Exit codes, commands and flags are as in 2.1.0. `--purge-evidence` is
+new, and the guided flow asks one more question at the end, which `done` or
+`q` answers.
+
+## Download
+
+<Downloads version="2.2.0" packages />
+
+Or through a package manager:
+
+```bash
+brew install meSingh/tap/polinrider-cleaner
+scoop bucket add mesingh https://github.com/meSingh/scoop-bucket
+scoop install polinrider-cleaner
+```
+
+[Verify what you downloaded](/polinrider-cleaner/reference/verifying/) before
+you run it.

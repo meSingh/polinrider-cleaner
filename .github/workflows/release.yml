@@ -379,6 +379,23 @@ jobs:
           retention-days: 90
           if-no-files-found: error
 
+  docs:
+    name: Date the release page
+    # The release page is dated from the tag, which exists only now, so the
+    # site is rebuilt from main once the release is published. The site
+    # itself is built and published by docs.yml, never from a tag.
+    needs: [check, release]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write   # start docs.yml on main
+    steps:
+      - name: Rebuild the documentation site from main
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: gh workflow run docs.yml --repo "$REPO" --ref main
+
   packages:
     name: Tap and bucket pull requests
     # After the release exists, so every URL in the pull requests resolves.
