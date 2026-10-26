@@ -970,6 +970,78 @@ pub fn weak_signals(walk: &Walk, roots: &[PathBuf], ind: &Indicators, v: &mut Ve
     }
 }
 
+/// SSH keys the campaign adds to `~/.ssh/authorized_keys` so that it can log
+/// in after the implant is gone. Each key is matched on its own fields, the
+/// comment or the key itself, never on the whole line, which also holds
+/// options. The file holds the owner's own keys, so it is never moved or
+/// edited: the line is named and removed by hand. ADR-0049.
+pub fn ssh_keys(home: &Path, ind: &Indicators, v: &mut Verdict) {
+    v.section("SSH keys that let someone in");
+    let path = home.join(".ssh").join("authorized_keys");
+    let text = match fs::read(&path) {
+        Ok(bytes) => String::from_utf8_lossy(&bytes).into_owned(),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            v.push(Finding::ok("no ~/.ssh/authorized_keys"));
+            return;
+        }
+        Err(e) => {
+            v.push(Finding::review(format!(
+                "could not read, so it was not checked: {} ({e})",
+                path.display()
+            )));
+            return;
+        }
+    };
+    let is_key_type =
+        |f: &&str| f.starts_with("ssh-") || f.starts_with("ecdsa-") || f.starts_with("sk-");
+    let (mut keys, mut found) = (0usize, false);
+    for (n, line) in text.lines().enumerate() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        let fields: Vec<&str> = line.split_whitespace().collect();
+        let Some(at) = fields.iter().position(is_key_type) else {
+            continue;
+        };
+        keys += 1;
+        let key = fields.get(at + 1).copied().unwrap_or_default();
+        let comment = fields
+            .get(at + 2..)
+            .map(|c| c.join(" "))
+            .unwrap_or_default();
+        if let Some(known) = ind.ssh_keys.iter().find(|k| **k == comment || *k == key) {
+            found = true;
+            v.push(
+                Finding::hit(
+                    Kind::SshKey,
+                    format!(
+                        "an SSH key known from the campaign is allowed to log in ({}): {}, line {}",
+                        crate::verdict::clean(known),
+                        path.display(),
+                        n + 1
+                    ),
+                )
+                .at(&path)
+                .with_remedy(
+                    "Remove that line by hand. It lets the attacker log in over SSH even after the implant is gone.",
+                ),
+            );
+        }
+    }
+    if !found {
+        v.push(Finding::ok(format!(
+            "{}: {}, none known from the campaign",
+            path.display(),
+            if keys == 1 {
+                "1 key".to_string()
+            } else {
+                format!("{keys} keys")
+            }
+        )));
+    }
+}
+
 pub fn credentials(walk: &Walk, home: Option<&Path>, v: &mut Verdict) {
     v.section(if home.is_some() {
         "Credential surface on this machine"

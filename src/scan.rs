@@ -209,6 +209,9 @@ fn machine(
     runtimes::python_startup(w, Some(home), host, ind, v, sink);
 
     watch.stage("login items and startup files", v);
+    // A file under the home directory: read on a disk checked with --fs-only
+    // too.
+    checks::ssh_keys(home, ind, v);
     match host {
         Some(host) => {
             host_checks::persistence(host, home, ind, v, sink);

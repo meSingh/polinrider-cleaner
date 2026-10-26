@@ -15,6 +15,7 @@ three local checks at once.
 | `bad-packages.txt` | Malicious package names from the campaign | `INFECTED` |
 | `filenames.txt` | Paths that are indicators on their own (extended regex) | `INFECTED` |
 | `filenames-review.txt` | Paths worth a look that legitimate projects can also have (extended regex) | `review` only (ADR-0048) |
+| `ssh-keys.txt` | SSH keys the campaign adds to `~/.ssh/authorized_keys`: a key's comment or the key itself | `INFECTED`, removed by hand (ADR-0049) |
 | `weak.txt` | Strings legitimate projects also use | `review` only |
 | `network.txt` | Campaign hosts and IP addresses | `INFECTED` if a live connection matches |
 | `implant-paths.txt` | Second-stage install, persistence and working paths | `INFECTED` if the path exists |

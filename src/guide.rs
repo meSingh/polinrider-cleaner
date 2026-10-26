@@ -1357,6 +1357,15 @@ fn what_now(
         t.paths = paths_of(current, session.home, |k| k == Kind::StartupFile);
         todos.push(t);
     }
+    if kinds_now.contains(&Kind::SshKey) {
+        todos.push(todo(
+            "Remove the attacker's key from ~/.ssh/authorized_keys",
+            &[
+                "The line is named above and in the report. Then read every",
+                "other line: the next build may use another name.",
+            ],
+        ));
+    }
     if kinds_now.contains(&Kind::Crontab) {
         todos.push(todo(
             "Edit your scheduled jobs",

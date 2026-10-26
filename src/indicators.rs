@@ -40,6 +40,9 @@ pub struct Indicators {
     /// Paths worth a look but not proof, from `filenames-review.txt`. A match
     /// is review, never confirmed: ADR-0048.
     pub review_filenames: Vec<Pattern>,
+    /// SSH keys the campaign installs, from `ssh-keys.txt`: a key's comment or
+    /// the key itself, compared whole against that field: ADR-0049.
+    pub ssh_keys: Vec<String>,
     /// SHA-256 of files known from the campaign, lowercase, each with its
     /// label. From `hashes.txt`, `<sha256> <label>` per line.
     pub hashes: Vec<(String, String)>,
@@ -135,6 +138,10 @@ impl Indicators {
                     Pattern::parse(p).map_err(|e| LoadError::Pattern("filenames-review.txt", e))
                 })
                 .collect::<Result<_, _>>()?,
+            ssh_keys: read_list(dir, "ssh-keys.txt", false)?
+                .into_iter()
+                .map(|l| l.trim().to_string())
+                .collect(),
             hashes: read_list(dir, "hashes.txt", false)?
                 .iter()
                 .filter_map(|l| {
