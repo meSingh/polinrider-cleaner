@@ -1569,7 +1569,7 @@ mod tests {
             "{}",
             io.said
         );
-        assert!(io.said.contains("12 of 12"));
+        assert!(io.said.contains("13 of 13"));
         assert!(io
             .said
             .contains("      organization   Every repository and branch of a"));

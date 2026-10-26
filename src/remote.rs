@@ -1381,7 +1381,7 @@ impl RefFinding {
 /// grown `(lib|ci|src|conformance)/`, added to quiet this repository's own
 /// self-scan. Applied to somebody else's repository it calls every infected
 /// file under `src/` their own tooling. It is not carried here.
-fn is_detection_tooling(path: &str) -> bool {
+pub(crate) fn is_detection_tooling(path: &str) -> bool {
     const BENIGN: &[&str] = &[
         r"(^|/)\.github/workflows/[^/]*polinrider[^/]*\.(yml|yaml)$",
         r"(^|/)\.github/polinrider/",

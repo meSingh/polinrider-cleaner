@@ -387,6 +387,6 @@ No change. The dossier has not moved since July and no new campaign indicator
 was published this week. The hijacked `html-to-gutenberg` package still has
 nothing newer than the poisoned 4.2.26: do not install any version above 4.2.10.
 
-The folder and machine checks still do not read `weak.txt`; review-tier
-indicators reach only the CI scanner and the GitHub checks. Read the entry before
-relying on a review line from a local scan.
+From the release after 2.2.0, the folder and computer checks read `weak.txt`
+too (ADR-0047). Up to 2.2.0, review-tier indicators reach only the CI scanner and
+the GitHub checks.

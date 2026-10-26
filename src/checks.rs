@@ -887,6 +887,71 @@ pub fn extensions(dirs: &[PathBuf], ind: &Indicators, v: &mut Verdict, sink: &mu
 /// Inventory, never a finding. Owning an SSH key is not suspicious and a
 /// `.pub` file is not a credential. Only paths are listed, and only in the
 /// report: nothing is read, so nothing can be printed.
+/// Strings legitimate projects also contain, from `weak.txt`. A match is a
+/// line to review and never a finding of infection. The CI scanner's rule:
+/// every file of up to 1 MB that is not binary, the first string per file,
+/// matched as written and not decoded. The operator's own detection files
+/// and documentation, which quote the same strings, are set aside as the
+/// GitHub check sets them aside. ADR-0047.
+pub fn weak_signals(walk: &Walk, roots: &[PathBuf], ind: &Indicators, v: &mut Verdict) {
+    v.section("Weak signals, which legitimate projects also contain");
+    if ind.weak.is_empty() {
+        v.push(Finding::ok("no weak indicators to look for"));
+        return;
+    }
+    // A file another check already reported is reported once.
+    let reported: Vec<PathBuf> = v.findings().filter_map(|f| f.path.clone()).collect();
+    let (mut read, mut flagged) = (0usize, 0usize);
+    for path in &walk.files {
+        if reported.contains(path) {
+            continue;
+        }
+        // Relative to the root it was found under, as the tooling patterns
+        // are written for a repository's own paths.
+        let relative = roots
+            .iter()
+            .filter_map(|r| path.strip_prefix(r).ok())
+            .min_by_key(|p| p.as_os_str().len())
+            .unwrap_or(path);
+        if crate::remote::is_detection_tooling(&relative.to_string_lossy().replace('\\', "/")) {
+            continue;
+        }
+        // Editor files: tasks.json has a stricter check of its own, and
+        // folderOpen in settings.json is a known false positive the corpus
+        // pins (settings-json-is-not-tasks-json).
+        if path.components().any(|c| c.as_os_str() == ".vscode") {
+            continue;
+        }
+        if fs::metadata(path).map_or(true, |m| m.len() > 1024 * 1024) {
+            continue;
+        }
+        let Ok(bytes) = fs::read(path) else {
+            continue;
+        };
+        if bytes.iter().take(8192).any(|b| *b == 0) {
+            continue;
+        }
+        read += 1;
+        let text = String::from_utf8_lossy(&bytes);
+        if let Some(signal) = ind.weak.iter().find(|w| text.contains(w.as_str())) {
+            flagged += 1;
+            v.push(
+                Finding::review(format!(
+                    "mentions something the campaign also uses ({}), verify by hand: {}",
+                    crate::verdict::clean(signal),
+                    path.display()
+                ))
+                .at(path),
+            );
+        }
+    }
+    if flagged == 0 {
+        v.push(Finding::ok(format!(
+            "{read} files read for weak signals, none matched"
+        )));
+    }
+}
+
 pub fn credentials(walk: &Walk, home: Option<&Path>, v: &mut Verdict) {
     v.section(if home.is_some() {
         "Credential surface on this machine"
