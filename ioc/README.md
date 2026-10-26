@@ -12,6 +12,7 @@ three local checks at once.
 | File | Meaning | Effect on verdict |
 |---|---|---|
 | `strong.txt` | Confirmed PolinRider artifacts | `INFECTED` |
+| `strong-patterns.txt` | Patterns over file contents where a part rotates (extended regex, with a fixed part of 3 or more characters, no `^` or `$`) | `INFECTED` (ADR-0052) |
 | `bad-packages.txt` | Malicious package names from the campaign | `INFECTED` |
 | `filenames.txt` | Paths that are indicators on their own (extended regex) | `INFECTED` |
 | `filenames-review.txt` | Paths worth a look that legitimate projects can also have (extended regex) | `review` only (ADR-0048) |

@@ -194,6 +194,16 @@ want_rc "description" 0
 want_quiet "description"
 want_not "description" "package.json"
 
+# strong-pattern-names-the-font-a-task-runs (ADR-0052)
+D="$TMP/patterns"
+put "$D/victim/.vscode/tasks.json" "{\"tasks\":[{\"command\":\"node ./src/assets/fa-solid-900.woff2\",\"runOptions\":{\"runOn\":\"folderOpen\"}}]}${NL}"
+put "$D/legit/package.json" "{\"name\":\"legit\",\"scripts\":{\"fonts\":\"node scripts/copy.js fa-solid-900.woff2\"}}${NL}"
+echo; echo "== content patterns =="
+scan --path "$D"
+want_rc "patterns" 2
+want "patterns" "victim/.vscode/tasks.json"
+want_not "patterns" "legit/package.json"
+
 # review-level-filenames-are-review-not-infected (ADR-0048)
 D="$TMP/review-names"
 put "$D/public/fonts/fa-solid-500.woff2" "wOF2 not checked${NL}"

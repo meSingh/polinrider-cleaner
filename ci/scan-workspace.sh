@@ -72,6 +72,10 @@ strip "$IOC_DIR/strong.txt"       > "$WORK/strong"
 strip "$IOC_DIR/bad-packages.txt" > "$WORK/pkgs"
 strip "$IOC_DIR/weak.txt"         > "$WORK/weak"
 strip "$IOC_DIR/filenames.txt"    > "$WORK/filenames"
+# Content patterns at the confirmed tier (ADR-0052). grep -E runs them
+# directly; absent from an indicator set vendored before they existed.
+: > "$WORK/patterns"
+[[ -f "$IOC_DIR/strong-patterns.txt" ]] && strip "$IOC_DIR/strong-patterns.txt" > "$WORK/patterns"
 # Names worth a look, not proof (ADR-0048). Absent from an indicator set
 # vendored before it existed, which is not an error.
 : > "$WORK/review-names"
@@ -377,6 +381,17 @@ while IFS= read -r f; do
   [[ -n "$m" ]] && { printf '%s\n' "$f" >> "$HITFILES"; hit "$(printf '%s' "$m" | cut -c1-200)"; }
 done < "$WORK/manifests"
 
+# 1c. campaign patterns in file contents, where a fixed string cannot say it
+#     (ADR-0052). A file another pass has confirmed is not read again.
+if [[ -s "$WORK/patterns" ]]; then
+  minus "$FILES" "$HITFILES" > "$WORK/patscope"
+  while IFS= read -r m; do
+    [[ -z "$m" ]] && continue
+    printf '%s\n' "${m%%:*}" >> "$HITFILES"
+    hit "$(printf '%s' "$m" | cut -c1-200)"
+  done < <(scan_list "$WORK/patscope" -n -E -f "$WORK/patterns" | first_per_file)
+fi
+
 # 1b. package names anywhere else, as whole names only
 grep -Ev "$MANIFEST_RE" "$FILES" > "$WORK/nonmanifest"
 minus "$WORK/nonmanifest" "$HITFILES" > "$WORK/pkgscope"
@@ -518,6 +533,19 @@ if [[ $ALL_REFS -eq 1 ]]; then
         printf '%s\n' "$gpath" >> "$WORK/refhits"
         ref_hit "$line"
       done < <(git grep -I -n -F -f "$WORK/strong" "$REF" 2>/dev/null | head -200)
+
+      # 1c. campaign patterns in contents (ADR-0052)
+      if [[ -s "$WORK/patterns" ]]; then
+        while IFS= read -r line; do
+          [[ -z "$line" ]] && continue
+          rest="${line#*:}"
+          gpath="${rest%%:*}"
+          excluded "$gpath" && continue
+          grep -qxF -- "$gpath" "$WORK/refhits" && continue
+          printf '%s\n' "$gpath" >> "$WORK/refhits"
+          ref_hit "$line"
+        done < <(git grep -I -n -E -f "$WORK/patterns" "$REF" 2>/dev/null | head -200)
+      fi
 
       # 1a and 1b. package names: manifests read for names, the rest whole
       if [[ -s "$WORK/pkgs" ]]; then

@@ -40,6 +40,9 @@ pub struct Indicators {
     /// Paths worth a look but not proof, from `filenames-review.txt`. A match
     /// is review, never confirmed: ADR-0048.
     pub review_filenames: Vec<Pattern>,
+    /// Confirmed-tier patterns over file contents, from `strong-patterns.txt`,
+    /// each with the fixed part it is tried near: ADR-0052.
+    pub strong_patterns: Vec<(Pattern, String)>,
     /// SSH keys the campaign installs, from `ssh-keys.txt`: a key's comment or
     /// the key itself, compared whole against that field: ADR-0049.
     pub ssh_keys: Vec<String>,
@@ -138,6 +141,10 @@ impl Indicators {
                     Pattern::parse(p).map_err(|e| LoadError::Pattern("filenames-review.txt", e))
                 })
                 .collect::<Result<_, _>>()?,
+            strong_patterns: read_list(dir, "strong-patterns.txt", false)?
+                .iter()
+                .map(|p| content_pattern(p))
+                .collect::<Result<_, _>>()?,
             ssh_keys: read_list(dir, "ssh-keys.txt", false)?
                 .into_iter()
                 .map(|l| l.trim().to_string())
@@ -187,7 +194,27 @@ impl Indicators {
     }
 
     fn matches(&self, haystack: &str) -> bool {
-        any_in(&self.strong, haystack) || self.names_package(haystack)
+        any_in(&self.strong, haystack)
+            || self.names_package(haystack)
+            || self.pattern_match(haystack)
+    }
+
+    /// Does a confirmed-tier content pattern match? Each is tried only in a
+    /// window around each place its fixed part occurs, at most a thousand
+    /// places, so a long payload line cannot make the backtracking matcher
+    /// slow. ADR-0052.
+    pub fn pattern_match(&self, haystack: &str) -> bool {
+        const AROUND: usize = 512;
+        self.strong_patterns.iter().any(|(pattern, literal)| {
+            haystack
+                .match_indices(literal.as_str())
+                .take(1000)
+                .any(|(at, _)| {
+                    let from = haystack.floor_char_boundary(at.saturating_sub(AROUND));
+                    let to = haystack.ceil_char_boundary(at + literal.len() + AROUND);
+                    haystack.get(from..to).is_some_and(|w| pattern.is_match(w))
+                })
+        })
     }
 
     /// Does this text name a campaign package as a whole name? Bounded on both
@@ -219,6 +246,7 @@ impl Indicators {
         }
         let text = String::from_utf8_lossy(bytes);
         self.names_package(&text)
+            || self.pattern_match(&text)
             || (unescape::has_escape(bytes)
                 && unescape::decode(&text).is_some_and(|d| self.matches(&d)))
     }
@@ -464,6 +492,29 @@ fn find(haystack: &[u8], needle: &[u8]) -> Option<usize> {
 }
 
 /// Whether `haystack` contains any of `list`, as a fixed string.
+/// A line of `strong-patterns.txt`, refused unless it is safe to run on any
+/// file: no `^` or `$`, and a fixed part of at least three characters.
+fn content_pattern(source: &str) -> Result<(Pattern, String), LoadError> {
+    let refuse = |why| {
+        LoadError::Pattern(
+            "strong-patterns.txt",
+            BadPattern {
+                pattern: source.to_string(),
+                why,
+            },
+        )
+    };
+    let pattern =
+        Pattern::parse(source).map_err(|e| LoadError::Pattern("strong-patterns.txt", e))?;
+    if pattern.has_anchors() {
+        return Err(refuse("a content pattern cannot use ^ or $"));
+    }
+    match pattern.required_literal() {
+        Some(literal) if literal.chars().count() >= 3 => Ok((pattern, literal)),
+        _ => Err(refuse("a content pattern needs a fixed part of at least three characters, and one alternative at the top")),
+    }
+}
+
 fn any_in(list: &[String], haystack: &str) -> bool {
     list.iter().any(|i| haystack.contains(i.as_str()))
 }
@@ -510,6 +561,35 @@ fn names_endpoint(line: &str, indicator: &str) -> bool {
 #[allow(clippy::expect_used, clippy::unwrap_used, clippy::indexing_slicing)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_content_pattern_is_tried_near_its_fixed_part_and_must_have_one() {
+        let ind = Indicators {
+            strong: vec!["MARKER".into()],
+            strong_patterns: vec![
+                content_pattern(r#"node +[^ "']*fa-solid-[0-9]{3}\.woff2"#).expect("parses")
+            ],
+            ..Indicators::default()
+        };
+        assert!(ind.has_strong(r#"{"command": "node ./public/fonts/fa-solid-900.woff2"}"#));
+        assert!(!ind.has_strong("node scripts/copy.js fa-solid-900.woff2"));
+        // A payload-sized line full of the fixed part stays fast: tried in a
+        // window, at most a thousand times.
+        let long = "fa-solid-".repeat(40_000) + "x";
+        let started = std::time::Instant::now();
+        assert!(!ind.has_strong(&long));
+        assert!(started.elapsed().as_secs() < 5, "{:?}", started.elapsed());
+
+        for bad in ["[0-9]+", "^node .*", "ab", "foo|bar"] {
+            assert!(
+                matches!(
+                    content_pattern(bad),
+                    Err(LoadError::Pattern("strong-patterns.txt", _))
+                ),
+                "{bad}"
+            );
+        }
+    }
 
     fn with(network: &[&str], implants: &[&str]) -> Indicators {
         Indicators {

@@ -49,6 +49,9 @@ pub enum Refusal {
     /// The indicator is only there once escape codes are decoded, so it has
     /// no position in the bytes of the file to cut from. See ADR-0040.
     Escaped,
+    /// Only a content pattern matched, which gives no fixed point to cut
+    /// from. See ADR-0052.
+    PatternOnly,
 }
 
 impl Refusal {
@@ -64,6 +67,9 @@ impl Refusal {
             Refusal::Incomplete => "the file would not be complete once the payload was cut",
             Refusal::Escaped => {
                 "the indicator is written in escape codes, so the payload cannot be located in the file to cut"
+            }
+            Refusal::PatternOnly => {
+                "only a campaign pattern matched, which gives no point in the file to cut from"
             }
         }
     }
@@ -133,9 +139,16 @@ fn brackets_balance(text: &str) -> bool {
 pub fn plan(bytes: &[u8], ind: &Indicators) -> Option<Result<Plan, Refusal>> {
     match first_indicator(bytes, ind) {
         Some(indicator_at) => Some(plan_from(bytes, indicator_at, ind)),
-        None => ind
-            .has_strong_only_escaped(&String::from_utf8_lossy(bytes))
-            .then_some(Err(Refusal::Escaped)),
+        None => {
+            let text = String::from_utf8_lossy(bytes);
+            if ind.has_strong_only_escaped(&text) {
+                Some(Err(Refusal::Escaped))
+            } else if ind.pattern_match(&text) {
+                Some(Err(Refusal::PatternOnly))
+            } else {
+                None
+            }
+        }
     }
 }
 

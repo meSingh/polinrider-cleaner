@@ -772,10 +772,11 @@ pub fn prepare_evidence(dir: &Path) -> Result<PathBuf, EvidenceError> {
 
 /// The lists a check writes into the evidence directory before it copies
 /// anything. Their presence is how a folder is known to be one polinrider made.
-const INDICATOR_FILES: [&str; 3] = [
+const INDICATOR_FILES: [&str; 4] = [
     "indicators-strong.txt",
     "indicators-packages.txt",
     "indicators-weak.txt",
+    "indicators-pattern-parts.txt",
 ];
 
 /// What `--purge-evidence` would delete.
@@ -1586,18 +1587,28 @@ pub(crate) struct Patterns {
     /// and the name compared whole.
     packages: PathBuf,
     weak: PathBuf,
+    /// The fixed part of each content pattern. Only a first pass: what
+    /// `git grep` finds is read again and the pattern tried on it.
+    pattern_parts: PathBuf,
 }
 
 pub(crate) fn indicator_files(evidence: &Path, ind: &Indicators) -> Result<Patterns, String> {
-    let [strong, packages, weak] = INDICATOR_FILES;
+    let [strong, packages, weak, pattern_parts] = INDICATOR_FILES;
     let patterns = Patterns {
         strong: evidence.join(strong),
         packages: evidence.join(packages),
         weak: evidence.join(weak),
+        pattern_parts: evidence.join(pattern_parts),
     };
+    let parts: Vec<&str> = ind
+        .strong_patterns
+        .iter()
+        .map(|(_, part)| part.as_str())
+        .collect();
     fs::write(&patterns.strong, ind.strong.join("\n") + "\n")
         .and_then(|()| fs::write(&patterns.packages, ind.bad_packages.join("\n") + "\n"))
         .and_then(|()| fs::write(&patterns.weak, ind.weak.join("\n") + "\n"))
+        .and_then(|()| fs::write(&patterns.pattern_parts, parts.join("\n") + "\n"))
         .map_err(|e| format!("cannot write to {}: {e}", evidence.display()))?;
     Ok(patterns)
 }
@@ -1626,6 +1637,21 @@ pub(crate) fn check_ref(
             found.extend(named);
             let escaped = mirror.containing_escaped(git_ref, ind, &found)?;
             found.extend(escaped);
+            // A content pattern: candidates by its fixed part, then the
+            // pattern itself on each. ADR-0052.
+            if !ind.strong_patterns.is_empty() {
+                let by_pattern: Vec<String> = mirror
+                    .containing(git_ref, &patterns.pattern_parts)?
+                    .into_iter()
+                    .filter(|path| !found.contains(path))
+                    .filter(|path| {
+                        mirror
+                            .blob(git_ref, path)
+                            .is_some_and(|b| ind.pattern_match(&String::from_utf8_lossy(&b)))
+                    })
+                    .collect();
+                found.extend(by_pattern);
+            }
             found.sort_unstable();
             found
         },
