@@ -381,12 +381,11 @@ weeks that found nothing. Each review keeps its own dated entry, and entries are
 never edited or removed:
 [the indicator reviews](https://mesingh.github.io/polinrider-cleaner/indicator-reviews/).
 
-**Last reviewed: [21 October 2026](https://mesingh.github.io/polinrider-cleaner/indicator-reviews/2026-10-21/).**
+**Last reviewed: [26 October 2026](https://mesingh.github.io/polinrider-cleaner/indicator-reviews/2026-10-26/).**
 
-Two indicators added for June droppers of the campaign's `MicrosoftSystem64`
-implant, named by Microsoft Threat Intelligence. The hijacked `html-to-gutenberg`
-package was poisoned again as recently as 17 October: do not install any version
-above 4.2.10.
+No change. The dossier has not moved since July and no new campaign indicator
+was published this week. The hijacked `html-to-gutenberg` package still has
+nothing newer than the poisoned 4.2.26: do not install any version above 4.2.10.
 
 The folder and machine checks still do not read `weak.txt`; review-tier
 indicators reach only the CI scanner and the GitHub checks. Read the entry before
