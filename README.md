@@ -381,11 +381,11 @@ weeks that found nothing. Each review keeps its own dated entry, and entries are
 never edited or removed:
 [the indicator reviews](https://mesingh.github.io/polinrider-cleaner/indicator-reviews/).
 
-**Last reviewed: [26 October 2026](https://mesingh.github.io/polinrider-cleaner/indicator-reviews/2026-10-26/).**
+**Last reviewed: [26 October 2026, Socket tracker](https://mesingh.github.io/polinrider-cleaner/indicator-reviews/2026-10-26-socket/).**
 
-No change. The dossier has not moved since July and no new campaign indicator
-was published this week. The hijacked `html-to-gutenberg` package still has
-nothing newer than the poisoned 4.2.26: do not install any version above 4.2.10.
+Nine attacker-owned npm names added from Socket's tracker, read in full for the
+first time. Eighteen infected legitimate packages, among them `qrcode-vue3`
+1.7.2 and 1.7.3, are listed with their bad versions: check your lockfile.
 
 From the release after 2.2.0, the folder and computer checks read `weak.txt`
 too (ADR-0047). Up to 2.2.0, review-tier indicators reach only the CI scanner and
