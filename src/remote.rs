@@ -1326,6 +1326,8 @@ pub struct RefFinding {
     pub folder_open_tasks: Vec<String>,
     /// Files containing a weak signal.
     pub weak_files: Vec<String>,
+    /// Paths with a name worth a look, from `filenames-review.txt`.
+    pub review_named_files: Vec<String>,
     /// Build configs followed by a payload-shaped remainder.
     pub suspicious_configs: Vec<String>,
 }
@@ -1360,6 +1362,7 @@ impl RefFinding {
     pub fn needs_review(&self) -> bool {
         !self.is_confirmed()
             && (!self.weak_files.is_empty()
+                || !self.review_named_files.is_empty()
                 || !self.suspicious_configs.is_empty()
                 || !self.folder_open_tasks.is_empty())
     }
@@ -1619,6 +1622,8 @@ pub(crate) fn check_ref(
         let name = path.rsplit('/').next().unwrap_or(&path);
         if ind.is_bad_filename(&path) {
             finding.named_files.push(path.clone());
+        } else if ind.is_review_filename(&path) && !is_detection_tooling(&path) {
+            finding.review_named_files.push(path.clone());
         }
 
         // tasks.json is a finding only when it runs on folder open, and it

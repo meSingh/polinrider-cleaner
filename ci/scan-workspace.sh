@@ -72,6 +72,10 @@ strip "$IOC_DIR/strong.txt"       > "$WORK/strong"
 strip "$IOC_DIR/bad-packages.txt" > "$WORK/pkgs"
 strip "$IOC_DIR/weak.txt"         > "$WORK/weak"
 strip "$IOC_DIR/filenames.txt"    > "$WORK/filenames"
+# Names worth a look, not proof (ADR-0048). Absent from an indicator set
+# vendored before it existed, which is not an error.
+: > "$WORK/review-names"
+[[ -f "$IOC_DIR/filenames-review.txt" ]] && strip "$IOC_DIR/filenames-review.txt" > "$WORK/review-names"
 [[ -s "$WORK/strong" ]] || { echo "indicator set is empty" >&2; exit 3; }
 
 # A campaign package name counts only as a whole name (ADR-0041): bounded on
@@ -409,6 +413,14 @@ done < <(scan_list "$FILES" -n -F -f "$WORK/weak" | first_per_file)
 while IFS= read -r f; do
   [[ -n "$f" ]] && hit "$f: filename is a known propagation artifact"
 done < <(grep -E -f "$WORK/filenames" "$FILES" 2>/dev/null)
+
+# 3a. names the campaign uses that legitimate projects can have too: review
+#     only, and never a path the confirmed list above already has.
+if [[ -s "$WORK/review-names" ]]; then
+  while IFS= read -r f; do
+    [[ -n "$f" ]] && review "$f: file name the campaign also uses, verify by hand"
+  done < <(grep -E -f "$WORK/review-names" "$FILES" 2>/dev/null | grep -v -E -f "$WORK/filenames" 2>/dev/null)
+fi
 
 # 4. tasks.json that runs on folder open. JSON lets folderOpen itself be
 #    written in escapes, and the editor reads it the same either way.

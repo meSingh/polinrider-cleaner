@@ -523,6 +523,9 @@ fn paths_shown(finding: &RefFinding, confirmed: bool) -> Vec<String> {
             "{path}   a weak signal, also found in clean projects"
         ));
     }
+    for path in &finding.review_named_files {
+        out.push(format!("{path}   a file name the campaign also uses"));
+    }
     out
 }
 

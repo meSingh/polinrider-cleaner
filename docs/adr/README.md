@@ -63,6 +63,7 @@ If you disagree with one, open an issue and quote its number.
 | [0045](./0045-small-files-the-checks-read-are-compared-by-hash.md) | Compare the small files the checks read against the known hashes | Accepted |
 | [0046](./0046-purge-evidence-deletes-only-polinriders-own-copies.md) | Let `--purge-evidence` delete polinrider's own copies, and nothing else | Accepted |
 | [0047](./0047-the-folder-and-computer-checks-read-weak-txt.md) | The folder and computer checks read `weak.txt` | Accepted |
+| [0048](./0048-a-review-level-filename-list.md) | Add a review-level filename list | Accepted |
 
 ## Adding one
 

@@ -11,6 +11,7 @@ the organization scanner, the account scanner and all three local checks at once
 | `strong.txt` | Confirmed PolinRider artifacts | `INFECTED` |
 | `bad-packages.txt` | Malicious package names from the campaign | `INFECTED` |
 | `filenames.txt` | Paths that are indicators on their own (extended regex) | `INFECTED` |
+| `filenames-review.txt` | Paths worth a look that legitimate projects can also have (extended regex) | `review` only (ADR-0048) |
 | `weak.txt` | Strings legitimate projects also use | `review` only |
 | `network.txt` | Campaign hosts and IP addresses | `INFECTED` if a live connection matches |
 | `implant-paths.txt` | Second-stage install, persistence and working paths | `INFECTED` if the path exists |

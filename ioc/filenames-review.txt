@@ -1,0 +1,40 @@
+# Filenames worth a look but not proof, as extended regex, matched against the
+# full path. A match is a review line, never INFECTED: every name here is one a
+# legitimate project or tool can also have. filenames.txt is the INFECTED tier;
+# a name goes there only when nothing legitimate is called that. ADR-0048.
+#
+# config.bat is deliberately absent at this tier too: it would fire on any
+# Windows project (2026-09-28 review).
+
+# The spell-check dictionary the August guide names among the files an
+# infected developer machine leaves in a repository. spellright.dict belongs
+# to a real VS Code extension, so it is review only.
+# Source: OpenSourceMalware, "A Developer's Guide to Getting Rid of
+# PolinRider", 2026-08-13.
+(^|/)spellright\.dict$
+
+# The third working file of the force-push tool, named in the same .gitignore
+# block as temp_auto_push.bat and temp_interactive_push.bat (both INFECTED tier
+# in filenames.txt). weak.txt carries the name for a committed .gitignore; this
+# is the file itself on disk.
+# Source: OpenSourceMalware, "PolinRider is A/B Testing its Way Past Your
+# Detections", September 2026.
+(^|/)branch_structure\.json$
+
+# The fake-font payload under a font name. Font Awesome's solid style ships one
+# weight, 900, so a solid font named for any other weight is not Font Awesome's;
+# the 900 file is reviewed only where the campaign puts it, public/fonts/. The
+# font check confirms a fake by its first bytes either way; this names the file
+# even when it starts like a font. The .llf form is INFECTED tier in
+# filenames.txt.
+# Source: OpenSourceMalware, "A Developer's Guide to Getting Rid of PolinRider",
+# 2026-08-13 (fa-solid-400.woff2), and "PolinRider is A/B Testing its Way Past
+# Your Detections", September 2026 (fa-solid-500.woff2, fa-solid-900.woff2).
+(^|/)fa-solid-[0-8][0-9]{2}\.woff2$
+(^|/)public/fonts/fa-solid-900\.woff2$
+
+# Dropped beside MicrosoftCLROptimization.vbs (INFECTED tier) by the
+# hands-on-keyboard stage; ordinary enough that a .NET tool could write it.
+# Source: Deception.Pro, "[Op Report] Hands-on-Keyboard Activity from the DPRK
+# PolinRider Supply Chain Attack", September 2026.
+(^|/)clr_init\.vbs$

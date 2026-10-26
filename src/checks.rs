@@ -729,7 +729,25 @@ pub fn named_files(walk: &Walk, ind: &Indicators, v: &mut Verdict, sink: &mut Si
         // Matched on the path with forward slashes, as the patterns are
         // written, so a Windows path is read the same way.
         let text = path.to_string_lossy().replace('\\', "/");
-        if is_script_name || !ind.is_bad_filename(&text) {
+        if is_script_name {
+            continue;
+        }
+        if !ind.is_bad_filename(&text) {
+            // A name legitimate projects can have too: a look, not a verdict.
+            // ADR-0048.
+            if ind.is_review_filename(&text) {
+                let name = path.file_name().map_or_else(
+                    || text.clone(),
+                    |n| crate::verdict::clean(&n.to_string_lossy()),
+                );
+                v.push(
+                    Finding::review(format!(
+                        "file name the campaign also uses ({name}), verify by hand: {}",
+                        path.display()
+                    ))
+                    .at(path),
+                );
+            }
             continue;
         }
         named = true;

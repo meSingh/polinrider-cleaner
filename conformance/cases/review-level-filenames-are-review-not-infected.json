@@ -1,0 +1,30 @@
+{
+  "why": "Some names the campaign uses are names a legitimate project can also have: a spell-check dictionary, a font named for a weight. filenames.txt is INFECTED tier and cannot hold them, and seven additions were turned away for that alone. filenames-review.txt holds them at review: a look, never a verdict (ADR-0048). fa-solid-500.woff2 is not a Font Awesome file, Font Awesome's solid style ships only the 900 weight, so it is reviewed even though it starts like a font. The genuine fa-solid-900.woff2 under webfonts/ is not reported: only the campaign's public/fonts/ place is.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/public/fonts/fa-solid-500.woff2": "wOF2 then bytes that are not checked\n",
+    "code/proj/public/webfonts/fa-solid-900.woff2": "wOF2 a real Font Awesome file\n",
+    "code/proj/spellright.dict": "words\n"
+  },
+  "expect": {
+    "exit": 1,
+    "findings": [
+      {
+        "level": "review",
+        "match": "file name the campaign also uses (fa-solid-500.woff2)",
+        "path": "fa-solid-500.woff2"
+      },
+      {
+        "level": "review",
+        "match": "file name the campaign also uses (spellright.dict)",
+        "path": "spellright.dict"
+      }
+    ],
+    "must_not_report": [
+      "[HIT]",
+      "webfonts"
+    ]
+  }
+}

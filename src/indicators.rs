@@ -37,6 +37,9 @@ pub struct Indicators {
     /// Paths that are indicators on their own, as patterns. From
     /// `filenames.txt`, which the shell hands to `grep -E`.
     pub filenames: Vec<Pattern>,
+    /// Paths worth a look but not proof, from `filenames-review.txt`. A match
+    /// is review, never confirmed: ADR-0048.
+    pub review_filenames: Vec<Pattern>,
     /// SHA-256 of files known from the campaign, lowercase, each with its
     /// label. From `hashes.txt`, `<sha256> <label>` per line.
     pub hashes: Vec<(String, String)>,
@@ -58,7 +61,8 @@ pub enum LoadError {
     /// A pattern in `filenames.txt` that this build cannot honour. Refused,
     /// because a pattern that silently matches nothing is an indicator that
     /// silently stopped working.
-    Pattern(BadPattern),
+    /// The file it is in, and why.
+    Pattern(&'static str, BadPattern),
 }
 
 impl std::fmt::Display for LoadError {
@@ -70,7 +74,7 @@ impl std::fmt::Display for LoadError {
             LoadError::Unreadable { file, source } => {
                 write!(f, "cannot read {}: {source}", file.display())
             }
-            LoadError::Pattern(bad) => write!(f, "in filenames.txt, {bad}"),
+            LoadError::Pattern(file, bad) => write!(f, "in {file}, {bad}"),
             LoadError::Empty => f.write_str(
                 "the indicator set is empty. Refusing to scan: every result would be clean",
             ),
@@ -123,7 +127,13 @@ impl Indicators {
             implant_names: read_list(dir, "implant-names.txt", false)?,
             filenames: read_list(dir, "filenames.txt", false)?
                 .iter()
-                .map(|p| Pattern::parse(p).map_err(LoadError::Pattern))
+                .map(|p| Pattern::parse(p).map_err(|e| LoadError::Pattern("filenames.txt", e)))
+                .collect::<Result<_, _>>()?,
+            review_filenames: read_list(dir, "filenames-review.txt", false)?
+                .iter()
+                .map(|p| {
+                    Pattern::parse(p).map_err(|e| LoadError::Pattern("filenames-review.txt", e))
+                })
                 .collect::<Result<_, _>>()?,
             hashes: read_list(dir, "hashes.txt", false)?
                 .iter()
@@ -362,6 +372,12 @@ impl Indicators {
     /// Is this path an indicator by its name alone?
     pub fn is_bad_filename(&self, path: &str) -> bool {
         self.filenames.iter().any(|p| p.is_match(path))
+    }
+
+    /// A path worth a look, not proof. Never asked of a path that is already
+    /// a confirmed filename.
+    pub fn is_review_filename(&self, path: &str) -> bool {
+        self.review_filenames.iter().any(|p| p.is_match(path))
     }
 
     /// Read a file and test it. Binary files are read lossily rather than
@@ -628,7 +644,10 @@ mod tests {
                 ("filenames.txt", "(^|/unclosed\n"),
             ],
         );
-        assert!(matches!(Indicators::load(&bad), Err(LoadError::Pattern(_))));
+        assert!(matches!(
+            Indicators::load(&bad),
+            Err(LoadError::Pattern("filenames.txt", _))
+        ));
     }
 
     #[test]

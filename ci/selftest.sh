@@ -194,6 +194,19 @@ want_rc "description" 0
 want_quiet "description"
 want_not "description" "package.json"
 
+# review-level-filenames-are-review-not-infected (ADR-0048)
+D="$TMP/review-names"
+put "$D/public/fonts/fa-solid-500.woff2" "wOF2 not checked${NL}"
+put "$D/public/webfonts/fa-solid-900.woff2" "wOF2 a real Font Awesome file${NL}"
+put "$D/spellright.dict" "words${NL}"
+echo; echo "== names worth a look =="
+scan --path "$D" --fail-on review
+want_rc "review names" 1
+want "review names" "public/fonts/fa-solid-500.woff2: file name the campaign also uses, verify by hand"
+want "review names" "spellright.dict: file name the campaign also uses, verify by hand"
+want_not "review names" "webfonts/fa-solid-900.woff2"
+want_not "review names" "INFECTED"
+
 # unreadable-manifest-is-review-not-clean
 D="$TMP/unreadable"
 put "$D/plain/package.json" "{\"name\":\"plain\", \"dependencies\": {\"react\": \"^18.0.0\",}${NL}"
