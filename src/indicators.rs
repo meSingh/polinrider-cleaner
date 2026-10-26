@@ -376,6 +376,22 @@ impl Indicators {
         })
     }
 
+    /// The JavaScript form of the implant runs as `node payload.js --agent`
+    /// from the implant's own folder, so its process name is `node`. Given a
+    /// `node` process's script argument, is that script inside a folder named
+    /// as the implant? Only the script path is read, never the command line
+    /// as a whole: ADR-0050.
+    pub fn is_implant_script(&self, script: &str) -> bool {
+        script
+            .split(['/', '\\'])
+            .filter(|part| !part.is_empty())
+            .any(|part| {
+                self.implant_names
+                    .iter()
+                    .any(|implant| implant.eq_ignore_ascii_case(part))
+            })
+    }
+
     /// Is this path an indicator by its name alone?
     pub fn is_bad_filename(&self, path: &str) -> bool {
         self.filenames.iter().any(|p| p.is_match(path))

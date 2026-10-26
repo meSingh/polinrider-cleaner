@@ -48,6 +48,34 @@ pub enum ProcessCheck {
 
 /// The implant sets its own process title, so a match here is a finding even
 /// with nothing on disk. Part of the "Second-stage implant" section.
+/// The script a `node` process runs: the first argument that is not a flag,
+/// through the one that ends in a JavaScript extension, so a path with a
+/// space in it is read whole. `None` for any process that is not `node`.
+/// Only this field is matched, never the whole command line (rule 5).
+fn node_script(p: &Process) -> Option<String> {
+    let base = p.name.rsplit(['/', '\\']).next().unwrap_or(&p.name);
+    if !(base.eq_ignore_ascii_case("node") || base.eq_ignore_ascii_case("node.exe")) {
+        return None;
+    }
+    // The program itself, which on Windows is often quoted with a space in it.
+    let after = match p.command.strip_prefix('"') {
+        Some(quoted) => quoted.split_once('"').map_or("", |(_, rest)| rest),
+        None => p
+            .command
+            .split_once(char::is_whitespace)
+            .map_or("", |(_, rest)| rest),
+    };
+    let args: Vec<&str> = after.split_whitespace().collect();
+    let start = args.iter().position(|a| !a.starts_with('-'))?;
+    let rest = args.get(start..)?;
+    let is_js = |a: &&str| {
+        let a = a.trim_matches('"').to_ascii_lowercase();
+        a.ends_with(".js") || a.ends_with(".cjs") || a.ends_with(".mjs")
+    };
+    let end = rest.iter().position(is_js).map_or(1, |i| i + 1);
+    Some(rest.get(..end)?.join(" ").trim_matches('"').to_string())
+}
+
 pub fn implant_processes(host: &dyn Host, ind: &Indicators, v: &mut Verdict) -> ProcessCheck {
     let processes = match host.processes() {
         Probe::Read(p) => p,
@@ -64,11 +92,12 @@ pub fn implant_processes(host: &dyn Host, ind: &Indicators, v: &mut Verdict) -> 
     let running: Vec<&Process> = processes
         .iter()
         .filter(|p| {
-            if platform == Platform::Windows {
+            let named = if platform == Platform::Windows {
                 ind.is_implant_image(&p.name)
             } else {
                 ind.is_implant_process(&p.name, truncates)
-            }
+            };
+            named || node_script(p).is_some_and(|s| ind.is_implant_script(&s))
         })
         .take(MAX_IMPLANT_PROCESSES)
         .collect();
@@ -1564,6 +1593,55 @@ mod tests {
             ProcessCheck::NoneRunning
         );
         assert_eq!(v.hits(), 0);
+    }
+
+    #[test]
+    fn node_running_a_script_from_the_implants_folder_is_the_implant() {
+        // The JavaScript form: `node payload.js --agent` from the implant's
+        // own folder, so the process name is node. A path with a space in it
+        // is read whole. Mentioning the folder anywhere else on the line, or
+        // running an ordinary script, is not it.
+        let dir = machine("implant-node", &[]);
+        let mut host = quiet(&dir, Platform::MacOs);
+        host.processes = Probe::Read(vec![
+            process(
+                501,
+                "/usr/local/bin/node",
+                &format!(
+                    "/usr/local/bin/node /Users/x/Library/Application Support/{IMPLANT}/payload.js --agent"
+                ),
+            ),
+            process(
+                502,
+                "/usr/local/bin/node",
+                &format!("/usr/local/bin/node /Users/x/code/app/server.js --log /tmp/{IMPLANT}"),
+            ),
+            process(503, "/usr/local/bin/node", "/usr/local/bin/node --inspect server.js"),
+        ]);
+        let mut v = Verdict::new();
+        assert_eq!(
+            implant_processes(&host, &ind(), &mut v),
+            ProcessCheck::Running
+        );
+        let d = details(&v);
+        assert!(d.iter().any(|l| l.starts_with("501 ")), "{d:?}");
+        assert!(
+            !d.iter()
+                .any(|l| l.starts_with("502 ") || l.starts_with("503 ")),
+            "{d:?}"
+        );
+
+        let mut host = quiet(&dir, Platform::Windows);
+        host.processes = Probe::Read(vec![process(
+            7,
+            "node.exe",
+            &format!("\"C:\\Program Files\\nodejs\\node.exe\" C:\\Users\\x\\AppData\\Local\\{IMPLANT}\\payload.js --agent"),
+        )]);
+        let mut v = Verdict::new();
+        assert_eq!(
+            implant_processes(&host, &ind(), &mut v),
+            ProcessCheck::Running
+        );
     }
 
     #[test]
