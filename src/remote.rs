@@ -1196,7 +1196,10 @@ impl Mirror<'_> {
             }
             // Decoded as well as written: a file the payload sat in as escape
             // codes has to come out of every commit too.
-            if ind.file_confirms(path, body) || is_fake_font(path, body) {
+            if ind.file_confirms(path, body)
+                || is_fake_font(path, body)
+                || (is_hash_candidate(path) && ind.known_file(body).is_some())
+            {
                 found.push((*path).to_string());
                 carriers.push(id);
             }
@@ -1228,6 +1231,18 @@ impl Mirror<'_> {
         found.dedup();
         Ok(found)
     }
+}
+
+/// The files whose hash is compared with `hashes.txt` at any size: the ones
+/// the local checks read whole. ADR-0045, ADR-0051.
+fn is_hash_candidate(path: &str) -> bool {
+    let name = path.rsplit('/').next().unwrap_or(path);
+    let lower = name.to_ascii_lowercase();
+    (name == "tasks.json"
+        && (path == ".vscode/tasks.json" || path.ends_with("/.vscode/tasks.json")))
+        || lower.ends_with(".woff")
+        || lower.ends_with(".woff2")
+        || is_build_config(name)
 }
 
 /// What `git grep -E` is asked for to find a file worth decoding: a
@@ -1322,6 +1337,9 @@ pub struct RefFinding {
     pub named_files: Vec<String>,
     /// Font files that are not fonts, with their first bytes.
     pub fake_fonts: Vec<(String, String)>,
+    /// Files whose SHA-256 is a known campaign file, with its label:
+    /// ADR-0051.
+    pub known_files: Vec<(String, String)>,
     /// `tasks.json` files that run on folder open and carry no indicator.
     pub folder_open_tasks: Vec<String>,
     /// Files containing a weak signal.
@@ -1341,6 +1359,7 @@ impl RefFinding {
             .chain(&self.named_files)
             .map(String::as_str)
             .chain(self.fake_fonts.iter().map(|(path, _)| path.as_str()))
+            .chain(self.known_files.iter().map(|(path, _)| path.as_str()))
             .collect();
         paths.sort_unstable();
         paths.dedup();
@@ -1639,6 +1658,16 @@ pub(crate) fn check_ref(
             })
         {
             finding.folder_open_tasks.push(path.clone());
+        }
+
+        // A published campaign file, by its hash, among the files the local
+        // checks compare the same way. ADR-0045, ADR-0051.
+        if !ind.hashes.is_empty() && is_hash_candidate(&path) {
+            if let Some(bytes) = mirror.blob(git_ref, &path) {
+                if let Some(label) = ind.known_file(&bytes) {
+                    finding.known_files.push((path.clone(), label.to_string()));
+                }
+            }
         }
 
         let lower = name.to_ascii_lowercase();
@@ -2059,6 +2088,55 @@ mod tests {
         assert_eq!(
             mirror.payload_paths_in_history(&ind()).expect("history"),
             vec!["vite.config.js".to_string()]
+        );
+    }
+
+    #[test]
+    fn a_known_campaign_file_is_confirmed_by_its_hash_and_found_in_history() {
+        // A font that starts like a font and carries no indicator string:
+        // only its hash says what it is. On the branch it is confirmed; once
+        // a later commit has replaced it, only the history holds it, and
+        // erase has to find it there.
+        let known: &[u8] = b"wOF2 the published campaign bytes\n";
+        let w = World::new("known-hash");
+        w.repo(
+            "site",
+            &[("main", &[("public/fonts/fa-solid-400.woff2", known)])],
+        );
+        let ind = Indicators {
+            hashes: vec![(crate::sha256::bytes(known), "fixture font".into())],
+            ..ind()
+        };
+        let bare = w.bare("site");
+        let mirror = Mirror { dir: &bare };
+        let patterns = indicator_files(&w.dir, &ind).expect("patterns");
+        let tip =
+            check_ref(&mirror, "acme/site", "refs/heads/main", &ind, &patterns).expect("check");
+        assert!(tip.is_confirmed());
+        assert_eq!(
+            tip.known_files,
+            vec![(
+                "public/fonts/fa-solid-400.woff2".to_string(),
+                "fixture font".to_string()
+            )]
+        );
+
+        w.push(
+            "site",
+            "main",
+            &[(
+                "public/fonts/fa-solid-400.woff2",
+                b"wOF2 a real font now\n" as &[u8],
+            )],
+            false,
+            None,
+        );
+        let tip =
+            check_ref(&mirror, "acme/site", "refs/heads/main", &ind, &patterns).expect("check");
+        assert!(!tip.is_confirmed());
+        assert_eq!(
+            mirror.payload_paths_in_history(&ind).expect("history"),
+            vec!["public/fonts/fa-solid-400.woff2".to_string()]
         );
     }
 

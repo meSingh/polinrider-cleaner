@@ -66,6 +66,7 @@ If you disagree with one, open an issue and quote its number.
 | [0048](./0048-a-review-level-filename-list.md) | Add a review-level filename list | Accepted |
 | [0049](./0049-the-computer-check-reads-authorized-keys.md) | The computer check reads `~/.ssh/authorized_keys` | Accepted |
 | [0050](./0050-a-node-process-running-the-implants-script-is-the-implant.md) | A `node` process running a script from the implant's folder is the implant | Accepted |
+| [0051](./0051-the-github-check-compares-known-hashes.md) | The GitHub check compares the small files against the known hashes | Accepted |
 
 ## Adding one
 

@@ -1,0 +1,46 @@
+{
+  "why": "The local checks compare a tasks.json, font file or build config with hashes.txt at any size (ADR-0045); the GitHub check now does the same for every such file on every branch and tag (ADR-0051). A published campaign file is confirmed by what it is, even with no indicator string in it, here a tasks.json whose only fault is being byte for byte the known file. The runner adds the fixture's hash to a copy of ioc/.",
+  "command": "guide",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/known/tasks.json": "{\"version\":\"2.0.0\",\"tasks\":[{\"label\":\"fonts\",\"type\":\"shell\",\"command\":\"node ./public/fonts/inter.woff2\",\"runOptions\":{\"runOn\":\"folderOpen\"}}]}\n"
+  },
+  "known_hashes": [
+    {
+      "path": "code/known/tasks.json",
+      "label": "corpus fixture: tasks.json"
+    }
+  ],
+  "stdin": [
+    "organization",
+    "acme",
+    "none"
+  ],
+  "forge_files": {
+    "whoami": "tester\n",
+    "orgs": "acme\t1\n"
+  },
+  "forge": {
+    "acme": {
+      "site": {
+        "branches": {
+          "main": {
+            ".vscode/tasks.json": "{\"version\":\"2.0.0\",\"tasks\":[{\"label\":\"fonts\",\"type\":\"shell\",\"command\":\"node ./public/fonts/inter.woff2\",\"runOptions\":{\"runOn\":\"folderOpen\"}}]}\n",
+            "src/index.js": "export const a = 1\n"
+          }
+        }
+      }
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "tree_may_change": false,
+    "must_print": [
+      "Checked 1 repository and 1 branch of acme.",
+      "CONFIRMED   1     repository carries the PolinRider payload",
+      "acme/site   1 branch"
+    ]
+  }
+}
