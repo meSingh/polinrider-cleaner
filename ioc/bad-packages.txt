@@ -362,3 +362,29 @@ viteplugiin
 # and greentic-setup-dev 1.3.34027618345; Chrome extensions ExpertAI Dev
 # (nafkmlanpinblehjeebdjaolelielbgc) 1.0.1, 1.0.2 and CM Hub
 # (mfdgcmogddhinoaechjhfjmjcahljpie) 1.0.17.
+
+# --- the ioredis / Redis OM impersonation cluster of the MicrosoftSystem64
+# ULID-dropper family, named in Island's 2026-10 write-up of the 88-repository
+# campaign and checked against registry.npmjs.org and the OpenSSF database on
+# 2026-11-02. oscar-redis, redis-type-intel, ioredis-os, os-ulid-void and
+# ioredis-om are npm's 0.0.1-security placeholder, so npm treats each as wholly
+# malicious. oracle-redis and ioredis-xyz are STILL LIVE: verbatim copies of
+# ioredis published from throwaway accounts (gradsherrod86, iksjhdsy), with no
+# legitimate history. oracle-redis 5.11.3 and 5.11.4 add the dependencies
+# redis-type-intel and pino-ulid; ioredis-xyz 5.11.2 adds redis-type-xyz, which
+# is already carried and depends on ulid-xyz. redis-type-os is an empty copy of
+# Redis OM whose added dependency is hex-type (OSSF MAL-2026-5882), the same
+# shape as redis-type-xyz above. Sources: Island, "How Attackers Built Software
+# an AI Would Recommend" (indicator table); OpenSSF malicious-packages
+# MAL-2026-16035 (oscar-redis), MAL-2026-16036 (redis-type-intel),
+# MAL-2026-16390 (oracle-redis), MAL-2026-5879 (ioredis-os), MAL-2026-5348
+# (os-ulid-void), MAL-2026-5882 (redis-type-os).
+# See docs-site/src/content/docs/indicator-reviews/2026-11-02.md.
+oscar-redis
+oracle-redis
+redis-type-intel
+ioredis-xyz
+ioredis-os
+redis-type-os
+os-ulid-void
+ioredis-om
