@@ -1,0 +1,33 @@
+{
+  "why": "The JavaScript form of the implant is copied into the implant's own folder and run as node payload.js --agent, so the process is called node and a name comparison never sees it. A node whose script sits in a folder named as the implant is the implant running now, even after the folder itself is gone. Only the script argument is read, never the whole command line: the second node only mentions the folder in a flag, and is not it (ADR-0050).",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "home": {},
+  "host": {
+    "platform": "linux\n",
+    "processes": "1\tsystemd\t/sbin/init\n4300\tnode\tnode /home/x/.local/share/{{IMPLANT}}/payload.js --agent\n4301\tnode\tnode /home/x/code/app/server.js --log /tmp/{{IMPLANT}}\n",
+    "connections": "",
+    "crontab": "",
+    "git-config": "",
+    "root/.keep": ""
+  },
+  "expect": {
+    "exit": 2,
+    "findings": [
+      {
+        "level": "HIT",
+        "match": "an implant process is running now"
+      }
+    ],
+    "must_print": [
+      "4300 node"
+    ],
+    "must_not_print": [
+      "4301 node"
+    ]
+  }
+}

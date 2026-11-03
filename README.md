@@ -381,13 +381,11 @@ weeks that found nothing. Each review keeps its own dated entry, and entries are
 never edited or removed:
 [the indicator reviews](https://mesingh.github.io/polinrider-cleaner/indicator-reviews/).
 
-**Last reviewed: [21 October 2026](https://mesingh.github.io/polinrider-cleaner/indicator-reviews/2026-10-21/).**
+**Last reviewed: [2 November 2026](https://mesingh.github.io/polinrider-cleaner/indicator-reviews/2026-11-02/).**
 
-Two indicators added for June droppers of the campaign's `MicrosoftSystem64`
-implant, named by Microsoft Threat Intelligence. The hijacked `html-to-gutenberg`
-package was poisoned again as recently as 17 October: do not install any version
-above 4.2.10.
+Island's report on the `MicrosoftSystem64` npm cluster behind 88 GitHub repositories
+added eight package names, a C2 address and six hashes. Two of the names, `oracle-redis` and `ioredis-xyz`, are still live on npm.
 
-The folder and machine checks still do not read `weak.txt`; review-tier
-indicators reach only the CI scanner and the GitHub checks. Read the entry before
-relying on a review line from a local scan.
+From the release after 2.2.0, the folder and computer checks read `weak.txt`
+too (ADR-0047). Up to 2.2.0, review-tier indicators reach only the CI scanner and
+the GitHub checks.

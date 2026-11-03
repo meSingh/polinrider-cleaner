@@ -1,0 +1,10 @@
+# SSH keys the campaign adds to ~/.ssh/authorized_keys, so it can log in after
+# the implant is removed. One per line: a key's comment, or the base64 key
+# itself. Compared whole against that field of each authorized_keys line, never
+# against the line as a whole. A match is INFECTED. ADR-0049.
+
+# The comment on the attacker's RSA key that the eo-terminal payload of the
+# toskypi cluster appends to ~/.ssh/authorized_keys.
+# Source: OpenSSF malicious-packages, MAL-2026-4345, as read by the 2026-10-12
+# indicator review.
+bink@DESKTOP-N8JGD6T

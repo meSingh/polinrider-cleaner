@@ -1,0 +1,18 @@
+# Patterns over file contents, at the INFECTED tier: a match means the payload,
+# as for strong.txt. For indicators a fixed string cannot say, because a part of
+# them rotates. Extended regex, the subset src/pattern.rs supports. ADR-0052.
+#
+# Every pattern must contain a fixed part of at least three characters and no
+# ^ or $: it is tried only near that fixed part, so a long payload line cannot
+# make it slow. A pattern that breaks either rule stops the scan.
+
+# node running a font file directly: the folderOpen task command of the fake
+# font payload, whatever the weight and wherever the file sits. strong.txt has
+# the 400 form as a fixed string; the 500 and 900 forms are live. The path must
+# follow node as one argument, so a script that is merely handed a font name
+# (node scripts/copy.js fa-solid-900.woff2) does not match.
+# Source: OpenSourceMalware, "A Developer's Guide to Getting Rid of
+# PolinRider", 2026-08-13, and "PolinRider is A/B Testing its Way Past Your
+# Detections", September 2026; recorded in the 2026-09-14 and 2026-09-28
+# indicator reviews.
+node +[^ "']*fa-solid-[0-9]{3}\.woff2
