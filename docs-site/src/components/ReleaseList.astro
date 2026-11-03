@@ -1,7 +1,10 @@
 ---
 // The list on the Releases page, built from the release pages themselves so
 // a new release only needs its own page. Each page carries `version`, `date`
-// and `description` in its frontmatter; newest first.
+// and `description` in its frontmatter; newest first. The date shown is the
+// release tag's once it exists: see releaseDate.ts.
+import { longDate, releaseDate } from '../releaseDate';
+
 const pages = import.meta.glob('../content/docs/releases/v*.{md,mdx}', { eager: true }) as Record<
   string,
   { frontmatter: { version: string; date: string; description: string; breaking?: string } }
@@ -15,21 +18,14 @@ const newerFirst = (a: string, b: string) => {
 };
 
 const releases = Object.values(pages)
-  // YAML reads an unquoted date as a Date; accept either.
   .map((p) => ({
     ...p.frontmatter,
     version: String(p.frontmatter.version),
-    date: typeof p.frontmatter.date === 'string'
-      ? p.frontmatter.date
-      : new Date(p.frontmatter.date).toISOString().slice(0, 10),
+    date: releaseDate(String(p.frontmatter.version), p.frontmatter.date),
   }))
   .sort((a, b) => newerFirst(a.version, b.version));
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
-const long = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-GB', {
-    day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC',
-  });
 ---
 
 <ul class="release-list">
@@ -38,7 +34,7 @@ const long = (iso: string) =>
       <a href={`${base}/releases/v${r.version}/`}>
         <span class="version">{r.version}</span>
         {i === 0 && <span class="latest">latest</span>}
-        <time datetime={r.date}>{long(r.date)}</time>
+        <time datetime={r.date}>{longDate(r.date)}</time>
       </a>
       <p>{r.description}</p>
       {r.breaking && <p class="breaking"><strong>Breaking:</strong> {r.breaking}</p>}

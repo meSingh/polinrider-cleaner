@@ -13,14 +13,14 @@ anything.
 
    ```bash
    sha256sum -c SHA256SUMS --ignore-missing
-   gh attestation verify polinrider-v2.1.0-macos-arm64.tar.gz --repo meSingh/polinrider-cleaner
+   gh attestation verify polinrider-v2.2.0-macos-arm64.tar.gz --repo meSingh/polinrider-cleaner
    ```
 
 3. Unpack it and run it with no arguments:
 
    ```bash
-   tar -xzf polinrider-v2.1.0-macos-arm64.tar.gz
-   cd polinrider-v2.1.0-macos-arm64
+   tar -xzf polinrider-v2.2.0-macos-arm64.tar.gz
+   cd polinrider-v2.2.0-macos-arm64
    ./polinrider
    ```
 

@@ -1,0 +1,17 @@
+---
+// "Released 26 October 2026." at the top of a release page, dated from the
+// release's tag once it exists (see releaseDate.ts), so it is never edited
+// by hand.
+import { longDate, releaseDate } from '../releaseDate';
+
+interface Props {
+  version: string;
+  /** The page's own date, used only until the tag exists. */
+  date: string;
+}
+
+const { version, date } = Astro.props;
+const day = releaseDate(version, date);
+---
+
+Released <time datetime={day}>{longDate(day)}</time>.

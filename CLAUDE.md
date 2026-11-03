@@ -54,6 +54,15 @@ is a behaviour change; the corpus will say so.
 Add a case for anything you fix. Every case carries a `why` that argues for the
 expected value, because a corpus that pins a bug is worse than no corpus.
 
+## Release dates come from the tag
+
+A release page's date, and the date on the Releases list, are read from the
+release's signed tag when the site is built. Never write a release date by
+hand and never "fix" one after a release: the Release workflow rebuilds the
+site from `main` once the tag exists, and every later push to `main` that
+rebuilds the site keeps it right. The page's own `date` is only the expected
+day, used until the tag exists. `AGENTS.md`, "Cutting a release", step 1a.
+
 ## Everything else
 
 `AGENTS.md`. It has two halves: operating these tools during an incident, and

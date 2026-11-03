@@ -3,14 +3,17 @@ title: polinrider-cleaner X.Y.Z
 description: One sentence on what this release brings, for the list and for search.
 version: "X.Y.Z"
 slug: releases/vX.Y.Z
+# The expected release day. Once the tag exists the site shows the tag's date
+# instead, so this never needs correcting after the release.
 date: "YYYY-MM-DD"
 # Only when something breaks; shown in red on the Releases list. Delete otherwise.
 breaking: one line on what breaks and what to do about it.
 ---
 
 import Downloads from '../../../components/Downloads.astro';
+import Released from '../../../components/Released.astro';
 
-Released D Month YYYY. No breaking changes.
+<Released version="X.Y.Z" date="YYYY-MM-DD" /> No breaking changes.
 
 ## New
 

@@ -729,7 +729,25 @@ pub fn named_files(walk: &Walk, ind: &Indicators, v: &mut Verdict, sink: &mut Si
         // Matched on the path with forward slashes, as the patterns are
         // written, so a Windows path is read the same way.
         let text = path.to_string_lossy().replace('\\', "/");
-        if is_script_name || !ind.is_bad_filename(&text) {
+        if is_script_name {
+            continue;
+        }
+        if !ind.is_bad_filename(&text) {
+            // A name legitimate projects can have too: a look, not a verdict.
+            // ADR-0048.
+            if ind.is_review_filename(&text) {
+                let name = path.file_name().map_or_else(
+                    || text.clone(),
+                    |n| crate::verdict::clean(&n.to_string_lossy()),
+                );
+                v.push(
+                    Finding::review(format!(
+                        "file name the campaign also uses ({name}), verify by hand: {}",
+                        path.display()
+                    ))
+                    .at(path),
+                );
+            }
             continue;
         }
         named = true;
@@ -887,6 +905,143 @@ pub fn extensions(dirs: &[PathBuf], ind: &Indicators, v: &mut Verdict, sink: &mu
 /// Inventory, never a finding. Owning an SSH key is not suspicious and a
 /// `.pub` file is not a credential. Only paths are listed, and only in the
 /// report: nothing is read, so nothing can be printed.
+/// Strings legitimate projects also contain, from `weak.txt`. A match is a
+/// line to review and never a finding of infection. The CI scanner's rule:
+/// every file of up to 1 MB that is not binary, the first string per file,
+/// matched as written and not decoded. The operator's own detection files
+/// and documentation, which quote the same strings, are set aside as the
+/// GitHub check sets them aside. ADR-0047.
+pub fn weak_signals(walk: &Walk, roots: &[PathBuf], ind: &Indicators, v: &mut Verdict) {
+    v.section("Weak signals, which legitimate projects also contain");
+    if ind.weak.is_empty() {
+        v.push(Finding::ok("no weak indicators to look for"));
+        return;
+    }
+    // A file another check already reported is reported once.
+    let reported: Vec<PathBuf> = v.findings().filter_map(|f| f.path.clone()).collect();
+    let (mut read, mut flagged) = (0usize, 0usize);
+    for path in &walk.files {
+        if reported.contains(path) {
+            continue;
+        }
+        // Relative to the root it was found under, as the tooling patterns
+        // are written for a repository's own paths.
+        let relative = roots
+            .iter()
+            .filter_map(|r| path.strip_prefix(r).ok())
+            .min_by_key(|p| p.as_os_str().len())
+            .unwrap_or(path);
+        if crate::remote::is_detection_tooling(&relative.to_string_lossy().replace('\\', "/")) {
+            continue;
+        }
+        // Editor files: tasks.json has a stricter check of its own, and
+        // folderOpen in settings.json is a known false positive the corpus
+        // pins (settings-json-is-not-tasks-json).
+        if path.components().any(|c| c.as_os_str() == ".vscode") {
+            continue;
+        }
+        if fs::metadata(path).map_or(true, |m| m.len() > 1024 * 1024) {
+            continue;
+        }
+        let Ok(bytes) = fs::read(path) else {
+            continue;
+        };
+        if bytes.iter().take(8192).any(|b| *b == 0) {
+            continue;
+        }
+        read += 1;
+        let text = String::from_utf8_lossy(&bytes);
+        if let Some(signal) = ind.weak.iter().find(|w| text.contains(w.as_str())) {
+            flagged += 1;
+            v.push(
+                Finding::review(format!(
+                    "mentions something the campaign also uses ({}), verify by hand: {}",
+                    crate::verdict::clean(signal),
+                    path.display()
+                ))
+                .at(path),
+            );
+        }
+    }
+    if flagged == 0 {
+        v.push(Finding::ok(format!(
+            "{read} files read for weak signals, none matched"
+        )));
+    }
+}
+
+/// SSH keys the campaign adds to `~/.ssh/authorized_keys` so that it can log
+/// in after the implant is gone. Each key is matched on its own fields, the
+/// comment or the key itself, never on the whole line, which also holds
+/// options. The file holds the owner's own keys, so it is never moved or
+/// edited: the line is named and removed by hand. ADR-0049.
+pub fn ssh_keys(home: &Path, ind: &Indicators, v: &mut Verdict) {
+    v.section("SSH keys that let someone in");
+    let path = home.join(".ssh").join("authorized_keys");
+    let text = match fs::read(&path) {
+        Ok(bytes) => String::from_utf8_lossy(&bytes).into_owned(),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            v.push(Finding::ok("no ~/.ssh/authorized_keys"));
+            return;
+        }
+        Err(e) => {
+            v.push(Finding::review(format!(
+                "could not read, so it was not checked: {} ({e})",
+                path.display()
+            )));
+            return;
+        }
+    };
+    let is_key_type =
+        |f: &&str| f.starts_with("ssh-") || f.starts_with("ecdsa-") || f.starts_with("sk-");
+    let (mut keys, mut found) = (0usize, false);
+    for (n, line) in text.lines().enumerate() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        let fields: Vec<&str> = line.split_whitespace().collect();
+        let Some(at) = fields.iter().position(is_key_type) else {
+            continue;
+        };
+        keys += 1;
+        let key = fields.get(at + 1).copied().unwrap_or_default();
+        let comment = fields
+            .get(at + 2..)
+            .map(|c| c.join(" "))
+            .unwrap_or_default();
+        if let Some(known) = ind.ssh_keys.iter().find(|k| **k == comment || *k == key) {
+            found = true;
+            v.push(
+                Finding::hit(
+                    Kind::SshKey,
+                    format!(
+                        "an SSH key known from the campaign is allowed to log in ({}): {}, line {}",
+                        crate::verdict::clean(known),
+                        path.display(),
+                        n + 1
+                    ),
+                )
+                .at(&path)
+                .with_remedy(
+                    "Remove that line by hand. It lets the attacker log in over SSH even after the implant is gone.",
+                ),
+            );
+        }
+    }
+    if !found {
+        v.push(Finding::ok(format!(
+            "{}: {}, none known from the campaign",
+            path.display(),
+            if keys == 1 {
+                "1 key".to_string()
+            } else {
+                format!("{keys} keys")
+            }
+        )));
+    }
+}
+
 pub fn credentials(walk: &Walk, home: Option<&Path>, v: &mut Verdict) {
     v.section(if home.is_some() {
         "Credential surface on this machine"

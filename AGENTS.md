@@ -158,7 +158,7 @@ the sandbox and the test harness.
 | `indicators.rs` | Loading `ioc/` and matching it, through escape codes as well: ADR-0040. Package names are compared whole: ADR-0041 |
 | `manifest.rs` | The package names a `package.json` or lockfile installs, read as data. A depth-limited JSON parser and line readers for yarn and pnpm. Pure: ADR-0041 |
 | `unescape.rs` | Decodes `\uXXXX`, `\u{...}` and `\xNN` so an escaped loader matches. Pure |
-| `checks.rs` | Implants, tasks.json, build configs, fonts, packages, git hooks, extensions, propagation. The tasks.json, font and config checks also compare each file's hash: ADR-0045 |
+| `checks.rs` | Implants, tasks.json, build configs, fonts, packages, git hooks, extensions, propagation. The tasks.json, font and config checks also compare each file's hash: ADR-0045. A last pass reads `weak.txt` as review lines: ADR-0047 |
 | `scan.rs` | One scan: the walk, every check that applies, and rendering. In the library so a session can run more than one |
 | `guide.rs` | The guided flow. Four screens, one question on each, answered in words. A summary first, the full list on `details`. Every prompt goes through one `Console` trait so a test can drive a session: ADR-0035. Step 4 offers the next check, and a session ends on a closing screen: ADR-0044 |
 | `remote.rs` | GitHub through one boundary: `Forge` (`GitHub` through `gh` and `git`, or `Supplied` from a directory of bare repositories). Mirrors into an evidence directory and checks every branch and tag through git plumbing. Also the only four things that change GitHub: `push`, `set_description`, `archive` |
@@ -383,6 +383,14 @@ the download links point at the assets the tag will publish. Write it for
 someone running the tool, not for a reviewer of the code; the tag message
 below can reuse it.
 
+**The release date comes from the tag, never from a hand edit.** Put the day
+you expect to tag in `date` and in the `<Released version date />` line the
+template starts with. Once the tag exists, the site shows the tag's date
+instead, on the page and on the Releases list (`docs-site/src/releaseDate.ts`).
+So a page written the day before the tag, or a tag cut after midnight, still
+shows the right day, and nothing needs correcting after a release. Do not
+replace `<Released />` with a written date.
+
 **2. Merge everything first.** `main` is protected: no direct pushes, required
 checks, and the rule applies to admins. Every change goes through a pull
 request.
@@ -405,7 +413,8 @@ section.
 
 **4. The Release workflow does the rest.** It checks the tag against
 `Cargo.toml`, runs fmt, clippy, the unit tests and the corpus, builds five
-binaries and runs each one. It packages them as `.tar.gz` archives, the
+binaries and runs each one. After publishing, it starts the Docs workflow on
+`main`, which rebuilds the site with the tag's date on the release page. It packages them as `.tar.gz` archives, the
 Windows binary also as a flat `.zip` (for winget and Scoop) and the Linux ones
 also as `.deb` packages, which it installs on the runner and runs. It attests
 every file with the source archive, writes `SHA256SUMS` and publishes. If

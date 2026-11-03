@@ -84,6 +84,10 @@ pub enum Kind {
     /// Windows: a registry Run entry or a scheduled task. Not a file, so it
     /// cannot be moved; a command removes it.
     Autostart,
+    /// An SSH key the campaign added to `authorized_keys`, so it can log in
+    /// after the implant is gone. The file holds the owner's keys too, so the
+    /// line is removed by hand.
+    SshKey,
     /// A process running now.
     Process,
     /// A connection open now.
@@ -126,7 +130,7 @@ impl Kind {
     pub const fn by_hand(self) -> bool {
         matches!(
             self,
-            Kind::Crontab | Kind::StartupFile | Kind::Registry | Kind::Autostart
+            Kind::Crontab | Kind::StartupFile | Kind::Registry | Kind::Autostart | Kind::SshKey
         )
     }
 
@@ -203,6 +207,10 @@ impl Kind {
                 "entry that starts the payload when Windows starts",
                 "entries that start the payload when Windows starts",
             ),
+            Kind::SshKey => (
+                "SSH key that lets the attacker log in",
+                "SSH keys that let the attacker log in",
+            ),
             Kind::Process => (
                 "program from the payload running right now",
                 "programs from the payload running right now",
@@ -230,6 +238,7 @@ impl Kind {
             Kind::NpmProgram => "A changed copy of npm",
             Kind::PthFile => "A Python startup file",
             Kind::Autostart => "An entry that starts with Windows",
+            Kind::SshKey => "The attacker's SSH key",
             Kind::Process => "A running program",
             Kind::Connection => "A live connection",
             Kind::Config { .. }

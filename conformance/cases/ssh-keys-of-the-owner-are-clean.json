@@ -1,0 +1,22 @@
+{
+  "why": "An authorized_keys file of the owner's own keys is the ordinary case and says so: no finding, the number of keys counted. A missing file is clean too. Only a key the campaign is known to add is reported (ADR-0049).",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "home": {
+    ".ssh/authorized_keys": "# my keys\nssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOwnerOwnKeyAAAAAAAAAAAAAAAAAAAAAAAAAAAA owner@laptop\nssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBackupKeyAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA backup@server\n"
+  },
+  "expect": {
+    "exit": 0,
+    "must_print": [
+      "2 keys, none known from the campaign"
+    ],
+    "must_not_report": [
+      "[HIT]",
+      "authorized_keys"
+    ]
+  }
+}

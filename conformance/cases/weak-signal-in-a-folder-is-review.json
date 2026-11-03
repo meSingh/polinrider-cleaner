@@ -1,0 +1,26 @@
+{
+  "why": "weak.txt holds strings the campaign uses that legitimate projects use too, so a match is a line to review and never a finding of infection. The CI scanner and the GitHub check have always said so; the folder and computer checks never read the list, which ioc/README.md promised they did. A weak string in ordinary source is review, exit 1. The same string in documentation or in an ioc/ list is the operator's own detection material, set aside as the GitHub check sets it aside, so it adds nothing (ADR-0047).",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/tailwind.config.js": "export default { rpc: '{{WEAK}}' }\n",
+    "code/proj/docs/incident.md": "We saw {{WEAK}} in the config.\n",
+    "code/scanner/ioc/weak.txt": "{{WEAK}}\n"
+  },
+  "expect": {
+    "exit": 1,
+    "findings": [
+      {
+        "level": "review",
+        "match": "mentions something the campaign also uses",
+        "path": "tailwind.config.js"
+      }
+    ],
+    "must_not_report": [
+      "[HIT]",
+      "incident.md",
+      "ioc/weak.txt"
+    ]
+  }
+}

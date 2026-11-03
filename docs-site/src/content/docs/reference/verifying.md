@@ -19,7 +19,7 @@ The same two checks for any asset: an archive, the Windows zip or a `.deb`.
 
 ```bash
 sha256sum -c SHA256SUMS --ignore-missing
-gh attestation verify polinrider-v2.1.0-macos-arm64.tar.gz --repo meSingh/polinrider-cleaner
+gh attestation verify polinrider-v2.2.0-macos-arm64.tar.gz --repo meSingh/polinrider-cleaner
 ```
 
 The Homebrew formula and the Scoop manifest carry the checksums from that same
