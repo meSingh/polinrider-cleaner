@@ -381,11 +381,10 @@ weeks that found nothing. Each review keeps its own dated entry, and entries are
 never edited or removed:
 [the indicator reviews](https://mesingh.github.io/polinrider-cleaner/indicator-reviews/).
 
-**Last reviewed: [26 October 2026, Socket tracker](https://mesingh.github.io/polinrider-cleaner/indicator-reviews/2026-10-26-socket/).**
+**Last reviewed: [2 November 2026](https://mesingh.github.io/polinrider-cleaner/indicator-reviews/2026-11-02/).**
 
-Nine attacker-owned npm names added from Socket's tracker, read in full for the
-first time. Eighteen infected legitimate packages, among them `qrcode-vue3`
-1.7.2 and 1.7.3, are listed with their bad versions: check your lockfile.
+Island's report on the `MicrosoftSystem64` npm cluster behind 88 GitHub repositories
+added eight package names, a C2 address and six hashes. Two of the names, `oracle-redis` and `ioredis-xyz`, are still live on npm.
 
 From the release after 2.2.0, the folder and computer checks read `weak.txt`
 too (ADR-0047). Up to 2.2.0, review-tier indicators reach only the CI scanner and

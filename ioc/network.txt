@@ -75,3 +75,10 @@ copilot-ai.whisdev.org
 # Source: OpenSSF malicious-packages MAL-2026-6672 (`ulid-xyz`; Amazon
 # Inspector, SafeDep), July 2026. See docs-site/src/content/docs/indicator-reviews/2026-10-12.md.
 95.216.232.162
+
+# --- MicrosoftSystem64 C2 of the ULID-impersonation cluster, port 8010, the
+# third address of the three Island lists: 95.216.232.162 and 195.201.194.107
+# are carried above, and all three are Hetzner.
+# Source: Island, "How Attackers Built Software an AI Would Recommend", indicator
+# table, October 2026. See docs-site/src/content/docs/indicator-reviews/2026-11-02.md.
+65.21.30.171
