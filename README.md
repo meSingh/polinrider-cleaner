@@ -45,14 +45,14 @@
 
    ```bash
    sha256sum -c SHA256SUMS --ignore-missing
-   gh attestation verify polinrider-v2.2.0-macos-arm64.tar.gz --repo meSingh/polinrider-cleaner
+   gh attestation verify polinrider-v2.3.0-macos-arm64.tar.gz --repo meSingh/polinrider-cleaner
    ```
 
 3. **Unpack and run it**, with no arguments:
 
    ```bash
-   tar -xzf polinrider-v2.2.0-macos-arm64.tar.gz
-   cd polinrider-v2.2.0-macos-arm64
+   tar -xzf polinrider-v2.3.0-macos-arm64.tar.gz
+   cd polinrider-v2.3.0-macos-arm64
    ./polinrider
    ```
 
@@ -386,6 +386,6 @@ never edited or removed:
 Island's report on the `MicrosoftSystem64` npm cluster behind 88 GitHub repositories
 added eight package names, a C2 address and six hashes. Two of the names, `oracle-redis` and `ioredis-xyz`, are still live on npm.
 
-From the release after 2.2.0, the folder and computer checks read `weak.txt`
-too (ADR-0047). Up to 2.2.0, review-tier indicators reach only the CI scanner and
-the GitHub checks.
+From 2.3.0, the folder and computer checks read `weak.txt` too (ADR-0047).
+Up to 2.2.0, review-tier indicators reach only the CI scanner and the GitHub
+checks.
