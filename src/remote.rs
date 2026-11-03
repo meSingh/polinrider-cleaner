@@ -772,10 +772,11 @@ pub fn prepare_evidence(dir: &Path) -> Result<PathBuf, EvidenceError> {
 
 /// The lists a check writes into the evidence directory before it copies
 /// anything. Their presence is how a folder is known to be one polinrider made.
-const INDICATOR_FILES: [&str; 3] = [
+const INDICATOR_FILES: [&str; 4] = [
     "indicators-strong.txt",
     "indicators-packages.txt",
     "indicators-weak.txt",
+    "indicators-pattern-parts.txt",
 ];
 
 /// What `--purge-evidence` would delete.
@@ -1196,7 +1197,10 @@ impl Mirror<'_> {
             }
             // Decoded as well as written: a file the payload sat in as escape
             // codes has to come out of every commit too.
-            if ind.file_confirms(path, body) || is_fake_font(path, body) {
+            if ind.file_confirms(path, body)
+                || is_fake_font(path, body)
+                || (is_hash_candidate(path) && ind.known_file(body).is_some())
+            {
                 found.push((*path).to_string());
                 carriers.push(id);
             }
@@ -1228,6 +1232,18 @@ impl Mirror<'_> {
         found.dedup();
         Ok(found)
     }
+}
+
+/// The files whose hash is compared with `hashes.txt` at any size: the ones
+/// the local checks read whole. ADR-0045, ADR-0051.
+fn is_hash_candidate(path: &str) -> bool {
+    let name = path.rsplit('/').next().unwrap_or(path);
+    let lower = name.to_ascii_lowercase();
+    (name == "tasks.json"
+        && (path == ".vscode/tasks.json" || path.ends_with("/.vscode/tasks.json")))
+        || lower.ends_with(".woff")
+        || lower.ends_with(".woff2")
+        || is_build_config(name)
 }
 
 /// What `git grep -E` is asked for to find a file worth decoding: a
@@ -1322,10 +1338,15 @@ pub struct RefFinding {
     pub named_files: Vec<String>,
     /// Font files that are not fonts, with their first bytes.
     pub fake_fonts: Vec<(String, String)>,
+    /// Files whose SHA-256 is a known campaign file, with its label:
+    /// ADR-0051.
+    pub known_files: Vec<(String, String)>,
     /// `tasks.json` files that run on folder open and carry no indicator.
     pub folder_open_tasks: Vec<String>,
     /// Files containing a weak signal.
     pub weak_files: Vec<String>,
+    /// Paths with a name worth a look, from `filenames-review.txt`.
+    pub review_named_files: Vec<String>,
     /// Build configs followed by a payload-shaped remainder.
     pub suspicious_configs: Vec<String>,
 }
@@ -1339,6 +1360,7 @@ impl RefFinding {
             .chain(&self.named_files)
             .map(String::as_str)
             .chain(self.fake_fonts.iter().map(|(path, _)| path.as_str()))
+            .chain(self.known_files.iter().map(|(path, _)| path.as_str()))
             .collect();
         paths.sort_unstable();
         paths.dedup();
@@ -1360,6 +1382,7 @@ impl RefFinding {
     pub fn needs_review(&self) -> bool {
         !self.is_confirmed()
             && (!self.weak_files.is_empty()
+                || !self.review_named_files.is_empty()
                 || !self.suspicious_configs.is_empty()
                 || !self.folder_open_tasks.is_empty())
     }
@@ -1381,7 +1404,7 @@ impl RefFinding {
 /// grown `(lib|ci|src|conformance)/`, added to quiet this repository's own
 /// self-scan. Applied to somebody else's repository it calls every infected
 /// file under `src/` their own tooling. It is not carried here.
-fn is_detection_tooling(path: &str) -> bool {
+pub(crate) fn is_detection_tooling(path: &str) -> bool {
     const BENIGN: &[&str] = &[
         r"(^|/)\.github/workflows/[^/]*polinrider[^/]*\.(yml|yaml)$",
         r"(^|/)\.github/polinrider/",
@@ -1564,18 +1587,28 @@ pub(crate) struct Patterns {
     /// and the name compared whole.
     packages: PathBuf,
     weak: PathBuf,
+    /// The fixed part of each content pattern. Only a first pass: what
+    /// `git grep` finds is read again and the pattern tried on it.
+    pattern_parts: PathBuf,
 }
 
 pub(crate) fn indicator_files(evidence: &Path, ind: &Indicators) -> Result<Patterns, String> {
-    let [strong, packages, weak] = INDICATOR_FILES;
+    let [strong, packages, weak, pattern_parts] = INDICATOR_FILES;
     let patterns = Patterns {
         strong: evidence.join(strong),
         packages: evidence.join(packages),
         weak: evidence.join(weak),
+        pattern_parts: evidence.join(pattern_parts),
     };
+    let parts: Vec<&str> = ind
+        .strong_patterns
+        .iter()
+        .map(|(_, part)| part.as_str())
+        .collect();
     fs::write(&patterns.strong, ind.strong.join("\n") + "\n")
         .and_then(|()| fs::write(&patterns.packages, ind.bad_packages.join("\n") + "\n"))
         .and_then(|()| fs::write(&patterns.weak, ind.weak.join("\n") + "\n"))
+        .and_then(|()| fs::write(&patterns.pattern_parts, parts.join("\n") + "\n"))
         .map_err(|e| format!("cannot write to {}: {e}", evidence.display()))?;
     Ok(patterns)
 }
@@ -1604,6 +1637,21 @@ pub(crate) fn check_ref(
             found.extend(named);
             let escaped = mirror.containing_escaped(git_ref, ind, &found)?;
             found.extend(escaped);
+            // A content pattern: candidates by its fixed part, then the
+            // pattern itself on each. ADR-0052.
+            if !ind.strong_patterns.is_empty() {
+                let by_pattern: Vec<String> = mirror
+                    .containing(git_ref, &patterns.pattern_parts)?
+                    .into_iter()
+                    .filter(|path| !found.contains(path))
+                    .filter(|path| {
+                        mirror
+                            .blob(git_ref, path)
+                            .is_some_and(|b| ind.pattern_match(&String::from_utf8_lossy(&b)))
+                    })
+                    .collect();
+                found.extend(by_pattern);
+            }
             found.sort_unstable();
             found
         },
@@ -1619,6 +1667,8 @@ pub(crate) fn check_ref(
         let name = path.rsplit('/').next().unwrap_or(&path);
         if ind.is_bad_filename(&path) {
             finding.named_files.push(path.clone());
+        } else if ind.is_review_filename(&path) && !is_detection_tooling(&path) {
+            finding.review_named_files.push(path.clone());
         }
 
         // tasks.json is a finding only when it runs on folder open, and it
@@ -1634,6 +1684,16 @@ pub(crate) fn check_ref(
             })
         {
             finding.folder_open_tasks.push(path.clone());
+        }
+
+        // A published campaign file, by its hash, among the files the local
+        // checks compare the same way. ADR-0045, ADR-0051.
+        if !ind.hashes.is_empty() && is_hash_candidate(&path) {
+            if let Some(bytes) = mirror.blob(git_ref, &path) {
+                if let Some(label) = ind.known_file(&bytes) {
+                    finding.known_files.push((path.clone(), label.to_string()));
+                }
+            }
         }
 
         let lower = name.to_ascii_lowercase();
@@ -2054,6 +2114,55 @@ mod tests {
         assert_eq!(
             mirror.payload_paths_in_history(&ind()).expect("history"),
             vec!["vite.config.js".to_string()]
+        );
+    }
+
+    #[test]
+    fn a_known_campaign_file_is_confirmed_by_its_hash_and_found_in_history() {
+        // A font that starts like a font and carries no indicator string:
+        // only its hash says what it is. On the branch it is confirmed; once
+        // a later commit has replaced it, only the history holds it, and
+        // erase has to find it there.
+        let known: &[u8] = b"wOF2 the published campaign bytes\n";
+        let w = World::new("known-hash");
+        w.repo(
+            "site",
+            &[("main", &[("public/fonts/fa-solid-400.woff2", known)])],
+        );
+        let ind = Indicators {
+            hashes: vec![(crate::sha256::bytes(known), "fixture font".into())],
+            ..ind()
+        };
+        let bare = w.bare("site");
+        let mirror = Mirror { dir: &bare };
+        let patterns = indicator_files(&w.dir, &ind).expect("patterns");
+        let tip =
+            check_ref(&mirror, "acme/site", "refs/heads/main", &ind, &patterns).expect("check");
+        assert!(tip.is_confirmed());
+        assert_eq!(
+            tip.known_files,
+            vec![(
+                "public/fonts/fa-solid-400.woff2".to_string(),
+                "fixture font".to_string()
+            )]
+        );
+
+        w.push(
+            "site",
+            "main",
+            &[(
+                "public/fonts/fa-solid-400.woff2",
+                b"wOF2 a real font now\n" as &[u8],
+            )],
+            false,
+            None,
+        );
+        let tip =
+            check_ref(&mirror, "acme/site", "refs/heads/main", &ind, &patterns).expect("check");
+        assert!(!tip.is_confirmed());
+        assert_eq!(
+            mirror.payload_paths_in_history(&ind).expect("history"),
+            vec!["public/fonts/fa-solid-400.woff2".to_string()]
         );
     }
 

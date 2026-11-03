@@ -158,7 +158,7 @@ the sandbox and the test harness.
 | `indicators.rs` | Loading `ioc/` and matching it, through escape codes as well: ADR-0040. Package names are compared whole: ADR-0041 |
 | `manifest.rs` | The package names a `package.json` or lockfile installs, read as data. A depth-limited JSON parser and line readers for yarn and pnpm. Pure: ADR-0041 |
 | `unescape.rs` | Decodes `\uXXXX`, `\u{...}` and `\xNN` so an escaped loader matches. Pure |
-| `checks.rs` | Implants, tasks.json, build configs, fonts, packages, git hooks, extensions, propagation. The tasks.json, font and config checks also compare each file's hash: ADR-0045 |
+| `checks.rs` | Implants, tasks.json, build configs, fonts, packages, git hooks, extensions, propagation. The tasks.json, font and config checks also compare each file's hash: ADR-0045. A last pass reads `weak.txt` as review lines: ADR-0047 |
 | `scan.rs` | One scan: the walk, every check that applies, and rendering. In the library so a session can run more than one |
 | `guide.rs` | The guided flow. Four screens, one question on each, answered in words. A summary first, the full list on `details`. Every prompt goes through one `Console` trait so a test can drive a session: ADR-0035. Step 4 offers the next check, and a session ends on a closing screen: ADR-0044 |
 | `remote.rs` | GitHub through one boundary: `Forge` (`GitHub` through `gh` and `git`, or `Supplied` from a directory of bare repositories). Mirrors into an evidence directory and checks every branch and tag through git plumbing. Also the only four things that change GitHub: `push`, `set_description`, `archive` |

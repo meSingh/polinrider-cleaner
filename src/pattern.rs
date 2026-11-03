@@ -222,6 +222,45 @@ impl Pattern {
         &self.source
     }
 
+    /// The longest run of plain characters the pattern requires, when it has
+    /// one alternative at the top: a fixed part every match contains. A
+    /// content pattern is tried only near it, so a long line costs nothing.
+    pub fn required_literal(&self) -> Option<String> {
+        let Node::Alt(branches) = &self.root else {
+            return None;
+        };
+        let [sequence] = branches.as_slice() else {
+            return None;
+        };
+        let mut best = String::new();
+        let mut run = String::new();
+        for node in sequence {
+            if let Node::Char(c) = node {
+                run.push(*c);
+            } else {
+                run.clear();
+            }
+            if run.chars().count() > best.chars().count() {
+                best.clone_from(&run);
+            }
+        }
+        (!best.is_empty()).then_some(best)
+    }
+
+    /// Does it use `^` or `$` anywhere? A content pattern is tried on a window
+    /// of a line, where neither means anything.
+    pub fn has_anchors(&self) -> bool {
+        fn any(nodes: &[Node]) -> bool {
+            nodes.iter().any(|n| match n {
+                Node::Start | Node::End => true,
+                Node::Alt(branches) => branches.iter().any(|b| any(b)),
+                Node::Repeat { node, .. } => any(std::slice::from_ref(node)),
+                _ => false,
+            })
+        }
+        any(std::slice::from_ref(&self.root))
+    }
+
     /// Does the pattern match anywhere in `text`?
     pub fn is_match(&self, text: &str) -> bool {
         let chars: Vec<char> = text.chars().collect();

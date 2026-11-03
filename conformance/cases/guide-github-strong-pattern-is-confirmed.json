@@ -1,0 +1,39 @@
+{
+  "why": "The GitHub check reads strong-patterns.txt too. git grep finds the files that hold a pattern's fixed part, and the pattern itself is tried on each, so a branch whose folder-open task runs node on a 500-weight font is confirmed although no fixed string matches it (ADR-0052).",
+  "command": "guide",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "stdin": [
+    "organization",
+    "acme",
+    "none"
+  ],
+  "forge_files": {
+    "whoami": "tester\n",
+    "orgs": "acme\t1\n"
+  },
+  "forge": {
+    "acme": {
+      "site": {
+        "branches": {
+          "main": {
+            ".vscode/tasks.json": "{\"version\":\"2.0.0\",\"tasks\":[{\"label\":\"fonts\",\"type\":\"shell\",\"command\":\"node ./public/fonts/fa-solid-500.woff2\",\"runOptions\":{\"runOn\":\"folderOpen\"}}]}\n",
+            "src/index.js": "export const a = 1\n"
+          }
+        }
+      }
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "tree_may_change": false,
+    "must_print": [
+      "CONFIRMED   1     repository carries the PolinRider payload",
+      "acme/site   1 branch"
+    ]
+  }
+}

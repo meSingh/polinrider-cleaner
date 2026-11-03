@@ -1,0 +1,23 @@
+{
+  "why": "The fake-font task runs node on a font file, and the weight rotates: 400, 500, 900. strong.txt holds the 400 command as a fixed string, which the 900 build does not match. strong-patterns.txt says it once for every weight and folder: node followed directly by a path ending in a fa-solid font (ADR-0052). A task that does that is confirmed. A package.json script that hands the same font name to a copy script runs node on the script, not the font, and is not matched.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/victim/.vscode/tasks.json": "{\"version\":\"2.0.0\",\"tasks\":[{\"label\":\"fonts\",\"type\":\"shell\",\"command\":\"node ./src/assets/fa-solid-900.woff2\",\"runOptions\":{\"runOn\":\"folderOpen\"}}]}\n",
+    "code/legit/package.json": "{\"name\":\"legit\",\"scripts\":{\"fonts\":\"node scripts/copy.js fa-solid-900.woff2\"}}\n"
+  },
+  "expect": {
+    "exit": 2,
+    "findings": [
+      {
+        "level": "HIT",
+        "match": "tasks.json runs on folder open AND contains an indicator",
+        "path": "victim/.vscode/tasks.json"
+      }
+    ],
+    "must_not_report": [
+      "legit"
+    ]
+  }
+}

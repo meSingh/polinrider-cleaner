@@ -1,10 +1,11 @@
 # SHA-256 of files known from this campaign. A match is confirmed, whatever
 # the file is called.
 #
-# Where a match is looked for (ADR-0045):
+# Where a match is looked for (ADR-0045, ADR-0051):
 #   - every file of 10 MB to 300 MB, for the second-stage binaries
 #   - every .vscode/tasks.json, font file and build config, at any size,
-#     because the checks read those files anyway
+#     because the checks read those files anyway, on this computer, in
+#     folders, and on every branch, tag and commit of a GitHub repository
 # A smaller file of any other kind is not hashed. The print.cjs dropper below
 # is matched only if it sits in one of those places or is renamed into one.
 #
@@ -21,3 +22,14 @@ b2954c945b51dbd6fa88ac72338b7fbf76dec7d9909ceada9d36b21330842c97  MicrosoftSyste
 33401580619ae79bf3f87aab16208f169a44a038f18671b1def7836fb2682c9a  print.cjs dropper
 f5c6be4753d6613c97f1b10c4d93a5d97a8f4fb21eb13da0ed04b23a8a61c2f6  .vscode/tasks.json that runs the fake font on folder open
 9fbb31129c04e8eb1a50519fc864c74d1b20d57c07d4099348f8fbc9a1a1eae6  fake font public/fonts/fa-solid-400.woff2
+
+# --- the ulid-xyz dropper, from Island's indicator table, October 2026. The
+# tarballs and payload.js are not files the checks read by default (see the note
+# at the top), so these catch a copy kept on disk or renamed into a hashed place.
+# See docs-site/src/content/docs/indicator-reviews/2026-11-02.md.
+a95cf5562a556ab60733fa3d5a24f42ce2ed4e67f81b1c959162475e93074b16  ulid-xyz 2.12.2 tarball
+a3c28435295fed4babdeefedcefdd0ed037ff24ed3ff363a49d080c2768d07f2  ulid-xyz 2.12.2 payload.js
+3e668d429988573ccece394a0e6140cb4a96ba65aef8a92edfb13ced5010a0c9  ulid-xyz 2.12.3 tarball
+3a9089e9db3650dd6d1584fae709022002dc34854b961abfb014a90f0a7c6a50  ulid-xyz 2.12.3 payload.js
+aa01a83c7a420c22a719b02ec327451ddd751ab5b189fd0127824ea43533b96a  ulid-xyz utils.js launcher
+10f41901a3e5da8a9d1f64d6dd3ac504afbb4b1e43eae4635fea189c8a7d1727  os-ulid-void payload
