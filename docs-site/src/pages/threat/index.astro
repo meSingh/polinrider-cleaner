@@ -153,18 +153,6 @@ const schema = [
       </div>
     </header>
 
-    <section class="wrap sec facts-sec" aria-labelledby="key-facts">
-      <h2 id="key-facts">Key facts</h2>
-      <ul class="facts">
-        {facts.map((f) => (
-          <li>
-            {f.text}{' '}
-            <a class="source" href={f.href} {...ext}>{f.source}<span class="sr-only"> (opens in a new tab)</span></a>
-          </li>
-        ))}
-      </ul>
-    </section>
-
     <section class="wrap stats-sec" aria-label="Key figures">
       <ul class="stats">
         {stats.map((s) => (
@@ -342,6 +330,18 @@ const schema = [
       </div>
     </section>
 
+    <section class="wrap sec facts-sec" aria-labelledby="key-facts">
+      <h2 id="key-facts">Key facts</h2>
+      <ul class="facts">
+        {facts.map((f) => (
+          <li>
+            {f.text}{' '}
+            <a class="source" href={f.href} {...ext}>{f.source}<span class="sr-only"> (opens in a new tab)</span></a>
+          </li>
+        ))}
+      </ul>
+    </section>
+
     <section class="wrap sec" aria-labelledby="timeline">
       <h2 id="timeline">Timeline</h2>
       <ol class="tl">
@@ -478,6 +478,9 @@ const schema = [
   /* Key figures */
   .facts-sec {
     padding-bottom: 0;
+  }
+  .facts-sec + .sec {
+    padding-top: 2rem;
   }
   .facts {
     display: grid;
