@@ -19,9 +19,9 @@ three local checks at once.
 | `ssh-keys.txt` | SSH keys the campaign adds to `~/.ssh/authorized_keys`: a key's comment or the key itself | `INFECTED`, removed by hand (ADR-0049) |
 | `weak.txt` | Strings legitimate projects also use | `review` only |
 | `network.txt` | Campaign hosts and IP addresses | `INFECTED` if a live connection matches |
-| `implant-paths.txt` | Second-stage install, persistence and working paths | `INFECTED` if the path exists |
-| `implant-names.txt` | Implant binary and process names | `INFECTED` on an exact process-name match |
-| `hashes.txt` | SHA-256 of known campaign files: implant binaries, and small files such as a poisoned `tasks.json` or a fake font | `INFECTED` on a hash match, whatever the file is named. Files of 10 to 300 MB are hashed, and every `tasks.json`, font file and build config at any size (ADR-0045) |
+| `implant-paths.txt` | Known implant install, persistence and working paths | `INFECTED` if the path exists |
+| `implant-names.txt` | MicrosoftSystem64 binary and process names | `INFECTED` on an exact process-name match |
+| `hashes.txt` | SHA-256 of known malicious files: MicrosoftSystem64 binaries, and small PolinRider files such as a poisoned `tasks.json` or a fake font | `INFECTED` on a hash match, whatever the file is named. Files of 10 to 300 MB are hashed, and every `tasks.json`, font file and build config at any size (ADR-0045) |
 
 `network.txt` is used only by the local checks, to compare established
 connections from `node` and Electron processes against known campaign

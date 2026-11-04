@@ -2,7 +2,8 @@
 # the file is called.
 #
 # Where a match is looked for (ADR-0045, ADR-0051):
-#   - every file of 10 MB to 300 MB, for the second-stage binaries
+#   - every file of 10 MB to 300 MB, for the MicrosoftSystem64 binaries
+#     (related DPRK malware)
 #   - every .vscode/tasks.json, font file and build config, at any size,
 #     because the checks read those files anyway, on this computer, in
 #     folders, and on every branch, tag and commit of a GitHub repository

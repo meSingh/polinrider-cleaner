@@ -1,4 +1,7 @@
-# Implant binary and process names. Matched against the process table, against
+# Binary and process names of MicrosoftSystem64, related DPRK malware
+# (Contagious Interview). No published source attributes it to PolinRider; it
+# is carried because it reaches developers through npm packages that share
+# PolinRider's infrastructure. Matched against the process table, against
 # filenames on disk, and as fixed strings inside files.
 #
 # The process title is set by the implant itself, so a process called

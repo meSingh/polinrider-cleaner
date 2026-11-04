@@ -166,7 +166,7 @@ affected repositories. The verdict is followed by what to do on that machine.
 Sources disagree, so here is the rule this repository uses.
 
 - **Persistence found**, meaning a login item, systemd unit, Run key, scheduled
-  task, git hook, shell profile, an infected editor extension or a copy of the
+  task, git hook, shell profile, an infected editor extension or a known
   implant: **rebuild**. Something is configured to run again.
 - **Files in projects only, no persistence, and you can account for what ran**:
   quarantine, delete every local clone, rotate everything, keep scanning weekly.

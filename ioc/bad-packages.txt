@@ -14,7 +14,8 @@ tailwindcss-style-modify
 tailwind-animationbased
 tailwindcss-animate-style
 
-# --- second-stage dropper family, delivered via postinstall or at require time
+# --- MicrosoftSystem64 dropper family (related DPRK malware, Contagious
+# Interview), delivered via postinstall or at require time
 # Sources: JFrog Security Research, safedep.io, Sonatype. Feb-Jun 2026.
 polymarket-validator
 changelog-logger-utilities
@@ -241,7 +242,7 @@ pyservercheck
 # keyed on the Ethereum dead-drop indicators only; this one also searched for
 # MicrosoftSystem64, the TRON wallets, the campaign UUID and the word PolinRider.
 # Two records say "part of PolinRider campaign" in their own words; the other
-# seven install the MicrosoftSystem64 second stage already carried in
+# seven install MicrosoftSystem64, already carried in
 # implant-names.txt and implant-paths.txt -- same directory names, same
 # com.launchkeeper plist, and for the toskypi packages the same C2,
 # 195.201.194.107:8010, already in network.txt. All nine were checked against

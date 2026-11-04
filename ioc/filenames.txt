@@ -2,6 +2,8 @@
 # the full path. .vscode/tasks.json is deliberately NOT here: it is legitimate in
 # most repos and is only a finding when it carries "runOn": "folderOpen".
 (^|/)temp_auto_push\.bat$
+# MicrosoftSystem64, related DPRK malware (Contagious Interview), not PolinRider
+# by any published source.
 (^|/)MicrosoftSystem64(\.exe|-win\.exe|-linux|-darwin-(x64|arm64))?$
 (^|/)com\.launchkeeper\.MicrosoftSystem64\.plist$
 # The second working file of the force-push tool, beside temp_auto_push.bat
@@ -38,9 +40,9 @@
 (^|/)fa-solid-[0-9]{3}\.llf$
 # The VBS launcher the JavaScript form of the MicrosoftSystem64 dropper writes
 # for its Windows persistence: a scheduled task and a Run-key fallback both run
-# `wscript MicrosoftSystem64.vbs`. Nothing legitimate is called this; it is the
-# implant's own name with a script extension, so it is INFECTED tier like the
-# binary names above.
+# `wscript MicrosoftSystem64.vbs`. Nothing legitimate is called this; it is
+# MicrosoftSystem64's own name with a script extension, so it is INFECTED tier
+# like the binary names above.
 # Source: OpenSSF malicious-packages MAL-2026-5341 (`void-ulid`; Amazon
 # Inspector), June 2026. See docs-site/src/content/docs/indicator-reviews/2026-10-12.md.
 (^|/)MicrosoftSystem64\.vbs$
