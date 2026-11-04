@@ -6,6 +6,7 @@ import Article from '../../layouts/Article.astro';
 import { longDate } from '../../releaseDate';
 import { abs, citations, faqPage } from '../../schema';
 import { falseAlarmFaq } from '../../faq';
+import { ogImage } from '../../og';
 
 export async function getStaticPaths() {
   return (await getCollection('news')).map((entry) => ({ params: { slug: entry.id }, props: { entry } }));
@@ -27,6 +28,7 @@ const faq = faqs[entry.id];
   section="News"
   file={entry.filePath}
   foot={false}
+  image={ogImage(`news/${entry.id}`, `${entry.data.title}. ${entry.data.description}`)}
   schemaType="NewsArticle"
   published={date}
   citations={citations(entry.body)}

@@ -1,0 +1,172 @@
+---
+// A social card, 1200x630, as a bare HTML page. Never published as HTML:
+// the build renders each one to /og/<slug>.jpg and deletes the page
+// (src/markdown/og-images.mjs). The look follows the site's social preview
+// (scripts/brand/social.mjs): white, ink, the teal rule, the mark and the
+// product name top left, the domain at the bottom.
+import geist from '../../assets/fonts/geist-variable.woff2?url';
+import mark from '../../assets/brand/mark.svg?raw';
+import { cards, type Card } from '../../og';
+import { statChips } from '../../threat-data';
+import { SITE_TITLE } from '../../siteConfig.mjs';
+
+export async function getStaticPaths() {
+  return (await cards()).map((card) => ({ params: { slug: card.slug }, props: { card } }));
+}
+const { card } = Astro.props as { card: Card };
+const logo = mark.replace(/ role="img" aria-label="[^"]*"/, '');
+// Longer titles get a smaller size, so every title fits in three lines.
+const n = card.title.length;
+const size = n <= 34 ? 80 : n <= 52 ? 68 : n <= 72 ? 58 : 50;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="robots" content="noindex" />
+    <title>{card.title}</title>
+    <style is:inline set:html={`@font-face{font-family:Geist;src:url('${geist}') format('woff2');font-weight:100 900}`} />
+  </head>
+  <body>
+    <div class:list={['c', card.kind]}>
+      <p class="brand"><Fragment set:html={logo} /><span>{SITE_TITLE}</span></p>
+      <div class="mid">
+        <p class="eyebrow">{card.eyebrow}</p>
+        <p class="h" style={`font-size:${size}px`}>{card.title}</p>
+        <p class="sub">{card.subtitle}</p>
+      </div>
+      {
+        card.kind === 'threat' && (
+          <ul class="stats">
+            {statChips.map((s) => (
+              <li>
+                <strong>{s.figure}</strong>
+                <span>{s.label}</span>
+              </li>
+            ))}
+          </ul>
+        )
+      }
+      <p class="foot"><b>polinriderscanner.com</b><span>Free and open source</span></p>
+    </div>
+  </body>
+</html>
+
+<style is:global>
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+  }
+  p {
+    margin: 0;
+  }
+  .c {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: 1200px;
+    height: 630px;
+    overflow: hidden;
+    padding: 60px 72px 50px;
+    background: #ffffff;
+    color: #0f1220;
+    font-family: Geist, system-ui, sans-serif;
+  }
+  .c::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 12px;
+    background: #0b6a80;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 28px;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+  }
+  .brand svg {
+    flex: none;
+    width: 54px;
+    height: 54px;
+  }
+  .mid {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    justify-content: center;
+    gap: 14px;
+  }
+  .eyebrow {
+    color: #0b6a80;
+    font-size: 26px;
+    font-weight: 650;
+  }
+  .h {
+    display: -webkit-box;
+    overflow: hidden;
+    font-weight: 750;
+    letter-spacing: -0.035em;
+    line-height: 1.04;
+    text-wrap: balance;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+  .sub {
+    display: -webkit-box;
+    overflow: hidden;
+    max-width: 1000px;
+    color: #474c59;
+    font-size: 28px;
+    line-height: 1.35;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+  .threat .sub {
+    -webkit-line-clamp: 3;
+  }
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin: 0 0 22px;
+    padding: 0;
+    list-style: none;
+  }
+  .stats li {
+    padding: 10px 14px;
+    border: 1.5px solid #e6e9ee;
+    border-radius: 12px;
+    background: #fafbfc;
+  }
+  .stats strong {
+    display: block;
+    color: #0b6a80;
+    font-size: 28px;
+    font-weight: 750;
+    letter-spacing: -0.02em;
+  }
+  .stats span {
+    display: block;
+    color: #474c59;
+    font-size: 17px;
+    line-height: 1.25;
+  }
+  .foot {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    color: #474c59;
+    font-size: 28px;
+    font-weight: 500;
+  }
+  .foot b {
+    color: #0f1220;
+    font-weight: 650;
+  }
+</style>

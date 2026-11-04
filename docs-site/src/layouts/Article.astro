@@ -33,6 +33,8 @@ interface Props {
   citations?: string[];
   /** More structured data: a FAQ, a release. */
   extraSchema?: Record<string, unknown>[];
+  /** The page's own social image (src/og.ts). */
+  image?: { url: string; width: number; height: number; alt: string };
 }
 const {
   title,
@@ -49,6 +51,7 @@ const {
   published,
   citations,
   extraSchema = [],
+  image,
 } = Astro.props;
 const path = Astro.url.pathname;
 const url = abs(path);
@@ -56,12 +59,12 @@ const schema = [
   breadcrumbs(crumbs, title, url),
   ...(schemaType === 'none'
     ? []
-    : [article({ type: schemaType, url, title, description, published, modified: file ? lastUpdated(file) : undefined, citations, section })]),
+    : [article({ type: schemaType, url, title, description, published, modified: file ? lastUpdated(file) : undefined, citations, section, image: image?.url })]),
   ...extraSchema,
 ];
 ---
 
-<Base title={title} description={description} schema={schema} frame>
+<Base title={title} description={description} schema={schema} image={image} frame>
   <div class:list={['article frame', extra, { 'has-side': side }]}>
     {side && (
       <nav class="side no-print" aria-label={side.title}>
