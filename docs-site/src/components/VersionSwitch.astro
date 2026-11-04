@@ -13,15 +13,25 @@ const { current, versions } = Astro.props;
 const latestLine = versions.find((v) => v.latest)!.line;
 // The latest line is served at /docs/; its own frozen copy is not listed.
 const listed = versions.filter((v) => v.latest || v.line !== latestLine);
-const name = (v: DocsVersion) => `${v.line}.x${v.latest ? ' (latest)' : ''}`;
+// "3.0.x" and, for the latest line, a small "latest" tag beside it, so the
+// value never wraps in the 12rem sidebar.
+const shown = current.line === latestLine ? versions.find((v) => v.latest)! : current;
 const isCurrent = (v: DocsVersion) => v.line === current.line && (v.latest || !current.latest);
 ---
 
 <details class="switch">
-  <summary><span class="k">Version</span> <span class="v">{name(current.line === latestLine ? versions.find((v) => v.latest)! : current)}</span></summary>
+  <summary>
+    <span class="k">Version</span>
+    <span class="v">{shown.line}.x</span>
+    {shown.latest && <span class="tag tag-accent">latest</span>}
+  </summary>
   <ul>
     {listed.map((v) => (
-      <li><a href={v.root} aria-current={isCurrent(v) ? 'true' : undefined}>{name(v)}</a></li>
+      <li>
+        <a href={v.root} aria-current={isCurrent(v) ? 'true' : undefined}>
+          {v.line}.x{v.latest && <span class="tag tag-accent">latest</span>}
+        </a>
+      </li>
     ))}
   </ul>
 </details>
@@ -48,8 +58,8 @@ const isCurrent = (v: DocsVersion) => v.line === current.line && (v.latest || !c
   summary {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: 0.5rem;
+    white-space: nowrap;
     padding: 0.55rem 0.85rem;
     border: 1px solid var(--pr-border);
     border-radius: var(--pr-radius-sm);
@@ -97,7 +107,11 @@ const isCurrent = (v: DocsVersion) => v.line === current.line && (v.latest || !c
     box-shadow: 0 12px 30px rgb(0 0 0 / 0.18);
   }
   a {
-    display: block;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    white-space: nowrap;
     margin: 0 !important;
     padding: 0.45rem 0.65rem !important;
     border: 0 !important;
