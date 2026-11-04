@@ -23,10 +23,11 @@ import Released from '../../../components/Released.astro';
   for a weight Font Awesome does not ship. A match is a review line, in all
   three checks.
 - **The attacker's SSH key.** The computer check reads
-  `~/.ssh/authorized_keys` and names a line that carries a published campaign
-  key. It never edits the file: removing the line is yours to do.
+  `~/.ssh/authorized_keys` and names a line that carries a published attacker
+  key, from the related `MicrosoftSystem64` malware. It never edits the file: removing the line is yours to do.
 - **The JavaScript implant while it runs.** A `node` process whose script sits
-  in a folder the campaign uses is confirmed as the implant running now.
+  in a folder the related `MicrosoftSystem64` implant uses is confirmed as
+  that implant running now.
 - **Known campaign files on GitHub.** The GitHub check hashes `tasks.json`,
   font files and build configs on every branch, tag and commit, so restore,
   remove and erase handle a known file even when it holds no indicator string.

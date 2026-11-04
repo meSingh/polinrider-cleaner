@@ -11,15 +11,20 @@ the organization scanner, the account scanner and all three local checks at once
 |---|---|---|
 | `strong.txt` | Confirmed PolinRider artifacts | `INFECTED` |
 | `strong-patterns.txt` | Patterns over file contents where a part rotates (extended regex, with a fixed part of 3 or more characters, no `^` or `$`) | `INFECTED` (ADR-0052) |
-| `bad-packages.txt` | Malicious package names from the campaign | `INFECTED` |
+| `bad-packages.txt` | Malicious package names from the campaign and from related malware | `INFECTED` |
 | `filenames.txt` | Paths that are indicators on their own (extended regex) | `INFECTED` |
 | `filenames-review.txt` | Paths worth a look that legitimate projects can also have (extended regex) | `review` only (ADR-0048) |
-| `ssh-keys.txt` | SSH keys the campaign adds to `~/.ssh/authorized_keys`: a key's comment or the key itself | `INFECTED`, removed by hand (ADR-0049) |
+| `ssh-keys.txt` | SSH keys that related malware adds to `~/.ssh/authorized_keys`: a key's comment or the key itself | `INFECTED`, removed by hand (ADR-0049) |
 | `weak.txt` | Strings legitimate projects also use | `review` only |
-| `network.txt` | Campaign hosts and IP addresses | `INFECTED` if a live connection matches |
-| `implant-paths.txt` | Second-stage install, persistence and working paths | `INFECTED` if the path exists |
+| `network.txt` | Hosts and IP addresses of the campaign and of related malware | `INFECTED` if a live connection matches |
+| `implant-paths.txt` | Install, persistence and working paths of the related `MicrosoftSystem64` implant | `INFECTED` if the path exists |
 | `implant-names.txt` | Implant binary and process names | `INFECTED` on an exact process-name match |
-| `hashes.txt` | SHA-256 of known campaign files: implant binaries, and small files such as a poisoned `tasks.json` or a fake font | `INFECTED` on a hash match, whatever the file is named. Files of 10 to 300 MB are hashed, and every `tasks.json`, font file and build config at any size (ADR-0045) |
+| `hashes.txt` | SHA-256 of known files of the campaign and of related malware: `MicrosoftSystem64` binaries, and small files such as a poisoned `tasks.json` or a fake font | `INFECTED` on a hash match, whatever the file is named. Files of 10 to 300 MB are hashed, and every `tasks.json`, font file and build config at any size (ADR-0045) |
+
+"Related malware" is `MicrosoftSystem64` and the npm packages that install
+it: malware from the same DPRK-linked group, not part of PolinRider itself.
+[What PolinRider is](/polinrider-cleaner/campaign/what-it-is/#related-malware-microsoftsystem64)
+explains the link and its sources.
 
 Format: one entry per line. Lines starting with `#` and blank lines are ignored.
 `strong.txt` and `weak.txt` are matched as fixed strings (`grep -F`), so no
