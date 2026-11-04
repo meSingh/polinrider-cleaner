@@ -1,6 +1,6 @@
-// The licence notices of what this site ships to a browser: Starlight's
-// components, scripts and styles, Expressive Code's copy button and styles,
-// Pagefind's search and the Geist typeface. The code is MIT licensed, and the
+// The licence notices of what this site ships to a browser: Astro's page
+// scripts, Pagefind's search (its script, WebAssembly and index format),
+// Shiki's code colours and the Geist typeface. The code is MIT licensed, and the
 // MIT licence asks that its notice travel with copies of the software. Geist
 // is under the SIL Open Font License 1.1, which asks the same of its notice
 // and licence. This page is that copy, served at
@@ -12,16 +12,7 @@ import type { APIRoute } from 'astro';
 import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
-const packages = [
-  '@astrojs/starlight',
-  'astro',
-  'astro-expressive-code',
-  '@expressive-code/core',
-  '@expressive-code/plugin-frames',
-  '@expressive-code/plugin-text-markers',
-  'pagefind',
-  '@pagefind/default-ui',
-];
+const packages = ['astro', 'pagefind', 'shiki', '@shikijs/themes'];
 
 const notice = (name: string) => {
   const dir = join(process.cwd(), 'node_modules', name);

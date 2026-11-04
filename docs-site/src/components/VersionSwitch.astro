@@ -1,0 +1,76 @@
+---
+// Which release these docs are for, and the others: the latest, each frozen
+// copy kept on this site and older ones on GitHub at their tag. A
+// <details>, so it works without JavaScript.
+import Icon from './Icon.astro';
+import { githubVersions, type DocsVersion } from '../docs';
+
+interface Props {
+  current: DocsVersion;
+  versions: DocsVersion[];
+}
+const { current, versions } = Astro.props;
+const name = (v: DocsVersion) => (v.latest ? `${v.release} (latest)` : v.key);
+---
+
+<details class="switch">
+  <summary><span class="k">Version</span> <span class="v">{name(current)}</span></summary>
+  <ul>
+    {versions.map((v) => (
+      <li><a href={v.root} aria-current={v.root === current.root ? 'true' : undefined}>{v.latest ? `${v.release} (latest)` : `${v.key} (kept at ${v.release})`}</a></li>
+    ))}
+    {githubVersions.map((v) => (
+      <li><a href={v.href}>{v.version} on GitHub <Icon name="external" size={14} /></a></li>
+    ))}
+  </ul>
+</details>
+
+<style>
+  .switch {
+    position: relative;
+    font-size: var(--text-sm);
+  }
+  summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.55rem 0.85rem;
+    border: 1px solid var(--pr-border);
+    border-radius: var(--pr-radius-sm);
+    background: var(--pr-bg);
+    cursor: pointer;
+  }
+  summary:hover {
+    border-color: var(--pr-border-strong);
+  }
+  .k {
+    color: var(--pr-muted);
+  }
+  .v {
+    color: var(--pr-heading);
+    font-weight: 650;
+  }
+  ul {
+    margin: 0.35rem 0 0;
+    padding: 0.35rem;
+    list-style: none;
+    border: 1px solid var(--pr-border-strong);
+    border-radius: var(--pr-radius-sm);
+    background: var(--pr-bg);
+  }
+  a {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+    color: var(--pr-text);
+    text-decoration: none;
+  }
+  a:hover,
+  a[aria-current='true'] {
+    background: var(--pr-surface);
+    color: var(--pr-heading);
+  }
+</style>

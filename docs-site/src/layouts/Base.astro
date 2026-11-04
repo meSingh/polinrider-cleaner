@@ -1,0 +1,91 @@
+---
+// Every page: the <head> (title, description, canonical address, social
+// card, News feed, search engine verification and, once switched on,
+// Plausible), the top bar, the page and the footer. The tags match what the
+// site carried under Starlight, so search results and shared links look the
+// same after the move.
+import '../styles/theme.css';
+import '../styles/base.css';
+import '../styles/prose.css';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import ThemeScript from '../components/ThemeScript.astro';
+import {
+  BING_SITE_VERIFICATION,
+  GOOGLE_SITE_VERIFICATION,
+  PLAUSIBLE_OPTIONS,
+  PLAUSIBLE_SCRIPT_ID,
+  SITE_DESCRIPTION,
+  SITE_TITLE,
+  SITE_URL,
+  SOCIAL_IMAGE,
+} from '../siteConfig.mjs';
+
+interface Props {
+  title: string;
+  description?: string;
+  /** "article" for a page of writing, "website" for the home page and lists. */
+  type?: 'article' | 'website';
+  /** Where the canonical copy of this page lives, when it is not here. */
+  canonical?: string;
+  noindex?: boolean;
+  /** false on a page with no address of its own, such as the 404. */
+  hasCanonical?: boolean;
+}
+const { title, description = SITE_DESCRIPTION, type = 'article', canonical, noindex = false, hasCanonical = true } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const url = canonical ?? new URL(Astro.url.pathname, 'https://mesingh.github.io').href;
+const fullTitle = `${title} | ${SITE_TITLE}`;
+const plausibleInit =
+  'window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},' +
+  'plausible.init=plausible.init||function(i){plausible.o=i||{}};' +
+  `plausible.init(${JSON.stringify(PLAUSIBLE_OPTIONS)})`;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    {hasCanonical && <link rel="canonical" href={url} />}
+    <link rel="sitemap" href={`${base}/sitemap-index.xml`} />
+    <link rel="alternate" type="application/rss+xml" title="PolinRider news" href={`${SITE_URL}/news/rss.xml`} />
+    <link rel="icon" href={`${base}/favicon.svg`} type="image/svg+xml" />
+    <meta name="generator" content={Astro.generator} />
+    {noindex && <meta name="robots" content="noindex, follow" />}
+
+    <meta property="og:title" content={title} />
+    <meta property="og:type" content={type} />
+    {hasCanonical && <meta property="og:url" content={url} />}
+    <meta property="og:locale" content="en" />
+    <meta property="og:description" content={description} />
+    <meta property="og:site_name" content={SITE_TITLE} />
+    <meta property="og:image" content={SOCIAL_IMAGE.url} />
+    <meta property="og:image:width" content={String(SOCIAL_IMAGE.width)} />
+    <meta property="og:image:height" content={String(SOCIAL_IMAGE.height)} />
+    <meta property="og:image:alt" content={SOCIAL_IMAGE.alt} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content={SOCIAL_IMAGE.url} />
+
+    {GOOGLE_SITE_VERIFICATION && <meta name="google-site-verification" content={GOOGLE_SITE_VERIFICATION} />}
+    {BING_SITE_VERIFICATION && <meta name="msvalidate.01" content={BING_SITE_VERIFICATION} />}
+    {PLAUSIBLE_SCRIPT_ID && <script async src={`https://plausible.io/js/${PLAUSIBLE_SCRIPT_ID}.js`} />}
+    {PLAUSIBLE_SCRIPT_ID && <script is:inline set:html={plausibleInit} />}
+
+    <ThemeScript />
+    <slot name="head" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <Header />
+    <main id="main">
+      <slot />
+    </main>
+    <Footer />
+    <script>
+      import '../scripts/copy.ts';
+    </script>
+  </body>
+</html>

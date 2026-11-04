@@ -17,7 +17,7 @@ only when a match means infection with no plausible alternative.
 [Open a false-positive issue](https://github.com/meSingh/polinrider-cleaner/issues/new?template=false-positive.md).
 These matter more than they look. A tool that cries wolf during an incident
 wastes the one resource nobody has, and the
-[known ones](/polinrider-cleaner/reference/false-positives/) were all found this way.
+[known ones](/polinrider-cleaner/docs/reference/false-positives/) were all found this way.
 
 ## A fix to these docs
 

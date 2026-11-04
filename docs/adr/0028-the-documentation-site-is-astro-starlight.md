@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Accepted |
+| **Status** | Superseded by [ADR-0055](./0055-the-documentation-site-is-plain-astro.md) for the theme; Astro and Node stand |
 | **Date** | 2026-09-21 |
 | **Supersedes** | the mdBook choice recorded in [ADR-0026](./0026-2-0-0-is-one-binary-built-against-a-conformance-corpus.md) |
 

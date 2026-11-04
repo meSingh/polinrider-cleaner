@@ -1,0 +1,259 @@
+---
+// A documentation page: the docs sidebar with the version it belongs to on
+// the left, the text in the middle, "On this page" on the right, and under
+// the text when it last changed and the pages before and after it.
+import Base from './Base.astro';
+import Crumbs from '../components/Crumbs.astro';
+import Toc from '../components/Toc.astro';
+import PageFoot from '../components/PageFoot.astro';
+import VersionSwitch from '../components/VersionSwitch.astro';
+import Icon from '../components/Icon.astro';
+import type { MarkdownHeading } from 'astro';
+import type { DocsVersion, NavGroup } from '../docs';
+
+interface Props {
+  title: string;
+  description?: string;
+  version: DocsVersion;
+  versions: DocsVersion[];
+  nav: NavGroup[];
+  /** The page's id within its version, '' for the overview. */
+  id: string;
+  headings?: MarkdownHeading[];
+  file?: string;
+  /** The same page in the latest docs, when this is a frozen copy. */
+  canonical?: string;
+}
+const { title, description, version, versions, nav, id, headings = [], file, canonical } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+
+const flat = nav.flatMap((g) => g.items.map((i) => ({ ...i, group: g.label })));
+const at = flat.findIndex((i) => i.id === id);
+const prev = at > 0 ? flat[at - 1] : at === -1 ? undefined : { label: 'Overview', href: version.root };
+const next = at === -1 ? flat[0] : flat[at + 1];
+const group = flat[at]?.group;
+
+const crumbs = [{ label: version.latest ? 'Docs' : `Docs ${version.key}`, href: version.root }];
+if (group) crumbs.push({ label: group, href: flat.find((i) => i.group === group)!.href });
+---
+
+<Base title={title} description={description} canonical={canonical} noindex={!version.latest}>
+  <div class="docs wrap">
+    <aside class="sidebar no-print" aria-label="Documentation">
+      <details class="nav-fold" open>
+        <summary>Documentation menu</summary>
+        <VersionSwitch current={version} versions={versions} />
+        <nav aria-label="Documentation">
+          <a class="overview" href={version.root} aria-current={id === '' ? 'page' : undefined}>Overview</a>
+          {nav.map((g, gi) => (
+            <div class="group">
+              <p class="group-label">{g.label !== 'The project' && g.label !== 'More' && <span class="num">{gi + 1}</span>}{g.label}</p>
+              <ul>
+                {g.items.map((i) => (
+                  <li><a href={i.href} aria-current={i.id === id ? 'page' : undefined}>{i.label}</a></li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </nav>
+      </details>
+    </aside>
+
+    <article class="body" {...(version.latest ? { 'data-pagefind-body': '', 'data-pagefind-meta': 'section:Docs' } : {})}>
+      <Crumbs items={crumbs} />
+      <h1>{title}</h1>
+      <p class="for-version" data-pagefind-ignore>
+        {version.latest ? (
+          <>For polinrider {version.release} <span class="tag tag-accent">latest</span></>
+        ) : (
+          <>
+            For polinrider {version.release}. A copy kept as it was at that release.{' '}
+            <a href={canonical ?? `${base}/docs/`}>Read the latest</a>
+          </>
+        )}
+      </p>
+      <Toc headings={headings} />
+      <div class="prose"><slot /></div>
+      <PageFoot file={file} />
+      {(prev || next) && (
+        <nav class="pager no-print" aria-label="Previous and next pages">
+          {prev ? (
+            <a class="prev" href={prev.href}><span class="dir">Previous</span><span class="t">{prev.label}</span></a>
+          ) : <span />}
+          {next && (
+            <a class="next" href={next.href}><span class="dir">Next</span><span class="t">{next.label} <Icon name="arrow" size={16} /></span></a>
+          )}
+        </nav>
+      )}
+    </article>
+
+    <aside class="toc-col no-print" aria-label="On this page">
+      <Toc headings={headings} />
+    </aside>
+  </div>
+</Base>
+
+<script>
+  // On a phone the sidebar starts folded; on a wide screen it is always open.
+  const fold = document.querySelector<HTMLDetailsElement>('.nav-fold');
+  const wide = matchMedia('(min-width: 50rem)');
+  if (fold) {
+    fold.open = wide.matches;
+    wide.addEventListener('change', () => (fold.open = wide.matches));
+  }
+</script>
+
+<style>
+  .docs {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.5rem;
+    padding-top: 1.5rem;
+  }
+  .body {
+    min-width: 0;
+    max-width: var(--content-width);
+  }
+  h1 {
+    margin: 0.75rem 0 0;
+    font-size: var(--text-h1);
+    letter-spacing: -0.025em;
+  }
+  .for-version {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0.9rem 0 2rem;
+    color: var(--pr-muted);
+    font-size: var(--text-sm);
+  }
+  .toc-col {
+    display: none;
+  }
+  .sidebar {
+    font-size: var(--text-sm);
+  }
+  .nav-fold > summary {
+    padding: 0.7rem 1rem;
+    border: 1px solid var(--pr-border);
+    border-radius: var(--pr-radius);
+    color: var(--pr-heading);
+    font-weight: 650;
+    cursor: pointer;
+  }
+  .nav-fold[open] > summary {
+    margin-bottom: 1rem;
+  }
+  .overview {
+    display: block;
+    margin: 1rem 0 0.5rem;
+  }
+  .group {
+    margin-top: 1.25rem;
+  }
+  .group-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 0 0.4rem;
+    color: var(--pr-heading);
+    font-weight: 650;
+  }
+  .num {
+    display: grid;
+    place-items: center;
+    width: 1.35rem;
+    height: 1.35rem;
+    border: 1px solid var(--pr-border-strong);
+    border-radius: 50%;
+    color: var(--pr-text);
+    font-size: 0.75rem;
+  }
+  ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  nav a {
+    display: block;
+    padding: 0.35rem 0.75rem;
+    border-radius: var(--pr-radius-sm);
+    color: var(--pr-text);
+    text-decoration: none;
+  }
+  nav a:hover {
+    color: var(--pr-heading);
+  }
+  nav a[aria-current='page'] {
+    background: var(--pr-surface);
+    box-shadow: inset 2px 0 0 var(--pr-heading);
+    color: var(--pr-heading);
+    font-weight: 600;
+  }
+  .pager {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-top: 2rem;
+  }
+  .pager a {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 1rem 1.2rem;
+    border: 1px solid var(--pr-border);
+    border-radius: var(--pr-radius);
+    color: var(--pr-heading);
+    text-decoration: none;
+  }
+  .pager a:hover {
+    border-color: var(--pr-border-strong);
+  }
+  .pager .next {
+    text-align: end;
+  }
+  .dir {
+    color: var(--pr-muted);
+    font-size: var(--text-xs);
+  }
+  .t {
+    display: inline-flex;
+    align-items: center;
+    justify-content: inherit;
+    gap: 0.35rem;
+    font-weight: 650;
+  }
+  .next .t {
+    justify-content: flex-end;
+  }
+  @media (min-width: 50rem) {
+    .docs {
+      grid-template-columns: 15rem minmax(0, 1fr);
+      gap: 3rem;
+      padding-top: 2.5rem;
+    }
+    .sidebar {
+      position: sticky;
+      top: calc(var(--nav-height) + 1.5rem);
+      align-self: start;
+      max-height: calc(100vh - var(--nav-height) - 3rem);
+      overflow-y: auto;
+      padding-bottom: 2rem;
+    }
+    .nav-fold > summary {
+      display: none;
+    }
+  }
+  @media (min-width: 72rem) {
+    .docs {
+      grid-template-columns: 15rem minmax(0, 1fr) 13rem;
+    }
+    .body > :global(.toc) {
+      display: none;
+    }
+    .toc-col {
+      display: block;
+    }
+  }
+</style>

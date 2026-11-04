@@ -1,0 +1,65 @@
+---
+// Every documentation page, for the latest release at /docs/ and for each
+// frozen copy at /docs/X.Y/, plus an overview at the top of each.
+import { render } from 'astro:content';
+import Docs from '../../layouts/Docs.astro';
+import DocsOverview from '../../components/DocsOverview.astro';
+import { builtVersions, navFor, pagesOf, type DocsEntry, type DocsVersion } from '../../docs';
+
+export async function getStaticPaths() {
+  const versions = await builtVersions();
+  const paths = [];
+  for (const version of versions) {
+    const pages = await pagesOf(version.key);
+    const latestPages = await pagesOf('');
+    const nav = navFor(version, pages);
+    const prefix = version.key ? `${version.key}/` : '';
+    paths.push({ params: { slug: version.key || undefined }, props: { version, versions, nav, id: '', entry: undefined, canonical: undefined } });
+    for (const [id, entry] of pages) {
+      const canonical = version.latest || !latestPages.has(id) ? undefined : `https://mesingh.github.io/polinrider-cleaner/docs/${id}/`;
+      paths.push({ params: { slug: `${prefix}${id}` }, props: { version, versions, nav, id, entry, canonical } });
+    }
+  }
+  return paths;
+}
+
+interface Props {
+  version: DocsVersion;
+  versions: DocsVersion[];
+  nav: ReturnType<typeof navFor>;
+  id: string;
+  entry?: DocsEntry;
+  canonical?: string;
+}
+const { version, versions, nav, id, entry, canonical } = Astro.props;
+const rendered = entry ? await render(entry) : undefined;
+const Content = rendered?.Content;
+---
+
+{entry && Content ? (
+  <Docs
+    title={entry.data.title}
+    description={entry.data.description}
+    version={version}
+    versions={versions}
+    nav={nav}
+    id={id}
+    headings={rendered!.headings}
+    file={entry.filePath}
+    canonical={canonical}
+  >
+    <Content />
+  </Docs>
+) : (
+  <Docs
+    title="Documentation"
+    description="How to install polinrider, read what it tells you, clean up in the right order and keep PolinRider out."
+    version={version}
+    versions={versions}
+    nav={nav}
+    id=""
+    canonical={version.latest ? undefined : 'https://mesingh.github.io/polinrider-cleaner/docs/'}
+  >
+    <DocsOverview nav={nav} />
+  </Docs>
+)}

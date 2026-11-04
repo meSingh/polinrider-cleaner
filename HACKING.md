@@ -81,12 +81,17 @@ one that says nothing.
 Opens <http://localhost:3000>. Edit any file under `docs-site/` and the page
 reloads by itself, so you can adjust the design by looking at it.
 
-- `docs-site/src/content/docs/**/*.md` — the words
-- `docs-site/astro.config.mjs` — the sidebar, the title, theme options
-- `docs-site/src/styles/custom.css` — small additions on top of the theme
+- `docs-site/src/content/` holds the words, one folder per section: `docs/`
+  (with the weekly `indicator-reviews/`), `campaign/`, `news/`, `releases/`
+  and `elsewhere.yaml`
+- `docs-site/src/pages/` and `src/layouts/` hold every page's HTML
+- `docs-site/src/styles/` holds the design: `theme.css` for colours and type
+- `docs-site/src/docs.ts` holds the docs sidebar
 
-Built with Astro + Starlight and the Lucode theme. The first run installs
-dependencies once; after that it starts in seconds. Needs Node.
+Built with plain Astro (ADR-0055). The first run installs dependencies once;
+after that it starts in seconds. Needs Node. Search works only on a built
+site: `npm run build --prefix docs-site`, then `npm run preview --prefix
+docs-site`.
 
 This one runs on your Mac rather than in the container, because rendering
 Markdown is not dangerous and a read-only container would fight the

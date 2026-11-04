@@ -1,0 +1,120 @@
+---
+// "On this page": the page's second-level headings (and third, when asked),
+// beside the text on a wide screen, folded at the top on a narrow one. The
+// heading being read is marked as you scroll.
+import type { MarkdownHeading } from 'astro';
+
+interface Props {
+  headings: MarkdownHeading[];
+  depth?: number;
+}
+const { headings, depth = 2 } = Astro.props;
+const items = headings.filter((h) => h.depth >= 2 && h.depth <= depth);
+---
+
+{items.length > 1 && (
+  <pr-toc class="toc no-print">
+    <details open>
+      <summary>On this page</summary>
+      <ol>
+        {items.map((h) => (
+          <li class={`d${h.depth}`}><a href={`#${h.slug}`}>{h.text}</a></li>
+        ))}
+      </ol>
+    </details>
+  </pr-toc>
+)}
+
+<script>
+  class Toc extends HTMLElement {
+    connectedCallback() {
+      const details = this.querySelector('details')!;
+      const wide = matchMedia('(min-width: 72rem)');
+      const fold = () => (details.open = wide.matches);
+      fold();
+      wide.addEventListener('change', fold);
+
+      const links = [...this.querySelectorAll<HTMLAnchorElement>('a')];
+      const targets = links
+        .map((a) => document.getElementById(decodeURIComponent(a.hash.slice(1))))
+        .filter((t): t is HTMLElement => Boolean(t));
+      const mark = () => {
+        const line = 120;
+        let current = targets[0];
+        for (const t of targets) if (t.getBoundingClientRect().top <= line) current = t;
+        for (const a of links) {
+          const on = current && a.hash === `#${current.id}`;
+          if (on) a.setAttribute('aria-current', 'true');
+          else a.removeAttribute('aria-current');
+        }
+      };
+      addEventListener('scroll', mark, { passive: true });
+      mark();
+    }
+  }
+  if (!customElements.get('pr-toc')) customElements.define('pr-toc', Toc);
+</script>
+
+<style>
+  .toc {
+    display: block;
+    font-size: var(--text-sm);
+  }
+  summary {
+    color: var(--pr-heading);
+    font-weight: 650;
+    cursor: pointer;
+  }
+  ol {
+    margin: 0.75rem 0 0;
+    padding: 0;
+    list-style: none;
+    border-inline-start: 1px solid var(--pr-border);
+  }
+  li {
+    margin: 0;
+  }
+  a {
+    display: block;
+    margin-inline-start: -1px;
+    padding: 0.3rem 0 0.3rem 0.9rem;
+    border-inline-start: 2px solid transparent;
+    color: var(--pr-muted);
+    line-height: 1.4;
+    text-decoration: none;
+  }
+  .d3 a {
+    padding-inline-start: 1.8rem;
+  }
+  a:hover {
+    color: var(--pr-heading);
+  }
+  a[aria-current='true'] {
+    border-color: var(--pr-heading);
+    color: var(--pr-heading);
+    font-weight: 600;
+  }
+  @media (max-width: 71.99rem) {
+    .toc {
+      margin-bottom: 2rem;
+      padding: 0.9rem 1.1rem;
+      border: 1px solid var(--pr-border);
+      border-radius: var(--pr-radius);
+    }
+  }
+  @media (min-width: 72rem) {
+    .toc {
+      position: sticky;
+      top: calc(var(--nav-height) + 2rem);
+      max-height: calc(100vh - var(--nav-height) - 4rem);
+      overflow-y: auto;
+    }
+    summary {
+      pointer-events: none;
+      list-style: none;
+    }
+    summary::-webkit-details-marker {
+      display: none;
+    }
+  }
+</style>

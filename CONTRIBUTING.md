@@ -177,7 +177,7 @@ of login items and editor extensions.
 See [`ioc/README.md`](ioc/README.md). Link a public source. Do not commit live
 payload code, obfuscated or not. An indicator string, a hash, a package name or
 a hostname is enough. The weekly review, and how to add an entry, is on the
-[indicator reviews page](https://mesingh.github.io/polinrider-cleaner/indicator-reviews/).
+[indicator reviews page](https://mesingh.github.io/polinrider-cleaner/news/indicator-reviews/).
 
 ## Conduct
 

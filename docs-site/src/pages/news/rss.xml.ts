@@ -1,9 +1,10 @@
 // The News feed, written by hand: an RSS 2.0 document is a few lines of XML,
-// which is not worth a dependency. Built once, at build time.
+// which is not worth a dependency. Built once, at build time. Our own posts
+// only: indicator reviews and articles elsewhere are not in the feed.
 import type { APIRoute } from 'astro';
 import { newsPosts } from '../../news';
+import { SITE_URL as site } from '../../siteConfig.mjs';
 
-const site = 'https://mesingh.github.io/polinrider-cleaner';
 
 const escape = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -11,11 +12,11 @@ const escape = (s: string) =>
 // RFC 822 dates, as RSS requires. Posts carry a day, not a time.
 const rfc822 = (iso: string) => new Date(`${iso}T00:00:00Z`).toUTCString();
 
-export const GET: APIRoute = () => {
-  const posts = newsPosts();
+export const GET: APIRoute = async () => {
+  const posts = await newsPosts();
   const items = posts
     .map((p) => {
-      const url = `${site}/${p.id}/`;
+      const url = `${site}/news/${p.id}/`;
       return [
         '    <item>',
         `      <title>${escape(p.title)}</title>`,

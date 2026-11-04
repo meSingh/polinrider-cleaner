@@ -1,4 +1,5 @@
-/* The site's look, set on Starlight's own tokens.
+/* The site's look: colour, type and spacing tokens, and the base styles
+ * every page shares.
  *
  * Who reads this site: someone who fears their computer is infected. So the
  * text is large and dark enough to read when tired, there is plenty of space,
@@ -31,38 +32,39 @@
 
 /* Type and layout, the same in both themes. */
 :root {
-  --sl-font: 'Geist';
+  --font: 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
 
-  --sl-text-body: 1.125rem; /* 18px */
-  --sl-text-body-sm: 1rem;
-  --sl-text-code: 0.9375rem; /* 15px */
-  --sl-text-code-sm: 0.875rem;
-  --sl-line-height: 1.6;
-  --sl-line-height-headings: 1.15;
+  --text-body: 1.125rem; /* 18px */
+  --text-sm: 0.9375rem;
+  --text-xs: 0.875rem;
+  --text-code: 0.9375rem;
+  --line-height: 1.6;
+  --line-height-headings: 1.15;
 
-  --sl-text-h1: 2.125rem;
-  --sl-text-h2: 1.5rem;
-  --sl-text-h3: 1.25rem;
-  --sl-text-h4: 1.125rem;
-  --sl-text-h5: 1rem;
+  --text-h1: 2.125rem;
+  --text-h2: 1.5rem;
+  --text-h3: 1.25rem;
+  --text-h4: 1.125rem;
 
-  --sl-nav-height: 4rem;
-  --sl-sidebar-width: 17rem;
-  --sl-content-width: 44rem;
+  --nav-height: 4rem;
+  --content-width: 44rem;
+  --wide-width: 72rem;
+  --gutter: 1.25rem;
 
   --pr-radius: 14px;
   --pr-radius-sm: 8px;
 }
 @media (min-width: 50em) {
   :root {
-    --sl-text-h1: 2.5rem;
-    --sl-text-h2: 1.75rem;
-    --sl-text-h3: 1.3125rem;
-    --sl-text-h4: 1.125rem;
+    --text-h1: 2.5rem;
+    --text-h2: 1.75rem;
+    --text-h3: 1.3125rem;
+    --gutter: 2rem;
   }
 }
 
-/* Dark. Starlight treats dark as the default and light as the override. */
+/* Dark. Used when the reader's system asks for it or they choose it. */
 :root {
   --pr-bg: #0c0f15;
   --pr-surface: #141821;
@@ -89,48 +91,6 @@
   --pr-none: #c3c9d4;
   --pr-none-bg: rgb(255 255 255 / 0.04);
   --pr-none-border: #3a4150;
-
-  --sl-color-white: var(--pr-heading);
-  --sl-color-gray-1: #e3e7ee;
-  --sl-color-gray-2: var(--pr-text);
-  --sl-color-gray-3: var(--pr-muted);
-  --sl-color-gray-4: #687082;
-  --sl-color-gray-5: var(--pr-border-strong);
-  --sl-color-gray-6: var(--pr-surface);
-  --sl-color-black: var(--pr-bg);
-
-  --sl-color-accent-low: #0f3a44;
-  --sl-color-accent: #4fc6d8;
-  --sl-color-accent-high: var(--pr-accent);
-
-  --sl-color-text: var(--pr-text);
-  --sl-color-text-accent: var(--pr-accent);
-  --sl-color-text-invert: var(--pr-bg);
-  --sl-color-bg: var(--pr-bg);
-  --sl-color-bg-nav: var(--pr-bg);
-  --sl-color-bg-sidebar: var(--pr-bg);
-  --sl-color-bg-inline-code: var(--pr-surface);
-  --sl-color-hairline-light: var(--pr-border);
-  --sl-color-hairline: var(--pr-border);
-  --sl-color-hairline-shade: var(--pr-border);
-
-  --sl-color-orange: var(--pr-review);
-  --sl-color-orange-low: var(--pr-review-bg);
-  --sl-color-orange-high: var(--pr-review);
-  --sl-color-red: var(--pr-bad);
-  --sl-color-red-low: var(--pr-bad-bg);
-  --sl-color-red-high: var(--pr-bad);
-  --sl-color-green: var(--pr-clean);
-  --sl-color-green-low: var(--pr-clean-bg);
-  --sl-color-green-high: var(--pr-clean);
-  /* Starlight colours notes blue and tips purple. Neither is a verdict, so
-   * both take the accent. */
-  --sl-color-blue: var(--pr-accent);
-  --sl-color-blue-low: var(--pr-accent-bg);
-  --sl-color-blue-high: var(--pr-accent);
-  --sl-color-purple: var(--pr-accent);
-  --sl-color-purple-low: var(--pr-accent-bg);
-  --sl-color-purple-high: var(--pr-accent);
 
   color-scheme: dark;
 }
@@ -162,14 +122,38 @@
   --pr-none-bg: #f5f6f8;
   --pr-none-border: #cdd1d8;
 
-  --sl-color-gray-1: #1d2130;
-  --sl-color-gray-4: #8b919d;
-  --sl-color-gray-7: var(--pr-surface);
-  --sl-color-accent-low: var(--pr-accent-bg);
-  --sl-color-accent: var(--pr-accent);
-  --sl-color-accent-high: #084f60;
-  --sl-color-text-accent: var(--pr-accent);
-  --sl-color-text-invert: #ffffff;
-
   color-scheme: light;
+}
+
+/* Without JavaScript the theme script never runs: follow the system. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --pr-bg: #ffffff;
+    --pr-surface: #f5f6f8;
+    --pr-code-bg: #fafafb;
+    --pr-heading: #0f1220;
+    --pr-text: #474c59;
+    --pr-muted: #5f6573;
+    --pr-border: #e4e6eb;
+    --pr-border-strong: #cdd1d8;
+    --pr-accent: #0b6a80;
+    --pr-accent-bg: #ecf7f9;
+    --pr-pill-bg: #0f1220;
+    --pr-pill-text: #ffffff;
+
+    --pr-clean: #13693a;
+    --pr-clean-bg: #eefaf2;
+    --pr-clean-border: #b9e3c8;
+    --pr-review: #85480a;
+    --pr-review-bg: #fff6e5;
+    --pr-review-border: #f1d49c;
+    --pr-bad: #b0241c;
+    --pr-bad-bg: #fff1f0;
+    --pr-bad-border: #f3c3bf;
+    --pr-none: #474c59;
+    --pr-none-bg: #f5f6f8;
+    --pr-none-border: #cdd1d8;
+
+    color-scheme: light;
+  }
 }

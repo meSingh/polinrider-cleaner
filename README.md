@@ -384,9 +384,9 @@ This campaign rotates its signatures, so the indicator set is reviewed weekly
 against the published sources and every review is written down, including the
 weeks that found nothing. Each review keeps its own dated entry, and entries are
 never edited or removed:
-[the indicator reviews](https://mesingh.github.io/polinrider-cleaner/indicator-reviews/).
+[the indicator reviews](https://mesingh.github.io/polinrider-cleaner/news/indicator-reviews/).
 
-**Last reviewed: [2 November 2026](https://mesingh.github.io/polinrider-cleaner/indicator-reviews/2026-11-02/).**
+**Last reviewed: [2 November 2026](https://mesingh.github.io/polinrider-cleaner/news/indicator-reviews/2026-11-02/).**
 
 Island's report on the `MicrosoftSystem64` npm cluster behind 88 GitHub repositories
 added eight package names, a C2 address and six hashes. Two of the names, `oracle-redis` and `ioredis-xyz`, are still live on npm.

@@ -1,0 +1,115 @@
+---
+// The campaign section's front page: one card for each page about
+// PolinRider, each with that page's own description, and the way to the
+// research the pages draw on.
+import { getCollection } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import Crumbs from '../../components/Crumbs.astro';
+import Icon from '../../components/Icon.astro';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const pages = new Map((await getCollection('campaign')).map((e) => [e.id, e.data]));
+const page = (id: string) => pages.get(id)!;
+
+const cards = [
+  { icon: 'eye', href: `${base}/campaign/what-it-is/`, title: page('what-it-is').title, text: page('what-it-is').description },
+  { icon: 'signature', href: `${base}/campaign/how-it-hides/`, title: page('how-it-hides').title, text: page('how-it-hides').description },
+  {
+    icon: 'computer',
+    href: `${base}/campaign/what-it-is/#related-malware-microsoftsystem64`,
+    title: 'Related malware: MicrosoftSystem64',
+    text: 'A remote-access trojan related to PolinRider through the group behind it, not part of PolinRider itself. This tool checks for it too.',
+  },
+  { icon: 'scan', href: `${base}/campaign/indicators/`, title: page('indicators').title, text: page('indicators').description },
+] as const;
+---
+
+<Base
+  title="The PolinRider campaign"
+  description="What PolinRider is, how it hides in your Git history, the related MicrosoftSystem64 malware and the indicators this tool matches, with sources."
+  type="website"
+>
+  <div class="wrap page">
+    <Crumbs items={[]} />
+    <h1>The PolinRider campaign</h1>
+    <p class="lead">
+      What it is, how it gets in, how it hides and what it leaves behind. Every claim on these pages links to
+      a public source.
+    </p>
+
+    <ul class="grid">
+      {cards.map((c) => (
+        <li>
+          <a class="card" href={c.href}>
+            <span class="icon"><Icon name={c.icon} size={22} /></span>
+            <span class="card-title">{c.title}</span>
+            <p>{c.text}</p>
+          </a>
+        </li>
+      ))}
+    </ul>
+
+    <section class="sources">
+      <h2>Sources</h2>
+      <p>
+        The research these pages draw on, from OpenSourceMalware, SafeDep and others, is listed under{' '}
+        <a href={`${base}/news/#elsewhere`}>Elsewhere in News</a>, each article with its publisher and date.
+        What changes week by week is in the <a href={`${base}/news/indicator-reviews/`}>indicator reviews</a>.
+      </p>
+    </section>
+  </div>
+</Base>
+
+<style>
+  .page {
+    max-width: calc(56rem + 2 * var(--gutter));
+    padding-top: 2.5rem;
+  }
+  h1 {
+    margin: 0.75rem 0 0;
+    font-size: var(--text-h1);
+  }
+  .lead {
+    max-width: 40rem;
+    margin: 1rem 0 0;
+    font-size: 1.1875rem;
+  }
+  .grid {
+    display: grid;
+    gap: 1rem;
+    margin: 2.5rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  @media (min-width: 44rem) {
+    .grid {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+  .card {
+    height: 100%;
+    padding: 1.4rem 1.5rem;
+  }
+  .icon {
+    display: inline-grid;
+    place-items: center;
+    width: 2.6rem;
+    height: 2.6rem;
+    margin-bottom: 0.9rem;
+    border: 1px solid var(--pr-border-strong);
+    border-radius: 12px;
+    background: var(--pr-bg);
+    color: var(--pr-accent);
+  }
+  .sources {
+    margin-top: 3.5rem;
+  }
+  .sources h2 {
+    margin: 0 0 0.75rem;
+    font-size: var(--text-h2);
+  }
+  .sources p {
+    max-width: 44rem;
+    margin: 0;
+  }
+</style>

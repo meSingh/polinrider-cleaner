@@ -1,0 +1,48 @@
+---
+// One of our News posts. The line under the title is its date and, when the
+// post came from one, the indicator review behind it.
+import { getCollection, render } from 'astro:content';
+import Article from '../../layouts/Article.astro';
+import { longDate } from '../../releaseDate';
+
+export async function getStaticPaths() {
+  return (await getCollection('news')).map((entry) => ({ params: { slug: entry.id }, props: { entry } }));
+}
+const { entry } = Astro.props;
+const { Content, headings } = await render(entry);
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const { date, review } = entry.data;
+---
+
+<Article
+  title={entry.data.title}
+  description={entry.data.description}
+  crumbs={[{ label: 'News', href: `${base}/news/` }]}
+  headings={headings}
+  section="News"
+  file={entry.filePath}
+  foot={false}
+>
+  <Fragment slot="meta">
+    <span class="tag">Our post</span>
+    <time datetime={date}>{longDate(date)}</time>
+    {review && (
+      <>
+        {' · From the '}
+        <a href={`${base}/news/indicator-reviews/${review}/`}>indicator review of {longDate(review)}</a>
+      </>
+    )}
+  </Fragment>
+  <Content />
+  <p slot="after" class="back"><a href={`${base}/news/`}>All news</a></p>
+</Article>
+
+<style>
+  .tag {
+    margin-inline-end: 0.6rem;
+  }
+  .back {
+    margin-top: 3rem;
+    font-size: var(--text-sm);
+  }
+</style>

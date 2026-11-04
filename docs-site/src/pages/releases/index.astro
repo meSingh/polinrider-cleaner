@@ -1,0 +1,135 @@
+---
+// Every release since 2.0, newest first: version, date, one line and a
+// download link. Built from the release pages, so a new release only needs
+// its own page.
+import Base from '../../layouts/Base.astro';
+import Crumbs from '../../components/Crumbs.astro';
+import Icon from '../../components/Icon.astro';
+import { releases } from '../../releases';
+import { longDate } from '../../releaseDate';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const all = await releases();
+---
+
+<Base
+  title="Releases"
+  description="Every polinrider-cleaner release since 2.0, with what it changes, anything that breaks, and downloads for each system."
+  type="website"
+>
+  <div class="wrap page" data-pagefind-body data-pagefind-meta="section:Releases">
+    <Crumbs items={[]} />
+    <h1>Releases</h1>
+    <p class="lead">
+      One page per release: downloads for your system, what it adds, what changes in what you will see and
+      anything that breaks. The full history is on{' '}
+      <a href="https://github.com/meSingh/polinrider-cleaner/commits/main">GitHub</a>.
+    </p>
+    <p class="note">
+      Indicators are updated every week between releases. Those changes are in the{' '}
+      <a href={`${base}/news/indicator-reviews/`}>indicator reviews</a>, and a release carries every indicator
+      merged before it.
+    </p>
+
+    <ol class="list">
+      {all.map((r, i) => (
+        <li class="item">
+          <div class="head">
+            <a class="version" href={r.href}>{r.version}</a>
+            {i === 0 && <span class="tag tag-accent">latest</span>}
+            <time datetime={r.date}>{longDate(r.date)}</time>
+          </div>
+          <p>{r.description}</p>
+          {r.breaking && (
+            <p class="breaking"><Icon name="review" size={18} /><span><strong>Breaking:</strong> {r.breaking}</span></p>
+          )}
+          <p class="links">
+            <a class="dl" href={`${r.href}#download`}><Icon name="download" size={17} /> Download {r.version}</a>
+            <a href={r.href}>What changed</a>
+          </p>
+        </li>
+      ))}
+    </ol>
+
+    <p class="note">
+      1.x, the shell tool, is frozen at{' '}
+      <a href="https://github.com/meSingh/polinrider-cleaner/releases/tag/v1.0.9">v1.0.9</a> and is not listed here.
+    </p>
+  </div>
+</Base>
+
+<style>
+  .page {
+    max-width: calc(52rem + 2 * var(--gutter));
+    padding-top: 2.5rem;
+  }
+  h1 {
+    margin: 0.75rem 0 0;
+    font-size: var(--text-h1);
+  }
+  .lead {
+    margin: 1rem 0 0;
+    font-size: 1.1875rem;
+  }
+  .note {
+    color: var(--pr-muted);
+    font-size: var(--text-sm);
+  }
+  .list {
+    margin: 2.5rem 0;
+    padding: 0;
+    list-style: none;
+    border-top: 1px solid var(--pr-border);
+  }
+  .item {
+    padding: 1.6rem 0;
+    border-bottom: 1px solid var(--pr-border);
+  }
+  .head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.9rem;
+  }
+  .version {
+    color: var(--pr-heading);
+    font-size: 1.5rem;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    text-decoration: none;
+  }
+  .version:hover {
+    text-decoration: underline;
+  }
+  time {
+    color: var(--pr-muted);
+    font-size: var(--text-sm);
+  }
+  .item p {
+    margin: 0.6rem 0 0;
+  }
+  .breaking {
+    display: flex;
+    gap: 0.5rem;
+    color: var(--pr-review);
+  }
+  .breaking strong {
+    color: var(--pr-review);
+  }
+  .breaking :global(svg) {
+    flex: none;
+    margin-top: 0.2rem;
+  }
+  .links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.5rem;
+    font-size: var(--text-sm);
+    font-weight: 600;
+  }
+  .links a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+</style>

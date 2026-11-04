@@ -6,8 +6,9 @@
 #
 # GitHub Pages is enabled with the source set to "GitHub Actions".
 #
-# Built with Astro + Starlight. Astro fails the build on a broken internal
-# link by itself, so there is no separate link-checking step.
+# Built with plain Astro (ADR-0055). `npm run build` ends with
+# docs-site/scripts/check-links.mjs, which fails the build on any internal
+# link that does not reach a page, an anchor on it or a redirect.
 #
 # Release pages are dated from their tags (docs-site/src/releaseDate.ts), so
 # the build fetches the tags, and the Release workflow runs this on main once

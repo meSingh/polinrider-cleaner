@@ -1,76 +1,40 @@
 // @ts-check
+// The site is plain Astro: every page's HTML comes from src/layouts and
+// src/pages, and the design from src/styles. ADR-0055 says why it left
+// Starlight; ADR-0056 how the documentation is versioned.
 import { defineConfig } from 'astro/config';
-import starlight from '@astrojs/starlight';
-import { PLAUSIBLE_SCRIPT_ID, REPO_URL } from './src/siteConfig.mjs';
+import mdx from '@astrojs/mdx';
+import sitemap from '@astrojs/sitemap';
+import { satteri } from '@astrojs/markdown-satteri';
+import { readdirSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { asides } from './src/markdown/asides.mjs';
+import { pagefindIndex } from './src/markdown/pagefind.mjs';
 
-// Plausible analytics: the script ID is set in src/siteConfig.mjs, because
-// the footer reads it too.
+const src = fileURLToPath(new URL('./src', import.meta.url));
 
-// Downloads are release assets: .tar.gz and .zip archives, .deb packages and
-// .intoto.jsonl attestations. Setting fileExtensions replaces Plausible's
-// default list rather than adding to it. The links point at github.com, so
-// outbound link clicks are counted as well.
-const plausibleOptions = {
-  fileDownloads: { fileExtensions: ['gz', 'zip', 'deb', 'jsonl'] },
-  outboundLinks: true,
-};
+// Every address the site has ever published keeps working (ADR-0055). Each
+// old page becomes a small HTML page that sends the reader on, with a
+// canonical link to the new address for search engines. GitHub Pages serves
+// files only, so these are the redirects there can be.
+const moved = (from, to) => [from, to];
+const pages = (dir) =>
+  readdirSync(new URL(`./src/content/${dir}/`, import.meta.url))
+    .filter((f) => /\.mdx?$/.test(f) && !/^index\./.test(f))
+    .map((f) => f.replace(/\.mdx?$/, ''));
+const redirects = Object.fromEntries([
+  moved('/quick-start/', '/docs/quick-start/'),
+  ...pages('docs/guides').map((p) => moved(`/guides/${p}/`, `/docs/guides/${p}/`)),
+  ...pages('docs/reference').map((p) => moved(`/reference/${p}/`, `/docs/reference/${p}/`)),
+  ...pages('docs/project').map((p) => moved(`/project/${p}/`, `/docs/project/${p}/`)),
+  moved('/indicator-reviews/', '/news/indicator-reviews/'),
+  ...pages('docs/indicator-reviews').map((p) => moved(`/indicator-reviews/${p}/`, `/news/indicator-reviews/${p}/`)),
+]);
 
-function plausibleHead(id) {
-  if (!id) return [];
-  if (!/^pa-[A-Za-z0-9_-]+$/.test(id)) {
-    throw new Error(`PLAUSIBLE_SCRIPT_ID is not a Plausible script ID: ${id}`);
-  }
-  return [
-    { tag: 'script', attrs: { async: true, src: `https://plausible.io/js/${id}.js` } },
-    {
-      tag: 'script',
-      content:
-        'window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},' +
-        'plausible.init=plausible.init||function(i){plausible.o=i||{}};' +
-        `plausible.init(${JSON.stringify(plausibleOptions)})`,
-    },
-  ];
-}
-
-// Search engine ownership checks. Each is the `content` value of the meta tag
-// that Google Search Console (URL-prefix property, HTML tag method) or Bing
-// Webmaster Tools (HTML Meta Tag method) asks for. Empty adds nothing.
-const GOOGLE_SITE_VERIFICATION = '';
-const BING_SITE_VERIFICATION = '';
-
-const siteUrl = 'https://mesingh.github.io/polinrider-cleaner';
-
-// Tags every page carries besides Starlight's own: the social card, the News
-// feed and, once their values exist, the two verification tags. Starlight
-// already writes og:title, og:description and twitter:card, but no image.
-const siteHead = [
-  { tag: 'meta', attrs: { property: 'og:image', content: `${siteUrl}/social-preview.jpg` } },
-  { tag: 'meta', attrs: { property: 'og:image:width', content: '1280' } },
-  { tag: 'meta', attrs: { property: 'og:image:height', content: '640' } },
-  {
-    tag: 'meta',
-    attrs: {
-      property: 'og:image:alt',
-      content: 'polinrider-cleaner: a rider inside a cyan lattice between two rows of servers',
-    },
-  },
-  { tag: 'meta', attrs: { name: 'twitter:image', content: `${siteUrl}/social-preview.jpg` } },
-  {
-    tag: 'link',
-    attrs: {
-      rel: 'alternate',
-      type: 'application/rss+xml',
-      title: 'PolinRider news',
-      href: `${siteUrl}/news/rss.xml`,
-    },
-  },
-  ...(GOOGLE_SITE_VERIFICATION
-    ? [{ tag: 'meta', attrs: { name: 'google-site-verification', content: GOOGLE_SITE_VERIFICATION } }]
-    : []),
-  ...(BING_SITE_VERIFICATION
-    ? [{ tag: 'meta', attrs: { name: 'msvalidate.01', content: BING_SITE_VERIFICATION } }]
-    : []),
-];
+// Frozen copies of the documentation (src/content/docs-versions) are kept
+// out of the sitemap: /docs/ is the page to find.
+const versions = JSON.parse(readFileSync(new URL('./src/docs-versions.json', import.meta.url), 'utf8'));
+const frozen = versions.frozen.map((v) => `/docs/${v.version}/`);
 
 // The site is published to GitHub Pages at /polinrider-cleaner/, so every
 // internal link has to be built with that base or the whole thing 404s once
@@ -79,119 +43,35 @@ export default defineConfig({
   site: 'https://mesingh.github.io',
   base: '/polinrider-cleaner',
   trailingSlash: 'always',
+  redirects: Object.fromEntries(
+    Object.entries(redirects).map(([from, to]) => [from, `/polinrider-cleaner${to}`]),
+  ),
 
   integrations: [
-    starlight({
-      title: 'PolinRider scanner and cleaner',
-      favicon: '/favicon.svg',
-      description:
-        'Check a machine, a GitHub account or a whole organization for PolinRider malware, ' +
-        'and clean it up. Free and open source. Changes nothing until you say yes.',
-
-      // The look is plain Starlight: its own colour, type and layout tokens
-      // set in src/styles/theme.css, and a few components replaced where the
-      // design needs different markup. Each override says why at its top.
-      components: {
-        Header: './src/components/overrides/Header.astro',
-        SiteTitle: './src/components/overrides/SiteTitle.astro',
-        ThemeSelect: './src/components/overrides/ThemeSelect.astro',
-        Hero: './src/components/overrides/Hero.astro',
-        PageTitle: './src/components/overrides/PageTitle.astro',
-        Footer: './src/components/overrides/Footer.astro',
+    mdx(),
+    sitemap({
+      filter: (page) => {
+        const path = new URL(page).pathname.replace(/^\/polinrider-cleaner/, '');
+        return !(path in redirects) && !frozen.some((f) => path.startsWith(f));
       },
-
-      // Code blocks take their colours from the theme's own tokens, so they
-      // follow light and dark with the rest of the page.
-      expressiveCode: {
-        useStarlightUiThemeColors: true,
-        styleOverrides: {
-          borderRadius: '14px',
-          borderColor: 'var(--pr-border)',
-          codeBackground: 'var(--pr-code-bg)',
-          codeFontFamily: 'var(--__sl-font-mono)',
-          codeFontSize: 'var(--sl-text-code)',
-          codeLineHeight: '1.7',
-          codePaddingBlock: '1rem',
-          codePaddingInline: '1.25rem',
-          frames: {
-            frameBoxShadowCssValue: 'none',
-            editorBackground: 'var(--pr-code-bg)',
-            terminalBackground: 'var(--pr-code-bg)',
-            terminalTitlebarBackground: 'var(--pr-code-bg)',
-            terminalTitlebarBorderBottomColor: 'var(--pr-border)',
-            terminalTitlebarDotsOpacity: '0',
-            editorTabBarBackground: 'var(--pr-code-bg)',
-            editorActiveTabBackground: 'var(--pr-code-bg)',
-            editorTabBarBorderBottomColor: 'var(--pr-border)',
-            inlineButtonBackground: 'var(--pr-heading)',
-            inlineButtonForeground: 'var(--pr-heading)',
-            inlineButtonBorder: 'var(--pr-border-strong)',
-            tooltipSuccessBackground: 'var(--pr-clean)',
-            tooltipSuccessForeground: 'var(--pr-bg)',
-          },
-        },
-      },
-
-      social: [{ icon: 'github', label: 'GitHub', href: REPO_URL }],
-
-      // A correction should be a pull request, not an issue somebody has to
-      // translate into one.
-      editLink: {
-        baseUrl: 'https://github.com/meSingh/polinrider-cleaner/edit/main/docs-site/',
-      },
-
-      lastUpdated: true,
-
-      head: [...siteHead, ...plausibleHead(PLAUSIBLE_SCRIPT_ID)],
-
-      customCss: ['./src/styles/theme.css', './src/styles/custom.css'],
-
-      // Releases and indicator reviews each show their own list in the
-      // sidebar. See src/routeData.ts.
-      routeMiddleware: './src/routeData.ts',
-
-      sidebar: [
-        { label: 'Quick start', link: '/quick-start/' },
-        {
-          label: 'The campaign',
-          items: [
-            { label: 'What PolinRider is', link: '/campaign/what-it-is/' },
-            { label: 'Why your history looks clean', link: '/campaign/how-it-hides/' },
-            { label: 'The indicator set', link: '/campaign/indicators/' },
-          ],
-        },
-        {
-          label: 'Cleaning up',
-          items: [
-            { label: 'Order matters', link: '/guides/order/' },
-            { label: 'A machine', link: '/guides/machine/' },
-            { label: 'A personal GitHub account', link: '/guides/account/' },
-            { label: 'An organization', link: '/guides/organization/' },
-            { label: 'Every future push', link: '/guides/ci/' },
-          ],
-        },
-        // Three growing lists, each with its own index page rather than a
-        // sidebar group that would grow by one entry a week.
-        { label: 'Indicator reviews', link: '/indicator-reviews/' },
-        { label: 'News', link: '/news/' },
-        { label: 'Releases', link: '/releases/' },
-        {
-          label: 'Reference',
-          items: [
-            { label: 'Exit codes', link: '/reference/exit-codes/' },
-            { label: 'False positives you will see', link: '/reference/false-positives/' },
-            { label: 'Verifying this repository', link: '/reference/verifying/' },
-          ],
-        },
-        {
-          label: 'The project',
-          items: [
-            { label: 'Contributing', link: '/project/contributing/' },
-            { label: 'Reporting a vulnerability', link: '/project/security/' },
-            { label: 'What this does not promise', link: '/project/disclaimer/' },
-          ],
-        },
-      ],
     }),
+    pagefindIndex(),
   ],
+
+  markdown: {
+    processor: satteri({ features: { directive: true }, mdastPlugins: [asides()] }),
+    // Both themes are written into every code block as CSS variables, and
+    // the page's theme picks one (src/styles/prose.css). Both pass WCAG AA
+    // on the code background.
+    shikiConfig: {
+      themes: { light: 'github-light-default', dark: 'github-dark-default' },
+      defaultColor: false,
+    },
+  },
+
+  vite: {
+    // `~/components/RunBlock.astro` from any page at any depth, so a frozen
+    // copy of the docs imports the same way as the original.
+    resolve: { alias: { '~': src } },
+  },
 });

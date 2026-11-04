@@ -1,0 +1,16 @@
+---
+// Runs in <head> before anything paints: sets data-theme on <html> from the
+// stored choice, or from the system when there is none, so a dark page never
+// flashes white. The toggle (ThemeToggle.astro) keeps it current afterwards.
+---
+
+<script is:inline>
+  (() => {
+    let t = '';
+    try {
+      t = localStorage.getItem('starlight-theme') || '';
+    } catch {}
+    if (t !== 'light' && t !== 'dark') t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    document.documentElement.dataset.theme = t;
+  })();
+</script>

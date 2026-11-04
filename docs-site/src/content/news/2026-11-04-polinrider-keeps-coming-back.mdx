@@ -1,0 +1,184 @@
+---
+title: PolinRider keeps coming back after you clean it
+description: "Why antivirus removes Trojan:NPM/PolinRider and it returns, why a cleaned repository gets the payload back and the order that stops it."
+date: "2026-11-04"
+sidebar:
+  label: "It keeps coming back"
+  order: -20261104
+---
+
+If your antivirus removes PolinRider and it is back the next time you run
+`npm run dev`, or a repository you cleaned has the payload again a few hours
+later, whatever starts it has not been found yet. It comes back from four
+places: the project, the computer, GitHub and other people's computers.
+Cleaning only the one you can see is why it returns.
+
+## What it looks like
+
+On 30 October 2026 a developer described it on the BleepingComputer forums
+([PolinRider/NPM infection keeps returning][bc]). Windows Defender detected
+`Trojan:NPM/PolinRider.SF` and removed it, and it came back the moment they ran
+`npm run dev` or `node server` in their project. They had already:
+
+- run a full offline scan with Defender;
+- removed a suspicious Defender exclusion for their project folder;
+- checked the scheduled tasks and the registry Run and RunOnce keys, which
+  looked clean;
+- run `npm audit`;
+- confirmed VS Code's automatic tasks were off.
+
+They attached logs from the Farbar Recovery Scan Tool (FRST). Its Windows
+Defender section holds seven detections of `Trojan:NPM/PolinRider.SF`, and
+each one names a command line rather than a file:
+`Path: CmdLine:_C:\Program Files\nodejs\node.exe -e`, followed by a long
+block of JavaScript passed to Node.js on the command line ([same thread][bc]).
+
+The same log also lists a registry Run value named
+`MicrosoftCLROptimization`, which runs a script called `clr_init.vbs` with
+`wscript.exe`, and a file of the same name in the user's Startup folder. So
+the Run keys the developer described as clean did hold an entry. Its name is
+borrowed from a real Microsoft .NET component, which makes it easy to read
+past ([Deception.Pro][dp]). Windows runs both a Run value and a Startup item
+each time the user logs on.
+
+A volunteer helper on the forum quoted those two entries back and called them
+the source of the repeated infection ([same thread][bc]). As of 4 November the
+thread has no reply after the helper's, so whether removing them fixed it is
+not known.
+
+## Four places it comes back from
+
+### 1. The project
+
+The payload is appended to a config file such as `postcss.config.js`,
+`tailwind.config.js` or `eslint.config.mjs`, so it runs every time that file
+loads: the next `npm run dev`, the next build, the next CI run. Killing the
+process gives you a clean moment, not a clean project
+([A Developer's Guide to Getting Rid of PolinRider][osm-guide]).
+
+That fits the forum case: Defender caught a command line, and the next
+`npm run dev` started it again. Until the config file is cleaned, removing the
+detection cannot last.
+
+### 2. Something on the computer that starts it
+
+- **Entries that run at logon.** In an intrusion Deception.Pro watched on a
+  decoy workstation between 27 August and 3 September 2026, the operator
+  planted three: a scheduled task, a Run key and a Startup script, all named
+  `MicrosoftCLROptimization` after a real Microsoft .NET component. There
+  they sat under the SYSTEM profile, so they survive logging off
+  ([Hands-on-Keyboard Activity from the DPRK PolinRider Supply Chain Attack][dp]).
+  In the forum case the same name was in the user's own Run key and Startup
+  folder ([thread][bc]).
+- **npm itself.** On several infected computers npm's own `lib/cli.js` had
+  been replaced with a version about 1 MB in size, so every `npm`, `npx` or
+  `npm exec` starts the malware again, even after a reboot. The fix is to
+  remove Node.js and npm, stop everything and reinstall
+  ([Developer's Guide][osm-guide]).
+- **A process left running.** A detached process, a scheduled task or a
+  macOS launch agent from the first infection pushes again on its own, with
+  whatever credentials are valid on the computer, including ones you have
+  just rotated ([Developer's Guide][osm-guide]).
+
+OpenSourceMalware's guide says a factory reset is not needed, but only on a
+condition: "Assuming you follow these steps in order", because the payload
+does not stay on disk between runs ([Developer's Guide][osm-guide]). The same
+guide's replaced `cli.js` is a file that persists and survives a reboot, and
+the two `MicrosoftCLROptimization` cases above are files too. Check for them
+whatever you decide about a reset.
+
+### 3. GitHub
+
+Every time the payload runs, it looks for other JavaScript projects on the
+computer, injects itself into them and pushes them with the Git credentials
+stored there, including repositories you have not opened in months. So a
+common way back in is to clean the computer and then `git clone` the infected
+branches again ([Developer's Guide][osm-guide]).
+
+### 4. Someone else's computer
+
+Developers in one small development agency's organization tried to remove
+the malware at least three times in 2026. In each of the three cleanups
+OpenSourceMalware traced, a force-push from a different contributor's account
+put the payload back, the fastest about five hours later, under a commit
+message the team already trusted
+([PolinRider is A/B Testing its Way Past Your Detections][osm-ab]).
+Cleaning a repository does not clean the computers that push to it. A
+collaborator who is still infected can reinfect you after you have finished,
+and an organization membership or a shared CI pipeline carries it further
+([Developer's Guide][osm-guide]).
+
+## About antivirus
+
+Scanning again and again is not a strategy. In most variants the payload is
+decrypted from a blockchain transaction into memory and never written to
+disk as a program. Defender does flag some variants: OpenSourceMalware names
+`Trojan:JS/PolinRider.DB!MTB` ([Developer's Guide][osm-guide]), and the forum
+case shows `Trojan:NPM/PolinRider.SF` ([thread][bc]). A detection tells you
+something ran. A clean scan does not tell you that you are clear.
+
+The campaign also changes its signatures, so not seeing last month's marker
+does not mean clean ([Developer's Guide][osm-guide]).
+
+## The order that holds
+
+[Order matters](/polinrider-cleaner/docs/guides/order/) has the short version.
+In full, from OpenSourceMalware's guide and our own:
+
+1. **Stop new infections.** Turn off VS Code's automatic tasks everywhere,
+   not just in one project, before you open anything again
+   ([Developer's Guide][osm-guide]).
+2. **Freeze the repositories.** Turn on branch protection that blocks
+   force-pushes, and require signed commits, on every repository the account
+   can reach. Pause automatic deploys ([Developer's Guide][osm-guide]).
+3. **Tell your collaborators now**, not when you are done
+   ([Developer's Guide][osm-guide]).
+4. **Check every computer that pushes to those repositories.** The config
+   files and fake fonts, `temp_auto_push.bat`, npm's `cli.js`, and what starts
+   by itself: Run keys, Startup folders and scheduled tasks on Windows
+   ([thread][bc]; [Deception.Pro][dp]), launch agents and the crontab on macOS
+   ([Developer's Guide][osm-guide]; [Found temp_auto_push.bat in your
+   repository?](/polinrider-cleaner/news/2026-11-04-temp-auto-push-bat/)).
+5. **Rotate every credential, after the computers are clean.** Rotated
+   earlier, a process still running simply takes the new ones
+   ([Developer's Guide][osm-guide]).
+6. **Clean the repositories on GitHub**, then look for force-pushes across
+   every repository the account can reach. GitHub's record of who pushed is
+   the one thing the rewrite cannot forge
+   ([Developer's Guide][osm-guide];
+   [Why your Git history looks clean](/polinrider-cleaner/campaign/how-it-hides/)).
+7. **Keep checking.** Weekly for a month, then monthly
+   ([README](https://github.com/meSingh/polinrider-cleaner#keep-scanning)).
+
+## What polinrider checks
+
+On a computer it reads, among other things, what starts by itself: on
+Windows the registry Run and RunOnce values, both Startup folders and the
+scheduled tasks. It also reads npm's own program files, Python startup files
+and processes running inline code
+([A machine](/polinrider-cleaner/docs/guides/machine/)).
+`MicrosoftCLROptimization.vbs` is in its indicator set
+([`ioc/filenames.txt`](https://github.com/meSingh/polinrider-cleaner/blob/main/ioc/filenames.txt)).
+On GitHub it checks every branch and tag of every repository and reads
+GitHub's push record for each one
+([A personal GitHub account](/polinrider-cleaner/docs/guides/account/)).
+
+:::tip[Check yours]
+Start with every computer that pushes to the affected repositories. Download
+`polinrider` from the [quick start](/polinrider-cleaner/docs/quick-start/) and run
+it with no arguments. It asks what to check (this computer, a GitHub account
+or an organization) and changes nothing until you type `yes`.
+:::
+
+## Sources
+
+1. BleepingComputer forums, [PolinRider/NPM infection keeps returning, FRST logs attached][bc], 30 October 2026
+2. Deception.Pro, [[Op Report] Hands-on-Keyboard Activity from the DPRK "PolinRider" Supply Chain Attack][dp], 9 September 2026
+3. OpenSourceMalware, [A Developer's Guide to Getting Rid of PolinRider][osm-guide], 13 August 2026
+4. OpenSourceMalware, [PolinRider is A/B Testing its Way Past Your Detections][osm-ab], 26 September 2026
+5. This site: [Order matters](/polinrider-cleaner/docs/guides/order/), [A machine](/polinrider-cleaner/docs/guides/machine/) and [Found temp_auto_push.bat in your repository?](/polinrider-cleaner/news/2026-11-04-temp-auto-push-bat/)
+
+[bc]: https://www.bleepingcomputer.com/forums/t/819751/polinridernpm-infection-keeps-returning-frst-logs-attached/
+[dp]: https://blog.deception.pro/blog/hok-dprk-polinrider-sep-2026
+[osm-guide]: https://opensourcemalware.com/blog/developer-guide-getting-over-polinrider
+[osm-ab]: https://opensourcemalware.com/blog/polinrider-is-a-b-testing-its-way-past-your-detections

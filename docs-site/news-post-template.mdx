@@ -5,16 +5,17 @@ date: "YYYY-MM-DD"
 review: "YYYY-MM-DD"
 sidebar:
   label: "<two to four words>"
-  order: -YYYYMMDD
 ---
 
 {/*
 How to use this template. Delete this block before publishing.
 
-Copy this file to docs-site/src/content/docs/news/YYYY-MM-DD-short-slug.mdx.
+Copy this file to docs-site/src/content/news/YYYY-MM-DD-short-slug.mdx.
 `date` is the day it is published, in Asia/Kolkata, and is never changed
 afterwards. `review` is the date of the indicator review the post comes from;
-delete the line if there is none. Keep the NewsMeta line below the imports.
+delete the line if there is none. The page shows the date, the review link
+and an "Our post" label by itself; the post needs no import for them.
+`sidebar.label` is the short name used where the title is too long.
 
 When to write one: only when a week changes what a reader would do. A new
 way in, a new file or artifact on disk or in a repository, a new way it
@@ -50,10 +51,6 @@ matter. Nothing links back from the review: reviews are never edited after
 they merge.
 */}
 
-import NewsMeta from '../../../components/NewsMeta.astro';
-
-<NewsMeta />
-
 <One or two sentences: the answer, for someone who found this by search.>
 
 ## What it is
@@ -65,7 +62,7 @@ import NewsMeta from '../../../components/NewsMeta.astro';
 1. ...
 
 :::tip[Check yours]
-Download `polinrider` from the [quick start](/polinrider-cleaner/quick-start/)
+Download `polinrider` from the [quick start](/polinrider-cleaner/docs/quick-start/)
 and run it with no arguments. It asks what to check and changes nothing until
 you type `yes`.
 :::
@@ -73,4 +70,4 @@ you type `yes`.
 ## Sources
 
 1. [Source title](https://...), publisher, date
-2. [Indicator review, YYYY-MM-DD](/polinrider-cleaner/indicator-reviews/YYYY-MM-DD/)
+2. [Indicator review, YYYY-MM-DD](/polinrider-cleaner/news/indicator-reviews/YYYY-MM-DD/)

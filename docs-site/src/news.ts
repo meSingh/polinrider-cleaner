@@ -1,45 +1,79 @@
-// The News posts, read from the files rather than the content collection:
-// Starlight's page schema drops fields it does not know, such as `date` and
-// `review`. The same approach as the release pages. Newest first.
-const files = import.meta.glob('./content/docs/news/*.{md,mdx}', { eager: true }) as Record<
-  string,
-  {
-    frontmatter: {
-      title: string;
-      description: string;
-      date: string | Date;
-      review?: string | Date;
-      sidebar?: { label?: string };
-    };
-  }
->;
+// The three kinds of News: our own posts, the weekly indicator reviews and
+// articles published elsewhere. Each is read from its own collection. Newest
+// first throughout.
+import { getCollection } from 'astro:content';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
 export interface NewsPost {
-  id: string; // e.g. news/2026-11-09-temp-auto-push-bat
+  id: string; // e.g. 2026-11-04-temp-auto-push-bat
+  href: string;
   title: string;
   description: string;
   date: string; // YYYY-MM-DD, the day it was published
   review?: string; // YYYY-MM-DD of the indicator review it came from
-  label: string;
+  label: string; // a short name, for lists
 }
 
-// YAML reads an unquoted date as a Date; accept either.
-const day = (d: string | Date) => (d instanceof Date ? d.toISOString().slice(0, 10) : String(d));
-
-export function newsPosts(): NewsPost[] {
-  return Object.entries(files)
-    .filter(([path]) => !/\/index\.mdx?$/.test(path))
-    .map(([path, { frontmatter: f }]) => ({
-      id: 'news/' + path.replace(/^.*\//, '').replace(/\.mdx?$/, ''),
-      title: f.title,
-      description: f.description,
-      date: day(f.date),
-      review: f.review ? day(f.review) : undefined,
-      label: f.sidebar?.label ?? f.title,
+export async function newsPosts(): Promise<NewsPost[]> {
+  return (await getCollection('news'))
+    .map(({ id, data }) => ({
+      id,
+      href: `${base}/news/${id}/`,
+      title: data.title,
+      description: data.description,
+      date: data.date,
+      review: data.review,
+      label: data.sidebar?.label ?? data.title,
     }))
     .sort((a, b) => (a.date === b.date ? a.id.localeCompare(b.id) : a.date < b.date ? 1 : -1));
 }
 
-export function newsPost(id: string): NewsPost | undefined {
-  return newsPosts().find((p) => p.id === id);
+export interface Review {
+  id: string; // 2026-10-26-socket
+  href: string;
+  date: string;
+  label: string; // "2026-10-26 (Socket)"
+  outcome?: string; // "9 indicators added"
+  summary?: string;
 }
+
+// Past reviews are never edited, so what each one found is read from the
+// table on the reviews overview (indicator-reviews/index.md), which gains a
+// row every week: | [label](/…/news/indicator-reviews/<id>/) | outcome | summary |
+export async function reviews(): Promise<Review[]> {
+  const all = await getCollection('reviews');
+  const overview = all.find((e) => e.id === 'index')?.body ?? '';
+  const rows = new Map<string, { label: string; outcome: string; summary: string }>();
+  for (const m of overview.matchAll(
+    /^\|\s*\[([^\]]+)\]\([^)]*\/indicator-reviews\/([^/)]+)\/\)\s*\|\s*([^|]*?)\s*\|\s*([^|]*?)\s*\|\s*$/gm,
+  )) {
+    rows.set(m[2], { label: m[1], outcome: m[3], summary: m[4] });
+  }
+  return all
+    .filter((e) => e.id !== 'index')
+    .map(({ id }) => ({
+      id,
+      href: `${base}/news/indicator-reviews/${id}/`,
+      date: id.slice(0, 10),
+      label: rows.get(id)?.label ?? id,
+      outcome: rows.get(id)?.outcome,
+      summary: rows.get(id)?.summary,
+    }))
+    .sort((a, b) => (a.id < b.id ? 1 : -1));
+}
+
+export async function elsewhere() {
+  return (await getCollection('elsewhere'))
+    .map(({ id, data }) => ({ id, ...data }))
+    .sort((a, b) => (a.date < b.date ? 1 : -1));
+}
+
+/** A one-line summary from a Markdown table cell, as HTML: `code` kept. */
+export const inline = (s: string) =>
+  s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
