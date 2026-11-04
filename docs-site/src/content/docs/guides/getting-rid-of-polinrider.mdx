@@ -1,396 +1,132 @@
 ---
-title: "Getting rid of PolinRider: a developer's guide"
-description: "How to remove PolinRider malware from a computer, GitHub, npm and VS Code in the order that stops it coming back, and what the scanner does at each step."
+title: "Remove PolinRider: the full cleanup checklist"
+description: "Every step of a PolinRider cleanup on one checklist: infected computers, credentials, GitHub repositories and npm, and the checks still done by hand."
 sidebar:
-  label: "Getting rid of PolinRider"
+  label: "The full checklist"
 ---
 
-To get rid of PolinRider, clean every computer that pushes to the affected
-repositories first, then change every password and token from a computer you
-trust, then clean the repositories on GitHub, then scan every future push.
-Done in any other order, it comes back
-([Order matters](/docs/guides/order/)).
-
-This page is the long version of that order: what `polinrider` does at each
-step, what it refuses to do, the checks still worth doing by hand and when to
-reinstall instead. It is written from a real cleanup, and every claim in it
-names its source.
-
-## Why the order is fixed
-
-The malware spreads from the infected computer itself. A script on that
-computer amends your last commit, winds the clock back so the date matches
-and force-pushes, using the Git credentials already stored there. Nobody logs
-in from anywhere else, and the script runs again whenever its trigger fires
-([OpenSourceMalware, Developer's Guide][osm-guide];
-[Found temp_auto_push.bat in your repository?](/news/2026-11-04-temp-auto-push-bat/)).
-
-So three things follow.
-
-- **Clean the computer before GitHub.** A cleaned repository plus an
-  infected computer that still holds a valid token is reinfected within
-  minutes ([Order matters](/docs/guides/order/)).
-- **Rotate credentials after the computer is clean, not before.** A process
-  still running takes the new ones on its next run
-  ([Developer's Guide][osm-guide]).
-- **Clean GitHub before you clone anything again.** Cloning or opening a
-  poisoned repository on a clean computer starts the same cycle from scratch
-  ([Developer's Guide][osm-guide]).
-
-OpenSourceMalware's own sequence agrees on the computer first. It puts
-credential rotation after cleaning both the computer and GitHub; this site
-puts it between the two, because the token on an infected computer is what
-re-pushes into a cleaned remote
-([Order matters](/docs/guides/order/);
-[AGENTS.md](https://github.com/meSingh/polinrider-scanner/blob/main/AGENTS.md#non-negotiable-order)).
-
-## What a real cleanup taught us
-
-This tool exists because its maintainer cleaned an infected account and a
-backup drive and could not tell which of seventeen scripts to run next
-([ADR-0032][adr-0032]). Three lessons from that work shape every step below.
-
-- **The commit before the attack is often the previous attack.** On the
-  account the first version was built against, two of ten obvious restore
-  targets were already infected. Every candidate is now read before it is
-  offered ([ADR-0010][adr-0010]).
-- **Nobody deletes the clone.** The advice "delete the clone and re-clone"
-  is correct and usually ignored, because the clone holds unpushed work. So
-  `clean` cuts the payload out of a build config in place and keeps the
-  original ([ADR-0031][adr-0031]).
-- **Evidence must live outside your projects.** An early quarantine folder
-  sat inside the scanned tree, and the next scan reported the machine
-  infected by its own evidence. Quarantine and repository copies now default
-  to folders no scan walks
-  ([AGENTS.md](https://github.com/meSingh/polinrider-scanner/blob/main/AGENTS.md#gotchas-each-of-which-cost-real-time)).
+The whole cleanup on one page, in the order from
+[Order matters](/docs/guides/order/). Each step links the guide with the
+detail. For the reasoning behind each step, read
+[How to get rid of PolinRider](/news/2026-11-04-developers-guide-getting-rid-of-polinrider/).
 
 ## Before you start
 
-Do these from a computer you trust, in a few minutes, before the long work.
+From a computer you trust, before the long work:
 
-1. **Turn off automatic tasks in VS Code everywhere**, not in one project.
-   Search the settings for "task" and set *Allow Automatic Tasks* to off or
-   prompt. Opening a folder is otherwise enough to run the payload again
-   ([Developer's Guide][osm-guide]).
-2. **Freeze the repositories.** On every repository the account can reach,
-   turn on branch protection that blocks force-pushes and requires signed
-   commits, and pause automatic deploys. The propagation depends on an
-   amended commit and a force-push, so a repository that refuses force-pushes
-   stops it whatever credential is pushing. Signed commits are a tripwire,
-   not a guarantee, if the signing key was on the same computer
-   ([Developer's Guide][osm-guide]).
-3. **Suspend any OAuth App or GitHub App you do not recognise.** It takes
-   seconds and closes a door that a full rotation reaches only later
-   ([Developer's Guide][osm-guide]).
-4. **Tell your collaborators, your forks and anyone who installs your
-   package now.** A collaborator who is still infected can reinfect you after
-   you finish ([Developer's Guide][osm-guide]). In one organization
-   OpenSourceMalware traced, a force-push from a different contributor put the
-   payload back after each of three cleanups
-   ([A/B Testing][osm-ab]).
-5. **Do not open, install or build any affected project** until it is
-   checked. If VS Code asks whether to trust a folder, say no
-   ([A/B Testing][osm-ab]).
+1. Turn off automatic tasks in VS Code for every folder: search the settings
+   for "task" and set *Allow Automatic Tasks* to off.
+2. On every repository the account can reach, block force-pushes, require
+   signed commits and pause automatic deploys.
+3. Suspend any OAuth App or GitHub App you do not recognise.
+4. Tell your collaborators and anyone who installs your package.
+5. Do not open, build or `git pull` any affected project until it is checked.
 
-## Step 1. This computer
+These come from OpenSourceMalware's
+[developer's guide](https://opensourcemalware.com/blog/developer-guide-getting-over-polinrider).
 
-Run `polinrider` with no arguments and answer `computer`, on every computer
-that has pushed to the affected repositories. It reads, shows what it found
-and changes nothing until you type `yes`
-([A machine](/docs/guides/machine/)).
+## 1. Every computer
 
-### What it reads
+On every computer that has pushed to the affected repositories:
 
-In one pass: the related `MicrosoftSystem64` implant by its files, process,
-scheduled task and Run entry; editor extensions; editor tasks that run on
-folder open; build configs; fake fonts; the propagation script; known-bad
-packages in every manifest and lockfile; Python startup files; what starts by
-itself; shell startup files and PowerShell profiles; git hooks; npm
-configuration and npm's own program files; interpreters running inline code;
-live connections; and an inventory of the keys and credential files that
-would have to be changed ([A machine](/docs/guides/machine/)). Since 2.3.0 it
-also reads `~/.ssh/authorized_keys` for a published attacker key and names
-the line, without editing the file
-([release 2.3.0](/releases/v2.3.0/)).
+1. Run `polinrider` and answer `computer`. It reads and reports; nothing
+   changes yet. [A machine](/docs/guides/machine/)
+2. Read each `[HIT]` and `[review]` line.
+   [Is it PolinRider or a false alarm?](/news/2026-11-04-polinrider-or-false-alarm/)
+3. Type `yes` to move confirmed files into quarantine.
+4. Run each command it prints for what it does not change itself: a startup
+   entry, a crontab line, a shell startup file, a line in
+   `~/.ssh/authorized_keys`, a process still running.
+5. If npm's own program files were confirmed, reinstall Node.js before you
+   run `npm` again.
+6. Decide whether to rebuild (below).
 
-Two kinds of persistence live inside a tool rather than beside it, and both
-survive cleaning every repository. npm's own `lib/cli.js` has been found
-replaced with a copy about 1 MB in size, so every `npm` and `npx` command
-starts the payload again, after a reboot too
-([Developer's Guide][osm-guide]). Python runs the `import` lines of every
-`.pth` file in `site-packages` each time it starts. Both are read in every
-installation in the usual places, version managers included
-([A machine](/docs/guides/machine/); [ADR-0042][adr-0042]).
+What `yes` does and does not do:
 
-"What starts by itself" is where PolinRider's hands-on stage has been seen
-hiding on Windows: a scheduled task, a Run key and a Startup script all named
-`MicrosoftCLROptimization`, after a real .NET component, under the SYSTEM
-profile ([Deception.Pro][dp]), and the same name in a user's own Run key and
-Startup folder in a case on the BleepingComputer forums
-([PolinRider keeps coming back after you clean it](/news/2026-11-04-polinrider-keeps-coming-back/)).
-The tool reads the Run and RunOnce values, both Startup folders and the
-scheduled tasks ([A machine](/docs/guides/machine/)).
-
-### What `yes` does, and what it refuses
-
-- **Nothing is deleted.** Confirmed files move into a new timestamped
-  quarantine folder in your home directory, with a manifest listing where
-  each one came from and a `RESTORE.txt` that puts any of them back. Keep
-  the folder until the incident is closed; it is evidence
-  ([A machine](/docs/guides/machine/);
-  [AGENTS.md](https://github.com/meSingh/polinrider-scanner/blob/main/AGENTS.md#rules-that-are-not-negotiable);
-  [`RESTORE.txt`](https://github.com/meSingh/polinrider-scanner/blob/main/src/quarantine.rs)).
-- **A build config is cut, not moved.** Where the payload was appended to
-  `postcss.config.js`, `eslint.config.mjs` or another config, the infected
-  original is copied to quarantine first and the payload is cut out in
-  place. Your own uncommitted work in that file survives. It never touches
-  git: nothing is staged, committed or reset ([ADR-0031][adr-0031]).
-- **It never edits what you own.** A crontab line, a shell startup file, a
-  PowerShell profile, a Run entry, a scheduled task and a line in
-  `authorized_keys` are never changed for you. Each finding carries the
-  command that removes it ([A machine](/docs/guides/machine/);
-  [ADR-0049][adr-0049]).
-- **A quarantined login item is still running.** Moving the file does not
-  stop the process it started. The tool prints the command that does
-  ([AGENTS.md](https://github.com/meSingh/polinrider-scanner/blob/main/AGENTS.md#things-that-are-true-and-counter-intuitive)).
-
-If npm's own program file was confirmed, remove Node.js and npm, make sure
-nothing is still running and reinstall before you run `npm` again
-([A machine](/docs/guides/machine/); [Developer's Guide][osm-guide]).
-
-### Still worth doing by hand
-
-These are not in the scanner, or only partly, and each has caught a
-reinfection.
-
-- **Read every line of `~/.ssh/authorized_keys`.** The tool names a key that
-  has been published. The next build can use any comment and any key
-  ([ADR-0049][adr-0049]).
-- **Look for a looping process.** Repeated macOS Keychain prompts asking for
-  GitHub credential access, even after you deny them, are a detached process
-  retrying ([Developer's Guide][osm-guide]). On macOS and Linux,
-  `ps aux | grep -E "(python|node).*-(c|e)"` lists interpreters running
-  inline code; on Windows, list `node.exe` processes with their command lines
-  ([Developer's Guide][osm-guide]). The tool reports these too, and a
-  `[review]` line there is worth a look.
-- **`git reflog` in each project**, for amended commits you do not remember
-  making ([Developer's Guide][osm-guide]).
-- **A fake font anywhere in the tree.** The tool reads every `.woff` and
-  `.woff2` by its first bytes and matches `.llf` by name, but the name and
-  folder keep changing
-  ([A font file that is really JavaScript](/news/2026-11-04-fake-font-javascript/)).
-- **If the computer runs WSL2**, check the Windows side as well. Inside a
-  Linux guest the loader also starts `node.exe`, so an infection in the guest
-  reaches the Windows host
-  ([2026-10-05 indicator review](/news/indicator-reviews/2026-10-05/)).
-
-### When to reinstall instead
-
-The tool says "This machine cannot be trusted until it is rebuilt" only when
-something proves the payload ran there: an implant, a login item, a git hook,
-an editor extension, a startup file, a process or a live connection. When
-the only findings are files inside projects, it says so and tells you how to
-decide: the payload runs when an infected project is built or opened in an
-editor, and if that happened, or you are not sure, treat the computer as
-compromised ([ADR-0034][adr-0034]).
-
-OpenSourceMalware's guide says a factory reset is not needed, on the
-condition that the steps are followed in order, because the payload does
-not stay on disk between runs ([Developer's Guide][osm-guide]). Its own
-replaced `cli.js` is a file that persists, and so are the logon entries
-above. The rule here: persistence found means rebuild. Files in projects
-only, with no persistence and an account of what ran, means quarantine,
-delete every clone, rotate everything and keep scanning. A rebuild is still
-the safer choice if the computer holds production or financial access
-([README, step 1](https://github.com/meSingh/polinrider-scanner#step-1-check-the-machines)).
-
-Quarantine is containment. A clean reinstall is recovery
-([MicrosoftSystem64 on your computer](/news/2026-11-04-microsoftsystem64/)).
-
-## Step 2. Every credential
-
-This step is yours; the tool only lists the keys and credential files it
-found. Do it from a computer you trust, after step 1 and before step 3.
-Assume everything reachable from the affected account is in someone else's
-hands ([Order matters](/docs/guides/order/)).
-
-The stolen credential is not always the obvious one. Some victims see no
-foreign login in their GitHub security log, because what was taken was a
-token for a connected platform such as Vercel, Netlify, Railway or Render,
-which holds its own push access through a GitHub App
-([Developer's Guide][osm-guide]). Work through the whole list.
-
-1. **Everything that grants repository write:** every personal access token,
-   every SSH key and signing key, deploy keys on every repository, authorised
-   OAuth Apps and GitHub App installations, Actions secrets and variables
-   and self-hosted runner tokens
-   ([README, step 2][readme-step2]).
-2. **Publish rights:** npm tokens, with a 2FA reset, before you have proof
-   they were used; Packagist, PyPI, Docker Hub and Chrome Web Store
-   credentials ([README, step 2][readme-step2];
-   [Developer's Guide][osm-guide]).
-3. **Everything else the stealer could read:** cloud keys, every value in
-   every `.env` on that computer, database passwords, service keys,
-   kubeconfigs, browser-saved passwords and, if a password manager was
-   unlocked on the computer, everything in its vault
-   ([README, step 2][readme-step2]; [Developer's Guide][osm-guide]).
-4. **Cached Git credentials survive a password change.** Clear the
-   keychain or credential manager entry for GitHub, sign `gh` out and remove
-   `~/.config/gh/hosts.yml` ([README, step 2][readme-step2];
-   [Developer's Guide][osm-guide]).
-5. **A wallet or seed phrase on that computer:** move the funds now. This
-   malware targets them specifically
-   ([README, step 2][readme-step2]).
-
-## Step 3. The repositories
-
-Run `polinrider` and answer `account` for your own repositories or
-`organization` for one you belong to. It needs `gh` installed and signed in,
-and checks that first ([A personal GitHub account](/docs/guides/account/);
-[An organization](/docs/guides/organization/)).
-
-### What it does before it changes anything
-
-1. **Copies every repository** into an evidence folder outside any git
-   working tree. Those copies hold live malware; do not open them in an
-   editor.
-2. **Checks every branch and every tag** against the indicator set, and
-   hashes known campaign files so a renamed one is still found
-   ([release 2.3.0](/releases/v2.3.0/)).
-3. **Reads GitHub's push record** for each repository: who pushed what, and
-   when, by GitHub's clock. The rewriting script cannot forge that record
-   ([Why your Git history looks clean](/threat/#why-your-git-history-looks-clean)).
-4. **Shows a summary**, then asks whether to go through the repositories
-   one at a time, apply one fix to all of them or change nothing
-   ([A personal GitHub account](/docs/guides/account/)).
-
-A familiar name in the push record is the expected case, not a reason to
-dismiss it. The malware pushes as whoever is logged in, so the record shows
-colleagues. Naming one means their computer needs checking and their
-credentials rotating
-([AGENTS.md](https://github.com/meSingh/polinrider-scanner/blob/main/AGENTS.md#rules-that-are-not-negotiable)).
-
-### The five fixes
-
-| Choice | What it does |
+| It does | It does not |
 |---|---|
-| `restore` | Moves each branch back to the newest clean state on GitHub's push record. Offered only where that record shows one, and only after the commit has been fetched and checked clean |
-| `erase` | Rewrites history so the payload is in no commit, force-pushes, then shows how to reset every existing clone |
-| `remove` | One new commit that takes the payload out. History stays as it is |
-| `archive` | A large infected notice at the top of the README, a rewritten description and the repository made read-only. For a repository nobody uses |
-| `skip` | Leaves it |
+| Moves confirmed files into a new folder in your home directory, with a manifest and `RESTORE.txt` | Delete anything |
+| Cuts a payload appended to a build config, keeping the infected original | Stage, commit or reset anything in git |
+| Prints the command for each startup entry and SSH key | Edit a startup entry, a crontab, a profile or `authorized_keys` |
 
-Which one depends on how the payload arrived. If the branch was force-pushed
-to a rewritten history, the push record still holds the earlier commit and
-`restore` goes back to it. If the payload was committed normally, there is no
-earlier state to return to, so `remove` or `erase` is the fix. GitHub serves
-a commit a branch was moved off only until it collects its garbage, so run
-this check early ([A personal GitHub account](/docs/guides/account/)).
+### Checks by hand
 
-Each fix shows a dry run of exactly what would change and pushes only when
-you type `yes`. Every push carries a lease, so a push that landed since the
-check is never overwritten, and afterwards the tool asks GitHub what it now
-shows and reports that ([A personal GitHub account](/docs/guides/account/);
-[ADR-0037][adr-0037]).
+| Check | Why |
+|---|---|
+| Every line of `~/.ssh/authorized_keys` | The tool names a published key; the next build can use another ([ADR-0049](https://github.com/meSingh/polinrider-scanner/blob/main/docs/adr/0049-the-computer-check-reads-authorized-keys.md)) |
+| Windows Run values and scheduled tasks named `MicrosoftCLROptimization`, including under the SYSTEM profile | Seen starting the malware at logon; the tool knows the script by its file name ([2026-10-05 review](/news/indicator-reviews/2026-10-05/)) |
+| Repeated macOS Keychain prompts for GitHub access | A detached process retrying ([OpenSourceMalware](https://opensourcemalware.com/blog/developer-guide-getting-over-polinrider)) |
+| The Windows side of a WSL2 setup | The loader starts `node.exe` from inside the Linux guest ([2026-10-05 review](/news/indicator-reviews/2026-10-05/)) |
+| `git reflog` in each project | Amended commits you do not remember ([OpenSourceMalware](https://opensourcemalware.com/blog/developer-guide-getting-over-polinrider)) |
 
-### Afterwards
+### Rebuild or not
 
-- **Delete every local clone and clone again.** A `git pull` into an
-  infected clone can reinfect the remote
-  ([A personal GitHub account](/docs/guides/account/)). Cleaning files
-  through GitHub's web editor, as OpenSourceMalware suggests, avoids the
-  pull but leaves the infected commit in the history it was amended into
-  ([Developer's Guide][osm-guide]).
-- **Look at the forks.** A fork that syncs from a poisoned upstream carries
-  the payload in either direction ([Developer's Guide][osm-guide]).
-- **If you publish a Go module**, a tagged malicious commit that was fetched
-  once stays downloadable from the module proxy, whatever happens to the
-  repository. Publish a fixed version and a security advisory
-  ([Developer's Guide][osm-guide]).
-- **Once every restore is done**, `polinrider --purge-evidence` deletes the
-  copies it made, after showing what it holds and asking. It deletes only a
-  folder that is its own ([ADR-0046][adr-0046]).
+| Found | Do |
+|---|---|
+| Proof the payload ran here: a login item, startup file, git hook, editor extension, implant, process or connection. The tool says "This machine cannot be trusted until it is rebuilt" | Rebuild |
+| Files inside projects only, and you know nothing infected was built or opened | Quarantine, delete every clone, rotate, keep scanning |
+| Files inside projects only, and you are not sure | Rebuild |
 
-## Step 4. Every future push
+A rebuild is still the safer choice on a computer with production or
+financial access.
+([ADR-0034](https://github.com/meSingh/polinrider-scanner/blob/main/docs/adr/0034-the-verdict-is-followed-by-what-to-do-and-rebuild-is-said-only-on-proof.md);
+[README](https://github.com/meSingh/polinrider-scanner#step-1-check-the-machines))
 
-Copy the CI scanner into each repository, so a reinfection is caught on the
-next push rather than by a stranger:
+## 2. Every credential
 
-```bash
-./ci/install-workflow.sh /path/to/your/repo
-```
+Yours to do, from a computer you trust, after step 1 and before step 3. In
+this order:
 
-It vendors the scanner and the indicator set into the repository and runs on
-every push and pull request, with no third-party action to trust and nothing
-leaving your infrastructure. A copy vendored from 2.1.0 or earlier needs
-re-running with `--force` ([Block PolinRider in CI](/docs/guides/ci/)).
+1. **Repository write:** personal access tokens, SSH and signing keys,
+   deploy keys on every repository, OAuth and GitHub App grants, Actions
+   secrets and variables, self-hosted runner tokens.
+2. **Publish rights:** npm tokens with a 2FA reset, then Packagist, PyPI,
+   Docker Hub and Chrome Web Store.
+3. **Everything else the stealer could read:** cloud keys, every `.env`,
+   database passwords, connected platforms such as Vercel and Netlify,
+   browser-saved passwords and a password manager vault that was unlocked
+   on the computer.
+4. **Cached Git credentials**, which survive a password change.
+5. **A wallet or seed phrase** on that computer: move the funds first.
 
-Then keep the controls from "Before you start": signed commits required,
-force-pushes blocked, automatic tasks off, `npm config set ignore-scripts
-true` with exceptions per project, and a scan weekly for a month, then
-monthly
-([README, step 4](https://github.com/meSingh/polinrider-scanner#step-4-stop-it-happening-again)).
+The full list, with the commands to clear cached credentials, is in the
+[README](https://github.com/meSingh/polinrider-scanner#step-2-rotate-every-credential).
 
-## The false alarms you will see
+## 3. Every repository
 
-A `[HIT]` means something only the malware leaves. A `[review]` line means a
-person has to decide, and each of these is review-only because a normal
-project can have it
-([Is it PolinRider or a false alarm?](/news/2026-11-04-polinrider-or-false-alarm/)).
+1. Run `polinrider` and answer `account` or `organization`. It needs `gh`,
+   signed in. [A personal GitHub account](/docs/guides/account/) ·
+   [An organization](/docs/guides/organization/)
+2. Read the summary. A familiar name in the push record means that person's
+   computer needs step 1 too.
+3. Pick a fix for each repository:
 
-- A `tasks.json` that runs on folder open, when your team wrote it.
-- `folderOpen` or `allowAutomaticTasks` in a file other than `tasks.json`,
-  which runs nothing.
-- A long flat ESLint config that opens with `export default [`.
-- `public/fonts/fa-solid-900.woff2`, a genuine Font Awesome name. Only its
-  first bytes decide.
-- `spellright.dict`, `branch_structure.json` or `clr_init.vbs` from a tool
-  your team uses.
-- Your own detection tooling, a README or an incident write-up that names
-  the indicators ([False positives you will see](/docs/reference/false-positives/)).
+   | The branch was | Fix |
+   |---|---|
+   | Force-pushed to a rewritten history | `restore`, offered only after the earlier commit is fetched and checked clean |
+   | Committed to normally | `remove` (one new commit) or `erase` (rewrite history) |
+   | Not in use | `archive` |
 
-Two findings that are not false alarms, though they look harmless: a
-`.gitignore` that lists `temp_auto_push.bat` means a contributor's computer
-is infected, even if the repository holds no payload
-([Found temp_auto_push.bat in your repository?](/news/2026-11-04-temp-auto-push-bat/));
-and an antivirus detection named for PolinRider means the payload ran. A
-clean scan from antivirus, or from any scanner, is a first pass, not a
-clean bill of health. OpenSourceMalware says this of its own scanner, which
-was built against the campaign's original signature
-([Developer's Guide][osm-guide]).
+4. Type `yes` after reading each dry run.
+5. Delete every local clone and clone again.
+6. Check forks. If you publish a Go module, release a fixed version: the
+   module proxy keeps the infected one
+   ([OpenSourceMalware](https://opensourcemalware.com/blog/developer-guide-getting-over-polinrider)).
+7. When every restore is done, run `polinrider --purge-evidence` to delete
+   the copies it made.
 
-## If the scanner found MicrosoftSystem64
+Run this step early. GitHub serves the commit a branch was moved off only
+until it collects its garbage.
 
-That is related malware from the same DPRK-linked group, not part of
-PolinRider by any report we have read. It is a remote-access trojan that
-takes browser credentials, wallets and SSH keys, and one build leaves the
-attacker's SSH key in `authorized_keys`. The response is the same order, and
-a reinstall is the safer end to it
-([MicrosoftSystem64 on your computer](/news/2026-11-04-microsoftsystem64/)).
+## 4. Every future push
 
-:::tip[Start now]
-Download `polinrider` from the [quick start](/docs/quick-start/) and run it
-with no arguments on the computer in front of you. It asks what to check and
-changes nothing until you type `yes`.
-:::
+1. Vendor the CI scanner into each repository.
+   [Block PolinRider in CI](/docs/guides/ci/)
 
-## Sources
+   ```bash
+   ./ci/install-workflow.sh /path/to/your/repo
+   ```
 
-1. This site: [Order matters](/docs/guides/order/), [A machine](/docs/guides/machine/), [A personal GitHub account](/docs/guides/account/), [An organization](/docs/guides/organization/), [Block PolinRider in CI](/docs/guides/ci/), [False positives you will see](/docs/reference/false-positives/), [release 2.3.0](/releases/v2.3.0/), the [2026-10-05 indicator review](/news/indicator-reviews/2026-10-05/) and the five News posts linked above
-2. polinrider-scanner: [README][readme-step2], [AGENTS.md](https://github.com/meSingh/polinrider-scanner/blob/main/AGENTS.md), [`src/quarantine.rs`](https://github.com/meSingh/polinrider-scanner/blob/main/src/quarantine.rs), [ADR-0010][adr-0010], [ADR-0031][adr-0031], [ADR-0032][adr-0032], [ADR-0034][adr-0034], [ADR-0037][adr-0037], [ADR-0042][adr-0042], [ADR-0046][adr-0046] and [ADR-0049][adr-0049]
-3. OpenSourceMalware, [A Developer's Guide to Getting Rid of PolinRider][osm-guide], August 2026
-4. OpenSourceMalware, [PolinRider is A/B Testing its Way Past Your Detections][osm-ab], 26 September 2026
-5. Deception.Pro, [[Op Report] Hands-on-Keyboard Activity from the DPRK "PolinRider" Supply Chain Attack][dp], 9 September 2026
-
-[osm-guide]: https://opensourcemalware.com/blog/developer-guide-getting-over-polinrider
-[osm-ab]: https://opensourcemalware.com/blog/polinrider-is-a-b-testing-its-way-past-your-detections
-[dp]: https://blog.deception.pro/blog/hok-dprk-polinrider-sep-2026
-[readme-step2]: https://github.com/meSingh/polinrider-scanner#step-2-rotate-every-credential
-[adr-0010]: https://github.com/meSingh/polinrider-scanner/blob/main/docs/adr/0010-restore-targets-are-read-before-they-are-offered.md
-[adr-0031]: https://github.com/meSingh/polinrider-scanner/blob/main/docs/adr/0031-clean-strips-an-appended-payload-in-place-and-never-touches-git.md
-[adr-0032]: https://github.com/meSingh/polinrider-scanner/blob/main/docs/adr/0032-the-guided-flow-changes-something-only-on-a-typed-yes.md
-[adr-0034]: https://github.com/meSingh/polinrider-scanner/blob/main/docs/adr/0034-the-verdict-is-followed-by-what-to-do-and-rebuild-is-said-only-on-proof.md
-[adr-0037]: https://github.com/meSingh/polinrider-scanner/blob/main/docs/adr/0037-a-github-fix-is-planned-on-the-copy-pushed-on-a-yes-and-believed-when-github-shows-it.md
-[adr-0042]: https://github.com/meSingh/polinrider-scanner/blob/main/docs/adr/0042-python-startup-files-and-npm-s-own-files-are-checked-as-persistence.md
-[adr-0046]: https://github.com/meSingh/polinrider-scanner/blob/main/docs/adr/0046-purge-evidence-deletes-only-polinriders-own-copies.md
-[adr-0049]: https://github.com/meSingh/polinrider-scanner/blob/main/docs/adr/0049-the-computer-check-reads-authorized-keys.md
+2. Keep force-pushes blocked and signed commits required.
+3. Scan weekly for a month, then monthly.
+   ([README](https://github.com/meSingh/polinrider-scanner#keep-scanning))

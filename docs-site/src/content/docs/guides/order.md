@@ -39,6 +39,7 @@ way a cleanup fails.
 Running `polinrider` and answering `everything` walks the sequence: this
 computer first, then GitHub. Rotating credentials is yours to do between the
 two. The per-track guides are next, and
-[Getting rid of PolinRider: a developer's guide](/docs/guides/getting-rid-of-polinrider/)
-is the whole sequence on one page: what the tool does at each step, what it
-refuses to do, the checks still worth doing by hand and when to reinstall.
+[Remove PolinRider: the full cleanup checklist](/docs/guides/getting-rid-of-polinrider/)
+puts every step on one page, with the checks still done by hand and when to
+rebuild. The reasoning behind each step is in
+[How to get rid of PolinRider: a developer's guide from a real cleanup](/news/2026-11-04-developers-guide-getting-rid-of-polinrider/).
