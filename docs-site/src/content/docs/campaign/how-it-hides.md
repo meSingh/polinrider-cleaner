@@ -13,10 +13,15 @@ A propagation script, `temp_auto_push.bat`, runs on the infected machine and:
 1. reads the last commit's author and timestamp
 2. **sets the system clock back** to that timestamp
 3. amends the commit with the payload, committing with `--no-verify`
-4. restores the clock and force-pushes with `-uf` to every writable remote
+4. restores the clock and force-pushes the current branch to `origin` with
+   `-uf`, again with `--no-verify`
 
 The result looks like an ordinary, correctly dated commit with your name on
-it, and `git log` will not show you anything wrong.
+it, and `git log` will not show you anything wrong. OpenSourceMalware published
+the script in full in
+[its first report on the campaign](https://opensourcemalware.com/blog/polinrider-dprk-compromised-hundreds-of-github-repos).
+[Found temp_auto_push.bat in your repository?](/polinrider-cleaner/news/2026-11-04-temp-auto-push-bat/)
+walks through it.
 
 ## What this means for detection
 
