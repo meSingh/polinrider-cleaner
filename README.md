@@ -55,7 +55,7 @@
 
    Releases before 3.0.0 were built when this repository was called
    `meSingh/polinrider-cleaner`: see
-   [verifying a release before 3.0.0](https://polinriderscanner.com/reference/verifying/#releases-before-300).
+   [verifying a release before 3.0.0](https://polinriderscanner.com/docs/reference/verifying-before-3/).
 
 3. **Unpack and run it**, with no arguments:
 
@@ -338,7 +338,7 @@ gh attestation verify polinrider-vX.Y.Z-linux-x86_64.tar.gz --repo meSingh/polin
 
 This repository was `meSingh/polinrider-cleaner` until 3.0.0, and releases
 before 3.0.0 carry that name in their attestations:
-[verifying a release before 3.0.0](https://polinriderscanner.com/reference/verifying/#releases-before-300).
+[verifying a release before 3.0.0](https://polinriderscanner.com/docs/reference/verifying-before-3/).
 
 | Signal | What it actually proves |
 |---|---|

@@ -1,4 +1,4 @@
-# 0055. Rename the repository and its packages to polinrider-scanner, from 3.0.0
+# 0057. Rename the repository and its packages to polinrider-scanner, from 3.0.0
 
 | | |
 |---|---|
@@ -96,5 +96,10 @@ A rename is not free, and four parts of it reach past this repository.
 
 ## Related
 
-- No earlier record. The packaging it changes is described in `AGENTS.md`,
-  "Cutting a release".
+- ADR-0055, the plain-Astro site, whose "Moving to a root domain" is the
+  site's half of this move. Its step 4, GitHub redirecting `github.io`
+  addresses to the custom domain, covers the site's address under the new
+  repository name. The old `/polinrider-cleaner/` path is a different project
+  path once the repository is renamed, and GitHub does not redirect project
+  site URLs on a rename, which is why the redirect repository exists.
+- The packaging it changes is described in `AGENTS.md`, "Cutting a release".

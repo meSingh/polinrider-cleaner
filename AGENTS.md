@@ -357,13 +357,13 @@ descending. That was the six-hour scan ([ADR-0025](./docs/adr/0025-walk-the-file
 | Releases | GitHub Releases | Per tag, from `release.yml`: five binary archives, a Windows zip, two `.deb` packages and the source, all attested and in `SHA256SUMS` |
 | Homebrew tap | `meSingh/homebrew-tap` | Installs the binary and `ioc/`. `release.yml` opens the bump pull request; the maintainer merges it |
 | Scoop bucket | `meSingh/scoop-bucket` | Same, from the Windows zip |
-| winget | `microsoft/winget-pkgs` | Package `meSingh.PolinRiderScanner`, not merged yet. The first submission, `meSingh.PolinRiderCleaner`, was withdrawn with the rename (ADR-0055). `release.yml` writes the manifests as the `winget-manifests` artifact; submitting them is by hand |
+| winget | `microsoft/winget-pkgs` | Package `meSingh.PolinRiderScanner`, not merged yet. The first submission, `meSingh.PolinRiderCleaner`, was withdrawn with the rename (ADR-0057). `release.yml` writes the manifests as the `winget-manifests` artifact; submitting them is by hand |
 | Weekly indicator review | claude.ai routine "PolinRider indicator watch (2.0)" | Mondays 08:00 IST. Opens a draft `ioc/YYYY-MM-DD` pull request every week with signed commits, change or no change |
 | Beta binaries | `.github/workflows/beta-build.yml` | Builds and exercises every platform on each push to `main`. The only place the macOS and Windows live checks run |
 | Documentation site | GitHub Pages, from `main`, at `polinriderscanner.com` | `docs-site/`, including the indicator reviews. The domain is set in the repository's Pages settings, not in a `CNAME` file |
 | Old site links | `meSingh/meSingh.github.io` | Redirect pages for `mesingh.github.io/polinrider-cleaner/...`, the site's address before 3.0.0. Keep it while old links get traffic |
 | DNS for both domains | Cloudflare | `polinriderscanner.com`: GitHub Pages records, DNS only, plus the TXT records that verify it to GitHub, Google and Bing. `polinrider.com`: a proxied placeholder (`AAAA 100::`) and a Single Redirect rule, a 301 from every path on the apex and `www` to `https://polinriderscanner.com/threat/` |
-| The old name | `meSingh/polinrider-cleaner` | The repository's name until 3.0.0; GitHub redirects it here. **Never create a repository with that name.** Doing so ends every redirect, including the links in releases before 3.0.0 and in the commits, pull requests and issues the tool has opened on other people's repositories (ADR-0055) |
+| The old name | `meSingh/polinrider-cleaner` | The repository's name until 3.0.0; GitHub redirects it here. **Never create a repository with that name.** Doing so ends every redirect, including the links in releases before 3.0.0 and in the commits, pull requests and issues the tool has opened on other people's repositories (ADR-0057) |
 | Traffic log | `traffic` branch, from `.github/workflows/traffic.yml` | Views, clones, referrers, paths and stars, daily, kept past GitHub's 14 days. Needs the `TRAFFIC_TOKEN` secret: a fine-grained token on this repository with Administration: read only. Release downloads per week, with our own taken off, under `downloads/` on the same branch; that part needs only the workflow token. See "The download history" below |
 
 ### Cutting a release
@@ -500,7 +500,7 @@ A check done with `gh release download` is not counted and needs no record.
 repository's name when it was built, and `gh attestation verify --repo`
 compares against that name. Releases from 3.0.0 on name
 `meSingh/polinrider-scanner`; those before it name `meSingh/polinrider-cleaner`
-(ADR-0055). Every place that prints the verify command uses the new name and
+(ADR-0057). Every place that prints the verify command uses the new name and
 links the site's page for older releases.
 
 ### Maintaining SCORECARD_TOKEN
@@ -569,7 +569,7 @@ machine, a package manager's validation) records it, the same day if
 possible, by running the workflow by hand:
 
 ```bash
-gh workflow run traffic.yml --repo meSingh/polinrider-cleaner -f own_tag=v2.3.0 -f own_files=all -f own_count=1 -f own_date=2026-11-03 -f own_note="release check"
+gh workflow run traffic.yml --repo meSingh/polinrider-scanner -f own_tag=v2.3.0 -f own_files=all -f own_count=1 -f own_date=2026-11-03 -f own_note="release check"
 ```
 
 `own_files` is `all` or file names separated by commas, `*` matching anything

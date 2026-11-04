@@ -48,7 +48,7 @@ gh attestation verify polinrider-__TAG__-macos-arm64.tar.gz \
 
 Releases before 3.0.0 were built when this repository was called
 `meSingh/polinrider-cleaner`, and their attestations carry that name.
-[Verifying a release before 3.0.0](https://polinriderscanner.com/reference/verifying/#releases-before-300) shows the command for them.
+[Verifying a release before 3.0.0](https://polinriderscanner.com/docs/reference/verifying-before-3/) shows the command for them.
 
 The tag itself is GPG-signed:
 
