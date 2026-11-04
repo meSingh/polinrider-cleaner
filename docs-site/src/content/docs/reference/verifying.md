@@ -31,8 +31,17 @@ The Homebrew formula and the Scoop manifest carry the checksums from that same
 In 3.0.0 the repository was renamed from `meSingh/polinrider-cleaner` to
 `meSingh/polinrider-scanner`. Releases up to 2.3.0 were built and attested
 under the old name. Their `SHA256SUMS` and their signed tags check exactly as
-before. How to check their build attestation after the rename is confirmed
-once the rename has been tested, and will be written here.
+before. For their build attestation, `--repo meSingh/polinrider-scanner` does
+not work, but this one command checks a release from any version:
+
+```bash
+gh attestation verify polinrider-v2.3.0-macos-arm64.tar.gz \
+  --owner meSingh \
+  --cert-identity-regex '^https://github\.com/meSingh/polinrider-(cleaner|scanner)/\.github/workflows/release\.yml@refs/tags/v'
+```
+
+The old name, the offline check and how to prove an attestation came from
+this repository: [Verifying releases from before 3.0](/docs/reference/verifying-before-3/).
 
 ## Verify the commits
 

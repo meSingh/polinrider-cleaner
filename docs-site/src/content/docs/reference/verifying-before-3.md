@@ -1,10 +1,6 @@
 ---
 title: Verifying releases from before 3.0
 description: "Releases up to 2.3.0 were built when the repository was called polinrider-cleaner. How to check one of them is genuine now that it is polinrider-scanner."
-# DRAFT. Not built until the rename has been tested. Keep the outcome that
-# the test shows, delete the other, delete this comment and the draft line,
-# and link this page from reference/verifying.md and the quick start.
-draft: true
 ---
 
 In 3.0 the repository was renamed from `meSingh/polinrider-cleaner` to
@@ -30,35 +26,65 @@ git verify-tag v2.3.0
 
 ## The build attestation
 
-<!-- OUTCOME A: keep this section if the rename test shows that the new name
-     verifies an old release. -->
+### One command for every release
 
-**If the test shows the new name works:**
-
-The same command as for a current release works for an old one:
+This checks a release from any version, before or after 3.0. It accepts an
+attestation made by this project's release workflow, from a release tag,
+under either name:
 
 ```bash
-gh attestation verify polinrider-v2.3.0-macos-arm64.tar.gz --repo meSingh/polinrider-scanner
+gh attestation verify polinrider-v2.3.0-macos-arm64.tar.gz \
+  --owner meSingh \
+  --cert-identity-regex '^https://github\.com/meSingh/polinrider-(cleaner|scanner)/\.github/workflows/release\.yml@refs/tags/v'
 ```
 
-<!-- OUTCOME B: keep this section if the new name fails for an old release. -->
+`--owner` limits the lookup to this account, and `--cert-identity-regex`
+requires that the file was signed by `release.yml` in this repository, under
+its old or its new name, while building a tag.
 
-**If the test shows the new name fails:**
+### With the old name
 
-The attestation of a release from before 3.0 names the old repository, so a
-check against the new name does not match. Check it against the name it was
-built under, using the attestation file that ships with the release:
+For a release from before 3.0, the command that worked before the rename
+still works. GitHub redirects the old name to the renamed repository:
+
+```bash
+gh attestation verify polinrider-v2.3.0-macos-arm64.tar.gz --repo meSingh/polinrider-cleaner
+```
+
+The new name does not work for these releases. Their attestations record the
+old name, so `--repo meSingh/polinrider-scanner` fails with
+`Error: verifying with issuer "sigstore.dev"`. That error on a release from
+before 3.0.0 means the wrong name was used, not that the file is fake.
+
+### Offline
+
+Every release ships its attestation as `polinrider-vX.Y.Z.intoto.jsonl`.
+`--bundle` reads it from that file instead of asking GitHub:
 
 ```bash
 gh attestation verify polinrider-v2.3.0-macos-arm64.tar.gz \
   --bundle polinrider-v2.3.0.intoto.jsonl \
-  --owner meSingh \
-  --signer-repo meSingh/polinrider-cleaner
+  --repo meSingh/polinrider-cleaner
 ```
 
-`--bundle` reads the attestation from the file instead of asking GitHub,
-`--owner` limits it to this account, and `--signer-repo` requires that the
-release workflow that signed it ran in the repository under its old name.
+### Proof that it came from this repository
+
+A name can change hands; a repository's ID does not change when it is
+renamed. To be sure the attestation was made in this repository, and not in
+some later repository given the old name, print the ID it records:
+
+```bash
+gh attestation verify polinrider-v2.3.0-macos-arm64.tar.gz \
+  --owner meSingh \
+  --cert-identity-regex '^https://github\.com/meSingh/polinrider-(cleaner|scanner)/\.github/workflows/release\.yml@refs/tags/v' \
+  --format json --jq '.[].verificationResult.signature.certificate.sourceRepositoryIdentifier'
+```
+
+It must print `1358099890`, this repository's ID, for every attestation it
+finds.
+
+All of the above was tested on 4 November 2026 with `gh` 2.100.0, on 2.3.0 and
+2.0.0, after the rename.
 
 ## Or use a current release
 

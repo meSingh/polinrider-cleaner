@@ -21,6 +21,7 @@ export const groups: { label: string; items: [string, string][] }[] = [
     items: [
       ['quick-start', 'Quick start'],
       ['reference/verifying', 'Verifying this repository'],
+      ['reference/verifying-before-3', 'Verifying releases from before 3.0'],
     ],
   },
   {
