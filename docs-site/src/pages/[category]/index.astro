@@ -22,7 +22,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 <Base
   title={c.title}
   titleTag={`${c.pageTitle} | PolinRider Scanner`}
-  description={`${c.description} Part of PolinRider updates, newest first.`}
+  description={`${c.description} Part of PolinRider updates.`}
   type="website"
   schema={[breadcrumbs([{ label: 'Updates', href: `${base}/updates/` }], c.title, abs(Astro.url.pathname))]}
 >
