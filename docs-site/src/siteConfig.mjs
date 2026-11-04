@@ -12,7 +12,8 @@
 // ON_OWN_DOMAIN to true when the domain is live. Until then the site stays
 // at its GitHub Pages address. Steps for the switch: ADR-0055.
 const ON_OWN_DOMAIN = false;
-const DEFAULT_ORIGIN = ON_OWN_DOMAIN ? 'https://polinriderscanner.com' : 'https://mesingh.github.io';
+export const PRODUCTION_ORIGIN = 'https://polinriderscanner.com';
+const DEFAULT_ORIGIN = ON_OWN_DOMAIN ? PRODUCTION_ORIGIN : 'https://mesingh.github.io';
 const DEFAULT_BASE = ON_OWN_DOMAIN ? '' : '/polinrider-cleaner';
 export const SITE_ORIGIN = process.env.SITE_ORIGIN ?? DEFAULT_ORIGIN;
 export const BASE = process.env.SITE_BASE ?? DEFAULT_BASE;
@@ -26,13 +27,18 @@ export const SITE_DESCRIPTION =
 export const REPO_URL = 'https://github.com/meSingh/polinrider-scanner';
 export const EDIT_URL = `${REPO_URL}/edit/main/docs-site/`;
 
-// Cloudflare Web Analytics. Off until this holds the site's token from the
-// Cloudflare dashboard (Analytics & Logs, Web Analytics, the JS snippet's
-// "token" value). While it is empty, nothing is added to any page and the
-// footer says nothing about analytics. With it set, every page loads
-// Cloudflare's beacon script, which counts page views without cookies. The
-// token is public: it appears in every page that loads the beacon.
-export const CF_WEB_ANALYTICS_TOKEN = '';
+// Cloudflare Web Analytics, in its JS-snippet mode (the domain is DNS-only,
+// not proxied). The token is from the Cloudflare dashboard (Analytics &
+// Logs, Web Analytics) and is public: it appears in every page that loads
+// the beacon. The beacon counts page views without cookies.
+export const CF_WEB_ANALYTICS_TOKEN = '916d6aa6c9094d828ac628070245e65c';
+
+// Only the real site is counted: a production build for PRODUCTION_ORIGIN
+// at the root gets Cloudflare's snippet exactly as Cloudflare gives it. Dev
+// servers, local builds for any other address and the GitHub Pages site get
+// no beacon.
+export const ANALYTICS_ON =
+  Boolean(CF_WEB_ANALYTICS_TOKEN) && SITE_ORIGIN === PRODUCTION_ORIGIN && BASE === '' && process.env.NODE_ENV === 'production';
 
 if (CF_WEB_ANALYTICS_TOKEN && !/^[A-Za-z0-9]+$/.test(CF_WEB_ANALYTICS_TOKEN)) {
   throw new Error(`CF_WEB_ANALYTICS_TOKEN is not a Cloudflare Web Analytics token: ${CF_WEB_ANALYTICS_TOKEN}`);

@@ -5,7 +5,7 @@
 // so the footer never claims analytics the page does not load, and never
 // hides analytics it does.
 import Badges from './Badges.astro';
-import { CF_WEB_ANALYTICS_TOKEN, REPO_URL, SITE_TITLE } from '../siteConfig.mjs';
+import { ANALYTICS_ON, REPO_URL, SITE_TITLE } from '../siteConfig.mjs';
 import { releases } from '../releases';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -88,7 +88,7 @@ const columns = [
     </div>
     <div class="bottom">
       <Badges size="md" />
-      {CF_WEB_ANALYTICS_TOKEN && (
+      {ANALYTICS_ON && (
         <p class="privacy">
           No cookies and no trackers. Anonymous page counts through{' '}
           <a href="https://www.cloudflare.com/web-analytics/">Cloudflare Web Analytics</a>.

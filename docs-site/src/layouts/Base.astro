@@ -13,6 +13,7 @@ import ThemeScript from '../components/ThemeScript.astro';
 import {
   BING_SITE_VERIFICATION,
   GOOGLE_SITE_VERIFICATION,
+  ANALYTICS_ON,
   CF_WEB_ANALYTICS_TOKEN,
   SITE_DESCRIPTION,
   SITE_ORIGIN,
@@ -67,16 +68,14 @@ const fullTitle = `${title} | ${SITE_TITLE}`;
 
     {GOOGLE_SITE_VERIFICATION && <meta name="google-site-verification" content={GOOGLE_SITE_VERIFICATION} />}
     {BING_SITE_VERIFICATION && <meta name="msvalidate.01" content={BING_SITE_VERIFICATION} />}
-    {CF_WEB_ANALYTICS_TOKEN && (
+    {ANALYTICS_ON && (
       <script
         is:inline
-        defer
+        type="module"
         src="https://static.cloudflareinsights.com/beacon.min.js"
         data-cf-beacon={JSON.stringify({ token: CF_WEB_ANALYTICS_TOKEN })}
       />
-    )}
-
-    <ThemeScript />
+    )}    <ThemeScript />
     <slot name="head" />
   </head>
   <body>
