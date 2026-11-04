@@ -5,7 +5,8 @@
 // runs when a page is visited.
 //
 // Chrome: CHROME if set, else the usual macOS and Linux paths (GitHub's
-// Ubuntu runners have Google Chrome). Without one the build still succeeds:
+// Ubuntu runners have Google Chrome); CHROME=none skips drawing, for a
+// quicker local build. Without one the build still succeeds:
 // every card becomes a copy of the site's default social-preview.jpg and a
 // warning says so, so no page ever names a missing image.
 import { spawn } from 'node:child_process';
@@ -57,7 +58,7 @@ export function ogImages({ base }) {
         const walk = (d) => { for (const f of readdirSync(d)) { const p = join(d, f); if (statSync(p).isDirectory()) walk(p); else if (f === 'index.html') pages.push(p); } };
         walk(ogRoot);
         const started = Date.now();
-        const chrome = candidates.find((c) => existsSync(c));
+        const chrome = process.env.CHROME === 'none' ? undefined : candidates.find((c) => existsSync(c));
         let b;
         try {
           if (chrome) b = await browser(chrome);
