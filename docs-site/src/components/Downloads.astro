@@ -10,7 +10,7 @@ interface Props { version: string; packages?: boolean }
 const { version, packages = false } = Astro.props;
 const tag = `v${version}`;
 const dl = (file: string) =>
-  `https://github.com/meSingh/polinrider-cleaner/releases/download/${tag}/polinrider-${tag}-${file}`;
+  `https://github.com/meSingh/polinrider-scanner/releases/download/${tag}/polinrider-${tag}-${file}`;
 
 type File = { label: string; note?: string; href: string };
 const rows: { system: string; detail: string; files: File[] }[] = [
@@ -41,8 +41,8 @@ const rows: { system: string; detail: string; files: File[] }[] = [
     ],
   },
 ];
-const release = `https://github.com/meSingh/polinrider-cleaner/releases/tag/${tag}`;
-const sums = `https://github.com/meSingh/polinrider-cleaner/releases/download/${tag}/SHA256SUMS`;
+const release = `https://github.com/meSingh/polinrider-scanner/releases/tag/${tag}`;
+const sums = `https://github.com/meSingh/polinrider-scanner/releases/download/${tag}/SHA256SUMS`;
 ---
 
 <ul class="downloads not-prose">

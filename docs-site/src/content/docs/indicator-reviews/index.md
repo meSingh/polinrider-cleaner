@@ -71,10 +71,10 @@ Two different things, with two different destinations.
 
 | Found | Goes to | Decided by |
 |---|---|---|
-| **An indicator** — a string, package name, host, address, hash, implant path, process name | a line in [`ioc/`](https://github.com/meSingh/polinrider-cleaner/tree/main/ioc/) | the reviewer, following the classification rule below |
+| **An indicator** — a string, package name, host, address, hash, implant path, process name | a line in [`ioc/`](https://github.com/meSingh/polinrider-scanner/tree/main/ioc/) | the reviewer, following the classification rule below |
 | **A technique** — a change in how the campaign spreads, persists or hides | a new check in the scanner | the maintainer. A review describes it and stops |
 
-The classification rule, from [`ioc/README.md`](https://github.com/meSingh/polinrider-cleaner/blob/main/ioc/README.md) and not
+The classification rule, from [`ioc/README.md`](https://github.com/meSingh/polinrider-scanner/blob/main/ioc/README.md) and not
 negotiable: `strong.txt` only if a match means infection with no plausible
 alternative; `weak.txt` if a legitimate project could contain the same string.
 A false positive in `strong.txt` costs every user of this repository a panic. A
@@ -87,7 +87,7 @@ the reviewer actually read.
 ### Package names, since 2.1.0
 
 The binary reads manifests and lockfiles for the packages they install and
-compares names whole ([ADR-0041](https://github.com/meSingh/polinrider-cleaner/blob/main/docs/adr/0041-package-names-are-read-from-manifests-and-compared-whole.md)).
+compares names whole ([ADR-0041](https://github.com/meSingh/polinrider-scanner/blob/main/docs/adr/0041-package-names-are-read-from-manifests-and-compared-whole.md)).
 Outside a manifest a name counts only where it stands on its own. So the rule
 for `bad-packages.txt` changes:
 
@@ -114,7 +114,7 @@ eight are now in `bad-packages.txt`.
 
 ## Adding an entry
 
-1. Copy [`docs-site/indicator-review-template.md`](https://github.com/meSingh/polinrider-cleaner/blob/main/docs-site/indicator-review-template.md)
+1. Copy [`docs-site/indicator-review-template.md`](https://github.com/meSingh/polinrider-scanner/blob/main/docs-site/indicator-review-template.md)
    to `docs-site/src/content/docs/indicator-reviews/YYYY-MM-DD.md`, dated in
    Asia/Kolkata, and fill in the date in its frontmatter.
 2. Fill every section. The **considered and not added** section is not optional
@@ -122,4 +122,4 @@ eight are now in `bad-packages.txt`.
    re-deriving the same rejection.
 3. Add a row to the table above, newest first.
 4. Update the **Indicator review** section at the end of the
-   [main README](https://github.com/meSingh/polinrider-cleaner/blob/main/README.md) with the new date and a two-line summary.
+   [main README](https://github.com/meSingh/polinrider-scanner/blob/main/README.md) with the new date and a two-line summary.

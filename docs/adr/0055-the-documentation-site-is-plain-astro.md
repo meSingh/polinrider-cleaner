@@ -83,9 +83,10 @@ root addresses.
 
 When the move is decided, in one pull request and then in the settings:
 
-1. **The site.** In `docs-site/src/siteConfig.mjs` set `BASE` to `''` and
-   `SITE_ORIGIN` to the new origin, for example `https://example.org`. That
-   is the whole code change; the build checks the rest.
+1. **The site.** In `docs-site/src/siteConfig.mjs` set `ON_OWN_DOMAIN` to
+   `true`, which makes the origin `https://polinriderscanner.com` (decided
+   for 3.0) and the base empty. That is the whole code change; the build
+   checks the rest.
 2. **The domain.** For a subdomain, a `CNAME` record pointing at
    `mesingh.github.io`; for an apex domain, GitHub's published `A` and
    `AAAA` records. Verify the domain in the GitHub account's Pages settings

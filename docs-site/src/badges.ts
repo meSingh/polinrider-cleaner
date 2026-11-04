@@ -18,7 +18,7 @@ export interface Badge {
   live?: boolean;
 }
 
-const repo = 'meSingh/polinrider-cleaner';
+const repo = 'meSingh/polinrider-scanner';
 
 async function json(url: string, headers: Record<string, string> = {}) {
   try {

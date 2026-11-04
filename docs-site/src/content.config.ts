@@ -20,6 +20,9 @@ const page = z.object({
   description: z.string().optional(),
   // A shorter name for lists and the sidebar, where the title is too long.
   sidebar: z.object({ label: z.string().optional() }).optional(),
+  // A page written ahead of a fact it depends on: kept in the repository,
+  // never built, until the line is removed.
+  draft: z.boolean().optional(),
 });
 
 export const collections = {

@@ -20,9 +20,11 @@ const src = fileURLToPath(new URL('./src', import.meta.url));
 // canonical link to the new address for search engines. GitHub Pages serves
 // files only, so these are the redirects there can be.
 const moved = (from, to) => [from, to];
+// The pages in a content folder, leaving out drafts (never built).
 const pages = (dir) =>
   readdirSync(new URL(`./src/content/${dir}/`, import.meta.url))
     .filter((f) => /\.mdx?$/.test(f) && !/^index\./.test(f))
+    .filter((f) => !/^draft:\s*true\s*$/m.test(readFileSync(new URL(`./src/content/${dir}/${f}`, import.meta.url), 'utf8')))
     .map((f) => f.replace(/\.mdx?$/, ''));
 const redirects = Object.fromEntries([
   moved('/quick-start/', '/docs/quick-start/'),

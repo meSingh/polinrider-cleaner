@@ -55,7 +55,7 @@ if (!fromTag) {
   const docs = git('ls-tree', '--full-tree', '-r', '--name-only', tag, prefix)
     .split('\n')
     .filter((f) => /^docs-site\/src\/content\/docs\/(quick-start\.mdx?|(guides|reference|project)\/[^/]+\.mdx?)$/.test(f));
-  const repoFile = `https://github.com/meSingh/polinrider-cleaner/blob/${tag}/`;
+  const repoFile = `https://github.com/meSingh/polinrider-scanner/blob/${tag}/`;
   // The address the site had before; spelt in parts so the build's own check
   // for that address (check-base.mjs) does not stop on this script.
   const oldHost = ['mesingh', 'github', 'io'].join('.');

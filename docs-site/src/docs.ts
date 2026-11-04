@@ -107,6 +107,8 @@ export async function pagesOf(key: string): Promise<Map<string, DocsEntry>> {
   else
     for (const e of await getCollection('docsVersions'))
       if (e.id.startsWith(`${key}/`)) map.set(e.id.slice(key.length + 1), e);
+  // Drafts are never built (content.config.ts).
+  for (const [id, e] of map) if (e.data.draft) map.delete(id);
   return map;
 }
 

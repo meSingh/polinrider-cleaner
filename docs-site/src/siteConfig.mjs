@@ -7,14 +7,22 @@
 // site from the root of a domain, set BASE to '' (and SITE_ORIGIN to that
 // domain). SITE_BASE and SITE_ORIGIN in the environment override both for
 // one build, which is how the root build is tested.
-export const SITE_ORIGIN = process.env.SITE_ORIGIN ?? 'https://mesingh.github.io';
-export const BASE = process.env.SITE_BASE ?? '/polinrider-cleaner';
+//
+// The move to polinriderscanner.com (decided for 3.0) is ready: set
+// ON_OWN_DOMAIN to true when the domain is live. Until then the site stays
+// at its GitHub Pages address. Steps for the switch: ADR-0055.
+const ON_OWN_DOMAIN = false;
+const DEFAULT_ORIGIN = ON_OWN_DOMAIN ? 'https://polinriderscanner.com' : 'https://mesingh.github.io';
+const DEFAULT_BASE = ON_OWN_DOMAIN ? '' : '/polinrider-cleaner';
+export const SITE_ORIGIN = process.env.SITE_ORIGIN ?? DEFAULT_ORIGIN;
+export const BASE = process.env.SITE_BASE ?? DEFAULT_BASE;
 export const SITE_URL = `${SITE_ORIGIN}${BASE}`;
 export const SITE_TITLE = 'PolinRider scanner and cleaner';
 export const SITE_DESCRIPTION =
   'Check a machine, a GitHub account or a whole organization for PolinRider malware, ' +
   'and clean it up. Free and open source. Changes nothing until you say yes.';
-export const REPO_URL = 'https://github.com/meSingh/polinrider-cleaner';
+// The repository, renamed for 3.0. GitHub redirects the old name.
+export const REPO_URL = 'https://github.com/meSingh/polinrider-scanner';
 export const EDIT_URL = `${REPO_URL}/edit/main/docs-site/`;
 
 // Plausible analytics. Off until this holds the site's script ID from the
