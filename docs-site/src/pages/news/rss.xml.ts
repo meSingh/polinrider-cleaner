@@ -3,7 +3,7 @@
 // only: indicator reviews and articles elsewhere are not in the feed.
 import type { APIRoute } from 'astro';
 import { newsPosts } from '../../news';
-import { SITE_URL as site } from '../../siteConfig.mjs';
+import { SITE_TITLE, SITE_URL as site } from '../../siteConfig.mjs';
 
 
 const escape = (s: string) =>
@@ -32,7 +32,7 @@ export const GET: APIRoute = async () => {
   const body = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>PolinRider news</title>
+    <title>${escape(SITE_TITLE)}: News</title>
     <link>${site}/news/</link>
     <atom:link href="${site}/news/rss.xml" rel="self" type="application/rss+xml"/>
     <description>What changed in the PolinRider supply-chain campaign, and what it means if you are cleaning up.</description>

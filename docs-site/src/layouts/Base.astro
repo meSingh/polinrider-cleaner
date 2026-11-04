@@ -47,7 +47,7 @@ const fullTitle = `${title} | ${SITE_TITLE}`;
     <meta name="description" content={description} />
     {hasCanonical && <link rel="canonical" href={url} />}
     <link rel="sitemap" href={`${base}/sitemap-index.xml`} />
-    <link rel="alternate" type="application/rss+xml" title="PolinRider news" href={`${SITE_URL}/news/rss.xml`} />
+    <link rel="alternate" type="application/rss+xml" title={`${SITE_TITLE}: News`} href={`${SITE_URL}/news/rss.xml`} />
     <link rel="icon" href={`${base}/favicon.svg`} type="image/svg+xml" />
     <meta name="generator" content={Astro.generator} />
     {noindex && <meta name="robots" content="noindex, follow" />}

@@ -17,7 +17,8 @@ const DEFAULT_BASE = ON_OWN_DOMAIN ? '' : '/polinrider-cleaner';
 export const SITE_ORIGIN = process.env.SITE_ORIGIN ?? DEFAULT_ORIGIN;
 export const BASE = process.env.SITE_BASE ?? DEFAULT_BASE;
 export const SITE_URL = `${SITE_ORIGIN}${BASE}`;
-export const SITE_TITLE = 'PolinRider scanner and cleaner';
+// The product's name, as Mandeep chose it: title case, "and" written out.
+export const SITE_TITLE = 'PolinRider Scanner and Cleaner';
 export const SITE_DESCRIPTION =
   'Check a machine, a GitHub account or a whole organization for PolinRider malware, ' +
   'and clean it up. Free and open source. Changes nothing until you say yes.';
@@ -48,5 +49,5 @@ export const SOCIAL_IMAGE = {
   url: `${SITE_URL}/social-preview.jpg`,
   width: 1280,
   height: 640,
-  alt: 'polinrider-cleaner: a rider inside a cyan lattice between two rows of servers',
+  alt: 'PolinRider Scanner and Cleaner: a rider inside a cyan lattice between two rows of servers',
 };
