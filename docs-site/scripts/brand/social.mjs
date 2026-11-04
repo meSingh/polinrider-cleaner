@@ -8,13 +8,13 @@
 // variant "checks":   the headline beside the three things it checks.
 // variant "row":      the headline large across the width, the three checks
 //                     in one row along the bottom.
-// public/social-preview.jpg is "headline" at 1200x630.
+// public/social-preview.jpg is "row" at 1200x630 (Mandeep's choice).
 import { spawn } from 'node:child_process';
 import { readFileSync, writeFileSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
-const [variant = 'headline', w = '1200', h = '630', out = 'public/social-preview.jpg'] = process.argv.slice(2);
+const [variant = 'row', w = '1200', h = '630', out = 'public/social-preview.jpg'] = process.argv.slice(2);
 const W = Number(w);
 const H = Number(h);
 const font = resolve('src/assets/fonts/geist-variable.woff2');
@@ -26,7 +26,7 @@ const checks = [
   // "Your computer", not "This computer": on an image there is no "this".
   ['Your computer', 'macOS, Linux, Windows', '<rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M8 20h8M12 16v4"/>'],
   ['Your GitHub account', 'Every repository you own', '<circle cx="12" cy="8" r="4"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>'],
-  ['Your organisation', 'Every repository, branch and tag', '<rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M9 7h1M14 7h1M9 11h1M14 11h1M9 15h1M14 15h1M10 21v-3h4v3"/>'],
+  ['Your GitHub organisation', 'Every repository, branch and tag', '<rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M9 7h1M14 7h1M9 11h1M14 11h1M9 15h1M14 15h1M10 21v-3h4v3"/>'],
 ];
 
 const pad = Math.round(W * 0.06);
@@ -42,12 +42,14 @@ body { margin: 0; }
 .brand { display: flex; align-items: center; gap: 18px; margin: 0; font-size: 34px; font-weight: 650; letter-spacing: -0.02em; }
 .brand svg { width: 64px; height: 64px; flex: none; }
 .mid { flex: 1; display: flex; align-items: center; gap: 56px; }
-.h { margin: 0; font-weight: 750; letter-spacing: -0.04em; line-height: 1.02; font-size: ${big ? 88 : row ? 72 : 64}px; ${big || row ? '' : 'flex: 1;'} }
-.row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 0 0 ${Math.round(H * 0.045)}px; padding: 0; list-style: none; }
-.row li { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border: 2px solid #dfe3ea; border-radius: 16px; background: #f6f8fa; }
-.row svg { color: #0b6a80; flex: none; width: 34px; height: 34px; }
-.row strong { display: block; font-size: 25px; font-weight: 650; letter-spacing: -0.015em; white-space: nowrap; }
-.row small { display: block; margin-top: 2px; color: #474c59; font-size: 18px; white-space: nowrap; }
+.h { margin: 0; font-weight: 750; letter-spacing: -0.04em; line-height: 1.02; font-size: ${big ? 88 : row ? 78 : 64}px; ${big || row ? '' : 'flex: 1;'} }
+/* The checks only say it works everywhere: small and light, so the eye
+ * stays on the headline. */
+.row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0 0 ${Math.round(H * 0.04)}px; padding: 0; list-style: none; }
+.row li { display: flex; align-items: center; gap: 10px; padding: 9px 13px; border: 1.5px solid #e6e9ee; border-radius: 12px; background: #fafbfc; }
+.row svg { color: #0b6a80; flex: none; width: 26px; height: 26px; }
+.row strong { display: block; font-size: 21px; font-weight: 650; letter-spacing: -0.015em; white-space: nowrap; }
+.row small { display: block; margin-top: 1px; color: #474c59; font-size: 16px; white-space: nowrap; }
 .h span { display: block; color: #0b6a80; text-wrap: balance; }
 .checks { display: grid; gap: 14px; margin: 0; padding: 0; list-style: none; width: ${Math.round(W * 0.34)}px; flex: none; }
 .checks li { display: flex; align-items: center; gap: 16px; padding: 16px 20px; border: 2px solid #dfe3ea; border-radius: 16px; background: #f6f8fa; }
