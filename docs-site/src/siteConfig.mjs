@@ -11,7 +11,7 @@
 // The move to polinriderscanner.com (decided for 3.0) is ready: set
 // ON_OWN_DOMAIN to true when the domain is live. Until then the site stays
 // at its GitHub Pages address. Steps for the switch: ADR-0055.
-const ON_OWN_DOMAIN = false;
+const ON_OWN_DOMAIN = true;
 export const PRODUCTION_ORIGIN = 'https://polinriderscanner.com';
 const DEFAULT_ORIGIN = ON_OWN_DOMAIN ? PRODUCTION_ORIGIN : 'https://mesingh.github.io';
 const DEFAULT_BASE = ON_OWN_DOMAIN ? '' : '/polinrider-cleaner';
