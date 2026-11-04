@@ -33,12 +33,12 @@ const prev = at > 0 ? flat[at - 1] : at === -1 ? undefined : { label: 'Overview'
 const next = at === -1 ? flat[0] : flat[at + 1];
 const group = flat[at]?.group;
 
-const crumbs = [{ label: version.latest ? 'Docs' : `Docs ${version.key}`, href: version.root }];
+const crumbs = [{ label: version.latest ? 'Docs' : `Docs ${version.line}.x`, href: version.root }];
 if (group) crumbs.push({ label: group, href: flat.find((i) => i.group === group)!.href });
 ---
 
 <Base title={title} description={description} canonical={canonical} noindex={!version.latest}>
-  <div class="docs wrap">
+  <div class="docs frame">
     <aside class="sidebar no-print" aria-label="Documentation">
       <details class="nav-fold" open>
         <summary>Documentation menu</summary>
@@ -64,11 +64,11 @@ if (group) crumbs.push({ label: group, href: flat.find((i) => i.group === group)
       <h1>{title}</h1>
       <p class="for-version" data-pagefind-ignore>
         {version.latest ? (
-          <>For polinrider {version.release} <span class="tag tag-accent">latest</span></>
+          <>For polinrider {version.line}.x <span class="tag tag-accent">latest</span></>
         ) : (
           <>
-            For polinrider {version.release}. A copy kept as it was at that release.{' '}
-            <a href={canonical ?? `${base}/docs/`}>Read the latest</a>
+            For polinrider {version.line}.x.{' '}
+            <a href={canonical ?? `${base}/docs/`}>Read the docs for the latest release</a>
           </>
         )}
       </p>
@@ -112,7 +112,7 @@ if (group) crumbs.push({ label: group, href: flat.find((i) => i.group === group)
   }
   .body {
     min-width: 0;
-    max-width: var(--content-width);
+    max-width: 56rem;
   }
   h1 {
     margin: 0.75rem 0 0;
@@ -233,8 +233,8 @@ if (group) crumbs.push({ label: group, href: flat.find((i) => i.group === group)
   }
   @media (min-width: 50rem) {
     .docs {
-      grid-template-columns: 15rem minmax(0, 1fr);
-      gap: 3rem;
+      grid-template-columns: var(--side-width) minmax(0, 1fr);
+      gap: var(--frame-gap);
       padding-top: 2.5rem;
     }
     .sidebar {
@@ -251,7 +251,7 @@ if (group) crumbs.push({ label: group, href: flat.find((i) => i.group === group)
   }
   @media (min-width: 72rem) {
     .docs {
-      grid-template-columns: 15rem minmax(0, 1fr) 13rem;
+      grid-template-columns: var(--side-width) minmax(0, 1fr) var(--toc-width);
     }
     .body > :global(.toc) {
       display: none;

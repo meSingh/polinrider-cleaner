@@ -347,11 +347,7 @@ pre.astro-code {
   margin-top: 0;
 }
 
-/* A short command or answer alone in a table cell stays on one line. */
-.prose td > code:only-child {
-  white-space: nowrap;
-  overflow-wrap: normal;
-}
+
 
 .prose .run-block {
   margin-bottom: 1.25rem;
@@ -395,4 +391,19 @@ pre.astro-code {
 .prose .tcard-title .ticon {
   flex: none;
   color: var(--pr-accent);
+}
+
+/* A long path in one cell must wrap rather than take the table's width and
+ * squeeze the other columns into a word per line (seen on the indicator
+ * reviews' Sources tables). Every column keeps a readable minimum, and the
+ * browser gives the rest to the columns with the most text. */
+.prose td {
+  min-width: 9.5rem;
+}
+/* A code span in a cell is capped, so one long path cannot claim the
+ * table's width; it breaks only where it cannot fit. */
+.prose td code {
+  display: inline-block;
+  max-width: min(14rem, 100%);
+  overflow-wrap: anywhere;
 }

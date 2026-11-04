@@ -3,12 +3,15 @@
 //   npm run freeze-docs --prefix docs-site -- 2.4.0
 //   npm run freeze-docs --prefix docs-site -- 2.2.0 --from-tag
 //
-// Copies src/content/docs/ (without the weekly indicator reviews, which are
-// News) to src/content/docs-versions/2.4/, points the copy's links to other
-// docs pages at the copy, and records the version in src/docs-versions.json.
-// A patch release (2.4.1) replaces the 2.4 copy. Run it in the release's
-// pull request, after the docs describe the release; AGENTS.md, "Cutting a
-// release", step 1b. The build fails while the newest release has no copy.
+// Docs are kept per minor release line, shown as 2.4.x: a copy is cut only
+// when the major or minor version changes. Copies src/content/docs/
+// (without the weekly indicator reviews, which are News) to
+// src/content/docs-versions/2.4/, points the copy's links to other docs
+// pages at the copy, and records the line in src/docs-versions.json. A patch
+// release (2.4.1) shares its line's docs, so for one this does nothing. Run
+// it in the release's pull request, after the docs describe the release;
+// AGENTS.md, "Cutting a release", step 1b. The build fails while the newest
+// release line has no copy.
 //
 // --from-tag takes the docs as they were at the release's tag instead
 // (vX.Y.Z, read with git), for a release cut before versioning existed. Its
@@ -28,10 +31,15 @@ if (!/^\d+\.\d+\.\d+$/.test(release)) {
   process.exit(3);
 }
 const line = release.split('.').slice(0, 2).join('.');
+const patch = Number(release.split('.')[2]);
 const root = new URL('../src/', import.meta.url).pathname;
 const from = join(root, 'content/docs');
 const to = join(root, 'content/docs-versions', line);
 
+if (existsSync(to) && patch > 0) {
+  console.log(`freeze-docs: ${release} is a patch release; it shares the ${line}.x docs. Nothing to do.`);
+  process.exit(0);
+}
 if (existsSync(to)) rmSync(to, { recursive: true });
 if (!fromTag) {
   cpSync(from, to, {

@@ -55,6 +55,8 @@ export type DocsEntry = CollectionEntry<'docs'> | CollectionEntry<'docsVersions'
 export interface DocsVersion {
   /** '' for the latest, else 'X.Y'. */
   key: string;
+  /** The minor line, X.Y: shown as X.Y.x. */
+  line: string;
   /** The release it documents, X.Y.Z. */
   release: string;
   root: string; // <base>/docs/ or <base>/docs/2.3/
@@ -81,8 +83,14 @@ export async function builtVersions(): Promise<DocsVersion[]> {
     );
   }
   return [
-    { key: '', release: latest, root: `${base}/docs/`, latest: true },
-    ...versions.frozen.map((v) => ({ key: v.version, release: v.release, root: `${base}/docs/${v.version}/`, latest: false })),
+    { key: '', line, release: latest, root: `${base}/docs/`, latest: true },
+    ...versions.frozen.map((v) => ({
+      key: v.version,
+      line: v.version,
+      release: v.release,
+      root: `${base}/docs/${v.version}/`,
+      latest: false,
+    })),
   ];
 }
 

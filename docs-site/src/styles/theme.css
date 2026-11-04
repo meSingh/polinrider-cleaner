@@ -50,6 +50,12 @@
   --nav-height: 4rem;
   --content-width: 50rem;
   --wide-width: 72rem;
+  /* Pages with a sidebar: the frame, the two side columns and the gap. The
+   * text gets what is left, about 52rem on a wide screen. */
+  --frame-width: 80rem;
+  --side-width: 12rem;
+  --toc-width: 11rem;
+  --frame-gap: 2.5rem;
   --gutter: 1.25rem;
 
   --pr-radius: 14px;

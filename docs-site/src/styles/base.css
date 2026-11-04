@@ -205,3 +205,12 @@ a.card:hover .card-title {
   color: var(--pr-heading);
   font-size: 0.88em;
 }
+
+/* The frame for pages with a sidebar and "On this page" (docs, releases,
+ * reviews, posts): wider than .wrap, so the text column gets the room. */
+.frame {
+  width: 100%;
+  max-width: calc(var(--frame-width) + 2 * var(--gutter));
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}

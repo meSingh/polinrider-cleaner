@@ -1,39 +1,863 @@
 ---
-// The threat page: what PolinRider is, who is at risk, how it gets in, what
-// it does, why history looks clean, the signs, the related malware, a dated
-// timeline and the sources. Written for a person, not a researcher; every
-// claim links to a published report (src/content/threat/index.mdx).
-import { getEntry, render } from 'astro:content';
-import Article from '../../layouts/Article.astro';
+// The threat page, designed as a page rather than a document: what
+// PolinRider is, key figures, how it spreads, who is at risk, how it gets
+// in, what it does, why Git history looks clean, the signs, the related
+// malware, a timeline, what polinrider looks for and the sources. Written
+// for a person, not a researcher. Every figure and claim keeps its source
+// and its qualifier ("about", "reports name", "researchers link").
+import Base from '../../layouts/Base.astro';
+import Crumbs from '../../components/Crumbs.astro';
 import Icon from '../../components/Icon.astro';
+import HistoryCompare from '../../components/HistoryCompare.astro';
+import PageFoot from '../../components/PageFoot.astro';
 
-const entry = (await getEntry('threat', 'index'))!;
-const { Content, headings } = await render(entry);
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+
+const src = {
+  osmMarch: 'https://opensourcemalware.com/blog/polinrider-dprk-compromised-hundreds-of-github-repos',
+  osmBlast: 'https://opensourcemalware.com/blog/polinrider-blast-radius-grows',
+  osmAb: 'https://opensourcemalware.com/blog/polinrider-is-a-b-testing-its-way-past-your-detections',
+  osmHistory: 'https://opensourcemalware.com/blog/how-to-investigate-a-github-repos-real-history',
+  osm2025: 'https://opensourcemalware.com/blog/polinrider-malware-found-in-2025-npm-packages',
+  osmTasks: 'https://opensourcemalware.com/blog/tasksjacker-dprk-attack-github-vscode',
+  osmApril: 'https://opensourcemalware.com/blog/polinrider-rides-again-north-korean-attack-expands-across-github',
+  thn: 'https://thehackernews.com/2026/07/north-korean-hackers-publish-108.html',
+  safedepEth: 'https://safedep.io/polinrider-ethereum-c2-github-repositories/',
+  safedepMs64: 'https://safedep.io/microsoftsystem64-binary-payload-analysis/',
+  dp: 'https://blog.deception.pro/blog/hok-dprk-polinrider-sep-2026',
+};
+
+const stats = [
+  { figure: 'About 4,367', what: 'infected repositories, across 2,152 owners', source: 'OpenSourceMalware, 15 July 2026', href: src.osmBlast },
+  { figure: '108', what: 'malicious packages and extensions across npm, Packagist, Go and Chrome', source: 'The Hacker News, 4 July 2026', href: src.thn },
+  { figure: '35', what: 'GitHub repositories with a loader that reads its server addresses from Ethereum', source: 'SafeDep, 30 September 2026', href: src.safedepEth },
+  { figure: 'May 2025', what: 'the earliest known PolinRider code, found later in nine npm versions', source: 'OpenSourceMalware, 30 October 2026', href: src.osm2025 },
+];
+
+const spread = [
+  { icon: 'computer', title: 'Your computer runs it', text: 'You install a package or an extension, or simply open an infected project in your editor.' },
+  { icon: 'key', title: 'It steals and hides', text: 'It takes your passwords and tokens, and adds itself to the code you work on.' },
+  { icon: 'repo', title: 'It pushes with your account', text: 'It rewrites your last commit, keeps your name and the old date, and force-pushes it.' },
+  { icon: 'user', title: 'The next person opens it', text: 'Anyone who opens or installs that project is hit too, and it starts again.' },
+] as const;
+
+const waysIn = [
+  { icon: 'box', title: 'A package', text: 'From npm, Go or Composer. It runs when the package is installed, or when your build loads it.' },
+  { icon: 'puzzle', title: 'An editor extension', text: 'For VS Code or Cursor. It runs as soon as the editor loads the extension.' },
+  { icon: 'folder', title: 'A project you open', text: 'A cloned repository or a job-interview test. A hidden editor task runs a command the moment the folder opens.' },
+] as const;
+
+const takes = [
+  'Passwords and logged-in sessions saved in your browser',
+  'GitHub tokens and SSH keys, and the login of the gh command',
+  'npm, cloud, database and CI tokens',
+  'Every secret in every .env file it can read',
+  'Cryptocurrency wallets and their recovery phrases',
+];
+
+const timeline = [
+  { when: 'May 2025', text: 'The earliest known PolinRider code, found later in nine npm versions published after an account takeover.', source: 'OpenSourceMalware, 30 October 2026', href: src.osm2025 },
+  { when: '8 March 2026', text: 'First public report: hidden JavaScript added to config files in hundreds of GitHub repositories.', source: 'OpenSourceMalware', href: src.osmMarch },
+  { when: '31 March 2026', text: 'The editor task that runs on folder open, and the history rewriting, described as part of the same operation.', source: 'OpenSourceMalware', href: src.osmTasks },
+  { when: '12 April 2026', text: 'About 1,951 infected repositories across 1,047 owners. Fake font files become part of the kit.', source: 'OpenSourceMalware', href: src.osmApril },
+  { when: '4 July 2026', text: '108 malicious packages and extensions across npm, Packagist, Go and Chrome.', source: 'The Hacker News', href: src.thn },
+  { when: '15 July 2026', text: 'About 4,367 infected repositories across 2,152 owners.', source: 'OpenSourceMalware', href: src.osmBlast },
+  { when: '9 September 2026', text: 'An operator seen working by hand on a decoy network, installing a stealer and a clipboard monitor.', source: 'Deception.Pro', href: src.dp },
+  { when: '26 September 2026', text: 'Fake font files renamed and moved, to get past detection.', source: 'OpenSourceMalware', href: src.osmAb },
+  { when: '30 September 2026', text: 'A loader that reads its server addresses from Ethereum, found in 35 GitHub repositories.', source: 'SafeDep', href: src.safedepEth },
+];
+
+// The indicator files in ioc/, in plain words (src/content/threat/indicators.md).
+const indicators = [
+  { name: 'Text only the malware leaves', file: 'strong.txt', confirmed: true },
+  { name: 'Patterns in file contents, where a part rotates', file: 'strong-patterns.txt', confirmed: true },
+  { name: 'Malicious package names', file: 'bad-packages.txt', confirmed: true },
+  { name: 'File names and paths that are signs on their own', file: 'filenames.txt', confirmed: true },
+  { name: 'Hashes of known files, whatever they are named', file: 'hashes.txt', confirmed: true },
+  { name: 'Attacker SSH keys, removed by you', file: 'ssh-keys.txt', confirmed: true },
+  { name: 'Network addresses, if a live connection matches', file: 'network.txt', confirmed: true },
+  { name: 'Paths of the related implant, if they exist', file: 'implant-paths.txt', confirmed: true },
+  { name: 'Names of the implant program, on an exact match', file: 'implant-names.txt', confirmed: true },
+  { name: 'File names a normal project can also have', file: 'filenames-review.txt', confirmed: false },
+  { name: 'Text a normal project can also have', file: 'weak.txt', confirmed: false },
+];
+
+const sources = [
+  ['OpenSourceMalware', "Hundreds of GitHub Repos Compromised By DPRK's PolinRider Campaign", src.osmMarch, '8 March 2026'],
+  ['OpenSourceMalware', 'PolinRider Confirmed Footprint Grows 6.5x Since March', src.osmBlast, '15 July 2026'],
+  ['OpenSourceMalware', 'PolinRider is A/B Testing its Way Past Your Detections', src.osmAb, '26 September 2026'],
+  ['OpenSourceMalware', "How to Investigate a GitHub Repo's Real History", src.osmHistory, '6 October 2026'],
+  ['The Hacker News', 'North Korean Hackers Publish 108 Malicious Packages and Extensions in PolinRider Campaign', src.thn, '4 July 2026'],
+  ['SafeDep', 'PolinRider Switches to Ethereum C2 in 30+ Repositories', src.safedepEth, '30 September 2026'],
+  ['SafeDep', 'Inside MicrosoftSystem64: A Supply Chain RAT Exfiltrating to HuggingFace', src.safedepMs64, '28 May 2026'],
+  ['Deception.Pro', 'Hands-on-Keyboard Activity from the DPRK "PolinRider" Supply Chain Attack', src.dp, '9 September 2026'],
+] as const;
+
+const ext = { target: '_blank', rel: 'noopener noreferrer' };
 ---
 
-<Article
-  title={entry.data.title}
-  description={entry.data.description}
-  crumbs={[]}
-  headings={headings}
-  section="Threat"
-  file={entry.filePath}
-  class="threat-page"
+<Base
+  title="The PolinRider threat"
+  description="PolinRider hides in developers' projects, steals their logins and spreads to everything they push. How it gets in, what it does, how it hides and the signs to look for."
 >
-  <Content />
-  <div slot="after" class="cta no-print">
-    <p><strong>Worried?</strong> Check your computer, your GitHub account or your organization. It takes a few minutes and changes nothing until you type <code>yes</code>.</p>
-    <a class="pill" href={`${base}/#how`}>Check now <Icon name="arrow" size={18} /></a>
+  <div data-pagefind-body data-pagefind-meta="section:Threat">
+    <header class="hero">
+      <div class="wrap">
+        <Crumbs items={[]} />
+        <p class="eyebrow">Threat briefing</p>
+        <h1 data-pagefind-meta="title">The PolinRider threat</h1>
+        <p class="lead">
+          PolinRider is malware that hides inside software projects. Once it runs on a developer's computer, it steals
+          their passwords and tokens, adds itself to the code they work on and pushes that code with their own account,
+          so the next person who opens the project is hit too. Security researchers link it to North Korea
+          (<a href={src.osmMarch} {...ext}>OpenSourceMalware</a>; <a href={src.thn} {...ext}>The Hacker News</a>).
+        </p>
+        <p class="goal">Its goal is not your code. The code is how it travels. The goal is your logins and your money.</p>
+        <div class="actions no-print">
+          <a class="pill" href={`${base}/#how`}>Check now <Icon name="arrow" size={18} /></a>
+          <a class="textlink" href="#signs-to-look-for">Signs to look for <Icon name="arrow" size={18} /></a>
+        </div>
+      </div>
+    </header>
+
+    <section class="wrap stats-sec" aria-label="Key figures">
+      <ul class="stats">
+        {stats.map((s) => (
+          <li>
+            <span class="figure">{s.figure}</span>
+            <span class="what">{s.what}</span>
+            <a class="source" href={s.href} {...ext}>{s.source}<span class="sr-only"> (opens in a new tab)</span></a>
+          </li>
+        ))}
+      </ul>
+    </section>
+
+    <section class="wrap sec" aria-labelledby="how-it-spreads">
+      <h2 id="how-it-spreads">How it spreads</h2>
+      <ol class="spread">
+        {spread.map((s, i) => (
+          <li>
+            <span class="snum">{i + 1}</span>
+            <span class="sicon"><Icon name={s.icon} size={26} /></span>
+            <strong>{s.title}</strong>
+            <span>{s.text}</span>
+          </li>
+        ))}
+      </ol>
+      <p class="loop"><Icon name="undo" size={18} /> And around again, from every new computer it reaches.</p>
+    </section>
+
+    <section class="wrap sec split" aria-labelledby="am-i-at-risk">
+      <div>
+        <h2 id="am-i-at-risk">Am I at risk?</h2>
+        <p>You could be if you write code and, in the last year or so, you did any of these:</p>
+        <ul class="checklist">
+          <li>installed an npm, Go or Composer package;</li>
+          <li>installed a VS Code or Cursor extension;</li>
+          <li>opened someone else's project in your editor, including one you cloned to review;</li>
+          <li>did a "take-home" coding test for a job interview.</li>
+        </ul>
+        <p>None of these is unusual, which is the point. A check takes a few minutes: <a href={`${base}/docs/quick-start/`}>install and run polinrider</a>.</p>
+      </div>
+      <div>
+        <h2 id="how-it-gets-in">How it gets in</h2>
+        <ul class="ways">
+          {waysIn.map((w) => (
+            <li>
+              <span class="wicon"><Icon name={w.icon} size={22} /></span>
+              <span><strong>{w.title}</strong>{w.text}</span>
+            </li>
+          ))}
+        </ul>
+        <p class="callout">
+          <strong>Opening the folder is enough.</strong> You do not have to run the project, install anything or click
+          anything (<a href={src.osmMarch} {...ext}>OpenSourceMalware</a>; <a href={src.osmAb} {...ext}>fake fonts</a>).
+        </p>
+      </div>
+    </section>
+
+    <section class="band" aria-labelledby="what-it-does">
+      <div class="wrap split">
+        <div>
+          <h2 id="what-it-does">What it does on your computer</h2>
+          <p>
+            First a small piece of hidden JavaScript runs. It fetches the real malware from records stored on public
+            blockchains, which means there is no single website to block or take down
+            (<a href={src.osmMarch} {...ext}>OpenSourceMalware</a>; <a href={src.safedepEth} {...ext}>SafeDep</a>).
+          </p>
+          <p>
+            That second part is built to steal. Reports name the DEV#POPPER remote access tool and the OmniStealer
+            password stealer (<a href={src.thn} {...ext}>The Hacker News</a>).
+          </p>
+          <p>
+            Then it spreads. It adds itself to the projects on your computer and pushes them to GitHub with your
+            account. In one case researchers watched an operator at the keyboard, installing a stealer and a
+            clipboard monitor by hand (<a href={src.dp} {...ext}>Deception.Pro</a>).
+          </p>
+        </div>
+        <div>
+          <p class="takes-title">What it goes after</p>
+          <ul class="takes">
+            {takes.map((t) => <li><Icon name="key" size={18} />{t}</li>)}
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="wrap sec" aria-labelledby="why-your-git-history-looks-clean">
+      <h2 id="why-your-git-history-looks-clean">Why your Git history looks clean</h2>
+      <p class="intro">
+        This is why people miss it. A small script on the infected computer, <code>temp_auto_push.bat</code>, rewrites
+        your last commit and pushes it again (<a href={src.osmMarch} {...ext}>OpenSourceMalware</a>):
+      </p>
+      <ol class="rewrite">
+        <li><span>1</span>It reads your last commit: its date, message and author.</li>
+        <li><span>2</span>It <strong>winds the computer's clock back</strong> to that commit's date.</li>
+        <li><span>3</span>It adds the malware to that commit, keeping your name and message.</li>
+        <li><span>4</span>It puts the clock right and force-pushes the branch.</li>
+      </ol>
+      <p class="intro">
+        So the commit looks exactly as it did before. Your name, your message, the original date. Reading{' '}
+        <code>git log</code> will not show you anything wrong. What it cannot change is GitHub's own record of the
+        push. GitHub writes down every push and force-push with the account that made it and the real time, and none
+        of that comes from the commit (<a href={src.osmHistory} {...ext}>How to investigate a repo's real history</a>).
+      </p>
+      <HistoryCompare />
+      <p class="intro">
+        That record is how polinrider finds the clean version to go back to. GitHub keeps it for a limited time, so
+        check early. Once the record is gone, the infected commit can only be cleaned, not undone.
+      </p>
+    </section>
+
+    <section class="wrap sec" aria-labelledby="signs-to-look-for">
+      <h2 id="signs-to-look-for">Signs to look for</h2>
+      <p class="intro">
+        Each of these is something you can see in a project or on your computer.{' '}
+        <a href={`${base}/news/2026-11-04-polinrider-or-false-alarm/`}>Found something? Is it PolinRider or a false alarm?</a>
+      </p>
+      <ul class="signs">
+        <li>
+          <strong>A font file that is really code</strong>
+          <span>A file such as <code>public/fonts/fa-solid-400.woff2</code> that holds JavaScript instead of a font. A real <code>.woff2</code> font starts with the letters <code>wOF2</code>. The names keep changing (<a href={src.osmAb} {...ext}>fake fonts</a>; <a href={`${base}/news/2026-11-04-fake-font-javascript/`}>our post</a>).</span>
+        </li>
+        <li>
+          <strong>An editor task that runs when you open the folder</strong>
+          <span>A <code>.vscode/tasks.json</code> with <code>"runOn": "folderOpen"</code>, often labelled like a normal tool such as <code>eslint-check</code>, with its output hidden (<a href={src.osmAb} {...ext}>fake fonts</a>).</span>
+        </li>
+        <li>
+          <strong>Code after the end of a config file</strong>
+          <span>In <code>postcss.config.mjs</code>, <code>tailwind.config.js</code>, <code>eslint.config.mjs</code> and similar, extra code after the real end of the file, often pushed far to the right by a long run of spaces (<a href={src.osmMarch} {...ext}>OpenSourceMalware</a>).</span>
+        </li>
+        <li>
+          <strong>temp_auto_push.bat</strong>
+          <span>In a project or listed in a <code>.gitignore</code> nobody on your team wrote. It means a computer that pushes to that project is infected (<a href={`${base}/news/2026-11-04-temp-auto-push-bat/`}>our post</a>).</span>
+        </li>
+        <li>
+          <strong>It keeps coming back</strong>
+          <span>Your antivirus removes it and it is back the next time you run <code>npm run dev</code>. Something that starts it has not been found yet (<a href={`${base}/news/2026-11-04-polinrider-keeps-coming-back/`}>our post</a>).</span>
+        </li>
+        <li>
+          <strong>MicrosoftSystem64</strong>
+          <span>Running on your computer, or folders named <code>.pcl-data</code> and <code>.pcl-state</code> in your home folder. That is related malware, below.</span>
+        </li>
+      </ul>
+    </section>
+
+    <section class="wrap sec split" aria-label="Related malware and reinfection">
+      <div class="panel">
+        <h2 id="related-malware-microsoftsystem64">Related malware: MicrosoftSystem64</h2>
+        <p>
+          <code>MicrosoftSystem64</code> is a remote-access tool installed by malicious npm packages. It is related to
+          PolinRider through the group behind it, not part of PolinRider itself. SafeDep places the packages that
+          install it in a cluster that kmsec.uk and OX Security link to Famous Chollima, also called Contagious
+          Interview, a group tied to North Korea (<a href={src.safedepMs64} {...ext}>SafeDep</a>). OpenSourceMalware
+          considers PolinRider a parallel or sub-campaign of Contagious Interview
+          (<a href={src.osmBlast} {...ext}>OpenSourceMalware</a>). No report we have read calls{' '}
+          <code>MicrosoftSystem64</code> a PolinRider payload.
+        </p>
+        <p>
+          polinrider checks for it too, because it targets the same developers and needs the same response: a program
+          or process named <code>MicrosoftSystem64</code>, and the folders <code>~/.pcl-data</code> and{' '}
+          <code>~/.pcl-state</code>. <a href={`${base}/news/2026-11-04-microsoftsystem64/`}>MicrosoftSystem64 on your computer</a> has the detail.
+        </p>
+      </div>
+      <div class="panel warn">
+        <h2 id="why-cleaning-once-is-not-enough">Why cleaning once is not enough</h2>
+        <p>
+          If you clean GitHub while an infected computer still holds a valid token, the malware pushes itself back
+          within minutes. That is why the order is fixed:
+        </p>
+        <ol class="order">
+          <li>check every computer first;</li>
+          <li>change every password and token;</li>
+          <li>then clean the repositories;</li>
+          <li>then scan every future push.</li>
+        </ol>
+        <p><a href={`${base}/docs/guides/order/`}>Order matters</a></p>
+      </div>
+    </section>
+
+    <section class="wrap sec" aria-labelledby="timeline">
+      <h2 id="timeline">Timeline</h2>
+      <ol class="tl">
+        {timeline.map((t) => (
+          <li>
+            <span class="when">{t.when}</span>
+            <span class="dot" aria-hidden="true"></span>
+            <span class="what">{t.text} <a href={t.href} {...ext}>{t.source}<span class="sr-only"> (opens in a new tab)</span></a></span>
+          </li>
+        ))}
+      </ol>
+      <p class="intro">Newer reports, and our weekly indicator reviews, are in <a href={`${base}/news/`}>News</a>.</p>
+    </section>
+
+    <section class="wrap sec" aria-labelledby="what-polinrider-looks-for">
+      <h2 id="what-polinrider-looks-for">What polinrider looks for</h2>
+      <p class="intro">
+        Every indicator traces to a public source. They sit in plain files anyone can read. A confirmed match means
+        infection; a match a normal project could also have is shown for you to review.
+      </p>
+      <ul class="ioc">
+        {indicators.map((i) => (
+          <li class:list={[i.confirmed ? 'verdict-compromised' : 'verdict-review']}>
+            <span class="ioc-kind">
+              <Icon name={i.confirmed ? 'compromised' : 'review'} size={16} />
+              {i.confirmed ? 'Confirmed' : 'Review'}
+            </span>
+            <strong>{i.name}</strong>
+            <code>ioc/{i.file}</code>
+          </li>
+        ))}
+      </ul>
+      <p class="intro"><a href={`${base}/threat/indicators/`}>The full indicator set</a>, with where each one came from.</p>
+    </section>
+
+    <section class="wrap sec" aria-labelledby="sources">
+      <h2 id="sources">Sources</h2>
+      <ol class="sources">
+        {sources.map(([pub, title, href, date]) => (
+          <li>{pub}, <a href={href} {...ext}>{title}</a>, {date}</li>
+        ))}
+      </ol>
+    </section>
   </div>
-</Article>
+
+  <section class="wrap sec no-print">
+    <div class="cta">
+      <p><strong>Worried?</strong> Check your computer, your GitHub account or your organisation. It takes a few minutes and changes nothing until you type <code>yes</code>.</p>
+      <a class="pill" href={`${base}/#how`}>Check now <Icon name="arrow" size={18} /></a>
+    </div>
+    <PageFoot file="src/pages/threat/index.astro" />
+  </section>
+</Base>
 
 <style>
-  /* The opening paragraph reads as the page's summary. */
-  :global(.threat-page .prose > p:first-child) {
+  code {
+    padding: 0.05em 0.35em;
+    border: 1px solid var(--pr-border);
+    border-radius: 6px;
+    background: var(--pr-surface);
     color: var(--pr-heading);
-    font-size: 1.25rem;
+    font-size: 0.88em;
+    overflow-wrap: anywhere;
+  }
+  a:not(.pill):not(.textlink) {
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+  h2 {
+    margin: 0 0 1rem;
+    font-size: clamp(1.5rem, 1.1rem + 1.2vw, 2rem);
+    letter-spacing: -0.025em;
+    scroll-margin-top: calc(var(--nav-height) + 1rem);
+  }
+  .sec {
+    margin-top: clamp(3rem, 7vw, 5rem);
+  }
+  .intro {
+    max-width: 48rem;
+    margin: 0 0 1rem;
+  }
+  .split {
+    display: grid;
+    gap: 2.5rem;
+  }
+  @media (min-width: 60rem) {
+    .split {
+      grid-template-columns: 1fr 1fr;
+      gap: 3.5rem;
+    }
+  }
+
+  /* Hero */
+  .hero {
+    padding-block: 2.5rem 3rem;
+    border-bottom: 1px solid var(--pr-border);
+    background: var(--pr-surface);
+  }
+  .hero .eyebrow {
+    margin-top: 1.5rem;
+    color: var(--pr-bad);
+  }
+  h1 {
+    margin: 0;
+    font-size: clamp(2.25rem, 1.2rem + 4vw, 3.75rem);
+    line-height: 1.05;
+    letter-spacing: -0.035em;
+  }
+  .lead {
+    max-width: 50rem;
+    margin: 1.25rem 0 0;
+    color: var(--pr-heading);
+    font-size: clamp(1.125rem, 1rem + 0.4vw, 1.3125rem);
     line-height: 1.55;
+  }
+  .goal {
+    max-width: 50rem;
+    margin: 1rem 0 0;
+    font-size: 1.125rem;
+  }
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem 1.75rem;
+    margin-top: 1.75rem;
+  }
+
+  /* Key figures */
+  .stats-sec {
+    margin-top: 2.5rem;
+  }
+  .stats {
+    display: grid;
+    gap: 1rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  @media (min-width: 44rem) {
+    .stats {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+  @media (min-width: 66rem) {
+    .stats {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+  .stats li {
+    display: grid;
+    align-content: start;
+    gap: 0.4rem;
+    padding: 1.3rem 1.4rem;
+    border: 1px solid var(--pr-border);
+    border-radius: var(--pr-radius);
+  }
+  .figure {
+    color: var(--pr-heading);
+    font-size: clamp(1.75rem, 1.4rem + 1vw, 2.25rem);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+  }
+  .stats .what {
+    font-size: 0.9375rem;
+    line-height: 1.5;
+  }
+  .stats .source {
+    color: var(--pr-muted);
+    font-size: var(--text-xs);
+  }
+
+  /* How it spreads */
+  .spread {
+    display: grid;
+    gap: 1rem;
+    margin: 1.5rem 0 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: none;
+  }
+  @media (min-width: 56rem) {
+    .spread {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 2.25rem;
+    }
+    .spread li:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      top: 2.6rem;
+      right: -1.85rem;
+      width: 1.4rem;
+      height: 2px;
+      background: var(--pr-border-strong);
+    }
+    .spread li:not(:last-child)::before {
+      content: '';
+      position: absolute;
+      top: calc(2.6rem - 4px);
+      right: -1.9rem;
+      width: 8px;
+      height: 8px;
+      border-top: 2px solid var(--pr-border-strong);
+      border-right: 2px solid var(--pr-border-strong);
+      transform: rotate(45deg);
+    }
+  }
+  .spread li {
+    position: relative;
+    display: grid;
+    align-content: start;
+    gap: 0.45rem;
+    padding: 1.3rem;
+    border: 1px solid var(--pr-border);
+    border-radius: var(--pr-radius);
+    background: var(--pr-surface);
+    font-size: 0.9375rem;
+    line-height: 1.5;
+  }
+  .snum {
+    position: absolute;
+    top: 0.9rem;
+    right: 1rem;
+    color: var(--pr-muted);
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+  }
+  .sicon,
+  .wicon {
+    display: inline-grid;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border: 1px solid var(--pr-bad-border);
+    border-radius: 12px;
+    background: var(--pr-bad-bg);
+    color: var(--pr-bad);
+  }
+  .spread strong {
+    margin-top: 0.4rem;
+    color: var(--pr-heading);
+    font-size: 1.0625rem;
+  }
+  .loop {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 1rem 0 0;
+    color: var(--pr-muted);
+    font-size: var(--text-sm);
+  }
+
+  /* Risk and ways in */
+  .checklist {
+    display: grid;
+    gap: 0.6rem;
+    margin: 1rem 0;
+    padding: 0;
+    list-style: none;
+  }
+  .checklist li {
+    position: relative;
+    padding: 0.75rem 1rem 0.75rem 2.6rem;
+    border: 1px solid var(--pr-border);
+    border-radius: var(--pr-radius-sm);
+  }
+  .checklist li::before {
+    content: '';
+    position: absolute;
+    top: 0.95rem;
+    left: 1rem;
+    width: 0.9rem;
+    height: 0.9rem;
+    border: 2px solid var(--pr-review);
+    border-radius: 4px;
+  }
+  .ways {
+    display: grid;
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .ways li {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem 1.1rem;
+    border: 1px solid var(--pr-border);
+    border-radius: var(--pr-radius);
+    font-size: 0.9375rem;
+    line-height: 1.5;
+  }
+  .ways strong {
+    display: block;
+    color: var(--pr-heading);
+    font-size: 1.0625rem;
+  }
+  .callout {
+    margin: 1rem 0 0;
+    padding: 0.9rem 1.1rem;
+    border-inline-start: 3px solid var(--pr-bad);
+    border-radius: var(--pr-radius-sm);
+    background: var(--pr-bad-bg);
+    font-size: 0.9375rem;
+  }
+  .callout strong {
+    color: var(--pr-heading);
+  }
+
+  /* What it does */
+  .band {
+    margin-top: clamp(3rem, 7vw, 5rem);
+    padding-block: clamp(2.5rem, 6vw, 4rem);
+    border-block: 1px solid var(--pr-border);
+    background: var(--pr-surface);
+  }
+  .band p {
+    max-width: 40rem;
+  }
+  .takes-title {
+    margin: 0 0 1rem;
+    color: var(--pr-heading);
+    font-weight: 650;
+  }
+  .takes {
+    display: grid;
+    gap: 0.6rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .takes li {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.8rem 1rem;
+    border: 1px solid var(--pr-border);
+    border-radius: var(--pr-radius-sm);
+    background: var(--pr-bg);
+    color: var(--pr-heading);
+    font-size: 0.9375rem;
+  }
+  .takes :global(svg) {
+    flex: none;
+    color: var(--pr-bad);
+  }
+
+  /* History */
+  .rewrite {
+    display: grid;
+    gap: 0.75rem;
+    margin: 1.25rem 0 1.5rem;
+    padding: 0;
+    list-style: none;
+  }
+  @media (min-width: 50rem) {
+    .rewrite {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+  .rewrite li {
+    padding: 1rem;
+    border: 1px solid var(--pr-border);
+    border-radius: var(--pr-radius);
+    font-size: 0.9375rem;
+    line-height: 1.5;
+  }
+  .rewrite li > span {
+    display: grid;
+    place-items: center;
+    width: 1.8rem;
+    height: 1.8rem;
+    margin-bottom: 0.6rem;
+    border-radius: 50%;
+    background: var(--pr-pill-bg);
+    color: var(--pr-pill-text);
+    font-size: 0.875rem;
+    font-weight: 650;
+  }
+  .rewrite strong {
+    color: var(--pr-heading);
+  }
+
+  /* Signs */
+  .signs {
+    display: grid;
+    gap: 1rem;
+    margin: 1.25rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  @media (min-width: 44rem) {
+    .signs {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+  @media (min-width: 66rem) {
+    .signs {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+  .signs li {
+    display: grid;
+    align-content: start;
+    gap: 0.5rem;
+    padding: 1.2rem 1.3rem;
+    border: 1px solid var(--pr-border);
+    border-top: 3px solid var(--pr-review);
+    border-radius: var(--pr-radius);
+    background: var(--pr-surface);
+    font-size: 0.9375rem;
+    line-height: 1.55;
+  }
+  .signs strong {
+    color: var(--pr-heading);
+    font-size: 1.0625rem;
+  }
+
+  /* Related malware and order */
+  .panel {
+    padding: 1.6rem;
+    border: 1px solid var(--pr-border);
+    border-radius: var(--pr-radius);
+    font-size: 1rem;
+  }
+  .panel h2 {
+    font-size: 1.375rem;
+  }
+  .panel p {
+    margin: 0.75rem 0 0;
+  }
+  .warn {
+    border-color: var(--pr-review-border);
+    background: var(--pr-review-bg);
+  }
+  .order {
+    margin: 0.75rem 0 0;
+    padding-inline-start: 1.3rem;
+  }
+  .order li + li {
+    margin-top: 0.3rem;
+  }
+
+  /* Timeline */
+  .tl {
+    position: relative;
+    max-width: 52rem;
+    margin: 1.5rem 0 1.5rem;
+    padding: 0;
+    list-style: none;
+  }
+  .tl li {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.2rem;
+    padding: 0 0 1.4rem 1.9rem;
+  }
+  .tl::before {
+    content: '';
+    position: absolute;
+    top: 0.4rem;
+    bottom: 0.4rem;
+    left: 0.4rem;
+    width: 2px;
+    background: var(--pr-border);
+  }
+  .tl .dot {
+    position: absolute;
+    top: 0.35rem;
+    left: 0;
+    width: 0.85rem;
+    height: 0.85rem;
+    border: 2px solid var(--pr-accent);
+    border-radius: 50%;
+    background: var(--pr-bg);
+  }
+  @media (min-width: 50rem) {
+    .tl::before {
+      left: 10.4rem;
+    }
+    .tl li {
+      grid-template-columns: 9rem minmax(0, 1fr);
+      gap: 0 2.4rem;
+      padding-left: 0;
+    }
+    .tl .dot {
+      left: 10rem;
+    }
+    .tl .when {
+      text-align: end;
+    }
+  }
+  .when {
+    color: var(--pr-heading);
+    font-size: var(--text-sm);
+    font-weight: 650;
+  }
+  .tl .what {
+    font-size: 1rem;
+  }
+  .tl .what a {
+    color: var(--pr-muted);
+    font-size: var(--text-sm);
+  }
+
+  /* Indicators */
+  .ioc {
+    display: grid;
+    gap: 0.75rem;
+    margin: 1.25rem 0 1rem;
+    padding: 0;
+    list-style: none;
+  }
+  @media (min-width: 44rem) {
+    .ioc {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+  @media (min-width: 66rem) {
+    .ioc {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+  .ioc li {
+    display: grid;
+    gap: 0.4rem;
+    padding: 1rem 1.1rem;
+    border: 1px solid var(--b);
+    border-radius: var(--pr-radius);
+    background: var(--bg);
+    font-size: 0.9375rem;
+  }
+  .ioc-kind {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--c);
+    font-size: var(--text-xs);
+    font-weight: 650;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .ioc strong {
+    color: var(--pr-heading);
+  }
+  .ioc code {
+    justify-self: start;
+    background: var(--pr-bg);
+    font-size: 0.8125rem;
+  }
+
+  /* Sources and the end */
+  .sources {
+    max-width: 52rem;
+    padding-inline-start: 1.4rem;
+    font-size: 0.9375rem;
+  }
+  .sources li + li {
+    margin-top: 0.4rem;
   }
   .cta {
     display: flex;
@@ -41,8 +865,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     align-items: center;
     justify-content: space-between;
     gap: 1rem 2rem;
-    margin-top: 3rem;
-    padding: 1.4rem 1.6rem;
+    padding: 1.6rem 1.8rem;
     border: 1px solid var(--pr-border);
     border-radius: var(--pr-radius);
     background: var(--pr-surface);
@@ -53,13 +876,5 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
   }
   .cta strong {
     color: var(--pr-heading);
-  }
-  .cta code {
-    padding: 0.05em 0.35em;
-    border: 1px solid var(--pr-border);
-    border-radius: 6px;
-    background: var(--pr-bg);
-    color: var(--pr-heading);
-    font-size: 0.88em;
   }
 </style>

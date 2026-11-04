@@ -29,7 +29,7 @@ const path = Astro.url.pathname;
 ---
 
 <Base title={title} description={description}>
-  <div class:list={['article wrap', extra, { 'has-side': side }]}>
+  <div class:list={['article frame', extra, { 'has-side': side }]}>
     {side && (
       <nav class="side no-print" aria-label={side.title}>
         <p class="side-title">{side.title}</p>
@@ -64,12 +64,12 @@ const path = Astro.url.pathname;
   .article {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    gap: 3rem;
+    gap: var(--frame-gap);
     padding-top: 2.5rem;
   }
   .body {
     min-width: 0;
-    max-width: var(--content-width);
+    max-width: 56rem;
     width: 100%;
     margin-inline: auto;
   }
@@ -98,10 +98,10 @@ const path = Astro.url.pathname;
       display: none;
     }
     .article {
-      grid-template-columns: minmax(0, 1fr) 14rem;
+      grid-template-columns: minmax(0, 1fr) var(--toc-width);
     }
     .article.has-side {
-      grid-template-columns: 14rem minmax(0, 1fr) 14rem;
+      grid-template-columns: var(--side-width) minmax(0, 1fr) var(--toc-width);
     }
     .toc-col {
       display: block;

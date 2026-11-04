@@ -1,0 +1,73 @@
+---
+// The trust badges as small native chips (src/badges.ts). A live check that
+// passed shows a green dot and its word; everything else is neutral.
+import { badges } from '../badges';
+
+interface Props {
+  compact?: boolean;
+}
+const { compact = false } = Astro.props;
+const list = await badges();
+---
+
+<ul class:list={['badges', { compact }]}>
+  {list.map((b) => {
+    const inner = (
+      <>
+        {b.live && <span class:list={['dot', b.tone]} aria-hidden="true" />}
+        <span class="label">{b.label}</span>
+        <span class="value">{b.value}</span>
+      </>
+    );
+    return <li>{b.href ? <a class="chip" href={b.href}>{inner}</a> : <span class="chip">{inner}</span>}</li>;
+  })}
+</ul>
+
+<style>
+  .badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.3rem 0.75rem;
+    border: 1px solid var(--pr-border);
+    border-radius: 999px;
+    background: var(--pr-bg);
+    color: var(--pr-text);
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  a.chip:hover {
+    border-color: var(--pr-border-strong);
+    color: var(--pr-heading);
+  }
+  .label {
+    color: var(--pr-muted);
+  }
+  .value {
+    color: var(--pr-heading);
+    font-weight: 650;
+  }
+  .dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: var(--pr-muted);
+  }
+  .dot.good {
+    background: var(--pr-clean);
+  }
+  .compact .chip {
+    padding: 0.2rem 0.6rem;
+    font-size: 0.75rem;
+  }
+</style>

@@ -24,6 +24,10 @@ on:
     paths: ['docs-site/**', 'docs/adr/**', '.github/workflows/docs.yml']
   pull_request:
     paths: ['docs-site/**', 'docs/adr/**', '.github/workflows/docs.yml']
+  # Every day, so the home page's live badges (CI, Semgrep, OpenSSF
+  # Scorecard), read when the site is built, stay current.
+  schedule:
+    - cron: '41 2 * * *'
   workflow_dispatch:
 
 permissions: read-all
@@ -61,6 +65,10 @@ jobs:
         run: npm ci --prefix docs-site
 
       - name: Build
+        # The token only reads workflow runs for the live badges
+        # (docs-site/src/badges.ts), and lifts the anonymous rate limit.
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: npm run build --prefix docs-site
 
       - name: Upload the site
@@ -71,8 +79,8 @@ jobs:
 
   deploy:
     name: Publish to GitHub Pages
-    # A push to main, or a run of main asked for by hand or by the Release
-    # workflow.
+    # A push to main, the daily run, or a run of main asked for by hand or
+    # by the Release workflow.
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest

@@ -2,6 +2,11 @@
 // articles published elsewhere. Each is read from its own collection. Newest
 // first throughout.
 import { getCollection } from 'astro:content';
+import { longDate } from './releaseDate';
+
+/** Every YYYY-MM-DD in a line written as "2 November 2026". For display
+ * only: the reviews themselves are never edited. */
+export const humanDates = (s: string) => s.replace(/\b(\d{4}-\d{2}-\d{2})\b/g, (d) => longDate(d));
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
@@ -56,7 +61,7 @@ export async function reviews(): Promise<Review[]> {
       id,
       href: `${base}/news/indicator-reviews/${id}/`,
       date: id.slice(0, 10),
-      label: rows.get(id)?.label ?? id,
+      label: humanDates(rows.get(id)?.label ?? id),
       outcome: rows.get(id)?.outcome,
       summary: rows.get(id)?.summary,
     }))

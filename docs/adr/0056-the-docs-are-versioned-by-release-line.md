@@ -21,16 +21,20 @@ keeping a copy in the repository.
 
 ## Decision
 
-- **`/docs/` is always the latest release.** Every docs page says which
-  release it is for: "For polinrider 2.3.0", marked latest. The version is
+- **Docs are kept per minor release line, shown as `2.3.x`.** A patch
+  release changes code, not what a reader does, so it shares its line's
+  docs. A new docs version is cut only when the major or minor version
+  changes (2.3 to 2.4, or 2 to 3).
+- **`/docs/` is always the latest release line.** Every docs page says
+  which line it is for: "For polinrider 2.3.x", marked latest. The line is
   read from the newest release page, so it cannot go stale.
-- **At each release, the docs are frozen** into
+- **At each new minor or major release, the docs are frozen** into
   `docs-site/src/content/docs-versions/X.Y/` by
   `npm run freeze-docs -- X.Y.Z`, in the release's pull request (AGENTS.md,
-  "Cutting a release", step 1b). The copy is served at `/docs/X.Y/`. A patch
-  release replaces its line's copy. Links between docs pages inside the
+  "Cutting a release", step 1b). The copy is served at `/docs/X.Y/`. For a
+  patch release the script says so and does nothing. Links between docs pages inside the
   copy point at the copy; links elsewhere on the site do not change.
-- **The build fails** while the newest release has no frozen copy.
+- **The build fails** while the newest release line has no frozen copy.
 - **A frozen copy is never edited by hand.** It records what the docs said
   for that release.
 - **Every release line since 2.0 is on the site.** 2.0, 2.1 and 2.2 came
@@ -39,8 +43,8 @@ keeping a copy in the repository.
   to this site's layout and links to repository files pointed at GitHub at
   that tag. Their words are as they were at the tag. Nobody is sent to a
   GitHub folder to read old docs.
-- **A version switcher** on every docs page lists the latest and each
-  frozen copy.
+- **A version switcher** on every docs page lists the latest line and each
+  older one. It opens over the sidebar rather than pushing it down.
 - **Frozen copies are not indexed.** Each frozen page has a canonical link
   to the same page under `/docs/` and `noindex`, is left out of the sitemap
   and out of site search, so a search never lands a reader on old

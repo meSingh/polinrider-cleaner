@@ -3,7 +3,7 @@
 // only the page around it changes.
 import { getCollection, render } from 'astro:content';
 import Article from '../../../layouts/Article.astro';
-import { reviews } from '../../../news';
+import { humanDates, reviews } from '../../../news';
 
 export async function getStaticPaths() {
   return (await getCollection('reviews'))
@@ -23,7 +23,7 @@ const description =
 ---
 
 <Article
-  title={entry.data.title}
+  title={humanDates(entry.data.title)}
   description={description}
   crumbs={[
     { label: 'News', href: `${base}/news/` },
