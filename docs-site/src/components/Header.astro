@@ -7,6 +7,7 @@
 // JavaScript.
 import BrandMark from './BrandMark.astro';
 import Icon from './Icon.astro';
+import { releases } from '../releases';
 import GitHubMark from './GitHubMark.astro';
 import Search from './Search.astro';
 import ThemeToggle from './ThemeToggle.astro';
@@ -18,11 +19,13 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 // left edge on every layout.
 const { frame = false } = Astro.props as { frame?: boolean };
 const links = [
+  { label: 'What is PolinRider?', href: `${base}/what-is-polinrider/`, match: '/what-is-polinrider/' },
   { label: 'Docs', href: `${base}/docs/`, match: '/docs/' },
-  { label: 'Threat', href: `${base}/threat/`, match: '/threat/' },
   { label: 'Updates', href: `${base}/updates/`, match: '/updates/' },
-  { label: 'Releases', href: `${base}/releases/`, match: '/releases/' },
 ];
+// The latest release, as a quiet pill beside Download: read from the
+// releases, so it moves on by itself. Releases live in the footer.
+const latest = (await releases())[0];
 // The repository, the last item in the nav, with the GitHub mark.
 const path = Astro.url.pathname;
 const current = (match: string) => (path.startsWith(`${base}${match}`) ? 'page' : undefined);
@@ -43,6 +46,7 @@ const current = (match: string) => (path.startsWith(`${base}${match}`) ? 'page' 
     <div class="tools">
       <Search />
       <ThemeToggle />
+      <a class="version" href={latest.href} aria-label={`Latest release: ${latest.version}`}>v{latest.version}</a>
       <a class="pill dl" href={`${base}/docs/quick-start/`}>Download</a>
       <details class="menu">
         <summary aria-label="Menu"><Icon name="menu" size={22} /></summary>
@@ -51,6 +55,7 @@ const current = (match: string) => (path.startsWith(`${base}${match}`) ? 'page' 
             {links.map((l) => <a href={l.href} aria-current={current(l.match)}>{l.label}</a>)}
             <a href={REPO_URL} class="gh"><GitHubMark size={16} />GitHub</a>
             <a href={`${base}/docs/quick-start/`}>Download</a>
+            <a href={latest.href}>Latest release: v{latest.version}</a>
           </nav>
         </div>
       </details>
@@ -86,14 +91,21 @@ const current = (match: string) => (path.startsWith(`${base}${match}`) ? 'page' 
   }
   .nav {
     display: none;
-    gap: 1.75rem;
-    margin-inline-start: 1.75rem;
+    gap: 1.25rem;
+    margin-inline-start: 1.25rem;
   }
   .nav a {
     color: var(--pr-text);
     font-size: 0.9375rem;
     font-weight: 550;
     text-decoration: none;
+    white-space: nowrap;
+  }
+  @media (min-width: 80rem) {
+    .nav {
+      gap: 1.75rem;
+      margin-inline-start: 1.75rem;
+    }
   }
   .nav a:hover,
   .nav a[aria-current='page'] {
@@ -117,6 +129,9 @@ const current = (match: string) => (path.startsWith(`${base}${match}`) ? 'page' 
     display: inline-flex;
     align-items: center;
     gap: 0.45rem;
+  }
+  .gh :global(svg) {
+    flex: none;
   }
   .dl {
     padding: 0.5rem 1.05rem;
@@ -175,6 +190,26 @@ const current = (match: string) => (path.startsWith(`${base}${match}`) ? 'page' 
     }
     .menu {
       display: none;
+    }
+  }
+  .version {
+    display: none;
+    padding: 0.2rem 0.55rem;
+    border: 1px solid var(--pr-border);
+    border-radius: 999px;
+    color: var(--pr-muted);
+    font-size: var(--text-xs);
+    font-variant-numeric: tabular-nums;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .version:hover {
+    border-color: var(--pr-border-strong);
+    color: var(--pr-heading);
+  }
+  @media (min-width: 50rem) {
+    .version {
+      display: inline-block;
     }
   }
 </style>

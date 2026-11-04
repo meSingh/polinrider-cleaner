@@ -22,12 +22,12 @@ export const GET: APIRoute = async () => {
   const qa = (items: { q: string; a: string }[]) => items.map((i) => `**${i.q}**\n${plain(i.a)}`).join('\n\n');
   const parts = [
     `# ${f.name}\n\n> ${f.description}\n\n${policy}\n\nEvery section below names the page it comes from. Dates are YYYY-MM-DD.\n`,
-    section('The PolinRider threat: questions people ask', `${SITE_URL}/threat/`, qa(threatFaq)),
+    section('What is PolinRider malware? Questions people ask', `${SITE_URL}/what-is-polinrider/`, qa(threatFaq)),
     ...order.map((id) => {
       const e = docs.get(id)!;
       return section(e.data.title, `${SITE_URL}/docs/${id}/`, flatten(e.body ?? ''));
     }),
-    ...threat.filter((t) => t.id !== 'index').map((t) => section(t.data.title, `${SITE_URL}/threat/${t.id}/`, flatten(t.body ?? ''))),
+    ...threat.filter((t) => t.id !== 'index').map((t) => section(t.data.title, `${SITE_URL}/what-is-polinrider/${t.id}/`, flatten(t.body ?? ''))),
     ...posts.map((p) => {
       const e = news.find((n) => n.id === p.id)!;
       const extra = p.id === '2026-11-04-polinrider-or-false-alarm' ? `\n\n## Questions people ask\n\n${qa(falseAlarmFaq)}` : '';

@@ -21,8 +21,8 @@ export function sourcesOf(path) {
   if (section === 'updates') return one('src/content/news', id);
   if (section === 'releases' && !id) return ['src/content/releases'];
   if (section === 'releases') return one('src/content/releases', id);
-  if (section === 'threat' && !id) return ['src/pages/threat/index.astro'];
-  if (section === 'threat') return one('src/content/threat', id);
+  if (section === 'what-is-polinrider' && !id) return ['src/pages/what-is-polinrider/index.astro'];
+  if (section === 'what-is-polinrider') return one('src/content/threat', id);
   if (section === 'about') return ['src/pages/about.astro'];
   return [];
 }

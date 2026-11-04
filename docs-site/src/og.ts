@@ -11,7 +11,7 @@ import { SITE_URL } from './siteConfig.mjs';
 import { answer } from './threat-data';
 
 export interface Card {
-  slug: string; // updates/2026-11-04-..., updates/indicator-reviews/2026-11-02, releases/v3.0.0, threat
+  slug: string; // updates/2026-11-04-..., updates/indicator-reviews/2026-11-02, releases/v3.0.0, what-is-polinrider
   kind: 'post' | 'review' | 'release' | 'threat';
   eyebrow: string;
   title: string;
@@ -42,7 +42,7 @@ export async function cards(): Promise<Card[]> {
   }
   for (const r of await releases())
     out.push({ slug: `releases/${r.id}`, kind: 'release', eyebrow: `Release ${r.version} · ${longDate(r.date)}`, title: (await getCollection('releases')).find((x) => x.id === r.id)!.data.title, subtitle: sentence(r.description) });
-  out.push({ slug: 'threat', kind: 'threat', eyebrow: 'Threat briefing', title: 'PolinRider: the supply\u2011chain malware', subtitle: answer });
+  out.push({ slug: 'what-is-polinrider', kind: 'threat', eyebrow: 'What is PolinRider?', title: 'PolinRider: the supply\u2011chain malware', subtitle: answer });
   return out;
 }
 
