@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="docs/img/hero-lattice.jpg" alt="{{PRODUCT_NAME}}" width="100%">
+  <img src="docs/img/hero-lattice.jpg" alt="PolinRider Scanner and Cleaner" width="100%">
 </p>
 
-<h1 align="center">{{PRODUCT_NAME}}</h1>
+<h1 align="center">PolinRider Scanner and Cleaner</h1>
 
 <p align="center">
   <strong>Find out whether PolinRider reached you, and clean it up.</strong>

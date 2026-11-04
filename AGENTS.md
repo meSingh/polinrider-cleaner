@@ -422,7 +422,7 @@ request.
 ```bash
 git checkout main && git pull
 VERSION=v2.1.0   # the release you are cutting
-git tag -s "$VERSION" -m "{{PRODUCT_NAME}} $VERSION
+git tag -s "$VERSION" -m "PolinRider Scanner and Cleaner $VERSION
 
 Summarise what changed and why it matters to someone running this."
 git push origin "$VERSION"
