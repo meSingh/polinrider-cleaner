@@ -105,8 +105,10 @@ infected project again
 ([A Developer's Guide to Getting Rid of PolinRider][osm-guide]).
 
 It also spreads between people. A teammate who opens one of the rewritten
-repositories in VS Code is infected in turn, and their computer starts doing
-the same ([A/B Testing][osm-ab]). So a repository cleaned while an infected
+repositories in VS Code and trusts the folder is infected in turn, and their
+computer starts doing the same. VS Code's Workspace Trust prompt is the main
+thing standing between them and the task that runs on opening
+([A/B Testing][osm-ab]). So a repository cleaned while an infected
 computer can still push to it is reinfected.
 [Order matters](/polinrider-cleaner/guides/order/) explains the order that
 holds.
@@ -121,9 +123,10 @@ modules spread this way
 
 1. **Do not open the repository in an editor, and do not install or build
    it,** until it has been checked. Opening it in VS Code is how the infection
-   spreads between people ([A/B Testing][osm-ab]), and installing dependencies
-   or running a build runs whatever the project carries
-   ([Real History][osm-history]).
+   spreads between people, and installing dependencies or running a build runs
+   whatever the project carries ([Real History][osm-history]). If VS Code asks
+   whether to trust the folder, say no. If it asks whether to allow the
+   folder's automatic tasks, choose Disallow ([A/B Testing][osm-ab]).
 2. **Find the computer.** In the repository's activity feed, find the
    force-pushes and the account that made each one ([Real History][osm-history]).
    The feed records whose credentials pushed, not who was at the keyboard
