@@ -1,5 +1,6 @@
 ---
-title: Verifying this repository
+title: Verify polinrider before you run it
+description: "How to check that polinrider came from this repository: signed commits, attested releases and SHA256SUMS on every release."
 ---
 
 You are being asked to run unknown code on a machine you may believe is

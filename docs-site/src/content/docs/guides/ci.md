@@ -1,5 +1,6 @@
 ---
-title: Every future push
+title: Block PolinRider in CI
+description: A scanner you copy into your own repository, so every push is checked for PolinRider with no third-party action.
 ---
 
 > **Being migrated.** The full guide currently lives in

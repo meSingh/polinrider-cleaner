@@ -1,5 +1,6 @@
 ---
-title: Quick start
+title: "Scan for PolinRider: quick start"
+description: Download, verify and run one program that checks this computer, a folder, a GitHub account or an organization for PolinRider.
 ---
 
 One program. Download it, verify it, run it. It asks what you need, one

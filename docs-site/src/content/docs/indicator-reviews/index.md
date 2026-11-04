@@ -1,5 +1,6 @@
 ---
-title: Indicator reviews
+title: PolinRider indicator reviews
+description: The PolinRider indicator set is checked against published sources every week. Every review, including the weeks with no change.
 sidebar:
   label: Overview
   order: -99999999

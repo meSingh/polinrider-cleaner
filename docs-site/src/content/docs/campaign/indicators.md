@@ -1,5 +1,6 @@
 ---
-title: The indicator set
+title: PolinRider indicators of compromise
+description: Every indicator the scanner matches, which file it lives in and the public source it came from.
 ---
 
 One source of truth, in [`ioc/`](https://github.com/meSingh/polinrider-cleaner/tree/main/ioc).

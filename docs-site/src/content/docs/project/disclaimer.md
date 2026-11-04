@@ -1,5 +1,6 @@
 ---
 title: Disclaimer
+description: "Read before running: an independent open source project by one person, not a commercial product, and what that means for you."
 ---
 
 Read this before running anything in this repository against systems you care

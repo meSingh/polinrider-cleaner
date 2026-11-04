@@ -1,5 +1,6 @@
 ---
-title: Order matters
+title: "Removing PolinRider: do it in this order"
+description: "Why PolinRider comes back after a cleanup, and the order that stops it: machines, credentials, repositories, then every future push."
 ---
 
 If more than one of these applies to you, the order is fixed and it is not a

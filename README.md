@@ -5,9 +5,14 @@
 <h1 align="center">polinrider-cleaner</h1>
 
 <p align="center">
-  Detect and clean up after the <strong>PolinRider</strong> supply-chain campaign,
-  on a developer machine, in a folder of code, on a GitHub organization or on a
-  personal account.
+  <strong>Find out whether PolinRider reached you, and clean it up.</strong>
+</p>
+
+<p align="center">
+  A scanner and cleaner for the DPRK-linked supply-chain campaign that spreads
+  through npm packages, VS Code extensions and fake interview projects. It
+  checks a developer machine, a folder of code, a personal GitHub account or a
+  whole organization.
 </p>
 
 <p align="center">

@@ -1,5 +1,6 @@
 ---
-title: Why your history looks clean
+title: Why your Git history looks clean after PolinRider
+description: PolinRider backdates its commits and force-pushes them. Why git log shows nothing wrong, and where the real push record still is.
 ---
 
 This is the part worth understanding, because it is the reason a manual review
@@ -14,10 +15,8 @@ A propagation script, `temp_auto_push.bat`, runs on the infected machine and:
 3. amends the commit with the payload, committing with `--no-verify`
 4. restores the clock and force-pushes with `-uf` to every writable remote
 
-The result looks like an ordinary, correctly dated commit with your name on it.
-`git log` will not show you anything wrong. One documented case carried **267
-days** of backdating: a commit claiming 2025-11-06 that was actually pushed on
-2026-07-31.
+The result looks like an ordinary, correctly dated commit with your name on
+it, and `git log` will not show you anything wrong.
 
 ## What this means for detection
 

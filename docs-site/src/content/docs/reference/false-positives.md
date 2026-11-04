@@ -1,5 +1,6 @@
 ---
-title: False positives you will see
+title: PolinRider scanner false positives
+description: Matches that look alarming and are harmless, each confirmed during a real cleanup, and what to do about them.
 ---
 
 All of these were confirmed harmless during a real cleanup. Precision matters

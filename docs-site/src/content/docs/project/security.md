@@ -1,5 +1,6 @@
 ---
 title: Reporting a vulnerability
+description: How to report a security problem in polinrider-cleaner privately.
 ---
 
 If you find a vulnerability **in this tool**, report it privately through

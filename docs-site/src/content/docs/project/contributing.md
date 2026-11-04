@@ -1,5 +1,6 @@
 ---
 title: Contributing
+description: How to report a missed detection or a false positive, and how to change the code or the indicator set.
 ---
 
 The most valuable contributions to this project are not code.

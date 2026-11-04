@@ -1,5 +1,6 @@
 ---
-title: A personal GitHub account
+title: Check your GitHub account for PolinRider
+description: Check every branch and tag of every repository you own, see who pushed what, then restore or clean what was hit.
 ---
 
 Run `polinrider` and answer `account`. It checks every repository of your own account,

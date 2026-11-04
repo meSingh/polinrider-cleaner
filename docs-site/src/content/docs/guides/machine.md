@@ -1,5 +1,6 @@
 ---
-title: A machine
+title: Check a computer for PolinRider
+description: Check macOS, Linux or Windows for PolinRider with one read-only program, before you touch GitHub.
 ---
 
 > The machine check is the `polinrider` binary. macOS, Linux and Windows are

@@ -35,6 +35,56 @@ function plausibleHead(id) {
   ];
 }
 
+// Search engine ownership checks. Each is the `content` value of the meta tag
+// that Google Search Console (URL-prefix property, HTML tag method) or Bing
+// Webmaster Tools (HTML Meta Tag method) asks for. Empty adds nothing.
+const GOOGLE_SITE_VERIFICATION = '';
+const BING_SITE_VERIFICATION = '';
+
+const siteUrl = 'https://mesingh.github.io/polinrider-cleaner';
+
+// Tags every page carries besides Starlight's own: the social card, the News
+// feed and, once their values exist, the two verification tags. Starlight
+// already writes og:title, og:description and twitter:card, but no image.
+const siteHead = [
+  { tag: 'meta', attrs: { property: 'og:image', content: `${siteUrl}/social-preview.jpg` } },
+  { tag: 'meta', attrs: { property: 'og:image:width', content: '1280' } },
+  { tag: 'meta', attrs: { property: 'og:image:height', content: '640' } },
+  {
+    tag: 'meta',
+    attrs: {
+      property: 'og:image:alt',
+      content: 'polinrider-cleaner: a rider inside a cyan lattice between two rows of servers',
+    },
+  },
+  { tag: 'meta', attrs: { name: 'twitter:image', content: `${siteUrl}/social-preview.jpg` } },
+  {
+    tag: 'link',
+    attrs: {
+      rel: 'alternate',
+      type: 'application/rss+xml',
+      title: 'PolinRider news',
+      href: `${siteUrl}/news/rss.xml`,
+    },
+  },
+  ...(GOOGLE_SITE_VERIFICATION
+    ? [{ tag: 'meta', attrs: { name: 'google-site-verification', content: GOOGLE_SITE_VERIFICATION } }]
+    : []),
+  ...(BING_SITE_VERIFICATION
+    ? [{ tag: 'meta', attrs: { name: 'msvalidate.01', content: BING_SITE_VERIFICATION } }]
+    : []),
+];
+
+// The footer. The privacy line appears only while Plausible is switched on,
+// so the footer never claims analytics the page does not load.
+const footerText =
+  'Built by [Mandeep Singh](https://github.com/meSingh) after cleaning up a real ' +
+  'PolinRider incident.' +
+  (PLAUSIBLE_SCRIPT_ID
+    ? ' Visits are counted with [Plausible](https://plausible.io/data-policy), ' +
+      'without cookies or personal data.'
+    : '');
+
 // The site is published to GitHub Pages at /polinrider-cleaner/, so every
 // internal link has to be built with that base or the whole thing 404s once
 // it leaves localhost.
@@ -45,26 +95,25 @@ export default defineConfig({
 
   integrations: [
     starlight({
-      title: 'polinrider-cleaner',
+      title: 'PolinRider scanner and cleaner',
       favicon: '/favicon.svg',
       description:
-        'Detect and clean up after the PolinRider supply-chain campaign, on a machine, a GitHub account, or a whole organization.',
+        'Check a machine, a GitHub account or a whole organization for PolinRider malware, ' +
+        'and clean it up. Free and open source. Changes nothing until you say yes.',
 
       // Lucode: a shadcn/ui-styled Starlight theme. It supplies the component
       // overrides, tokens and Expressive Code config; everything below is
       // ordinary Starlight configuration on top of it.
       plugins: [
         lucode({
-          // Attribution, and where the site came from. Shown on every page.
-          footerText:
-            'Built by [Mandeep Singh](https://github.com/meSingh) after cleaning up a real ' +
-            'PolinRider incident. Source and documentation are [MIT licensed]' +
-            '(https://github.com/meSingh/polinrider-cleaner/blob/main/LICENSE). ' +
-            'Theme: [Lucode](https://github.com/lucas-labs/lucode-starlight-theme) for ' +
-            '[Starlight](https://starlight.astro.build).',
+          // Where the site came from. Shown on every page. The licence notices
+          // of the theme and of Starlight ship with the site in
+          // /third-party-notices.txt; see src/pages/third-party-notices.txt.ts.
+          footerText,
           navLinks: [
             { label: 'Quick start', link: '/quick-start/' },
             { label: 'The campaign', link: '/campaign/what-it-is/' },
+            { label: 'News', link: '/news/' },
             { label: 'Releases', link: '/releases/' },
           ],
         }),
@@ -82,7 +131,7 @@ export default defineConfig({
 
       lastUpdated: true,
 
-      head: plausibleHead(PLAUSIBLE_SCRIPT_ID),
+      head: [...siteHead, ...plausibleHead(PLAUSIBLE_SCRIPT_ID)],
 
       customCss: ['./src/styles/custom.css'],
 
@@ -110,9 +159,10 @@ export default defineConfig({
             { label: 'Every future push', link: '/guides/ci/' },
           ],
         },
-        // Two growing lists, each with its own index page rather than a
+        // Three growing lists, each with its own index page rather than a
         // sidebar group that would grow by one entry a week.
         { label: 'Indicator reviews', link: '/indicator-reviews/' },
+        { label: 'News', link: '/news/' },
         { label: 'Releases', link: '/releases/' },
         {
           label: 'Reference',

@@ -1,5 +1,6 @@
 ---
-title: An organization
+title: Scan a GitHub organization for PolinRider
+description: Check every repository, branch and tag in an organization, then restore or clean what was hit.
 ---
 
 Run `polinrider` and answer `organization`. It checks every repository of an organization you belong to,

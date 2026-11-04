@@ -1,8 +1,9 @@
-// Two sections get a sidebar of their own. On a release page the sidebar is
-// the list of releases, and on an indicator review it is the list of reviews,
-// newest first, with a link back to the rest of the documentation. Every other
-// page keeps the sidebar configured in astro.config.mjs, where each of these
-// sections is a single link: both lists grow, one of them weekly.
+// Three sections get a sidebar of their own. On a release page the sidebar is
+// the list of releases, on an indicator review the list of reviews and on a
+// News post the list of posts, newest first, with a link back to the rest of
+// the documentation. Every other page keeps the sidebar configured in
+// astro.config.mjs, where each of these sections is a single link: all three
+// lists grow, one of them weekly.
 import { getCollection } from 'astro:content';
 import { defineRouteMiddleware, type StarlightRouteData } from '@astrojs/starlight/route-data';
 
@@ -13,7 +14,18 @@ const releasePages = import.meta.glob('./content/docs/releases/v*.{md,mdx}', { e
   { frontmatter: { version: string; date?: string | Date } }
 >;
 
+import { newsPosts } from './news';
+
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+
+// Replace the page's meta and Open Graph descriptions. Starlight builds the
+// head before this middleware runs, so changing the entry's data is too late.
+const setDescription = (route: StarlightRouteData, text: string) => {
+  for (const tag of route.head) {
+    const a = tag.attrs ?? {};
+    if (a.name === 'description' || a.property === 'og:description') a.content = text;
+  }
+};
 
 const link = (label: string, href: string, current: string, badge?: string): Entry => ({
   type: 'link',
@@ -77,7 +89,26 @@ export const onRequest = defineRouteMiddleware(async (context) => {
         ),
       ]),
     ];
+  } else if (id === 'news' || id.startsWith('news/')) {
+    route.sidebar = [
+      back,
+      group('News', [
+        link('All news', `${base}/news/`, current),
+        ...newsPosts().map((p, i) =>
+          link(`${short(p.date)} · ${p.label}`, `${base}/${p.id}/`, current, i === 0 ? 'latest' : undefined),
+        ),
+      ]),
+    ];
   } else if (id === 'indicator-reviews' || id.startsWith('indicator-reviews/')) {
+    // Past reviews are never edited, so the ones written before reviews
+    // carried a description get one here instead of the site-wide fallback.
+    const day = id.match(/^indicator-reviews\/(\d{4}-\d{2}-\d{2})/)?.[1];
+    if (day && !route.entry.data.description) {
+      setDescription(
+        route,
+        `Weekly PolinRider indicator review for ${day}: what changed in the indicator set and why.`,
+      );
+    }
     const dates = (await getCollection('docs'))
       .map((e) => e.id.match(/^indicator-reviews\/(\d{4}-\d{2}-\d{2})$/)?.[1])
       .filter((d): d is string => Boolean(d))

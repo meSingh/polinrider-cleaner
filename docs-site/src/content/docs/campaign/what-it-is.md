@@ -1,5 +1,6 @@
 ---
 title: What PolinRider is
+description: "The DPRK-linked supply-chain campaign: how it gets in through npm, VS Code extensions and interview projects, what it steals and what it leaves."
 ---
 
 A supply-chain campaign attributed to DPRK-linked actors, tracked alongside the
