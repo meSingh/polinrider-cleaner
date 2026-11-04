@@ -42,4 +42,4 @@ two. The per-track guides are next, and
 [Remove PolinRider: the full cleanup checklist](/docs/guides/getting-rid-of-polinrider/)
 puts every step on one page, with the checks still done by hand and when to
 rebuild. What has moved since OpenSourceMalware's August cleanup guide is in
-[Cleaning up PolinRider: what has changed since August](/news/2026-11-04-developers-guide-getting-rid-of-polinrider/).
+[Cleaning up PolinRider: what has changed since August](/updates/2026-11-04-developers-guide-getting-rid-of-polinrider/).
