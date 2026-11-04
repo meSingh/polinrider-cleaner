@@ -9,6 +9,8 @@ import { satteri } from '@astrojs/markdown-satteri';
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { asides } from './src/markdown/asides.mjs';
+import { baseLinks } from './src/markdown/base-links.mjs';
+import { BASE, SITE_ORIGIN } from './src/siteConfig.mjs';
 import { pagefindIndex } from './src/markdown/pagefind.mjs';
 
 const src = fileURLToPath(new URL('./src', import.meta.url));
@@ -36,22 +38,20 @@ const redirects = Object.fromEntries([
 const versions = JSON.parse(readFileSync(new URL('./src/docs-versions.json', import.meta.url), 'utf8'));
 const frozen = versions.frozen.map((v) => `/docs/${v.version}/`);
 
-// The site is published to GitHub Pages at /polinrider-cleaner/, so every
-// internal link has to be built with that base or the whole thing 404s once
-// it leaves localhost.
+// The site's origin and base path come from src/siteConfig.mjs. Every
+// internal link is built with the base, or the whole thing 404s once it
+// leaves localhost.
 export default defineConfig({
-  site: 'https://mesingh.github.io',
-  base: '/polinrider-cleaner',
+  site: SITE_ORIGIN,
+  base: BASE || '/',
   trailingSlash: 'always',
-  redirects: Object.fromEntries(
-    Object.entries(redirects).map(([from, to]) => [from, `/polinrider-cleaner${to}`]),
-  ),
+  redirects: Object.fromEntries(Object.entries(redirects).map(([from, to]) => [from, `${BASE}${to}`])),
 
   integrations: [
     mdx(),
     sitemap({
       filter: (page) => {
-        const path = new URL(page).pathname.replace(/^\/polinrider-cleaner/, '');
+        const path = new URL(page).pathname.slice(BASE.length);
         return !(path in redirects) && !frozen.some((f) => path.startsWith(f));
       },
     }),
@@ -59,7 +59,13 @@ export default defineConfig({
   ],
 
   markdown: {
-    processor: satteri({ features: { directive: true }, mdastPlugins: [asides()] }),
+    processor: satteri({
+      features: { directive: true },
+      mdastPlugins: [asides()],
+      // Pages link to each other from the site root, /docs/guides/order/,
+      // and the base is added here, so content never names it.
+      hastPlugins: [baseLinks(BASE)],
+    }),
     // Both themes are written into every code block as CSS variables, and
     // the page's theme picks one (src/styles/prose.css). Both pass WCAG AA
     // on the code background.

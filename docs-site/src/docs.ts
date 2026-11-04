@@ -57,7 +57,7 @@ export interface DocsVersion {
   key: string;
   /** The release it documents, X.Y.Z. */
   release: string;
-  root: string; // /polinrider-cleaner/docs/ or …/docs/2.3/
+  root: string; // <base>/docs/ or <base>/docs/2.3/
   latest: boolean;
 }
 

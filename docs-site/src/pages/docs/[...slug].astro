@@ -5,6 +5,7 @@ import { render } from 'astro:content';
 import Docs from '../../layouts/Docs.astro';
 import DocsOverview from '../../components/DocsOverview.astro';
 import { builtVersions, navFor, pagesOf, type DocsEntry, type DocsVersion } from '../../docs';
+import { SITE_URL } from '../../siteConfig.mjs';
 
 export async function getStaticPaths() {
   const versions = await builtVersions();
@@ -16,7 +17,7 @@ export async function getStaticPaths() {
     const prefix = version.key ? `${version.key}/` : '';
     paths.push({ params: { slug: version.key || undefined }, props: { version, versions, nav, id: '', entry: undefined, canonical: undefined } });
     for (const [id, entry] of pages) {
-      const canonical = version.latest || !latestPages.has(id) ? undefined : `https://mesingh.github.io/polinrider-cleaner/docs/${id}/`;
+      const canonical = version.latest || !latestPages.has(id) ? undefined : `${SITE_URL}/docs/${id}/`;
       paths.push({ params: { slug: `${prefix}${id}` }, props: { version, versions, nav, id, entry, canonical } });
     }
   }
@@ -58,7 +59,7 @@ const Content = rendered?.Content;
     versions={versions}
     nav={nav}
     id=""
-    canonical={version.latest ? undefined : 'https://mesingh.github.io/polinrider-cleaner/docs/'}
+    canonical={version.latest ? undefined : `${SITE_URL}/docs/`}
   >
     <DocsOverview nav={nav} />
   </Docs>

@@ -16,6 +16,7 @@ import {
   PLAUSIBLE_OPTIONS,
   PLAUSIBLE_SCRIPT_ID,
   SITE_DESCRIPTION,
+  SITE_ORIGIN,
   SITE_TITLE,
   SITE_URL,
   SOCIAL_IMAGE,
@@ -34,7 +35,7 @@ interface Props {
 }
 const { title, description = SITE_DESCRIPTION, type = 'article', canonical, noindex = false, hasCanonical = true } = Astro.props;
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
-const url = canonical ?? new URL(Astro.url.pathname, 'https://mesingh.github.io').href;
+const url = canonical ?? new URL(Astro.url.pathname, SITE_ORIGIN).href;
 const fullTitle = `${title} | ${SITE_TITLE}`;
 const plausibleInit =
   'window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},' +

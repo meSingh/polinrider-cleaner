@@ -50,7 +50,7 @@ Two things do change.
   every push and force-push with the account that made it and GitHub's server
   time. None of that comes from the commit, so a changed clock or a changed Git
   name cannot forge it ([same guide][osm-history]). Our page
-  [Why your Git history looks clean](/polinrider-cleaner/campaign/how-it-hides/)
+  [Why your Git history looks clean](/campaign/how-it-hides/)
   shows where to look.
 
 ## In the repository, or only in `.gitignore`
@@ -106,7 +106,7 @@ computer starts doing the same. VS Code's Workspace Trust prompt is the main
 thing standing between them and the task that runs on opening
 ([A/B Testing][osm-ab]). So a repository cleaned while an infected
 computer can still push to it is reinfected.
-[Order matters](/polinrider-cleaner/docs/guides/order/) explains the order that
+[Order matters](/docs/guides/order/) explains the order that
 holds.
 
 If you publish a Go module or a Composer package straight from the repository,
@@ -133,13 +133,13 @@ modules spread this way
 3. **Check that computer first**, before anything on GitHub. Look for
    `temp_auto_push.bat` and `config.bat` anywhere on its disk
    ([Developer's Guide][osm-guide]). Then
-   [check the rest of it](/polinrider-cleaner/docs/guides/machine/).
+   [check the rest of it](/docs/guides/machine/).
 4. **Rotate every credential, from a clean computer**
    ([PolinRider Jumps the Fence][osm-fence]).
 5. **Then clean the repositories**, and sign your commits from now on
    ([same post][osm-fence]). The
-   [account](/polinrider-cleaner/docs/guides/account/) and
-   [organization](/polinrider-cleaner/docs/guides/organization/) guides cover it.
+   [account](/docs/guides/account/) and
+   [organization](/docs/guides/organization/) guides cover it.
 
 ## What polinrider looks for
 
@@ -150,11 +150,11 @@ confirmed finding, and a `.gitignore` that lists it is a line to review,
 because it points at a contributor's computer rather than a payload in that
 repository. Why the `.gitignore` names and `temp_interactive_push.bat` sit
 where they do is recorded in the
-[2026-09-28 indicator review](/polinrider-cleaner/news/indicator-reviews/2026-09-28/).
+[2026-09-28 indicator review](/news/indicator-reviews/2026-09-28/).
 
 :::tip[Check yours]
 Start with the computer. Download `polinrider` from the
-[quick start](/polinrider-cleaner/docs/quick-start/) and run it with no arguments.
+[quick start](/docs/quick-start/) and run it with no arguments.
 It asks what to check (this computer, a GitHub account or an organization)
 and changes nothing until you type `yes`.
 :::
@@ -169,7 +169,7 @@ and changes nothing until you type `yes`.
 6. OpenSourceMalware, [PolinRider is A/B Testing its Way Past Your Detections][osm-ab], 26 September 2026
 7. OpenSourceMalware, [How to Investigate a GitHub Repo's Real History][osm-history], 6 October 2026
 8. OpenSourceMalware, [GhostAction Copycats PolinRider by Hiding a Stealer in a Fake Font File][osm-ghostaction], 16 October 2026
-9. [Indicator review, 2026-09-28](/polinrider-cleaner/news/indicator-reviews/2026-09-28/) and [`ioc/filenames.txt`](https://github.com/meSingh/polinrider-cleaner/blob/main/ioc/filenames.txt)
+9. [Indicator review, 2026-09-28](/news/indicator-reviews/2026-09-28/) and [`ioc/filenames.txt`](https://github.com/meSingh/polinrider-cleaner/blob/main/ioc/filenames.txt)
 
 [osm-march]: https://opensourcemalware.com/blog/polinrider-dprk-compromised-hundreds-of-github-repos
 [osm-april]: https://opensourcemalware.com/blog/polinrider-rides-again-north-korean-attack-expands-across-github

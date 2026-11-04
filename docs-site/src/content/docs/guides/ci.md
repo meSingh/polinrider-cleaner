@@ -36,4 +36,4 @@ on a longer package as infected. Re-run the installer with `--force`:
 
 Because the scanner contains the indicator strings it searches for, it will
 match itself. The triage filter separates those matches by path; see
-[false positives](/polinrider-cleaner/docs/reference/false-positives/).
+[false positives](/docs/reference/false-positives/).

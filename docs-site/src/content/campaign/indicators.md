@@ -23,7 +23,7 @@ the organization scanner, the account scanner and all three local checks at once
 
 "Related malware" is `MicrosoftSystem64` and the npm packages that install
 it: malware from the same DPRK-linked group, not part of PolinRider itself.
-[What PolinRider is](/polinrider-cleaner/campaign/what-it-is/#related-malware-microsoftsystem64)
+[What PolinRider is](/campaign/what-it-is/#related-malware-microsoftsystem64)
 explains the link and its sources.
 
 Format: one entry per line. Lines starting with `#` and blank lines are ignored.
@@ -56,7 +56,7 @@ The campaign rotates its signatures, so an indicator set that matched in
 September will not necessarily match in December. The set is reviewed weekly
 against the published sources, and **every review is recorded, including the
 weeks where nothing changed**, in
-[the indicator reviews](/polinrider-cleaner/news/indicator-reviews/).
+[the indicator reviews](/news/indicator-reviews/).
 
 A scanner that has quietly stopped matching is worse than no scanner, because it
 returns a clean result somebody believes. The review log is how you check that

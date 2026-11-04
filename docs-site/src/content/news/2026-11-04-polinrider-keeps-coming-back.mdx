@@ -122,7 +122,7 @@ does not mean clean ([Developer's Guide][osm-guide]).
 
 ## The order that holds
 
-[Order matters](/polinrider-cleaner/docs/guides/order/) has the short version.
+[Order matters](/docs/guides/order/) has the short version.
 In full, from OpenSourceMalware's guide and our own:
 
 1. **Stop new infections.** Turn off VS Code's automatic tasks everywhere,
@@ -138,7 +138,7 @@ In full, from OpenSourceMalware's guide and our own:
    by itself: Run keys, Startup folders and scheduled tasks on Windows
    ([thread][bc]; [Deception.Pro][dp]), launch agents and the crontab on macOS
    ([Developer's Guide][osm-guide]; [Found temp_auto_push.bat in your
-   repository?](/polinrider-cleaner/news/2026-11-04-temp-auto-push-bat/)).
+   repository?](/news/2026-11-04-temp-auto-push-bat/)).
 5. **Rotate every credential, after the computers are clean.** Rotated
    earlier, a process still running simply takes the new ones
    ([Developer's Guide][osm-guide]).
@@ -146,7 +146,7 @@ In full, from OpenSourceMalware's guide and our own:
    every repository the account can reach. GitHub's record of who pushed is
    the one thing the rewrite cannot forge
    ([Developer's Guide][osm-guide];
-   [Why your Git history looks clean](/polinrider-cleaner/campaign/how-it-hides/)).
+   [Why your Git history looks clean](/campaign/how-it-hides/)).
 7. **Keep checking.** Weekly for a month, then monthly
    ([README](https://github.com/meSingh/polinrider-cleaner#keep-scanning)).
 
@@ -156,16 +156,16 @@ On a computer it reads, among other things, what starts by itself: on
 Windows the registry Run and RunOnce values, both Startup folders and the
 scheduled tasks. It also reads npm's own program files, Python startup files
 and processes running inline code
-([A machine](/polinrider-cleaner/docs/guides/machine/)).
+([A machine](/docs/guides/machine/)).
 `MicrosoftCLROptimization.vbs` is in its indicator set
 ([`ioc/filenames.txt`](https://github.com/meSingh/polinrider-cleaner/blob/main/ioc/filenames.txt)).
 On GitHub it checks every branch and tag of every repository and reads
 GitHub's push record for each one
-([A personal GitHub account](/polinrider-cleaner/docs/guides/account/)).
+([A personal GitHub account](/docs/guides/account/)).
 
 :::tip[Check yours]
 Start with every computer that pushes to the affected repositories. Download
-`polinrider` from the [quick start](/polinrider-cleaner/docs/quick-start/) and run
+`polinrider` from the [quick start](/docs/quick-start/) and run
 it with no arguments. It asks what to check (this computer, a GitHub account
 or an organization) and changes nothing until you type `yes`.
 :::
@@ -176,7 +176,7 @@ or an organization) and changes nothing until you type `yes`.
 2. Deception.Pro, [[Op Report] Hands-on-Keyboard Activity from the DPRK "PolinRider" Supply Chain Attack][dp], 9 September 2026
 3. OpenSourceMalware, [A Developer's Guide to Getting Rid of PolinRider][osm-guide], 13 August 2026
 4. OpenSourceMalware, [PolinRider is A/B Testing its Way Past Your Detections][osm-ab], 26 September 2026
-5. This site: [Order matters](/polinrider-cleaner/docs/guides/order/), [A machine](/polinrider-cleaner/docs/guides/machine/) and [Found temp_auto_push.bat in your repository?](/polinrider-cleaner/news/2026-11-04-temp-auto-push-bat/)
+5. This site: [Order matters](/docs/guides/order/), [A machine](/docs/guides/machine/) and [Found temp_auto_push.bat in your repository?](/news/2026-11-04-temp-auto-push-bat/)
 
 [bc]: https://www.bleepingcomputer.com/forums/t/819751/polinridernpm-infection-keeps-returning-frst-logs-attached/
 [dp]: https://blog.deception.pro/blog/hok-dprk-polinrider-sep-2026

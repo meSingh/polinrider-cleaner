@@ -1,7 +1,15 @@
 // Values read both by astro.config.mjs and by the layouts that render every
 // page's head and chrome, so each is set in one place.
 
-export const SITE_URL = 'https://mesingh.github.io/polinrider-cleaner';
+// Where the site is served. This is the only place the address is written
+// (ADR-0055, "Moving to a root domain"); every link, asset, redirect, the
+// feed, the sitemap and the social card are built from these. To serve the
+// site from the root of a domain, set BASE to '' (and SITE_ORIGIN to that
+// domain). SITE_BASE and SITE_ORIGIN in the environment override both for
+// one build, which is how the root build is tested.
+export const SITE_ORIGIN = process.env.SITE_ORIGIN ?? 'https://mesingh.github.io';
+export const BASE = process.env.SITE_BASE ?? '/polinrider-cleaner';
+export const SITE_URL = `${SITE_ORIGIN}${BASE}`;
 export const SITE_TITLE = 'PolinRider scanner and cleaner';
 export const SITE_DESCRIPTION =
   'Check a machine, a GitHub account or a whole organization for PolinRider malware, ' +

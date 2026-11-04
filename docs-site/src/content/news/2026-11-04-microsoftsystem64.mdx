@@ -98,7 +98,7 @@ developers and need the same response on your computer.
 A different name that also looks like Microsoft's,
 `MicrosoftCLROptimization`, has been seen starting malware at logon on
 Windows. It is not this program; see
-[PolinRider keeps coming back after you clean it](/polinrider-cleaner/news/2026-11-04-polinrider-keeps-coming-back/).
+[PolinRider keeps coming back after you clean it](/news/2026-11-04-polinrider-keeps-coming-back/).
 
 ## What to do
 
@@ -116,10 +116,10 @@ Windows. It is not this program; see
    browsers, SSH keys, API and cloud keys, npm tokens and database passwords.
    Replace the seed phrase of any wallet that was on the computer, which means
    moving its funds to a new wallet ([SafeDep][safedep]; [JFrog][jfrog];
-   [Order matters](/polinrider-cleaner/docs/guides/order/)).
+   [Order matters](/docs/guides/order/)).
 6. **Consider reinstalling the operating system.** Removing files is
    containment. Rebuilding from a clean install is recovery
-   ([what this tool will not do](/polinrider-cleaner/)).
+   ([what this tool will not do](/)).
 
 ## What polinrider looks for
 
@@ -127,14 +127,14 @@ On a computer it looks for the program by its names, by its install and
 persistence paths and by published file hashes, so a renamed copy is still
 caught. It reads the process table, because the process names itself even
 when nothing is on disk, and on Windows the scheduled tasks and Run values
-([A machine](/polinrider-cleaner/docs/guides/machine/)). Since 2.3.0 it also
+([A machine](/docs/guides/machine/)). Since 2.3.0 it also
 confirms a running `node` process whose script sits in a folder the campaign
 uses, and names a line in `authorized_keys` that carries a published campaign
 key, without editing the file
-([release 2.3.0](/polinrider-cleaner/releases/v2.3.0/)).
+([release 2.3.0](/releases/v2.3.0/)).
 
 :::tip[Check yours]
-Download `polinrider` from the [quick start](/polinrider-cleaner/docs/quick-start/)
+Download `polinrider` from the [quick start](/docs/quick-start/)
 and run it with no arguments. It asks what to check (this computer, a GitHub
 account or an organization) and changes nothing until you type `yes`.
 :::
@@ -146,7 +146,7 @@ account or an organization) and changes nothing until you type `yes`.
 3. Island, [How Attackers Built Software an AI Would Recommend][island], 13 October 2026
 4. OpenSSF malicious-packages: [MAL-2026-4345][mal-4345] (`eo-terminal`), [MAL-2026-5341][mal-5341] (`void-ulid`) and [MAL-2026-16154][mal-16154] (`pino-ulid`)
 5. OpenSourceMalware, [PolinRider Blast Radius Grows][osm-blast], 15 July 2026
-6. This site: [A machine](/polinrider-cleaner/docs/guides/machine/), [release 2.3.0](/polinrider-cleaner/releases/v2.3.0/) and the [2026-10-12](/polinrider-cleaner/news/indicator-reviews/2026-10-12/) and [2026-11-02](/polinrider-cleaner/news/indicator-reviews/2026-11-02/) indicator reviews
+6. This site: [A machine](/docs/guides/machine/), [release 2.3.0](/releases/v2.3.0/) and the [2026-10-12](/news/indicator-reviews/2026-10-12/) and [2026-11-02](/news/indicator-reviews/2026-11-02/) indicator reviews
 
 [safedep]: https://safedep.io/microsoftsystem64-binary-payload-analysis/
 [jfrog]: https://research.jfrog.com/post/hugging-face-exfil/

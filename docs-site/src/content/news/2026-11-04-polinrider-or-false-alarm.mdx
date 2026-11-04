@@ -36,7 +36,7 @@ exist or a GitHub login is missing. It tells you nothing either way.
 </div>
 
 Scripts and CI can rely on these exit codes
-([Exit codes](/polinrider-cleaner/docs/reference/exit-codes/)).
+([Exit codes](/docs/reference/exit-codes/)).
 
 ## How it decides what is confirmed
 
@@ -46,7 +46,7 @@ contain is review-only. When the two are close, it goes to review.
 
 The reason is part of the rule: a false confirmation costs every user a
 panic, while keeping a real indicator at review costs one line of output
-([Indicator reviews](/polinrider-cleaner/news/indicator-reviews/)).
+([Indicator reviews](/news/indicator-reviews/)).
 
 So take a `[HIT]` at its word, and read a `[review]`.
 
@@ -65,7 +65,7 @@ The box under the verdict says one of two things
 
 Below the box, **WHAT TO DO NEXT** lists a step for each thing found, with
 the exact command. Follow it in order. Check this computer before you touch
-GitHub ([Order matters](/polinrider-cleaner/docs/guides/order/)).
+GitHub ([Order matters](/docs/guides/order/)).
 
 ## If you see review lines
 
@@ -101,7 +101,7 @@ runs something. With a known indicator in it, it is a `[HIT]`, not a review
 
 For example in `.vscode/settings.json`. Only `tasks.json` runs commands, so
 the words alone do nothing elsewhere
-([False positives](/polinrider-cleaner/docs/reference/false-positives/);
+([False positives](/docs/reference/false-positives/);
 [`ioc/weak.txt`][weak]).
 
 **It is real if** a `tasks.json` uses them.
@@ -111,7 +111,7 @@ the words alone do nothing elsewhere
 A tail after `export default`, or a line longer than 4,000 characters. Some
 configs legitimately run long, and a flat ESLint config opens with
 `export default [`
-([False positives](/polinrider-cleaner/docs/reference/false-positives/)).
+([False positives](/docs/reference/false-positives/)).
 
 **It is real if** code you did not write sits after the end of the config,
 often after a long run of spaces.
@@ -122,7 +122,7 @@ It is a genuine Font Awesome file name ([OpenSourceMalware][osm-ab]).
 
 **It is real if** its first bytes are not a font's. A fake font is a `[HIT]`
 whatever it is called
-([A font file that is really JavaScript](/polinrider-cleaner/news/2026-11-04-fake-font-javascript/)).
+([A font file that is really JavaScript](/news/2026-11-04-fake-font-javascript/)).
 
 ### `spellright.dict`, `branch_structure.json` or `clr_init.vbs`
 
@@ -137,19 +137,19 @@ beside other campaign files.
 The repository itself may hold no payload.
 
 **It means** a contributor's computer is infected
-([Found temp_auto_push.bat in your repository?](/polinrider-cleaner/news/2026-11-04-temp-auto-push-bat/)).
+([Found temp_auto_push.bat in your repository?](/news/2026-11-04-temp-auto-push-bat/)).
 
 ### Never reported
 
 A Git LFS pointer standing in for a font, and an empty font file. Neither has
 font bytes, and neither is malware
-([False positives](/polinrider-cleaner/docs/reference/false-positives/)).
+([False positives](/docs/reference/false-positives/)).
 
 ## If you see clean
 
 None of the current indicators is on what was checked. The campaign changes
 its signatures, so an older or rotated variant could have been there and gone
-([Exit codes](/polinrider-cleaner/docs/reference/exit-codes/)).
+([Exit codes](/docs/reference/exit-codes/)).
 
 The tool says so itself: if you had a reason to check, rotate your
 credentials anyway. They may have been taken from another computer or a
@@ -162,7 +162,7 @@ your projects and, if you push code, your GitHub account or organization.
 
 A detection named for PolinRider, such as Windows Defender's
 `Trojan:NPM/PolinRider.SF`, is not a false alarm to wave away. In the case in
-[PolinRider keeps coming back after you clean it](/polinrider-cleaner/news/2026-11-04-polinrider-keeps-coming-back/),
+[PolinRider keeps coming back after you clean it](/news/2026-11-04-polinrider-keeps-coming-back/),
 Defender caught the payload's command line as it ran.
 
 A clean result from another scanner is a first pass, not a clean bill of
@@ -182,7 +182,7 @@ Both directions are worth reporting.
   with the source you saw it in.
 
 :::tip[Check yours]
-Download `polinrider` from the [quick start](/polinrider-cleaner/docs/quick-start/)
+Download `polinrider` from the [quick start](/docs/quick-start/)
 and run it with no arguments. It asks what to check (this computer, a GitHub
 account or an organization) and changes nothing until you type `yes`.
 :::
@@ -190,7 +190,7 @@ account or an organization) and changes nothing until you type `yes`.
 ## Sources
 
 1. polinrider-cleaner: [`src/scan.rs`][scan-rs] (verdicts and next steps), [`src/checks.rs`][checks-rs] (the tasks.json, build config and font checks), [ADR-0034][adr-0034] and [ADR-0048][adr-0048], [`ioc/weak.txt`][weak]
-2. This site: [Exit codes](/polinrider-cleaner/docs/reference/exit-codes/), [False positives you will see](/polinrider-cleaner/docs/reference/false-positives/) and [Indicator reviews](/polinrider-cleaner/news/indicator-reviews/)
+2. This site: [Exit codes](/docs/reference/exit-codes/), [False positives you will see](/docs/reference/false-positives/) and [Indicator reviews](/news/indicator-reviews/)
 3. OpenSourceMalware, [PolinRider is A/B Testing its Way Past Your Detections][osm-ab], 26 September 2026
 4. OpenSourceMalware, [A Developer's Guide to Getting Rid of PolinRider][osm-guide], 13 August 2026
 

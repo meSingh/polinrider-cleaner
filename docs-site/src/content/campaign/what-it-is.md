@@ -65,11 +65,11 @@ No report we have read calls `MicrosoftSystem64` a PolinRider payload.
 This tool checks for it as well, because it targets the same developers and
 needs the same response on a computer: a binary or process named
 `MicrosoftSystem64`, and the folders `~/.pcl-data` and `~/.pcl-state`.
-[MicrosoftSystem64 on your computer](/polinrider-cleaner/news/2026-11-04-microsoftsystem64/)
+[MicrosoftSystem64 on your computer](/news/2026-11-04-microsoftsystem64/)
 has the detail.
 
 ## Reinfection
 
 Cleaning the remote while an infected machine still holds a valid token puts you
 back where you started within minutes. That is the documented behaviour of this
-campaign, not a hypothetical, and it is the reason [order matters](/polinrider-cleaner/docs/guides/order/).
+campaign, not a hypothetical, and it is the reason [order matters](/docs/guides/order/).

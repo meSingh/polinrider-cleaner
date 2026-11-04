@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build && node scripts/check-links.mjs",
+    "build": "node scripts/check-base.mjs && astro build && node scripts/check-links.mjs",
     "preview": "astro preview",
     "check": "astro check",
     "freeze-docs": "node scripts/freeze-docs.mjs"

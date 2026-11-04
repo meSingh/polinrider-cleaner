@@ -8,7 +8,7 @@ every branch and every tag.
 
 :::caution
 Check every machine and rotate every credential first.
-[Order matters](/polinrider-cleaner/docs/2.3/guides/order/).
+[Order matters](/docs/2.3/guides/order/).
 :::
 
 ## Before it starts

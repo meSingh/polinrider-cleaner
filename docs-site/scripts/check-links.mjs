@@ -5,9 +5,10 @@
 // following them. Exits 1 and lists every broken link.
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, relative } from 'node:path';
+import { BASE as base, SITE_ORIGIN } from '../src/siteConfig.mjs';
 
 const dist = new URL('../dist/', import.meta.url).pathname;
-const base = '/polinrider-cleaner';
+const origin = new URL(SITE_ORIGIN);
 
 const files = [];
 const walk = (dir) => {
@@ -44,12 +45,18 @@ for (const file of files) {
   for (const [, href] of html.matchAll(/\shref="([^"]+)"/g)) {
     let url;
     try {
-      url = new URL(href.replace(/&amp;/g, '&'), `https://mesingh.github.io${base}${page}`);
+      url = new URL(href.replace(/&amp;/g, '&'), `${origin.origin}${base}${page}`);
     } catch {
       broken.push(`${page}: ${href} (not a URL)`);
       continue;
     }
-    if (url.host !== 'mesingh.github.io' || !url.pathname.startsWith(base)) continue;
+    if (url.host !== origin.host) continue;
+    // A link from the site root that missed the base would 404 once
+    // published under one.
+    if (!url.pathname.startsWith(`${base}/`)) {
+      broken.push(`${page}: ${href} (outside the base ${base})`);
+      continue;
+    }
     const f = target(url.pathname);
     if (!f) {
       broken.push(`${page}: ${href}`);

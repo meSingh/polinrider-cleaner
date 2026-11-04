@@ -39,7 +39,9 @@ const walk = (dir) =>
 let pages = 0;
 for (const file of walk(to).filter((f) => /\.mdx?$/.test(f))) {
   const text = readFileSync(file, 'utf8');
-  writeFileSync(file, text.replaceAll('/polinrider-cleaner/docs/', `/polinrider-cleaner/docs/${line}/`));
+  // Links are written from the site root ([text](/docs/…) or a reference
+  // [id]: /docs/…); the base is added at build time.
+  writeFileSync(file, text.replace(/(\]\(|\]: )\/docs\//g, `$1/docs/${line}/`));
   pages++;
 }
 

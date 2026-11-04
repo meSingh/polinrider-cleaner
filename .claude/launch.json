@@ -23,6 +23,24 @@
       ],
       "port": 4323,
       "autoPort": false
+    },
+    {
+      "name": "docs-site-root",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "SITE_BASE=",
+        "SITE_ORIGIN=https://polinrider.example",
+        "npm",
+        "run",
+        "preview",
+        "--prefix",
+        "docs-site",
+        "--",
+        "--port",
+        "4325"
+      ],
+      "port": 4325,
+      "autoPort": false
     }
   ]
 }

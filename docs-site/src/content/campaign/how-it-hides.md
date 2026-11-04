@@ -20,7 +20,7 @@ The result looks like an ordinary, correctly dated commit with your name on
 it, and `git log` will not show you anything wrong. OpenSourceMalware published
 the script in full in
 [its first report on the campaign](https://opensourcemalware.com/blog/polinrider-dprk-compromised-hundreds-of-github-repos).
-[Found temp_auto_push.bat in your repository?](/polinrider-cleaner/news/2026-11-04-temp-auto-push-bat/)
+[Found temp_auto_push.bat in your repository?](/news/2026-11-04-temp-auto-push-bat/)
 walks through it.
 
 ## What this means for detection

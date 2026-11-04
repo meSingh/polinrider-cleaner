@@ -27,7 +27,7 @@ Cleaning the remote while an infected machine still holds a valid token puts you
 back where you started within minutes. The payload's whole purpose is to
 propagate: it amends your latest commit and force-pushes the current branch to
 `origin` with `-uf --no-verify`
-([why your history looks clean](/polinrider-cleaner/campaign/how-it-hides/)). A
+([why your history looks clean](/campaign/how-it-hides/)). A
 clean repository plus an infected laptop is a clean repository for about as long as it
 takes the next commit to land.
 

@@ -58,6 +58,55 @@ and `docs-site/src/pages/`, the design in `docs-site/src/styles/`.
   the social card, per-page titles and descriptions, the sitemap, the
   verification tags, the Plausible switch and `third-party-notices.txt`.
 
+### The address is set in one place
+
+The site may move from `mesingh.github.io/polinrider-cleaner/` to the root
+of its own domain. So the origin and the base path are written once, in
+`docs-site/src/siteConfig.mjs` (`SITE_ORIGIN`, `BASE`), and everything else
+is built from them: `site` and `base` in `astro.config.mjs`, every link
+and asset in a component (through `import.meta.env.BASE_URL`), the
+redirects, the RSS feed, the sitemap, canonical links and the social card.
+Pages written in Markdown link from the site root (`[Order
+matters](/docs/guides/order/)`), and a small plugin
+(`src/markdown/base-links.mjs`) adds the base when the site is built.
+
+Two checks keep it that way. `scripts/check-base.mjs` runs before every
+build and fails when the base path or the github.io address is written
+anywhere else in the site's source, content and templates included.
+`scripts/check-links.mjs` runs after it and fails on any link that leaves
+the base. A build with `SITE_BASE=` set in the environment builds the site
+for the root; that build was checked on 2026-11-04: both checks passed,
+every page, asset, font and redirect loaded at `/` and search returned
+root addresses.
+
+### Moving to a root domain
+
+When the move is decided, in one pull request and then in the settings:
+
+1. **The site.** In `docs-site/src/siteConfig.mjs` set `BASE` to `''` and
+   `SITE_ORIGIN` to the new origin, for example `https://example.org`. That
+   is the whole code change; the build checks the rest.
+2. **The domain.** For a subdomain, a `CNAME` record pointing at
+   `mesingh.github.io`; for an apex domain, GitHub's published `A` and
+   `AAAA` records. Verify the domain in the GitHub account's Pages settings
+   first, so nobody else can claim it.
+3. **Pages settings.** Repository Settings, Pages: enter the custom domain
+   and, once the certificate is issued, tick Enforce HTTPS. The site is
+   published by a GitHub Actions workflow, and GitHub's documentation says a
+   `CNAME` file is then neither used nor needed; the setting is what counts.
+4. **The old addresses.** Once a project site has a custom domain, GitHub
+   redirects its `github.io` addresses to that domain, path kept, so
+   `mesingh.github.io/polinrider-cleaner/docs/` lands on
+   `example.org/docs/`. The redirect pages for the addresses that moved in
+   this rebuild keep working on the new domain. Check a handful with
+   `curl -sI` right after the switch; this step is from GitHub's
+   documentation and has not been tried here.
+5. **Elsewhere.** Add the new domain as a property in Google Search Console
+   and Bing Webmaster Tools and put their values in `siteConfig.mjs`; add
+   the domain in Plausible if it is on; update the full addresses in the
+   repository's own README files, which point at the live site and are not
+   built from the config.
+
 ## Consequences
 
 Better:

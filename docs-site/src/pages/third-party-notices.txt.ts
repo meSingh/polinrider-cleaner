@@ -4,7 +4,7 @@
 // MIT licence asks that its notice travel with copies of the software. Geist
 // is under the SIL Open Font License 1.1, which asks the same of its notice
 // and licence. This page is that copy, served at
-// /polinrider-cleaner/third-party-notices.txt. The code's notices are read
+// /third-party-notices.txt under the site base. The code's notices are read
 // from the installed packages at build time, so they follow every upgrade
 // without anyone editing them. Geist's is the OFL.txt that came with the font
 // files, kept beside them in src/assets/fonts/.

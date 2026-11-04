@@ -9,7 +9,7 @@ The most valuable contributions to this project are not code.
 
 [Open a missed-detection issue](https://github.com/meSingh/polinrider-cleaner/issues/new?template=missed-detection.md)
 with the source you saw it in. New indicators are reviewed against the
-classification rule on [the indicator set](/polinrider-cleaner/campaign/indicators/): `strong.txt`
+classification rule on [the indicator set](/campaign/indicators/): `strong.txt`
 only when a match means infection with no plausible alternative.
 
 ## A false positive
@@ -17,7 +17,7 @@ only when a match means infection with no plausible alternative.
 [Open a false-positive issue](https://github.com/meSingh/polinrider-cleaner/issues/new?template=false-positive.md).
 These matter more than they look. A tool that cries wolf during an incident
 wastes the one resource nobody has, and the
-[known ones](/polinrider-cleaner/docs/2.3/reference/false-positives/) were all found this way.
+[known ones](/docs/2.3/reference/false-positives/) were all found this way.
 
 ## A fix to these docs
 
