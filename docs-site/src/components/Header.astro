@@ -33,10 +33,15 @@ const current = (match: string) => (path.startsWith(`${base}${match}`) ? 'page' 
 
 <header class="site-header no-print">
   <div class:list={['bar', frame ? 'frame' : 'wrap']}>
-    <a href={`${base}/`} class="brand" aria-label={`${SITE_TITLE}, home`}>
-      <BrandMark />
-      <span translate="no">{SHORT_TITLE}</span>
-    </a>
+    <div class="id">
+      <a href={`${base}/`} class="brand" aria-label={`${SITE_TITLE}, home`}>
+        <BrandMark />
+        <span translate="no">{SHORT_TITLE}</span>
+      </a>
+      <a class="version" href={latest.href} aria-label={`Latest release: ${latest.version}`}>v{latest.version}</a>
+    </div>
+
+    <div class="find"><Search /></div>
 
     <nav class="nav" aria-label="Main">
       {links.map((l) => <a href={l.href} aria-current={current(l.match)}>{l.label}</a>)}
@@ -44,9 +49,7 @@ const current = (match: string) => (path.startsWith(`${base}${match}`) ? 'page' 
     </nav>
 
     <div class="tools">
-      <Search />
       <ThemeToggle />
-      <a class="version" href={latest.href} aria-label={`Latest release: ${latest.version}`}>v{latest.version}</a>
       <a class="pill dl" href={`${base}/docs/quick-start/`}>Download</a>
       <details class="menu">
         <summary aria-label="Menu"><Icon name="menu" size={22} /></summary>
@@ -55,7 +58,6 @@ const current = (match: string) => (path.startsWith(`${base}${match}`) ? 'page' 
             {links.map((l) => <a href={l.href} aria-current={current(l.match)}>{l.label}</a>)}
             <a href={REPO_URL} class="gh"><GitHubMark size={16} />GitHub</a>
             <a href={`${base}/docs/quick-start/`}>Download</a>
-            <a href={latest.href}>Latest release: v{latest.version}</a>
           </nav>
         </div>
       </details>
@@ -89,10 +91,22 @@ const current = (match: string) => (path.startsWith(`${base}${match}`) ? 'page' 
     text-decoration: none;
     white-space: nowrap;
   }
+  /* Left to right: the brand with the latest version beside it, search,
+   * the nav, the theme button and Download. Below 66rem the nav moves into
+   * the menu and search, theme and menu sit on the right. */
+  .id {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 0.6rem;
+  }
+  .find {
+    margin-inline-start: auto;
+  }
   .nav {
     display: none;
     gap: 1.25rem;
-    margin-inline-start: 1.25rem;
+    margin-inline-start: auto;
   }
   .nav a {
     color: var(--pr-text);
@@ -104,7 +118,6 @@ const current = (match: string) => (path.startsWith(`${base}${match}`) ? 'page' 
   @media (min-width: 80rem) {
     .nav {
       gap: 1.75rem;
-      margin-inline-start: 1.75rem;
     }
   }
   .nav a:hover,
@@ -118,9 +131,9 @@ const current = (match: string) => (path.startsWith(`${base}${match}`) ? 'page' 
   }
   .tools {
     display: flex;
+    flex: none;
     align-items: center;
     gap: 0.75rem;
-    margin-inline-start: auto;
   }
   .dl {
     display: none;
@@ -185,6 +198,9 @@ const current = (match: string) => (path.startsWith(`${base}${match}`) ? 'page' 
     }
   }
   @media (min-width: 66rem) {
+    .find {
+      margin-inline-start: 0.5rem;
+    }
     .nav {
       display: flex;
     }
@@ -193,8 +209,8 @@ const current = (match: string) => (path.startsWith(`${base}${match}`) ? 'page' 
     }
   }
   .version {
-    display: none;
-    padding: 0.2rem 0.55rem;
+    flex: none;
+    padding: 0.15rem 0.5rem;
     border: 1px solid var(--pr-border);
     border-radius: 999px;
     color: var(--pr-muted);
@@ -207,9 +223,71 @@ const current = (match: string) => (path.startsWith(`${base}${match}`) ? 'page' 
     border-color: var(--pr-border-strong);
     color: var(--pr-heading);
   }
-  @media (min-width: 50rem) {
+  /* Below 50rem: tighter gaps and slightly smaller round buttons, so the
+   * brand, the version and search, theme and menu fit on one row. */
+  @media (max-width: 50rem) {
+    .bar {
+      gap: 0.5rem;
+    }
+    .tools {
+      gap: 0.35rem;
+    }
+    .find :global(.open),
+    .tools :global(.theme-toggle),
+    .menu summary {
+      width: 2.25rem;
+      height: 2.25rem;
+    }
+  }
+  /* Phones: the version sits under the wordmark instead of beside it. */
+  @media (max-width: 25rem) {
+    .brand {
+      gap: 0.5rem;
+      font-size: 1rem;
+    }
+    .id {
+      display: grid;
+      gap: 0.1rem;
+      justify-items: start;
+    }
     .version {
-      display: inline-block;
+      margin-inline-start: calc(28px + 0.5rem);
+      padding: 0 0.4rem;
+      font-size: 0.6875rem;
+      line-height: 1.45;
+    }
+  }
+  /* Just above the width the nav appears at, search drops its shortcut
+   * hint so the nav keeps its room. */
+  @media (min-width: 66rem) and (max-width: 74rem) {
+    .find :global(.kbd) {
+      display: none;
+    }
+  }
+  /* The smallest phones (320px): everything a little smaller again. */
+  @media (max-width: 22rem) {
+    .bar {
+      gap: 0.25rem;
+    }
+    .brand {
+      gap: 0.4rem;
+      font-size: 0.9375rem;
+    }
+    .brand :global(svg) {
+      width: 24px;
+      height: 24px;
+    }
+    .version {
+      margin-inline-start: calc(24px + 0.4rem);
+    }
+    .tools {
+      gap: 0.25rem;
+    }
+    .find :global(.open),
+    .tools :global(.theme-toggle),
+    .menu summary {
+      width: 2.1rem;
+      height: 2.1rem;
     }
   }
 </style>
