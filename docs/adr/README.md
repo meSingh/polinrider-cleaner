@@ -69,6 +69,7 @@ If you disagree with one, open an issue and quote its number.
 | [0051](./0051-the-github-check-compares-known-hashes.md) | The GitHub check compares the small files against the known hashes | Accepted |
 | [0052](./0052-content-patterns-at-the-confirmed-tier.md) | Match campaign patterns in file contents | Accepted |
 | [0055](./0055-the-documentation-site-is-plain-astro.md) | Build the documentation site with plain Astro, not Starlight | Accepted |
+| [0056](./0056-the-docs-are-versioned-by-release-line.md) | Keep a frozen copy of the docs for each release line | Accepted |
 
 ## Adding one
 

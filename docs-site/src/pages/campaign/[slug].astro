@@ -10,6 +10,11 @@ export async function getStaticPaths() {
 const { entry } = Astro.props;
 const { Content, headings } = await render(entry);
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+// The campaign pages in reading order; the others are offered at the end.
+const order = ['what-it-is', 'how-it-hides', 'indicators'];
+const others = (await getCollection('campaign'))
+  .filter((e) => e.id !== entry.id)
+  .sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
 ---
 
 <Article
@@ -21,4 +26,44 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
   file={entry.filePath}
 >
   <Content />
+  <nav slot="after" class="next no-print" aria-label="More about the campaign">
+    <p class="eyebrow">More about the campaign</p>
+    <ul>
+      {others.map((o) => (
+        <li>
+          <a class="card" href={`${base}/campaign/${o.id}/`}>
+            <span class="card-title">{o.data.title}</span>
+            {o.data.description && <p>{o.data.description}</p>}
+          </a>
+        </li>
+      ))}
+      <li>
+        <a class="card" href={`${base}/news/#elsewhere`}>
+          <span class="card-title">What others have published</span>
+          <p>Research and news about PolinRider from other publishers, each article read before it was listed.</p>
+        </a>
+      </li>
+    </ul>
+  </nav>
 </Article>
+
+<style>
+  .next {
+    margin-top: 3rem;
+  }
+  .next ul {
+    display: grid;
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  @media (min-width: 40rem) {
+    .next ul {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+  .next .card {
+    height: 100%;
+  }
+</style>

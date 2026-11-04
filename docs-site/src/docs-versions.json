@@ -1,8 +1,22 @@
 {
-  "frozen": [],
+  "frozen": [
+    {
+      "version": "2.3",
+      "release": "2.3.0"
+    }
+  ],
   "github": [
-    { "version": "2.2", "tag": "v2.2.0" },
-    { "version": "2.1", "tag": "v2.1.0" },
-    { "version": "2.0", "tag": "v2.0.0" }
+    {
+      "version": "2.2",
+      "tag": "v2.2.0"
+    },
+    {
+      "version": "2.1",
+      "tag": "v2.1.0"
+    },
+    {
+      "version": "2.0",
+      "tag": "v2.0.0"
+    }
   ]
 }

@@ -348,3 +348,17 @@ pre.astro-code {
     color: var(--pr-muted);
   }
 }
+
+/* A block inside a page that draws its own lists (the docs overview). */
+.prose .not-prose :is(ul, ol) {
+  padding: 0;
+}
+.prose .not-prose li + li {
+  margin-top: 0;
+}
+
+/* A short command or answer alone in a table cell stays on one line. */
+.prose td > code:only-child {
+  white-space: nowrap;
+  overflow-wrap: normal;
+}

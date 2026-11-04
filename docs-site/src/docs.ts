@@ -65,9 +65,21 @@ export async function latestRelease(): Promise<string> {
   return (await releases())[0].version;
 }
 
+// Versioning starts at 2.3 (ADR-0056); older lines are on GitHub only.
+const FIRST_FROZEN = [2, 3];
+
 /** Every version built into the site, the latest first. */
 export async function builtVersions(): Promise<DocsVersion[]> {
   const latest = await latestRelease();
+  const [major, minor] = latest.split('.').map(Number);
+  const line = `${major}.${minor}`;
+  const due = major > FIRST_FROZEN[0] || (major === FIRST_FROZEN[0] && minor >= FIRST_FROZEN[1]);
+  if (due && !versions.frozen.some((v) => v.version === line)) {
+    throw new Error(
+      `The newest release is ${latest}, but its docs are not frozen. ` +
+        `Run: npm run freeze-docs --prefix docs-site -- ${latest} (AGENTS.md, "Cutting a release").`,
+    );
+  }
   return [
     { key: '', release: latest, root: `${base}/docs/`, latest: true },
     ...versions.frozen.map((v) => ({ key: v.version, release: v.release, root: `${base}/docs/${v.version}/`, latest: false })),

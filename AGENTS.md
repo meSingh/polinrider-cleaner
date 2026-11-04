@@ -384,6 +384,21 @@ the tag will publish. Write it for
 someone running the tool, not for a reviewer of the code; the tag message
 below can reuse it.
 
+**1b. Freeze the docs for this release, in the same pull request.** Once
+the docs describe the release, run:
+
+```bash
+npm run freeze-docs --prefix docs-site -- X.Y.Z
+```
+
+It copies `docs-site/src/content/docs/` to
+`docs-site/src/content/docs-versions/X.Y/`, which the site serves at
+`/docs/X.Y/`, and records it in `docs-site/src/docs-versions.json`. A patch
+release replaces its line's copy. It only writes files. The Docs build fails
+while the newest release page has no frozen copy, so a forgotten freeze stops
+the pull request, not the release. Never edit a frozen copy by hand; to
+correct one, fix `src/content/docs/` and freeze again (ADR-0056).
+
 **The release date comes from the tag, never from a hand edit.** Put the day
 you expect to tag in `date` and in the `<Released version date />` line the
 template starts with. Once the tag exists, the site shows the tag's date
