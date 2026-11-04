@@ -238,6 +238,15 @@ const current = (match: string) => (path.startsWith(`${base}${match}`) ? 'page' 
       width: 2.25rem;
       height: 2.25rem;
     }
+    /* Search is an icon here: no label or shortcut squeezed into it. */
+    .find :global(.open) {
+      justify-content: center;
+      padding: 0;
+    }
+    .find :global(.open .label),
+    .find :global(.open .kbd) {
+      display: none;
+    }
   }
   /* Phones: the version sits under the wordmark instead of beside it. */
   @media (max-width: 25rem) {
