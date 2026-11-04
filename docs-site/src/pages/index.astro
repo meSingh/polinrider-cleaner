@@ -13,10 +13,13 @@ import NewsTimeline from '../components/NewsTimeline.astro';
 import Badges from '../components/Badges.astro';
 import { Code } from 'astro:components';
 import { timeline } from '../news';
+import { releases } from '../releases';
+import { software, sourceCode } from '../schema';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 const d = `${base}/docs`;
 const latest = (await timeline()).slice(0, 4);
+const newest = (await releases())[0];
 const themes = { light: 'github-light-default', dark: 'github-dark-default' } as const;
 
 // The answer to type at "What should I check?" for each button.
@@ -105,6 +108,7 @@ const trust = [
   titleTag="PolinRider Scanner: find and remove PolinRider malware"
   description="Free, open source scanner for the PolinRider malware: check your computer, a GitHub account or an organization, then clean up infected repositories safely."
   type="website"
+  schema={[software(newest), sourceCode]}
 >
   <section class="hero wrap">
     <p class="badge"><span class="dot" aria-hidden="true"></span>Open source PolinRider malware scanner and cleaner</p>

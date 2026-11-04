@@ -10,6 +10,11 @@ import Crumbs from '../../components/Crumbs.astro';
 import Icon from '../../components/Icon.astro';
 import HistoryCompare from '../../components/HistoryCompare.astro';
 import PageFoot from '../../components/PageFoot.astro';
+import Faq from '../../components/Faq.astro';
+import { threatFaq } from '../../faq';
+import { abs, article, breadcrumbs, faqPage } from '../../schema';
+import { lastUpdated } from '../../git';
+import { firstCommitDay } from '../../sources.mjs';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
@@ -93,11 +98,39 @@ const sources = [
   ['Deception.Pro', 'Hands-on-Keyboard Activity from the DPRK "PolinRider" Supply Chain Attack', src.dp, '9 September 2026'],
 ] as const;
 
+// Key facts: short statements a reader (or an answer engine) can quote,
+// each with the source that says it. Restated from the sections below.
+const facts = [
+  { text: 'PolinRider is malware that hides inside software projects, steals developers\u2019 logins and spreads by pushing infected code with their own accounts.', source: 'OpenSourceMalware', href: src.osmMarch },
+  { text: 'Security researchers link it to North Korea.', source: 'The Hacker News', href: src.thn },
+  { text: 'Opening an infected folder in the editor is enough to run it.', source: 'OpenSourceMalware', href: src.osmMarch },
+  { text: 'It hides its loader in fake .woff2 font files and in code added after the end of config files.', source: 'OpenSourceMalware', href: src.osmAb },
+  { text: 'temp_auto_push.bat rewrites your last commit with the original date, so git log looks clean; GitHub\u2019s push record does not.', source: 'OpenSourceMalware', href: src.osmHistory },
+  { text: 'Reports name the DEV#POPPER remote access tool and the OmniStealer password stealer as its payloads.', source: 'The Hacker News', href: src.thn },
+];
 const ext = { target: '_blank', rel: 'noopener noreferrer' };
+const pageFile = 'src/pages/threat/index.astro';
+const url = abs(Astro.url.pathname);
+const schema = [
+  breadcrumbs([], 'The PolinRider threat', url),
+  article({
+    type: 'TechArticle',
+    url,
+    title: 'The PolinRider threat',
+    description: 'PolinRider malware hides in developers\u2019 projects, steals their logins and spreads to everything they push.',
+    published: firstCommitDay(pageFile),
+    modified: lastUpdated(pageFile),
+    citations: [...new Set(Object.values(src))],
+    section: 'Threat',
+  }),
+  faqPage(url, threatFaq),
+];
 ---
 
 <Base
   title="The PolinRider threat"
+  titleTag="PolinRider malware: what it is, how it spreads, the signs"
+  schema={schema}
   description="PolinRider malware hides in developers' projects, steals their logins and spreads to everything they push. How it gets in, how it hides and the signs of infection."
 >
   <div data-pagefind-body data-pagefind-meta="section:Threat">
@@ -119,6 +152,18 @@ const ext = { target: '_blank', rel: 'noopener noreferrer' };
         </div>
       </div>
     </header>
+
+    <section class="wrap sec facts-sec" aria-labelledby="key-facts">
+      <h2 id="key-facts">Key facts</h2>
+      <ul class="facts">
+        {facts.map((f) => (
+          <li>
+            {f.text}{' '}
+            <a class="source" href={f.href} {...ext}>{f.source}<span class="sr-only"> (opens in a new tab)</span></a>
+          </li>
+        ))}
+      </ul>
+    </section>
 
     <section class="wrap stats-sec" aria-label="Key figures">
       <ul class="stats">
@@ -332,6 +377,11 @@ const ext = { target: '_blank', rel: 'noopener noreferrer' };
       <p class="intro"><a href={`${base}/threat/indicators/`}>The full indicator set</a>, with where each one came from.</p>
     </section>
 
+    <section class="wrap sec" aria-labelledby="questions">
+      <h2 id="questions">Questions people ask</h2>
+      <Faq items={threatFaq} />
+    </section>
+
     <section class="wrap sec" aria-labelledby="sources">
       <h2 id="sources">Sources</h2>
       <ol class="sources">
@@ -347,7 +397,7 @@ const ext = { target: '_blank', rel: 'noopener noreferrer' };
       <p><strong>Worried?</strong> Check your computer, your GitHub account or your organisation. It takes a few minutes and changes nothing until you type <code>yes</code>.</p>
       <a class="pill" href={`${base}/#how`}>Check now <Icon name="arrow" size={18} /></a>
     </div>
-    <PageFoot file="src/pages/threat/index.astro" />
+    <PageFoot file={pageFile} />
   </section>
 </Base>
 
@@ -426,6 +476,28 @@ const ext = { target: '_blank', rel: 'noopener noreferrer' };
   }
 
   /* Key figures */
+  .facts-sec {
+    padding-bottom: 0;
+  }
+  .facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+    gap: 0.6rem 1.5rem;
+    margin: 1rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .facts li {
+    padding: 0.7rem 0 0.7rem 0.9rem;
+    border-inline-start: 3px solid var(--pr-accent);
+    color: var(--pr-text);
+    line-height: 1.55;
+  }
+  .facts .source {
+    color: var(--pr-muted);
+    font-size: var(--text-sm);
+    white-space: nowrap;
+  }
   .stats-sec {
     margin-top: 2.5rem;
   }

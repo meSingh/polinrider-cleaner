@@ -11,6 +11,7 @@ import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import ThemeScript from '../components/ThemeScript.astro';
 import geist from '../assets/fonts/geist-variable.woff2?url';
+import { jsonLd, person, website } from '../schema';
 import {
   BING_SITE_VERIFICATION,
   GOOGLE_SITE_VERIFICATION,
@@ -36,6 +37,9 @@ interface Props {
   hasCanonical?: boolean;
   /** The <title>, when it should differ from the page's heading. */
   titleTag?: string;
+  /** Structured data for this page (src/schema.ts). The site's author and
+   * the site itself are added, so every @id a node names is on the page. */
+  schema?: Record<string, unknown>[];
 }
 const {
   title,
@@ -45,7 +49,9 @@ const {
   noindex = false,
   hasCanonical = true,
   titleTag,
+  schema = [],
 } = Astro.props;
+const graph = schema.length ? [...schema, website, person] : [];
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 const url = canonical ?? new URL(Astro.url.pathname, SITE_ORIGIN).href;
 // "<page> | PolinRider Scanner" while that fits the 60 or so characters a
@@ -99,6 +105,7 @@ const fullTitle = titleTag ?? (branded.length <= 60 ? branded : title);
       />
     )}
     <ThemeScript />
+    {graph.length > 0 && <script type="application/ld+json" is:inline set:html={jsonLd(graph)} />}
     <slot name="head" />
   </head>
   <body>

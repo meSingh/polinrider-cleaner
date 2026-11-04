@@ -5,6 +5,7 @@ import { getCollection, render } from 'astro:content';
 import Article from '../../../layouts/Article.astro';
 import { humanDates, reviews } from '../../../news';
 import { longDate } from '../../../releaseDate';
+import { citations } from '../../../schema';
 
 export async function getStaticPaths() {
   return (await getCollection('reviews'))
@@ -33,6 +34,8 @@ const description =
   headings={headings}
   section="Indicator review"
   file={entry.filePath}
+  published={day}
+  citations={citations(entry.body)}
   side={{
     title: 'Indicator reviews',
     items: [

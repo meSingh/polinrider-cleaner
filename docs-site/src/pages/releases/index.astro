@@ -7,6 +7,7 @@ import Crumbs from '../../components/Crumbs.astro';
 import Icon from '../../components/Icon.astro';
 import { releases } from '../../releases';
 import { longDate } from '../../releaseDate';
+import { abs, breadcrumbs, software } from '../../schema';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 const all = await releases();
@@ -16,6 +17,7 @@ const all = await releases();
   title="Releases"
   description="Every release of the PolinRider scanner since 2.0: what each one changes, anything that breaks, and downloads for macOS, Linux and Windows."
   type="website"
+  schema={[breadcrumbs([], 'Releases', abs(Astro.url.pathname)), software(all[0])]}
 >
   <div class="wrap page" data-pagefind-body data-pagefind-meta="section:Releases">
     <Crumbs items={[]} />

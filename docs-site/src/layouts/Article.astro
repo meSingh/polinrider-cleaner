@@ -8,6 +8,8 @@ import Crumbs from '../components/Crumbs.astro';
 import Toc from '../components/Toc.astro';
 import PageFoot from '../components/PageFoot.astro';
 import type { MarkdownHeading } from 'astro';
+import { abs, article, breadcrumbs } from '../schema';
+import { lastUpdated } from '../git';
 
 interface Props {
   title: string;
@@ -23,12 +25,43 @@ interface Props {
   foot?: boolean;
   side?: { title: string; items: { label: string; href: string; badge?: string }[] };
   class?: string;
+  /** The page's structured data type; 'none' where extra says it all. */
+  schemaType?: 'TechArticle' | 'NewsArticle' | 'none';
+  /** The day it was first published (YYYY-MM-DD). */
+  published?: string;
+  /** The outside sources it cites. */
+  citations?: string[];
+  /** More structured data: a FAQ, a release. */
+  extraSchema?: Record<string, unknown>[];
 }
-const { title, description, crumbs, headings = [], tocDepth = 2, section, file, foot = true, side, class: extra } = Astro.props;
+const {
+  title,
+  description,
+  crumbs,
+  headings = [],
+  tocDepth = 2,
+  section,
+  file,
+  foot = true,
+  side,
+  class: extra,
+  schemaType = 'TechArticle',
+  published,
+  citations,
+  extraSchema = [],
+} = Astro.props;
 const path = Astro.url.pathname;
+const url = abs(path);
+const schema = [
+  breadcrumbs(crumbs, title, url),
+  ...(schemaType === 'none'
+    ? []
+    : [article({ type: schemaType, url, title, description, published, modified: file ? lastUpdated(file) : undefined, citations, section })]),
+  ...extraSchema,
+];
 ---
 
-<Base title={title} description={description}>
+<Base title={title} description={description} schema={schema}>
   <div class:list={['article frame', extra, { 'has-side': side }]}>
     {side && (
       <nav class="side no-print" aria-label={side.title}>

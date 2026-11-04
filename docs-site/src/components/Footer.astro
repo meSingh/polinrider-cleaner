@@ -49,6 +49,7 @@ const columns = [
   {
     title: 'Project',
     links: [
+      ['About', `${base}/about/`],
       ['GitHub', REPO_URL],
       ['Report a vulnerability', `${base}/docs/project/security/`],
       ['Contributing', `${base}/docs/project/contributing/`],
@@ -73,7 +74,7 @@ import BrandMark from './BrandMark.astro';
           Free and open source.
         </p>
         <p class="built">
-          Built by <a href="https://github.com/meSingh">Mandeep Singh</a> after cleaning up a real PolinRider incident.
+          Built by <a href={`${base}/about/`}>Mandeep Singh</a> after cleaning up a real PolinRider incident.
         </p>
       </div>
       <nav class="cols" aria-label="Footer">

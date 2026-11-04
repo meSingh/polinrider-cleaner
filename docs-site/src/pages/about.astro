@@ -1,0 +1,117 @@
+---
+// Who makes this and how the project works, for a reader deciding whether
+// to trust it. The facts about the maintainer are from his public GitHub
+// profile (github.com/meSingh); the rest is what the site already says.
+import Base from '../layouts/Base.astro';
+import Crumbs from '../components/Crumbs.astro';
+import PageFoot from '../components/PageFoot.astro';
+import { ANALYTICS_ON, REPO_URL, SITE_TITLE } from '../siteConfig.mjs';
+import { abs, breadcrumbs, ids } from '../schema';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const url = abs(Astro.url.pathname);
+const ext = { target: '_blank', rel: 'noopener noreferrer' };
+const profiles = [
+  ['GitHub', 'https://github.com/meSingh'],
+  ['Website', 'https://msingh.com'],
+  ['LinkedIn', 'https://www.linkedin.com/in/mesingh9/'],
+  ['X', 'https://twitter.com/meSingh9'],
+] as const;
+const schema = [
+  breadcrumbs([], 'About', url),
+  { '@type': 'ProfilePage', '@id': `${url}#page`, url, name: `About ${SITE_TITLE}`, mainEntity: { '@id': ids.person } },
+];
+---
+
+<Base
+  title="About"
+  titleTag="About PolinRider Scanner and its maintainer"
+  description="Who builds PolinRider Scanner and Cleaner, why it exists, how its releases and indicator set are checked, and how to reach the maintainer, Mandeep Singh."
+  type="website"
+  schema={schema}
+>
+  <div class="wrap page prose-page">
+    <Crumbs items={[]} />
+    <h1>About {SITE_TITLE}</h1>
+    <p class="lead">
+      {SITE_TITLE} is a free, open source program that checks a computer, a GitHub account or an organization for
+      the PolinRider malware and cleans up what it finds. It is built and maintained by Mandeep Singh, who wrote it
+      after cleaning up a real PolinRider incident.
+    </p>
+
+    <div class="prose">
+      <h2 id="who-builds-it">Who builds it</h2>
+      <p>
+        Mandeep Singh, based in Delhi, India. His <a href="https://github.com/meSingh" {...ext}>GitHub profile</a>
+        describes him as a fractional CTO and AI architect with more than 16 years of experience. This is an
+        independent open source project by one person, not a commercial product
+        (<a href={`${base}/docs/project/disclaimer/`}>Disclaimer</a>).
+      </p>
+      <ul class="profiles">
+        {profiles.map(([name, href]) => <li><a href={href} {...ext}>{name}</a></li>)}
+      </ul>
+
+      <h2 id="how-it-is-checked">How the project is checked</h2>
+      <ul>
+        <li>
+          The code is open under the MIT licence, at <a href={REPO_URL}>{REPO_URL.replace('https://', '')}</a>.
+        </li>
+        <li>
+          Every release is built by the project's CI, carries a build attestation and a <code>SHA256SUMS</code> file,
+          and every commit is signed (<a href={`${base}/docs/reference/verifying/`}>Verifying this repository</a>).
+        </li>
+        <li>
+          Every indicator the scanner matches names the public source it came from
+          (<a href={`${base}/threat/indicators/`}>the indicator set</a>), and the set is checked against published
+          sources every week (<a href={`${base}/news/indicator-reviews/`}>indicator reviews</a>).
+        </li>
+        <li>
+          The program changes nothing until you type <code>yes</code>
+          (<a href={`${base}/docs/quick-start/`}>Quick start</a>).
+        </li>
+      </ul>
+
+      <h2 id="this-site">This site</h2>
+      <p>
+        No cookies and no trackers.{ANALYTICS_ON && ' Page visits are counted anonymously by Cloudflare Web Analytics.'}
+        Every page shows when it last changed, and links to its source on GitHub so a correction can be proposed.
+      </p>
+
+      <h2 id="contact">Contact</h2>
+      <p>
+        For a missed detection or a false alarm, open an issue on <a href={`${REPO_URL}/issues`}>GitHub</a>. For a
+        vulnerability in the tool, report it privately (<a href={`${base}/docs/project/security/`}>Reporting a
+        vulnerability</a>).
+      </p>
+    </div>
+    <PageFoot file="src/pages/about.astro" />
+  </div>
+</Base>
+
+<style>
+  .page {
+    max-width: 48rem;
+    padding-block: 2.5rem 4rem;
+  }
+  h1 {
+    margin: 0.75rem 0 0;
+    font-size: var(--text-h1);
+    letter-spacing: -0.025em;
+  }
+  .lead {
+    margin: 1rem 0 2rem;
+    color: var(--pr-text);
+    font-size: 1.125rem;
+    line-height: 1.6;
+  }
+  .profiles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.25rem;
+    padding: 0 !important;
+    list-style: none;
+  }
+  .profiles li {
+    margin: 0 !important;
+  }
+</style>

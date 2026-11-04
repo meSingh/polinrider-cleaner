@@ -6,6 +6,7 @@ import Docs from '../../layouts/Docs.astro';
 import DocsOverview from '../../components/DocsOverview.astro';
 import { builtVersions, navFor, pagesOf, type DocsEntry, type DocsVersion } from '../../docs';
 import { SITE_URL } from '../../siteConfig.mjs';
+import { abs, howTo } from '../../schema';
 
 export async function getStaticPaths() {
   const versions = await builtVersions();
@@ -35,6 +36,31 @@ interface Props {
 const { version, versions, nav, id, entry, canonical } = Astro.props;
 const rendered = entry ? await render(entry) : undefined;
 const Content = rendered?.Content;
+
+// The quick start's steps as HowTo data. They restate the page's own steps
+// (content/docs/quick-start.mdx), so change both together.
+const quickStartSteps = [
+  {
+    name: 'Download it',
+    text: 'Download the archive for your computer from the latest release on GitHub: macOS (Apple silicon or Intel), Linux (x86_64 or arm64) or Windows (x86_64). Or install it with Homebrew or Scoop.',
+  },
+  {
+    name: 'Check that it is genuine',
+    text: 'Run sha256sum -c SHA256SUMS --ignore-missing, then gh attestation verify on the archive with --repo meSingh/polinrider-scanner.',
+  },
+  {
+    name: 'Unpack it and run it',
+    text: 'Unpack the archive and run ./polinrider with no arguments. Keep the ioc/ folder beside the program: it is the indicator set.',
+  },
+  {
+    name: 'Answer the first question',
+    text: 'It asks what to check. Answer with a word: computer, folder, account, organization or everything. It changes nothing until you type yes.',
+  },
+];
+const extraSchema =
+  version.latest && id === 'quick-start'
+    ? [howTo(abs(Astro.url.pathname), 'How to scan for PolinRider', 'Install, verify and run polinrider, the free PolinRider scanner, on macOS, Linux or Windows.', quickStartSteps)]
+    : [];
 ---
 
 {entry && Content ? (
@@ -48,6 +74,7 @@ const Content = rendered?.Content;
     headings={rendered!.headings}
     file={entry.filePath}
     canonical={canonical}
+    extraSchema={extraSchema}
   >
     <Content />
   </Docs>

@@ -2,6 +2,8 @@
 // Reference pages under the threat page: today, the full indicator set.
 import { getCollection, render } from 'astro:content';
 import Article from '../../layouts/Article.astro';
+import { citations } from '../../schema';
+import { firstCommitDay } from '../../sources.mjs';
 
 export async function getStaticPaths() {
   return (await getCollection('threat'))
@@ -20,6 +22,8 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
   headings={headings}
   section="Threat"
   file={entry.filePath}
+  published={firstCommitDay(entry.filePath)}
+  citations={citations(entry.body)}
 >
   <Content />
 </Article>
