@@ -8,7 +8,7 @@ sidebar:
 The whole cleanup on one page, in the order from
 [Order matters](/docs/guides/order/). Each step links the guide with the
 detail. What has moved since OpenSourceMalware's August cleanup guide is in
-[Cleaning up PolinRider: what has changed since August](/updates/2026-11-04-developers-guide-getting-rid-of-polinrider/).
+[Cleaning up PolinRider: what has changed since August](/guides/developers-guide-getting-rid-of-polinrider/).
 
 ## Before you start
 
@@ -32,7 +32,7 @@ On every computer that has pushed to the affected repositories:
 1. Run `polinrider` and answer `computer`. It reads and reports; nothing
    changes yet. [A machine](/docs/guides/machine/)
 2. Read each `[HIT]` and `[review]` line.
-   [Is it PolinRider or a false alarm?](/updates/2026-11-04-polinrider-or-false-alarm/)
+   [Is it PolinRider or a false alarm?](/guides/polinrider-or-false-alarm/)
 3. Type `yes` to move confirmed files into quarantine.
 4. Run each command it prints for what it does not change itself: a startup
    entry, a crontab line, a shell startup file, a line in
@@ -54,9 +54,9 @@ What `yes` does and does not do:
 | Check | Why |
 |---|---|
 | Every line of `~/.ssh/authorized_keys` | The tool names a published key; the next build can use another ([ADR-0049](https://github.com/meSingh/polinrider-scanner/blob/main/docs/adr/0049-the-computer-check-reads-authorized-keys.md)) |
-| Windows Run values and scheduled tasks named `MicrosoftCLROptimization`, including under the SYSTEM profile | Seen starting the malware at logon; the tool knows the script by its file name ([2026-10-05 review](/updates/indicator-reviews/2026-10-05/)) |
+| Windows Run values and scheduled tasks named `MicrosoftCLROptimization`, including under the SYSTEM profile | Seen starting the malware at logon; the tool knows the script by its file name ([2026-10-05 review](/indicator-reviews/2026-10-05/)) |
 | Repeated macOS Keychain prompts for GitHub access | A detached process retrying ([OpenSourceMalware](https://opensourcemalware.com/blog/developer-guide-getting-over-polinrider)) |
-| The Windows side of a WSL2 setup | The loader starts `node.exe` from inside the Linux guest ([2026-10-05 review](/updates/indicator-reviews/2026-10-05/)) |
+| The Windows side of a WSL2 setup | The loader starts `node.exe` from inside the Linux guest ([2026-10-05 review](/indicator-reviews/2026-10-05/)) |
 | `git reflog` in each project | Amended commits you do not remember ([OpenSourceMalware](https://opensourcemalware.com/blog/developer-guide-getting-over-polinrider)) |
 
 ### Rebuild or not
