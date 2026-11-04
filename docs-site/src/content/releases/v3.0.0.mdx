@@ -1,0 +1,60 @@
+---
+title: PolinRider Scanner and Cleaner 3.0.0
+description: The project is now polinrider-scanner, with a new repository name, new package names and a new home at polinriderscanner.com. The program itself is unchanged.
+version: "3.0.0"
+# The expected release day. Once the tag exists the site shows the tag's date
+# instead, so this never needs correcting after the release.
+date: "2026-11-04"
+breaking: Every package is renamed to polinrider-scanner; update your install commands and verify 3.x releases against meSingh/polinrider-scanner.
+---
+
+import Downloads from '~/components/Downloads.astro';
+import Released from '~/components/Released.astro';
+import RunBlock from '~/components/RunBlock.astro';
+
+{/* Other branches merged before the tag add their own paragraphs under New
+    and Changed. */}
+
+<Released version="3.0.0" date="2026-11-04" /> Breaking changes, below: the
+packages are renamed.
+
+## New
+
+- **A new name and a new home.** The project is now polinrider-scanner. The
+  repository is [meSingh/polinrider-scanner](https://github.com/meSingh/polinrider-scanner)
+  and the documentation is at [polinriderscanner.com](https://polinriderscanner.com).
+
+## Changed
+
+- **The program has not changed.** It is still `polinrider`, with the same
+  options, output and exit codes. The layout of `ioc/` and the CI scan you
+  copy into a repository are unchanged.
+- Links to the site's old GitHub Pages address still work through redirect
+  pages, and links to the old repository through GitHub's redirect.
+
+## Breaking changes
+
+**Every package is renamed to `polinrider-scanner`.**
+
+- **Homebrew:** `brew upgrade` moves an existing `polinrider-cleaner` install
+  to the new name.
+- **Scoop:** run `scoop uninstall polinrider-cleaner`, then
+  `scoop install polinrider-scanner`. The old name stays at 2.3.0.
+- **Debian and Ubuntu:** installing the new `.deb` removes `polinrider-cleaner`.
+- **winget:** the package is `meSingh.PolinRiderScanner`.
+
+**Verifying a download.** Verify this and every later release with
+`gh attestation verify <file> --repo meSingh/polinrider-scanner`. Releases
+before 3.0.0 were built under the old name:
+[Releases before 3.0.0](/docs/reference/verifying/#releases-before-300).
+
+## Download
+
+<Downloads version="3.0.0" packages />
+
+Or use a package manager. Choose your system, then run only its commands:
+
+<RunBlock />
+
+[Verify what you downloaded](/docs/reference/verifying/) before
+you run it.

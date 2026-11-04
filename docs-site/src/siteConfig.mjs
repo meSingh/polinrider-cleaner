@@ -12,12 +12,14 @@
 // ON_OWN_DOMAIN to true when the domain is live. Until then the site stays
 // at its GitHub Pages address. Steps for the switch: ADR-0055.
 const ON_OWN_DOMAIN = false;
-const DEFAULT_ORIGIN = ON_OWN_DOMAIN ? 'https://polinriderscanner.com' : 'https://mesingh.github.io';
+export const PRODUCTION_ORIGIN = 'https://polinriderscanner.com';
+const DEFAULT_ORIGIN = ON_OWN_DOMAIN ? PRODUCTION_ORIGIN : 'https://mesingh.github.io';
 const DEFAULT_BASE = ON_OWN_DOMAIN ? '' : '/polinrider-cleaner';
 export const SITE_ORIGIN = process.env.SITE_ORIGIN ?? DEFAULT_ORIGIN;
 export const BASE = process.env.SITE_BASE ?? DEFAULT_BASE;
 export const SITE_URL = `${SITE_ORIGIN}${BASE}`;
-export const SITE_TITLE = 'PolinRider scanner and cleaner';
+// The product's name, as Mandeep chose it: title case, "and" written out.
+export const SITE_TITLE = 'PolinRider Scanner and Cleaner';
 export const SITE_DESCRIPTION =
   'Check a machine, a GitHub account or a whole organization for PolinRider malware, ' +
   'and clean it up. Free and open source. Changes nothing until you say yes.';
@@ -25,24 +27,21 @@ export const SITE_DESCRIPTION =
 export const REPO_URL = 'https://github.com/meSingh/polinrider-scanner';
 export const EDIT_URL = `${REPO_URL}/edit/main/docs-site/`;
 
-// Plausible analytics. Off until this holds the site's script ID from the
-// Plausible dashboard (Site settings, Site installation), which looks like
-// `pa-` followed by letters and digits. While it is empty, nothing is added to
-// any page and the footer says nothing about analytics. The ID is public: it
-// appears in every page that loads the script.
-export const PLAUSIBLE_SCRIPT_ID = '';
+// Cloudflare Web Analytics, in its JS-snippet mode (the domain is DNS-only,
+// not proxied). The token is from the Cloudflare dashboard (Analytics &
+// Logs, Web Analytics) and is public: it appears in every page that loads
+// the beacon. The beacon counts page views without cookies.
+export const CF_WEB_ANALYTICS_TOKEN = '916d6aa6c9094d828ac628070245e65c';
 
-// Downloads are release assets: .tar.gz and .zip archives, .deb packages and
-// .intoto.jsonl attestations. Setting fileExtensions replaces Plausible's
-// default list rather than adding to it. The links point at github.com, so
-// outbound link clicks are counted as well.
-export const PLAUSIBLE_OPTIONS = {
-  fileDownloads: { fileExtensions: ['gz', 'zip', 'deb', 'jsonl'] },
-  outboundLinks: true,
-};
+// Only the real site is counted: a production build for PRODUCTION_ORIGIN
+// at the root gets Cloudflare's snippet exactly as Cloudflare gives it. Dev
+// servers, local builds for any other address and the GitHub Pages site get
+// no beacon.
+export const ANALYTICS_ON =
+  Boolean(CF_WEB_ANALYTICS_TOKEN) && SITE_ORIGIN === PRODUCTION_ORIGIN && BASE === '' && process.env.NODE_ENV === 'production';
 
-if (PLAUSIBLE_SCRIPT_ID && !/^pa-[A-Za-z0-9_-]+$/.test(PLAUSIBLE_SCRIPT_ID)) {
-  throw new Error(`PLAUSIBLE_SCRIPT_ID is not a Plausible script ID: ${PLAUSIBLE_SCRIPT_ID}`);
+if (CF_WEB_ANALYTICS_TOKEN && !/^[A-Za-z0-9]+$/.test(CF_WEB_ANALYTICS_TOKEN)) {
+  throw new Error(`CF_WEB_ANALYTICS_TOKEN is not a Cloudflare Web Analytics token: ${CF_WEB_ANALYTICS_TOKEN}`);
 }
 
 // Search engine ownership checks. Each is the `content` value of the meta tag
@@ -56,5 +55,5 @@ export const SOCIAL_IMAGE = {
   url: `${SITE_URL}/social-preview.jpg`,
   width: 1280,
   height: 640,
-  alt: 'polinrider-cleaner: a rider inside a cyan lattice between two rows of servers',
+  alt: 'PolinRider Scanner and Cleaner: a rider inside a cyan lattice between two rows of servers',
 };

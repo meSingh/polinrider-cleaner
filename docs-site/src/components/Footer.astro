@@ -1,10 +1,11 @@
 ---
 // Below every page: the brand and what the project is, a column of links for
 // each section, the project's own links and a row of trust badges. The
-// analytics line appears only while Plausible is switched on, so the footer
-// never claims analytics the page does not load.
+// analytics line appears only while Cloudflare Web Analytics is switched on,
+// so the footer never claims analytics the page does not load, and never
+// hides analytics it does.
 import Badges from './Badges.astro';
-import { PLAUSIBLE_SCRIPT_ID, REPO_URL } from '../siteConfig.mjs';
+import { ANALYTICS_ON, REPO_URL, SITE_TITLE } from '../siteConfig.mjs';
 import { releases } from '../releases';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -62,13 +63,13 @@ const columns = [
   <div class="wrap">
     <div class="top">
       <div class="brand">
-        <a href={`${base}/`} class="name">
+        <a href={`${base}/`} class="name" aria-label={`${SITE_TITLE}, home`}>
           <img src={`${base}/favicon.svg`} alt="" width="28" height="28" />
           <span translate="no">polinrider</span>
         </a>
         <p>
-          Checks a computer, a GitHub account or an organisation for PolinRider, and cleans it up. Free and open
-          source.
+          {SITE_TITLE} checks a computer, a GitHub account or an organisation for PolinRider, and cleans it up.
+          Free and open source.
         </p>
         <p class="built">
           Built by <a href="https://github.com/meSingh">Mandeep Singh</a> after cleaning up a real PolinRider incident.
@@ -87,9 +88,10 @@ const columns = [
     </div>
     <div class="bottom">
       <Badges size="md" />
-      {PLAUSIBLE_SCRIPT_ID && (
+      {ANALYTICS_ON && (
         <p class="privacy">
-          Visits are counted with <a href="https://plausible.io/data-policy">Plausible</a>, without cookies or personal data.
+          No cookies and no trackers. Anonymous page counts through{' '}
+          <a href="https://www.cloudflare.com/web-analytics/">Cloudflare Web Analytics</a>.
         </p>
       )}
     </div>

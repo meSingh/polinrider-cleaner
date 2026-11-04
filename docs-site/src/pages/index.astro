@@ -27,63 +27,61 @@ const checks = [
 ] as const;
 
 // The fixes the guided flow offers for an infected repository, in its own
-// words (src/guide_fix.rs) and the account guide's.
+// words (src/guide_fix.rs) and the account guide's, laid out as one
+// comparison: what it does, whether history is rewritten, undo, and when to
+// pick it. Undo says only what is known: remove is "easy to undo" in the
+// tool's words, and for the others a copy from before is kept (every
+// repository is copied into the evidence folder before anything changes).
 const repoChoices = [
   {
     word: 'restore',
     name: 'Restore',
-    icon: 'undo',
-    tone: 'clean',
-    flag: 'Recommended: the cleanest fix',
-    what: "Puts each branch back where GitHub's own push record says it was before the attack.",
-    rows: [
-      ['Changes', 'Each branch moves back to that earlier commit. Nothing is edited.'],
-      ['History', 'Not rewritten.'],
-      ['When', "Offered only where the record shows a clean state, after that commit is fetched and checked clean."],
-    ],
+    kind: 'best',
+    flag: 'Recommended',
+    what: "Puts each branch back where GitHub's own push record says it was before the attack. Nothing is edited.",
+    history: 'No. Each branch moves back to an earlier commit.',
+    undo: 'A copy from before is kept.',
+    when: "Whenever it is offered: GitHub's record shows a clean state, and that commit is checked clean first.",
   },
   {
     word: 'remove',
     name: 'Remove',
-    icon: 'repo',
-    tone: 'accent',
+    kind: '',
+    flag: '',
     what: 'Adds one commit per branch that takes the malware out.',
-    rows: [
-      ['Changes', 'One new commit on each branch.'],
-      ['History', 'Kept. The malware stays in older commits.'],
-      ['Undo', 'Easy: it is one commit.'],
-    ],
+    history: 'No. The malware stays in older commits.',
+    undo: 'Easy: it is one commit.',
+    when: 'There is no clean state to go back to, and the history must stay as it is.',
   },
   {
     word: 'erase',
     name: 'Erase',
-    icon: 'review',
-    tone: 'review',
+    kind: 'warn',
     flag: 'Rewrites history',
-    what: 'Takes the malware out of every commit in the history and pushes it all back.',
-    rows: [
-      ['Changes', 'Every commit on those branches.'],
-      ['History', 'Rewritten. Every commit ID changes, and every existing copy must be updated; it shows how.'],
-    ],
+    what: 'Takes the malware out of every commit and pushes the history back.',
+    history: 'Yes. Every commit ID changes, and every existing copy must be updated; it shows how.',
+    undo: 'A copy from before is kept.',
+    when: 'There is no clean state to go back to, and the malware must be in no commit at all.',
   },
   {
     word: 'archive',
     name: 'Archive',
-    icon: 'lock',
-    tone: 'muted',
-    what: 'For a repository nobody uses: stop using it.',
-    rows: [
-      ['Changes', 'A large infected notice at the top of the README, a new description, and the repository made read-only.'],
-      ['History', 'Not touched. Nothing is removed.'],
-    ],
+    kind: 'quiet',
+    flag: '',
+    what: 'Puts a large infected notice at the top of the README, rewrites the description and makes the repository read-only.',
+    history: 'No. Nothing is removed.',
+    undo: 'A copy from before is kept.',
+    when: 'A repository nobody uses.',
   },
   {
     word: 'skip',
     name: 'Skip',
-    icon: 'arrow',
-    tone: 'muted',
+    kind: 'quiet',
+    flag: '',
     what: 'Leaves it as it is for now.',
-    rows: [['Changes', 'Nothing.']],
+    history: 'No.',
+    undo: 'Nothing changed.',
+    when: 'You want to decide later.',
   },
 ];
 
@@ -222,31 +220,36 @@ const trust = [
 
           <div class="choice">
             <h4><Icon name="repo" size={20} />Your repositories</h4>
-            <p>
-              Every repository is first copied into an evidence folder. Then, for each infected one, it asks which
-              fix to use:
+            <p class="decide">
+              First, every repository is copied into an evidence folder. Then each infected repository gets{' '}
+              <strong>one of these five</strong>. When <code>restore</code> is offered, pick it.
             </p>
-            <ul class="fixes">
-              {repoChoices.map((c) => (
-                <li class:list={['fix', `tone-${c.tone}`]}>
-                  <div class="fix-top">
-                    <span class="fix-icon"><Icon name={c.icon} size={20} /></span>
-                    <span class="fix-name">{c.name}</span>
-                    <span class="fix-type">type <code>{c.word}</code></span>
-                  </div>
-                  {'flag' in c && c.flag && <p class="fix-flag">{c.flag}</p>}
-                  <p class="fix-what">{c.what}</p>
-                  <dl>
-                    {c.rows.map(([k, v]) => (
-                      <>
-                        <dt>{k}</dt>
-                        <dd>{v}</dd>
-                      </>
-                    ))}
-                  </dl>
-                </li>
-              ))}
-            </ul>
+            <table class="fixes">
+              <thead>
+                <tr>
+                  <th scope="col">Fix</th>
+                  <th scope="col">What it does</th>
+                  <th scope="col">History rewritten?</th>
+                  <th scope="col">Can you undo it?</th>
+                  <th scope="col">When to pick it</th>
+                </tr>
+              </thead>
+              <tbody>
+                {repoChoices.map((c) => (
+                  <tr class:list={[c.kind && `is-${c.kind}`]}>
+                    <th scope="row" data-label="Fix">
+                      <span class="fix-name">{c.name}</span>
+                      <span class="fix-type">type <code>{c.word}</code></span>
+                      {c.flag && <span class="fix-flag">{c.flag}</span>}
+                    </th>
+                    <td data-label="What it does">{c.what}</td>
+                    <td data-label="History rewritten?" class="hist">{c.history}</td>
+                    <td data-label="Can you undo it?">{c.undo}</td>
+                    <td data-label="When to pick it">{c.when}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
             <p>
               Each fix shows exactly what would change on GitHub and pushes only after you type <code>yes</code>.
               Afterwards, delete every local copy and clone it again.{' '}
@@ -607,113 +610,133 @@ const trust = [
   .choice p {
     font-size: 1rem;
   }
-  /* The repository fixes: a white card each, a coloured edge and icon by
-   * what the fix does. Green is the recommended one, amber the one that
-   * rewrites history. */
+  /* The repository fixes: one comparison table. Restore is the recommended
+   * row, erase is flagged for rewriting history, archive and skip are quiet.
+   * On a phone each row becomes a block with a label on every line. */
+  .decide {
+    margin-top: 0.6rem !important;
+  }
   .fixes {
-    display: grid;
-    gap: 0.85rem;
-    margin: 1rem 0 0;
-    padding: 0;
-    list-style: none;
-  }
-  @media (min-width: 44rem) {
-    .fixes {
-      grid-template-columns: 1fr 1fr;
-    }
-  }
-  .fix {
-    --edge: var(--pr-border-strong);
-    --ink: var(--pr-muted);
-    --chip: var(--pr-surface);
-    padding: 1.1rem 1.2rem 1.15rem;
+    width: 100%;
+    margin-top: 1rem;
+    border-collapse: separate;
+    border-spacing: 0;
     border: 1px solid var(--pr-border);
-    border-inline-start: 4px solid var(--edge);
     border-radius: var(--pr-radius);
-    background: var(--pr-bg);
     font-size: 0.9375rem;
     line-height: 1.5;
+    overflow: hidden;
   }
-  .tone-clean {
-    --edge: var(--pr-clean);
-    --ink: var(--pr-clean);
-    --chip: var(--pr-clean-bg);
+  .fixes th,
+  .fixes td {
+    padding: 0.85rem 0.9rem;
+    border-bottom: 1px solid var(--pr-border);
+    text-align: start;
+    vertical-align: top;
   }
-  .tone-accent {
-    --edge: var(--pr-accent);
-    --ink: var(--pr-accent);
-    --chip: var(--pr-accent-bg);
+  .fixes tbody tr:last-child > * {
+    border-bottom: 0;
   }
-  .tone-review {
-    --edge: var(--pr-review);
-    --ink: var(--pr-review);
-    --chip: var(--pr-review-bg);
+  .fixes thead th {
+    background: var(--pr-surface);
+    color: var(--pr-muted);
+    font-size: 0.75rem;
+    font-weight: 650;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    white-space: nowrap;
   }
-  .fix p {
-    margin: 0;
-  }
-  .fix-top {
-    display: flex;
-    align-items: center;
-    gap: 0.65rem;
-  }
-  .fix-icon {
-    display: inline-grid;
-    place-items: center;
-    flex: none;
-    width: 2.2rem;
-    height: 2.2rem;
-    border-radius: 10px;
-    background: var(--chip);
-    color: var(--ink);
+  .fixes tbody th {
+    min-width: 8.5rem;
+    font-weight: 400;
   }
   .fix-name {
+    display: block;
     color: var(--pr-heading);
-    font-size: 1.125rem;
+    font-size: 1.0625rem;
     font-weight: 700;
   }
   .fix-type {
-    margin-inline-start: auto;
-    color: var(--pr-muted);
-    font-size: var(--text-xs);
-  }
-  .fix-type code {
+    display: inline-block;
+    margin-top: 0.25rem;
     font-size: 0.8125rem;
   }
   .fix-flag {
-    display: inline-block;
-    margin-top: 0.7rem !important;
-    padding: 0.15rem 0.6rem;
+    display: block;
+    width: max-content;
+    margin-top: 0.45rem;
+    padding: 0.1rem 0.55rem;
     border-radius: 999px;
-    background: var(--chip);
-    color: var(--ink);
-    font-size: var(--text-xs);
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+  .is-best > * {
+    background: var(--pr-clean-bg);
+  }
+  .is-best th {
+    box-shadow: inset 4px 0 0 var(--pr-clean);
+  }
+  .is-best .fix-flag {
+    background: var(--pr-clean);
+    color: var(--pr-bg);
+  }
+  .is-warn th {
+    box-shadow: inset 4px 0 0 var(--pr-review);
+  }
+  .is-warn .fix-flag {
+    background: var(--pr-review-bg);
+    color: var(--pr-review);
+    box-shadow: inset 0 0 0 1px var(--pr-review-border);
+  }
+  .is-warn .hist {
+    color: var(--pr-review);
     font-weight: 650;
   }
-  .fix-what {
-    margin-top: 0.6rem !important;
-    color: var(--pr-heading);
-    font-weight: 500;
-  }
-  .fix dl {
-    display: grid;
-    grid-template-columns: 5rem minmax(0, 1fr);
-    gap: 0.35rem 0.75rem;
-    margin: 0.75rem 0 0;
-    padding-top: 0.75rem;
-    border-top: 1px dashed var(--pr-border);
-  }
-  .fix dt {
+  .is-quiet td,
+  .is-quiet .fix-name {
     color: var(--pr-muted);
-    font-size: var(--text-xs);
-    font-weight: 650;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    padding-top: 0.15rem;
   }
-  .fix dd {
-    margin: 0;
-    color: var(--pr-text);
+  @media (max-width: 52rem) {
+    .fixes,
+    .fixes tbody,
+    .fixes tr,
+    .fixes th,
+    .fixes td {
+      display: block;
+    }
+    .fixes thead {
+      display: none;
+    }
+    .fixes {
+      border: 0;
+      overflow: visible;
+    }
+    .fixes tr {
+      margin-bottom: 0.75rem;
+      border: 1px solid var(--pr-border);
+      border-radius: var(--pr-radius);
+      overflow: hidden;
+    }
+    .fixes th,
+    .fixes td {
+      padding: 0.55rem 0.9rem;
+      border-bottom: 0;
+    }
+    .fixes tbody th {
+      padding-top: 0.9rem;
+    }
+    .fixes td::before {
+      content: attr(data-label);
+      display: block;
+      color: var(--pr-muted);
+      font-size: 0.75rem;
+      font-weight: 650;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .fixes td:last-child {
+      padding-bottom: 0.9rem;
+    }
   }
 
   /* No risk in running it */

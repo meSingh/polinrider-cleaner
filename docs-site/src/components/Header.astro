@@ -8,7 +8,7 @@ import Icon from './Icon.astro';
 import GitHubMark from './GitHubMark.astro';
 import Search from './Search.astro';
 import ThemeToggle from './ThemeToggle.astro';
-import { REPO_URL } from '../siteConfig.mjs';
+import { REPO_URL, SITE_TITLE } from '../siteConfig.mjs';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 const links = [
@@ -24,10 +24,9 @@ const current = (match: string) => (path.startsWith(`${base}${match}`) ? 'page' 
 
 <header class="site-header no-print">
   <div class="bar wrap">
-    <a href={`${base}/`} class="brand">
+    <a href={`${base}/`} class="brand" aria-label={`${SITE_TITLE}, home`}>
       <img src={`${base}/favicon.svg`} alt="" width="28" height="28" />
       <span translate="no">polinrider</span>
-      <span class="sr-only">, home</span>
     </a>
 
     <nav class="nav" aria-label="Main">

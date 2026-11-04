@@ -26,6 +26,14 @@ gh attestation verify polinrider-v3.0.0-macos-arm64.tar.gz --repo meSingh/polinr
 The Homebrew formula and the Scoop manifest carry the checksums from that same
 `SHA256SUMS`, so a package manager install is checked against it too.
 
+## Releases before 3.0.0
+
+In 3.0.0 the repository was renamed from `meSingh/polinrider-cleaner` to
+`meSingh/polinrider-scanner`. Releases up to 2.3.0 were built and attested
+under the old name. Their `SHA256SUMS` and their signed tags check exactly as
+before. How to check their build attestation after the rename is confirmed
+once the rename has been tested, and will be written here.
+
 ## Verify the commits
 
 ```bash
