@@ -1,6 +1,6 @@
 ---
 title: Check your GitHub account for PolinRider
-description: Check every branch and tag of every repository you own, see who pushed what, then restore or clean what was hit.
+description: Check every branch and tag of every repository you own for PolinRider, see who pushed what from GitHub's push record, then restore or clean what was hit.
 ---
 
 Run `polinrider` and answer `account`. It checks every repository of your own account,

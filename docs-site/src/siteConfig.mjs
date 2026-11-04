@@ -20,6 +20,8 @@ export const BASE = process.env.SITE_BASE ?? DEFAULT_BASE;
 export const SITE_URL = `${SITE_ORIGIN}${BASE}`;
 // The product's name, as Mandeep chose it: title case, "and" written out.
 export const SITE_TITLE = 'PolinRider Scanner and Cleaner';
+// The short name: the nav's wordmark and the end of every page's <title>.
+export const SHORT_TITLE = 'PolinRider Scanner';
 export const SITE_DESCRIPTION =
   'Check a machine, a GitHub account or a whole organization for PolinRider malware, ' +
   'and clean it up. Free and open source. Changes nothing until you say yes.';

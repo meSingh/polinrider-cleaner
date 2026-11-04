@@ -21,10 +21,13 @@ interface Props {
   id: string;
   headings?: MarkdownHeading[];
   file?: string;
-  /** The same page in the latest docs, when this is a frozen copy. */
+  /** The same page in the latest docs, when this is a frozen copy. A frozen
+   * copy is not marked noindex: its canonical link names the live page,
+   * and the two signals together would contradict each other. */
   canonical?: string;
+  titleTag?: string;
 }
-const { title, description, version, versions, nav, id, headings = [], file, canonical } = Astro.props;
+const { title, description, version, versions, nav, id, headings = [], file, canonical, titleTag } = Astro.props;
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
 const flat = nav.flatMap((g) => g.items.map((i) => ({ ...i, group: g.label })));
@@ -37,7 +40,7 @@ const crumbs = [{ label: version.latest ? 'Docs' : `Docs ${version.line}.x`, hre
 if (group) crumbs.push({ label: group, href: flat.find((i) => i.group === group)!.href });
 ---
 
-<Base title={title} description={description} canonical={canonical} noindex={!version.latest}>
+<Base title={title} description={description} canonical={canonical} titleTag={titleTag}>
   <div class="docs frame">
     <aside class="sidebar no-print" aria-label="Documentation">
       <details class="nav-fold" open>

@@ -1,6 +1,6 @@
 ---
 title: PolinRider indicators of compromise
-description: Every indicator the scanner matches, which file it lives in and the public source it came from.
+description: "Every PolinRider indicator of compromise the scanner matches: file names, hashes, network addresses, SSH keys and packages, each with its public source."
 ---
 
 One source of truth, in [`ioc/`](https://github.com/meSingh/polinrider-scanner/tree/main/ioc).

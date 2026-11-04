@@ -10,7 +10,7 @@ import Icon from './Icon.astro';
 import GitHubMark from './GitHubMark.astro';
 import Search from './Search.astro';
 import ThemeToggle from './ThemeToggle.astro';
-import { REPO_URL, SITE_TITLE } from '../siteConfig.mjs';
+import { REPO_URL, SHORT_TITLE, SITE_TITLE } from '../siteConfig.mjs';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 const links = [
@@ -28,7 +28,7 @@ const current = (match: string) => (path.startsWith(`${base}${match}`) ? 'page' 
   <div class="bar wrap">
     <a href={`${base}/`} class="brand" aria-label={`${SITE_TITLE}, home`}>
       <BrandMark />
-      <span translate="no">PolinRider Scanner</span>
+      <span translate="no">{SHORT_TITLE}</span>
     </a>
 
     <nav class="nav" aria-label="Main">

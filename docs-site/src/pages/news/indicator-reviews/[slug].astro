@@ -4,6 +4,7 @@
 import { getCollection, render } from 'astro:content';
 import Article from '../../../layouts/Article.astro';
 import { humanDates, reviews } from '../../../news';
+import { longDate } from '../../../releaseDate';
 
 export async function getStaticPaths() {
   return (await getCollection('reviews'))
@@ -19,7 +20,7 @@ const day = entry.id.slice(0, 10);
 // past reviews are never edited.
 const description =
   entry.data.description ??
-  `Weekly PolinRider indicator review for ${day}: what changed in the indicator set and why.`;
+  `Weekly PolinRider indicator review for ${longDate(day)}: the published sources checked again, and what changed in the scanner's indicator set and why.`;
 ---
 
 <Article

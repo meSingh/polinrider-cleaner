@@ -12,6 +12,7 @@ import { asides } from './src/markdown/asides.mjs';
 import { baseLinks } from './src/markdown/base-links.mjs';
 import { BASE, SITE_ORIGIN } from './src/siteConfig.mjs';
 import { pagefindIndex } from './src/markdown/pagefind.mjs';
+import { lastCommitDay, sourcesOf } from './src/sources.mjs';
 
 const src = fileURLToPath(new URL('./src', import.meta.url));
 
@@ -60,6 +61,11 @@ export default defineConfig({
       filter: (page) => {
         const path = new URL(page).pathname.slice(BASE.length);
         return !(path in redirects) && !frozen.some((f) => path.startsWith(f));
+      },
+      // lastmod from git: the last commit to the files the page is made of.
+      serialize: (item) => {
+        const lastmod = lastCommitDay(sourcesOf(new URL(item.url).pathname.slice(BASE.length)));
+        return lastmod ? { ...item, lastmod } : item;
       },
     }),
     pagefindIndex(),

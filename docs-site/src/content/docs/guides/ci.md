@@ -1,6 +1,6 @@
 ---
 title: Block PolinRider in CI
-description: A scanner you copy into your own repository, so every push is checked for PolinRider with no third-party action.
+description: A PolinRider scanner you copy into your own repository, so every push and pull request is checked in CI, with no third-party action to trust.
 ---
 
 > **Being migrated.** The full guide currently lives in
