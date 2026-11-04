@@ -759,7 +759,7 @@ mod tests {
             parse(args(&["--version"]).into_iter(), ioc),
             Err(Rejection::VersionRequested)
         ));
-        assert!(version().starts_with("2."));
+        assert!(version().starts_with(env!("CARGO_PKG_VERSION")));
     }
 
     #[test]
