@@ -11,14 +11,45 @@
 # personal access token scoped to this one repository with that single
 # permission. Without it the job says so and stops, without failing.
 #
-# Writes go through the contents API with the workflow token, so every commit
-# on `traffic` is made and signed by GitHub. No third-party action is used.
+# It also keeps a history of release downloads under downloads/ on the same
+# branch, with our own downloads (release checks, test machines, package
+# manager validation) kept apart: .github/scripts/downloads.py, checked out
+# from main. Releases are public, so this part needs only the workflow token
+# and runs whether or not TRAFFIC_TOKEN is set. To record downloads of ours,
+# run this workflow by hand with the own_* inputs (AGENTS.md, "Traffic log").
+#
+# Writes go through the contents and git data APIs with the workflow token, so
+# every commit on `traffic` is made and signed by GitHub. No third-party action
+# is used.
 name: Traffic log
 
 on:
   schedule:
     - cron: '17 3 * * *'
   workflow_dispatch:
+    inputs:
+      own_tag:
+        description: 'Our own download: the release tag, such as v2.3.0. Leave empty to only record.'
+        required: false
+        type: string
+      own_files:
+        description: 'Which files: all, or names separated by commas (* matches anything)'
+        required: false
+        default: all
+        type: string
+      own_count:
+        description: 'How many times each file was downloaded'
+        required: false
+        default: '1'
+        type: string
+      own_date:
+        description: 'The day, YYYY-MM-DD in UTC. Empty means today.'
+        required: false
+        type: string
+      own_note:
+        description: 'Who downloaded and why, such as "release check" or "test machine"'
+        required: false
+        type: string
 
 permissions: read-all
 
@@ -38,20 +69,12 @@ jobs:
       READ_TOKEN: ${{ secrets.TRAFFIC_TOKEN }}
       WRITE_TOKEN: ${{ github.token }}
     steps:
-      - name: Record
+      # The data branch starts as a commit with one README and no parent, so
+      # it never carries a copy of the code.
+      - name: Start the data branch
         run: |
           set -euo pipefail
-
-          if [ -z "$READ_TOKEN" ]; then
-            echo "::notice::TRAFFIC_TOKEN is not set, so traffic cannot be read. Nothing recorded."
-            exit 0
-          fi
-
-          read_api()  { GH_TOKEN="$READ_TOKEN"  gh api "$@"; }
           write_api() { GH_TOKEN="$WRITE_TOKEN" gh api "$@"; }
-
-          # The data branch starts as a commit with one README and no parent,
-          # so it never carries a copy of the code.
           if ! write_api "repos/$REPO/git/ref/heads/$BRANCH" >/dev/null 2>&1; then
             readme='# Traffic log\n\nWritten daily by .github/workflows/traffic.yml on main. Data only.\n'
             tree=$(jq -n --arg c "$(printf '%b' "$readme")" \
@@ -62,6 +85,18 @@ jobs:
             jq -n --arg s "$commit" --arg r "refs/heads/$BRANCH" '{ref: $r, sha: $s}' |
               write_api -X POST "repos/$REPO/git/refs" --input - >/dev/null
           fi
+
+      - name: Record traffic
+        run: |
+          set -euo pipefail
+
+          if [ -z "$READ_TOKEN" ]; then
+            echo "::notice::TRAFFIC_TOKEN is not set, so traffic cannot be read. Nothing recorded."
+            exit 0
+          fi
+
+          read_api()  { GH_TOKEN="$READ_TOKEN"  gh api "$@"; }
+          write_api() { GH_TOKEN="$WRITE_TOKEN" gh api "$@"; }
 
           # Fetch a file from the data branch: prints its content, or the
           # fallback when it does not exist yet. Its blob sha goes to $2.
@@ -120,3 +155,85 @@ jobs:
           store "stars.csv" "$RUNNER_TEMP/kept.csv" "Record stars for $today"
 
           echo "Recorded traffic for $today on the $BRANCH branch."
+
+      # Only the script, from main, and no credentials left behind: the steps
+      # below pass the token to gh themselves.
+      - name: Check out the downloads script
+        id: script
+        if: ${{ !cancelled() }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+
+      # Release download totals, merged into downloads/ in one commit. Runs
+      # even when the traffic step above stopped or failed: it needs only the
+      # workflow token. The inputs reach the script through env and argv,
+      # never through the script's text.
+      - name: Record downloads
+        if: ${{ !cancelled() && steps.script.outcome == 'success' }}
+        env:
+          OWN_TAG: ${{ inputs.own_tag }}
+          OWN_FILES: ${{ inputs.own_files }}
+          OWN_COUNT: ${{ inputs.own_count }}
+          OWN_DATE: ${{ inputs.own_date }}
+          OWN_NOTE: ${{ inputs.own_note }}
+        run: |
+          set -euo pipefail
+          api() { GH_TOKEN="$WRITE_TOKEN" gh api "$@"; }
+          today=$(date -u +%F)
+          work="$RUNNER_TEMP/downloads"
+          mkdir -p "$work/old" "$work/new"
+
+          api "repos/$REPO/releases?per_page=100" --paginate --slurp | jq 'add // []' > "$work/releases.json"
+
+          # The files as they are on the branch now. Read through the git
+          # data API so that a missing file (the first run) is told apart
+          # from a failed request, which stops the step instead of starting
+          # the history again from nothing.
+          head=$(api "repos/$REPO/git/ref/heads/$BRANCH" --jq .object.sha)
+          base=$(api "repos/$REPO/git/commits/$head" --jq .tree.sha)
+          dir=$(api "repos/$REPO/git/trees/$base" --jq '.tree[] | select(.path == "downloads" and .type == "tree") | .sha')
+          if [ -n "$dir" ]; then
+            api "repos/$REPO/git/trees/$dir" --jq '.tree[] | select(.type == "blob") | "\(.path) \(.sha)"' > "$work/blobs"
+            for name in counts.csv ours.csv; do
+              sha=$(awk -v n="$name" '$1 == n { print $2 }' "$work/blobs")
+              if [ -n "$sha" ]; then
+                api -H 'Accept: application/vnd.github.raw+json' "repos/$REPO/git/blobs/$sha" > "$work/old/$name"
+              fi
+            done
+          fi
+
+          args=("$work/releases.json" "$work/old" "$work/new" --today "$today"
+                --start-ours .github/scripts/downloads-ours-start.csv)
+          message="Record downloads to $today"
+          if [ -n "$OWN_TAG" ]; then
+            args+=(--record "$OWN_TAG" "${OWN_FILES:-all}" "${OWN_COUNT:-1}" "${OWN_DATE:-$today}" "$OWN_NOTE")
+            message="$message, with our own download of $OWN_TAG"
+          elif [ -n "$OWN_DATE$OWN_NOTE" ]; then
+            echo "::error::own_date or own_note is set but own_tag is empty, so there is nothing to record them against."
+            exit 1
+          fi
+          python3 -I .github/scripts/downloads.py "${args[@]}"
+
+          # One commit for all the files, and none when nothing moved.
+          jq -n --arg b "$base" '{base_tree: $b, tree: []}' > "$work/tree.json"
+          for name in README.md counts.csv ours.csv weekly.csv weekly-by-platform.csv summary.md; do
+            jq --arg p "downloads/$name" --rawfile c "$work/new/$name" \
+              '.tree += [{path: $p, mode: "100644", type: "blob", content: $c}]' \
+              "$work/tree.json" > "$work/next.json"
+            mv "$work/next.json" "$work/tree.json"
+          done
+          tree=$(api -X POST "repos/$REPO/git/trees" --input "$work/tree.json" --jq .sha)
+          if [ "$tree" = "$base" ]; then
+            echo "No download total moved since the last run. Nothing to commit."
+          else
+            commit=$(jq -n --arg m "$message" --arg t "$tree" --arg p "$head" \
+              '{message: $m, tree: $t, parents: [$p]}' |
+              api -X POST "repos/$REPO/git/commits" --input - --jq .sha)
+            jq -n --arg s "$commit" '{sha: $s}' |
+              api -X PATCH "repos/$REPO/git/refs/heads/$BRANCH" --input - >/dev/null
+            echo "Recorded downloads for $today on the $BRANCH branch."
+          fi
+          cat "$work/new/summary.md" >> "$GITHUB_STEP_SUMMARY"

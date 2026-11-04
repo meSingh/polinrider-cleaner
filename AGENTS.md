@@ -144,6 +144,7 @@ the sandbox and the test harness.
 | `docs/adr/` | one record per design decision, with its reasoning and its cost |
 | `docs-site/` | the documentation site, Astro Starlight, including the weekly indicator reviews |
 | `ci/` | the vendorable CI scanner, its workflow template and installer, and the sandbox demo |
+| `.github/scripts/` | scripts the workflows run that are not part of the tool: `downloads.py`, the release download history |
 | `packaging/` | the `.deb` builder, the tap, bucket and winget manifest writers and the bump pull request script, all used by `release.yml` |
 | `polinrider-sandbox`, `.devcontainer/` | the container every test runs in |
 
@@ -360,7 +361,7 @@ descending. That was the six-hour scan ([ADR-0025](./docs/adr/0025-walk-the-file
 | Weekly indicator review | claude.ai routine "PolinRider indicator watch (2.0)" | Mondays 08:00 IST. Opens a draft `ioc/YYYY-MM-DD` pull request every week with signed commits, change or no change |
 | Beta binaries | `.github/workflows/beta-build.yml` | Builds and exercises every platform on each push to `main`. The only place the macOS and Windows live checks run |
 | Documentation site | GitHub Pages, from `main` | `docs-site/`, including the indicator reviews |
-| Traffic log | `traffic` branch, from `.github/workflows/traffic.yml` | Views, clones, referrers, paths and stars, daily, kept past GitHub's 14 days. Needs the `TRAFFIC_TOKEN` secret: a fine-grained token on this repository with Administration: read only |
+| Traffic log | `traffic` branch, from `.github/workflows/traffic.yml` | Views, clones, referrers, paths and stars, daily, kept past GitHub's 14 days. Needs the `TRAFFIC_TOKEN` secret: a fine-grained token on this repository with Administration: read only. Release downloads per week, with our own taken off, under `downloads/` on the same branch; that part needs only the workflow token. See "The download history" below |
 
 ### Cutting a release
 
@@ -464,6 +465,11 @@ link, which cannot be resolved the way a symbolic link can, so whether `ioc/`
 is found would depend on where winget puts it. The exe is already called
 `polinrider`.
 
+**7. Record your own check of the release.** Downloading the files from the
+release page to check them counts as downloads; record it the same day (see
+"The download history" below), or the week reads as more people than it had.
+A check done with `gh release download` is not counted and needs no record.
+
 > Tags matching `refs/tags/v*` are protected by a repository ruleset with no
 > bypass actors: they cannot be updated, force-pushed or deleted by anyone,
 > including the maintainer. A published tag is permanent. If you tagged the wrong
@@ -520,6 +526,43 @@ secret is deleted, the job prints a notice and passes. Either way the packages
 fall behind quietly. If a release's tap or bucket pull request did not appear,
 check the token first. Do not replace it with a classic token,
 which would need `repo` scope over every repository the owner can reach.
+
+### The download history
+
+GitHub keeps one running total per release file and nothing else. The Traffic
+log workflow records the totals daily under `downloads/` on the `traffic`
+branch and works out downloads per week, binaries and checksums apart
+(`.github/scripts/downloads.py`, ADR-0053). `downloads/README.md` there says
+what each file holds; the run's summary page shows the last eight weeks.
+
+**Our own downloads are kept apart by recording them.** Whoever downloads a
+release file for a reason other than using it (a release check, a test
+machine, a package manager's validation) records it, the same day if
+possible, by running the workflow by hand:
+
+```bash
+gh workflow run traffic.yml --repo meSingh/polinrider-cleaner -f own_tag=v2.3.0 -f own_files=all -f own_count=1 -f own_date=2026-11-03 -f own_note="release check"
+```
+
+`own_files` is `all` or file names separated by commas, `*` matching anything
+(`-f own_files='SHA256SUMS,*windows-x86_64.zip'`). `own_date` defaults to
+today in UTC and `own_count` to 1. Each downloaded file gets a row in
+`downloads/ours.csv`; the run fails and records nothing if a name matches no
+file, the date is before the release or after today, or the same rows were
+recorded already. To correct a row, edit `ours.csv` on the branch.
+
+**Record only what GitHub counts.** A download from a
+`github.com/<owner>/<repo>/releases/download/...` link counts, after about ten
+minutes: a browser, `curl` on that link, and Homebrew, Scoop and winget, whose
+manifests use those links. A download through the API does not count:
+`gh release download`, or anything fetching the asset's API URL. So the
+`packages` job's fetch of `SHA256SUMS` is not recorded, and a release check
+done with `gh release download` needs no row. Tested on 2026-11-04 (ADR-0053).
+
+Our counted downloads from before the log began, three `curl` test downloads
+on 2026-11-04, are in `.github/scripts/downloads-ours-start.csv`, which seeds
+`ours.csv` on the first run and is not read again. The earlier release checks
+and the winget manifest check used `gh release download` and are not in it.
 
 ### Signing
 
