@@ -3,7 +3,7 @@
 // page's FAQPage structured data, so the two can never differ. Answers only
 // restate what the page already says, with the same sources.
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
-const ext = (href: string, text: string) => `<a href="${href}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+const ext = (href: string, text: string) => `<a href="${href}" target="_blank" rel="noopener">${text}</a>`;
 const osmMarch = 'https://opensourcemalware.com/blog/polinrider-dprk-compromised-hundreds-of-github-repos';
 const osmAb = 'https://opensourcemalware.com/blog/polinrider-is-a-b-testing-its-way-past-your-detections';
 const osmHistory = 'https://opensourcemalware.com/blog/how-to-investigate-a-github-repos-real-history';
