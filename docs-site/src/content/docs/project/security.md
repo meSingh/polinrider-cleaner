@@ -23,4 +23,4 @@ primary dossier.
 ## If you are mid-incident
 
 Nothing here is a support channel with a response time. Start with
-[order matters](/guides/order/) and rotate your credentials first.
+[order matters](/polinrider-cleaner/guides/order/) and rotate your credentials first.

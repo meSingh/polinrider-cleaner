@@ -72,4 +72,4 @@ has the detail.
 
 Cleaning the remote while an infected machine still holds a valid token puts you
 back where you started within minutes. That is the documented behaviour of this
-campaign, not a hypothetical, and it is the reason [order matters](/guides/order/).
+campaign, not a hypothetical, and it is the reason [order matters](/polinrider-cleaner/guides/order/).
