@@ -18,7 +18,7 @@ delete the line if there is none. Keep the NewsMeta line below the imports.
 
 When to write one: only when a week changes what a reader would do. A new
 way in, a new file or artifact on disk or in a repository, a new way it
-survives cleaning, or a cluster large enough that many readers may have
+survives cleaning or a cluster large enough that many readers may have
 installed it. A week that only adds package names is not a post. Every
 week stays recorded in the indicator reviews either way.
 
@@ -28,9 +28,15 @@ Rules, not suggestions:
    campaign links to a source you have read: a public write-up, an indicator
    review or a page on this site. If it cannot be confirmed, leave it out or
    say plainly that it is unconfirmed.
-2. Never invent or extend an indicator. Name only indicators already in
-   ioc/ and recorded in a review. Never print a payload, a full key or
-   anything a reader could paste into a working attack.
+2. Never invent or extend an indicator, a number or an attribution. Name
+   only indicators already in ioc/ and recorded in a review. Never print a
+   payload, a full key or anything a reader could paste into a working
+   attack. Never quote a line of ioc/strong.txt or a match for
+   ioc/strong-patterns.txt verbatim: a .mdx page is not exempt from the
+   repository's own self-scan, which fails CI on a confirmed indicator.
+   Attribution is a claim like any other: MicrosoftSystem64 was once
+   described on this site as PolinRider's own implant, and no source said
+   so. Say only the link a source states.
 3. No numbers that are not in a source. Say who counted and link it.
 4. One call to action, at the end: check your machine, your account or your
    organization. Nothing to buy, star or share.
@@ -39,9 +45,9 @@ Rules, not suggestions:
 6. Link the guide that fits and the review the post came from.
 7. Re-check every claim against its source before publishing.
 
-On the day a post is published, add one line to the end of that week's
-indicator review, "News: [title](/polinrider-cleaner/news/...)". Reviews are
-not edited after that day.
+The post links the review it came from, through `review` in the front
+matter. Nothing links back from the review: reviews are never edited after
+they merge.
 */}
 
 import NewsMeta from '../../../components/NewsMeta.astro';
