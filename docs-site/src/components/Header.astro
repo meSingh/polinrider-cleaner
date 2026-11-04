@@ -1,9 +1,11 @@
 ---
-// The top bar on every page: the name, the four sections, search, the theme
+// The top bar on every page: the mark and "PolinRider Scanner" (never the
+// bare name, which reads as the malware), the four sections, search, the theme
 // button and one obvious button, "Download", which goes to the install page.
 // On a phone the sections move into a Menu panel; search, the theme button
 // and the menu stay in the bar. The menu is a <details>, so it works without
 // JavaScript.
+import BrandMark from './BrandMark.astro';
 import Icon from './Icon.astro';
 import GitHubMark from './GitHubMark.astro';
 import Search from './Search.astro';
@@ -25,8 +27,8 @@ const current = (match: string) => (path.startsWith(`${base}${match}`) ? 'page' 
 <header class="site-header no-print">
   <div class="bar wrap">
     <a href={`${base}/`} class="brand" aria-label={`${SITE_TITLE}, home`}>
-      <img src={`${base}/favicon.svg`} alt="" width="28" height="28" />
-      <span translate="no">polinrider</span>
+      <BrandMark />
+      <span translate="no">PolinRider Scanner</span>
     </a>
 
     <nav class="nav" aria-label="Main">
@@ -77,9 +79,6 @@ const current = (match: string) => (path.startsWith(`${base}${match}`) ? 'page' 
     letter-spacing: -0.02em;
     text-decoration: none;
     white-space: nowrap;
-  }
-  .brand img {
-    border-radius: 7px;
   }
   .nav {
     display: none;

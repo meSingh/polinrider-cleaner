@@ -57,6 +57,7 @@ const columns = [
     ],
   },
 ] as const;
+import BrandMark from './BrandMark.astro';
 ---
 
 <footer class="site-footer no-print">
@@ -64,11 +65,11 @@ const columns = [
     <div class="top">
       <div class="brand">
         <a href={`${base}/`} class="name" aria-label={`${SITE_TITLE}, home`}>
-          <img src={`${base}/favicon.svg`} alt="" width="28" height="28" />
-          <span translate="no">polinrider</span>
+          <BrandMark />
+          <span translate="no">{SITE_TITLE}</span>
         </a>
         <p>
-          {SITE_TITLE} checks a computer, a GitHub account or an organisation for PolinRider, and cleans it up.
+          It checks a computer, a GitHub account or an organisation for PolinRider, and cleans it up.
           Free and open source.
         </p>
         <p class="built">
@@ -113,7 +114,7 @@ const columns = [
   }
   @media (min-width: 66rem) {
     .top {
-      grid-template-columns: 18rem minmax(0, 1fr);
+      grid-template-columns: 20rem minmax(0, 1fr);
       gap: 4rem;
     }
   }
@@ -122,12 +123,11 @@ const columns = [
     align-items: center;
     gap: 0.6rem;
     color: var(--pr-heading);
-    font-size: 1.125rem;
+    font-size: 1rem;
     font-weight: 650;
+    letter-spacing: -0.01em;
     text-decoration: none;
-  }
-  .name img {
-    border-radius: 7px;
+    white-space: nowrap;
   }
   .brand p {
     margin: 0.9rem 0 0;

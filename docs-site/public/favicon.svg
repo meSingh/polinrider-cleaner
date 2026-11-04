@@ -1,9 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="PolinRider Scanner and Cleaner">
-  <!-- Reads at 16px, which rules out anything with detail. A ring with a scan
-       line through it: the lattice sphere from the project artwork, reduced
-       until only the idea of sweeping something survives. Teal is the site
-       accent (oklch(74% 0.115 195), written here in hex for wider support). -->
-  <circle cx="16" cy="16" r="11" fill="none" stroke="#2fc4b8" stroke-width="3"/>
-  <path d="M3 16h26" stroke="#2fc4b8" stroke-width="3" stroke-linecap="round"/>
-  <circle cx="16" cy="16" r="3.2" fill="#2fc4b8"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="PolinRider Scanner and Cleaner"><rect x="16" y="16" width="224" height="224" rx="60" fill="#0f1220"/><path d="M64 64H144A48 48 0 0 1 144 160H96V192H64ZM96 96H144A16 16 0 0 1 144 128H96Z" fill="#ffffff" fill-rule="evenodd"/><rect x="48" y="128" width="160" height="16" fill="#0b6a80"/></svg>

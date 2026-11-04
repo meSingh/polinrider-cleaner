@@ -49,7 +49,10 @@ const fullTitle = `${title} | ${SITE_TITLE}`;
     {hasCanonical && <link rel="canonical" href={url} />}
     <link rel="sitemap" href={`${base}/sitemap-index.xml`} />
     <link rel="alternate" type="application/rss+xml" title={`${SITE_TITLE}: News`} href={`${SITE_URL}/news/rss.xml`} />
+    <link rel="icon" href={`${base}/favicon.ico`} sizes="32x32" />
     <link rel="icon" href={`${base}/favicon.svg`} type="image/svg+xml" />
+    <link rel="apple-touch-icon" href={`${base}/apple-touch-icon.png`} />
+    <link rel="manifest" href={`${base}/site.webmanifest`} />
     <meta name="generator" content={Astro.generator} />
     {noindex && <meta name="robots" content="noindex, follow" />}
 

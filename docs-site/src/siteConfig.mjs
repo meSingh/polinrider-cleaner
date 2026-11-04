@@ -53,7 +53,7 @@ export const BING_SITE_VERIFICATION = '';
 // The social card every page carries.
 export const SOCIAL_IMAGE = {
   url: `${SITE_URL}/social-preview.jpg`,
-  width: 1280,
-  height: 640,
-  alt: 'PolinRider Scanner and Cleaner: a rider inside a cyan lattice between two rows of servers',
+  width: 1200,
+  height: 630,
+  alt: 'PolinRider Scanner and Cleaner. Under attack by PolinRider? Find the malware and remove it safely. polinriderscanner.com',
 };
