@@ -45,9 +45,9 @@ if (group) crumbs.push({ label: group, href: flat.find((i) => i.group === group)
         <VersionSwitch current={version} versions={versions} />
         <nav aria-label="Documentation">
           <a class="overview" href={version.root} aria-current={id === '' ? 'page' : undefined}>Overview</a>
-          {nav.map((g, gi) => (
+          {nav.map((g) => (
             <div class="group">
-              <p class="group-label">{g.label !== 'The project' && g.label !== 'More' && <span class="num">{gi + 1}</span>}{g.label}</p>
+              <p class="group-label">{g.label}</p>
               <ul>
                 {g.items.map((i) => (
                   <li><a href={i.href} aria-current={i.id === id ? 'page' : undefined}>{i.label}</a></li>
@@ -145,51 +145,55 @@ if (group) crumbs.push({ label: group, href: flat.find((i) => i.group === group)
   .nav-fold[open] > summary {
     margin-bottom: 1rem;
   }
+  /* The sidebar: small capitals for each group, a thin rail down each
+   * list, and the current page marked on the rail in the accent colour,
+   * with no filled box. */
   .overview {
     display: block;
-    margin: 1rem 0 0.5rem;
+    margin: 1.25rem 0 0;
   }
   .group {
-    margin-top: 1.25rem;
+    margin-top: 1.5rem;
   }
   .group-label {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin: 0 0 0.4rem;
-    color: var(--pr-heading);
-    font-weight: 650;
-  }
-  .num {
-    display: grid;
-    place-items: center;
-    width: 1.35rem;
-    height: 1.35rem;
-    border: 1px solid var(--pr-border-strong);
-    border-radius: 50%;
-    color: var(--pr-text);
+    margin: 0 0 0.5rem;
+    color: var(--pr-muted);
     font-size: 0.75rem;
+    font-weight: 650;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
   }
   ul {
     margin: 0;
     padding: 0;
     list-style: none;
+    border-inline-start: 1px solid var(--pr-border);
   }
   nav a {
     display: block;
-    padding: 0.35rem 0.75rem;
-    border-radius: var(--pr-radius-sm);
+    margin-inline-start: -1px;
+    padding: 0.32rem 0.9rem;
+    border-inline-start: 2px solid transparent;
     color: var(--pr-text);
+    line-height: 1.45;
     text-decoration: none;
   }
+  .overview {
+    padding-inline-start: 0;
+    border: 0;
+    margin-inline-start: 0;
+  }
   nav a:hover {
+    border-inline-start-color: var(--pr-border-strong);
     color: var(--pr-heading);
   }
+  .overview:hover {
+    border-color: transparent;
+  }
   nav a[aria-current='page'] {
-    background: var(--pr-surface);
-    box-shadow: inset 2px 0 0 var(--pr-heading);
-    color: var(--pr-heading);
-    font-weight: 600;
+    border-inline-start-color: var(--pr-accent);
+    color: var(--pr-accent);
+    font-weight: 650;
   }
   .pager {
     display: grid;

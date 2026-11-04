@@ -7,10 +7,14 @@
 // code block on the site. Without JavaScript all three systems are shown,
 // one under another.
 import { Code } from 'astro:components';
-const brew = 'brew install meSingh/tap/polinrider-cleaner\npolinrider';
+interface Props {
+  /** Only the install commands, without the line that runs it. */
+  install?: boolean;
+}
+const run = Astro.props.install ? '' : '\npolinrider';
+const brew = `brew install meSingh/tap/polinrider-cleaner${run}`;
 const scoop =
-  'scoop bucket add mesingh https://github.com/meSingh/scoop-bucket\n' +
-  'scoop install polinrider-cleaner\npolinrider';
+  'scoop bucket add mesingh https://github.com/meSingh/scoop-bucket\n' + `scoop install polinrider-cleaner${run}`;
 
 const systems = [
   { id: 'macos', label: 'macOS', code: brew },

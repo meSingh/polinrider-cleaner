@@ -1,245 +1,70 @@
 ---
-// News: our own posts, the weekly indicator reviews and articles published
-// elsewhere, each in its own tab and each card marked with which it is.
-// Without JavaScript the three lists are shown one under another.
+// News: everything about PolinRider in one line of time, newest first. Our
+// posts, the weekly indicator reviews and articles published elsewhere sit
+// together; only an outside article is marked, by its publisher's name and
+// an icon, because it opens on another site.
 import Base from '../../layouts/Base.astro';
 import Crumbs from '../../components/Crumbs.astro';
 import Icon from '../../components/Icon.astro';
-import { elsewhere, inline, newsPosts, reviews } from '../../news';
-import { longDate } from '../../releaseDate';
+import NewsTimeline from '../../components/NewsTimeline.astro';
+import { timeline } from '../../news';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
-const posts = await newsPosts();
-const weekly = await reviews();
-const external = await elsewhere();
-const tabs = [
-  { id: 'posts', label: 'Our posts', count: posts.length },
-  { id: 'reviews', label: 'Indicator reviews', count: weekly.length },
-  { id: 'elsewhere', label: 'Elsewhere', count: external.length },
-];
+const items = await timeline();
 ---
 
 <Base
   title="PolinRider news"
-  description="What changed in the PolinRider supply-chain campaign, and what it means if you are checking or cleaning up a machine, a GitHub account or an organization."
+  description="Everything about the PolinRider supply-chain malware, newest first: what changed, the weekly indicator reviews and what others have published."
   type="website"
 >
   <div class="wrap page">
     <Crumbs items={[]} />
-    <h1>News</h1>
-    <p class="lead">
-      What changed in the PolinRider campaign, and what it means if you are cleaning up. Posts come from
-      the weekly indicator reviews, and only when a week changes something you would act on.
-    </p>
-    <p class="subscribe"><a href={`${base}/news/rss.xml`}><Icon name="rss" size={17} /> Subscribe with RSS</a></p>
-
-    <pr-news-tabs>
-      <div class="tabs" role="tablist" aria-label="Kinds of news" hidden>
-        {tabs.map((t, i) => (
-          <button type="button" role="tab" id={`tab-${t.id}`} aria-controls={t.id} aria-selected={i === 0 ? 'true' : 'false'} tabindex={i === 0 ? 0 : -1} data-key={t.id}>
-            {t.label} <span class="count">{t.count}</span>
-          </button>
-        ))}
+    <div class="head">
+      <div>
+        <h1>News</h1>
+        <p class="lead">Everything about PolinRider, newest first.</p>
       </div>
-
-      <section id="posts" role="tabpanel" aria-labelledby="tab-posts" data-key="posts">
-        <h2 class="panel-title">Our posts</h2>
-        <ul class="cards">
-          {posts.map((p) => (
-            <li>
-              <a class="card" href={p.href}>
-                <span class="card-meta"><span class="tag tag-accent">Our post</span><time datetime={p.date}>{longDate(p.date)}</time></span>
-                <span class="card-title">{p.title}</span>
-                <p>{p.description}</p>
-              </a>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section id="reviews" role="tabpanel" aria-labelledby="tab-reviews" data-key="reviews">
-        <h2 class="panel-title">Indicator reviews</h2>
-        <p class="panel-intro">
-          The indicator set is checked against published sources every week. Every week's full record,
-          including the weeks with no change, is here.{' '}
-          <a href={`${base}/news/indicator-reviews/`}>How the reviews work</a>
-        </p>
-        <ul class="cards">
-          {weekly.map((r) => (
-            <li>
-              <a class="card" href={r.href}>
-                <span class="card-meta"><span class="tag">Indicator review</span><time datetime={r.date}>{longDate(r.date)}</time></span>
-                <span class="card-title">{r.outcome ? r.outcome.charAt(0).toUpperCase() + r.outcome.slice(1) : r.label}</span>
-                {r.summary && <p set:html={inline(r.summary)} />}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section id="elsewhere" role="tabpanel" aria-labelledby="tab-elsewhere" data-key="elsewhere">
-        <h2 class="panel-title">Elsewhere</h2>
-        <p class="panel-intro">
-          Articles about PolinRider by security researchers and news outlets. Each one was read before it was
-          listed. They open on the publisher's site, in a new tab.
-        </p>
-        <ul class="cards">
-          {external.map((x) => (
-            <li>
-              <a class="card" href={x.url} target="_blank" rel="noopener noreferrer">
-                <span class="card-meta">
-                  <span class="tag">Elsewhere</span>
-                  <span class="source">{x.source}</span>
-                  <time datetime={x.date}>{longDate(x.date)}</time>
-                </span>
-                <span class="card-title">{x.title} <Icon name="external" size={16} class="ext" /><span class="sr-only"> (opens in a new tab)</span></span>
-                <p>{x.summary}</p>
-              </a>
-            </li>
-          ))}
-        </ul>
-      </section>
-    </pr-news-tabs>
+      <a class="rss" href={`${base}/news/rss.xml`}><Icon name="rss" size={17} /> RSS</a>
+    </div>
+    <p class="how">
+      The indicator set is checked against published sources every week, and every week is listed here.{' '}
+      <a href={`${base}/news/indicator-reviews/`}>How the weekly reviews work</a>
+    </p>
+    <NewsTimeline items={items} months />
   </div>
 </Base>
 
-<script>
-  // Tabs over the three lists; the address keeps the choice (#reviews), so a
-  // link can point at one list.
-  class NewsTabs extends HTMLElement {
-    connectedCallback() {
-      const list = this.querySelector<HTMLElement>('[role="tablist"]')!;
-      const tabs = [...list.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
-      list.hidden = false;
-      this.classList.add('js');
-      const select = (key: string, focus = false) => {
-        if (!tabs.some((t) => t.dataset.key === key)) key = tabs[0].dataset.key!;
-        for (const t of tabs) {
-          const on = t.dataset.key === key;
-          t.setAttribute('aria-selected', String(on));
-          t.tabIndex = on ? 0 : -1;
-          if (on && focus) t.focus();
-        }
-        for (const p of this.querySelectorAll<HTMLElement>('[role="tabpanel"]')) p.hidden = p.dataset.key !== key;
-      };
-      tabs.forEach((t, i) => {
-        t.addEventListener('click', () => {
-          select(t.dataset.key!);
-          history.replaceState(null, '', `#${t.dataset.key}`);
-        });
-        t.addEventListener('keydown', (e) => {
-          const step = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
-          if (!step) return;
-          e.preventDefault();
-          const next = tabs[(i + step + tabs.length) % tabs.length];
-          select(next.dataset.key!, true);
-          history.replaceState(null, '', `#${next.dataset.key}`);
-        });
-      });
-      select(location.hash.slice(1));
-      addEventListener('hashchange', () => select(location.hash.slice(1)));
-    }
-  }
-  customElements.define('pr-news-tabs', NewsTabs);
-</script>
-
 <style>
   .page {
-    max-width: calc(64rem + 2 * var(--gutter));
+    max-width: calc(56rem + 2 * var(--gutter));
     padding-top: 2.5rem;
+  }
+  .head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
   }
   h1 {
     margin: 0.75rem 0 0;
     font-size: var(--text-h1);
   }
   .lead {
-    margin: 1rem 0 0;
+    margin: 0.75rem 0 0;
     font-size: 1.1875rem;
   }
-  .subscribe {
-    margin: 0.75rem 0 0;
-    font-size: var(--text-sm);
-  }
-  .subscribe a {
+  .rss {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
+    font-size: var(--text-sm);
     font-weight: 600;
   }
-  pr-news-tabs {
-    display: block;
-    margin-top: 2.5rem;
-  }
-  .tabs {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem;
-    margin-bottom: 1.75rem;
-    border-bottom: 1px solid var(--pr-border);
-  }
-  .tabs[hidden] {
-    display: none;
-  }
-  [role='tab'] {
-    margin-bottom: -1px;
-    padding: 0.7rem 0.9rem;
-    border: 0;
-    border-bottom: 2px solid transparent;
-    background: none;
-    color: var(--pr-text);
-    font: 600 1rem/1.2 var(--font);
-    cursor: pointer;
-  }
-  [role='tab']:hover {
-    color: var(--pr-heading);
-  }
-  [role='tab'][aria-selected='true'] {
-    border-bottom-color: var(--pr-heading);
-    color: var(--pr-heading);
-  }
-  .count {
-    margin-inline-start: 0.3rem;
-    padding: 0.05rem 0.45rem;
-    border-radius: 999px;
-    background: var(--pr-surface);
+  .how {
+    margin: 1rem 0 2.5rem;
     color: var(--pr-muted);
-    font-size: 0.8125rem;
-  }
-  section + section {
-    margin-top: 3rem;
-  }
-  .js section + section {
-    margin-top: 0;
-  }
-  .panel-title {
-    margin: 0 0 1rem;
-    font-size: var(--text-h2);
-  }
-  .js .panel-title {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-  }
-  .panel-intro {
-    margin: 0 0 1.5rem;
-    font-size: 1rem;
-  }
-  .cards {
-    display: grid;
-    gap: 1rem;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-  .source {
-    color: var(--pr-heading);
-    font-weight: 600;
-  }
-  .card-title :global(.ext) {
-    display: inline;
-    vertical-align: -0.1em;
-    color: var(--pr-muted);
+    font-size: var(--text-sm);
   }
 </style>

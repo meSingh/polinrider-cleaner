@@ -1,0 +1,74 @@
+---
+// The same rewritten commit as git log shows it and as GitHub's push record
+// shows it, side by side. An illustration with made-up IDs and times; the
+// threat page says so.
+---
+
+<figure class="compare not-prose">
+  <div class="side">
+    <p class="label">What <code>git log</code> shows you</p>
+    <pre>a41c9e2  Fix navbar spacing
+         You · 12 Oct, 10:42</pre>
+    <p class="verdict ok">Looks normal: your name, your message, the old date.</p>
+  </div>
+  <div class="side">
+    <p class="label">What GitHub's push record shows</p>
+    <pre>force-pushed main
+from 7d03b18 to a41c9e2
+by your account · 3 Nov, 02:13</pre>
+    <p class="verdict bad">The real push: when it happened and that it replaced a commit.</p>
+  </div>
+  <figcaption>An example, with made-up commit IDs and times.</figcaption>
+</figure>
+
+<style>
+  .compare {
+    display: grid;
+    gap: 1rem;
+    margin: 1.5rem 0 2rem;
+  }
+  @media (min-width: 40rem) {
+    .compare {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+  .side {
+    padding: 1.1rem 1.2rem;
+    border: 1px solid var(--pr-border);
+    border-radius: var(--pr-radius);
+    background: var(--pr-surface);
+  }
+  .label {
+    margin: 0 0 0.6rem;
+    color: var(--pr-heading);
+    font-size: var(--text-sm);
+    font-weight: 650;
+  }
+  pre {
+    margin: 0;
+    padding: 0.8rem 1rem;
+    border: 1px solid var(--pr-border);
+    border-radius: var(--pr-radius-sm);
+    background: var(--pr-bg);
+    color: var(--pr-heading);
+    font-size: 0.875rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+  }
+  .verdict {
+    margin: 0.7rem 0 0;
+    font-size: var(--text-sm);
+  }
+  .ok {
+    color: var(--pr-text);
+  }
+  .bad {
+    color: var(--pr-heading);
+    font-weight: 600;
+  }
+  figcaption {
+    grid-column: 1 / -1;
+    color: var(--pr-muted);
+    font-size: var(--text-xs);
+  }
+</style>

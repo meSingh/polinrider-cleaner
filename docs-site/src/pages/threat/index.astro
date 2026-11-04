@@ -1,0 +1,65 @@
+---
+// The threat page: what PolinRider is, who is at risk, how it gets in, what
+// it does, why history looks clean, the signs, the related malware, a dated
+// timeline and the sources. Written for a person, not a researcher; every
+// claim links to a published report (src/content/threat/index.mdx).
+import { getEntry, render } from 'astro:content';
+import Article from '../../layouts/Article.astro';
+import Icon from '../../components/Icon.astro';
+
+const entry = (await getEntry('threat', 'index'))!;
+const { Content, headings } = await render(entry);
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+
+<Article
+  title={entry.data.title}
+  description={entry.data.description}
+  crumbs={[]}
+  headings={headings}
+  section="Threat"
+  file={entry.filePath}
+  class="threat-page"
+>
+  <Content />
+  <div slot="after" class="cta no-print">
+    <p><strong>Worried?</strong> Check your computer, your GitHub account or your organization. It takes a few minutes and changes nothing until you type <code>yes</code>.</p>
+    <a class="pill" href={`${base}/#how`}>Check now <Icon name="arrow" size={18} /></a>
+  </div>
+</Article>
+
+<style>
+  /* The opening paragraph reads as the page's summary. */
+  :global(.threat-page .prose > p:first-child) {
+    color: var(--pr-heading);
+    font-size: 1.25rem;
+    line-height: 1.55;
+  }
+  .cta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem 2rem;
+    margin-top: 3rem;
+    padding: 1.4rem 1.6rem;
+    border: 1px solid var(--pr-border);
+    border-radius: var(--pr-radius);
+    background: var(--pr-surface);
+  }
+  .cta p {
+    flex: 1 1 20rem;
+    margin: 0;
+  }
+  .cta strong {
+    color: var(--pr-heading);
+  }
+  .cta code {
+    padding: 0.05em 0.35em;
+    border: 1px solid var(--pr-border);
+    border-radius: 6px;
+    background: var(--pr-bg);
+    color: var(--pr-heading);
+    font-size: 0.88em;
+  }
+</style>

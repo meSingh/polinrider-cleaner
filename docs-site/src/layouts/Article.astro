@@ -1,5 +1,5 @@
 ---
-// A page of writing outside the docs: a campaign page, a News post, an
+// A page of writing outside the docs: the threat page, a News post, an
 // indicator review or a release. The trail, the title, a line under it, the
 // text and "On this page" beside it. An optional list on the left (the
 // releases, the reviews) for sections a reader moves along.
@@ -22,13 +22,14 @@ interface Props {
   /** false where the page shows its own date instead. */
   foot?: boolean;
   side?: { title: string; items: { label: string; href: string; badge?: string }[] };
+  class?: string;
 }
-const { title, description, crumbs, headings = [], tocDepth = 2, section, file, foot = true, side } = Astro.props;
+const { title, description, crumbs, headings = [], tocDepth = 2, section, file, foot = true, side, class: extra } = Astro.props;
 const path = Astro.url.pathname;
 ---
 
 <Base title={title} description={description}>
-  <div class:list={['article wrap', { 'has-side': side }]}>
+  <div class:list={['article wrap', extra, { 'has-side': side }]}>
     {side && (
       <nav class="side no-print" aria-label={side.title}>
         <p class="side-title">{side.title}</p>
@@ -110,33 +111,38 @@ const path = Astro.url.pathname;
     font-size: var(--text-sm);
   }
   .side-title {
-    margin: 0 0 0.6rem;
-    color: var(--pr-heading);
+    margin: 0 0 0.5rem;
+    color: var(--pr-muted);
+    font-size: 0.75rem;
     font-weight: 650;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
   }
   .side ul {
     margin: 0;
     padding: 0;
     list-style: none;
+    border-inline-start: 1px solid var(--pr-border);
   }
   .side a {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 0.5rem;
-    padding: 0.35rem 0.7rem;
-    border-radius: var(--pr-radius-sm);
+    margin-inline-start: -1px;
+    padding: 0.32rem 0.9rem;
+    border-inline-start: 2px solid transparent;
     color: var(--pr-text);
     text-decoration: none;
   }
   .side a:hover {
+    border-inline-start-color: var(--pr-border-strong);
     color: var(--pr-heading);
   }
   .side a[aria-current='page'] {
-    background: var(--pr-surface);
-    box-shadow: inset 2px 0 0 var(--pr-heading);
-    color: var(--pr-heading);
-    font-weight: 600;
+    border-inline-start-color: var(--pr-accent);
+    color: var(--pr-accent);
+    font-weight: 650;
   }
   @media (max-width: 71.99rem) {
     .side {

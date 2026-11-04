@@ -9,7 +9,7 @@ The most valuable contributions to this project are not code.
 
 [Open a missed-detection issue](https://github.com/meSingh/polinrider-cleaner/issues/new?template=missed-detection.md)
 with the source you saw it in. New indicators are reviewed against the
-classification rule on [the indicator set](/campaign/indicators/): `strong.txt`
+classification rule on [the indicator set](/threat/indicators/): `strong.txt`
 only when a match means infection with no plausible alternative.
 
 ## A false positive

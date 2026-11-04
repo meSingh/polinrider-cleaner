@@ -24,7 +24,6 @@ const { date, review } = entry.data;
   foot={false}
 >
   <Fragment slot="meta">
-    <span class="tag">Our post</span>
     <time datetime={date}>{longDate(date)}</time>
     {review && (
       <>
@@ -38,9 +37,6 @@ const { date, review } = entry.data;
 </Article>
 
 <style>
-  .tag {
-    margin-inline-end: 0.6rem;
-  }
   .back {
     margin-top: 3rem;
     font-size: var(--text-sm);

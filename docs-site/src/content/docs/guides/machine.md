@@ -31,7 +31,7 @@ drive or a mounted image.
 
 The `MicrosoftSystem64` implant first, malware from the same DPRK-linked group
 that this tool checks for alongside PolinRider
-([why](/campaign/what-it-is/#related-malware-microsoftsystem64)):
+([why](/threat/#related-malware-microsoftsystem64)):
 its files, its process, and on Windows its scheduled task and Run entry. Then editor extensions, editor tasks that run on
 folder open, build configs, fake fonts, the script the payload spreads with,
 known-bad packages, Python startup files, what starts by itself, shell startup

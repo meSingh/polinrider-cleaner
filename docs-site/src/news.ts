@@ -77,3 +77,38 @@ export const inline = (s: string) =>
     .replace(/>/g, '&gt;')
     .replace(/`([^`]+)`/g, '<code>$1</code>')
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+
+export interface TimelineItem {
+  date: string;
+  title: string;
+  /** One line, as HTML (inline code kept). */
+  summary: string;
+  href: string;
+  /** Published elsewhere: opens in a new tab, with its publisher's name. */
+  source?: string;
+}
+
+/** Everything in News, newest first: our posts, the weekly reviews and
+ * articles published elsewhere, in one line of time. */
+export async function timeline(): Promise<TimelineItem[]> {
+  const items: TimelineItem[] = [
+    ...(await newsPosts()).map((p) => ({ date: p.date, title: p.title, summary: inline(p.description), href: p.href })),
+    ...(await reviews()).map((r) => ({
+      date: r.date,
+      title: `Weekly indicator review: ${r.outcome ?? r.label}`,
+      summary: r.summary ? inline(r.summary) : '',
+      href: r.href,
+    })),
+    ...(await elsewhere()).map((x) => ({
+      date: x.date,
+      title: x.title,
+      summary: inline(x.summary),
+      href: x.url,
+      source: x.source,
+    })),
+  ];
+  // Newest first; on the same day our own post comes before a review, and
+  // both before an outside article.
+  const rank = (i: TimelineItem) => (i.source ? 2 : i.title.startsWith('Weekly indicator review') ? 1 : 0);
+  return items.sort((a, b) => (a.date === b.date ? rank(a) - rank(b) : a.date < b.date ? 1 : -1));
+}

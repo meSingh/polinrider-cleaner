@@ -33,7 +33,8 @@ export const collections = {
   // Frozen copies, one folder per release line, served at /docs/X.Y/.
   // Written by scripts/freeze-docs.mjs at a release, never by hand.
   docsVersions: defineCollection({ loader: pages('./src/content/docs-versions'), schema: page }),
-  campaign: defineCollection({ loader: pages('./src/content/campaign'), schema: page }),
+  // The threat page (index.mdx) and the full indicator set.
+  threat: defineCollection({ loader: pages('./src/content/threat'), schema: page }),
   news: defineCollection({
     loader: pages('./src/content/news'),
     schema: page.extend({ description: z.string(), date: day, review: day.optional() }),

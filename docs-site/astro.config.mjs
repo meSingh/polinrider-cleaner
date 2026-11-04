@@ -30,6 +30,11 @@ const redirects = Object.fromEntries([
   ...pages('docs/reference').map((p) => moved(`/reference/${p}/`, `/docs/reference/${p}/`)),
   ...pages('docs/project').map((p) => moved(`/project/${p}/`, `/docs/project/${p}/`)),
   moved('/indicator-reviews/', '/news/indicator-reviews/'),
+  // The campaign pages became one threat page in November 2026.
+  moved('/campaign/', '/threat/'),
+  moved('/campaign/what-it-is/', '/threat/'),
+  moved('/campaign/how-it-hides/', '/threat/#why-your-git-history-looks-clean'),
+  moved('/campaign/indicators/', '/threat/indicators/'),
   ...pages('docs/indicator-reviews').map((p) => moved(`/indicator-reviews/${p}/`, `/news/indicator-reviews/${p}/`)),
 ]);
 

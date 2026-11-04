@@ -1,0 +1,272 @@
+---
+title: The PolinRider threat
+description: "PolinRider hides in developers' projects, steals their logins and spreads to everything they push. How it gets in, what it does, how it hides and the signs to look for."
+---
+
+import HistoryCompare from '~/components/HistoryCompare.astro';
+import Timeline from '~/components/Timeline.astro';
+import Icon from '~/components/Icon.astro';
+
+PolinRider is malware that hides inside software projects. Once it runs on a
+developer's computer, it steals their passwords and tokens, adds itself to
+the code they work on and pushes that code with their own account, so the
+next person who opens the project is hit too. Security researchers link it
+to North Korea ([OpenSourceMalware][osm-march]; [The Hacker News][thn]).
+
+Its goal is not your code. The code is how it travels. The goal is your
+logins and your money.
+
+## Am I at risk?
+
+You could be if you write code and, in the last year or so, you did any of
+these:
+
+- installed an npm, Go or Composer package;
+- installed a VS Code or Cursor extension;
+- opened someone else's project in your editor, including one you cloned to
+  review;
+- did a "take-home" coding test for a job interview.
+
+None of these is unusual, which is the point. A check takes a few minutes:
+[install and run polinrider](/docs/quick-start/).
+
+## How it gets in
+
+<div class="tgrid">
+<div class="tcard">
+<p class="tcard-title"><Icon name="box" size={20} class="ticon" />A package</p>
+
+From npm, Go or Composer. It runs when the package is installed, or when
+your build loads it.
+</div>
+<div class="tcard">
+<p class="tcard-title"><Icon name="puzzle" size={20} class="ticon" />An editor extension</p>
+
+For VS Code or Cursor. It runs as soon as the editor loads the extension.
+</div>
+<div class="tcard">
+<p class="tcard-title"><Icon name="folder" size={20} class="ticon" />A project you open</p>
+
+A cloned repository or a job-interview test. A hidden editor task runs a
+command the moment the folder opens.
+</div>
+</div>
+
+The last one matters most. **Opening the folder is enough.** You do not have
+to run the project, install anything or click anything
+([OpenSourceMalware][osm-march]; [fake fonts][osm-ab]).
+
+## What it does on your computer
+
+First a small piece of hidden JavaScript runs. It fetches the real malware
+from records stored on public blockchains, which means there is no single
+website to block or take down ([OpenSourceMalware][osm-march];
+[SafeDep][safedep-eth]).
+
+That second part is built to steal. Reports name the DEV#POPPER remote
+access tool and the OmniStealer password stealer ([The Hacker News][thn]).
+What it goes after:
+
+- passwords and logged-in sessions saved in your browser;
+- GitHub tokens and SSH keys, and the login of the `gh` command;
+- npm, cloud, database and CI tokens;
+- every secret in every `.env` file it can read;
+- cryptocurrency wallets and their recovery phrases.
+
+Then it spreads. It adds itself to the projects on your computer and pushes
+them to GitHub with your account. In one case researchers watched an
+operator at the keyboard, installing a stealer and a clipboard monitor by
+hand ([Deception.Pro][dp]).
+
+## Why your Git history looks clean
+
+This is why people miss it. A small script on the infected computer,
+`temp_auto_push.bat`, rewrites your last commit and pushes it again
+([OpenSourceMalware][osm-march]):
+
+1. It reads your last commit: its date, message and author.
+2. It **winds the computer's clock back** to that commit's date.
+3. It adds the malware to that commit, keeping your name and message.
+4. It puts the clock right and force-pushes the branch.
+
+So the commit looks exactly as it did before. Your name, your message, the
+original date. Reading `git log` will not show you anything wrong.
+
+What it cannot change is GitHub's own record of the push. GitHub writes down
+every push and force-push with the account that made it and the real time,
+and none of that comes from the commit ([How to investigate a repo's real
+history][osm-history]).
+
+<HistoryCompare />
+
+That record is how polinrider finds the clean version to go back to. GitHub
+keeps it for a limited time, so check early. Once the record is gone, the
+infected commit can only be cleaned, not undone.
+
+## Signs to look for
+
+Each of these is something you can see in a project or on your computer.
+[Found something? Is it PolinRider or a false alarm?](/news/2026-11-04-polinrider-or-false-alarm/)
+
+<div class="tgrid tgrid-2">
+<div class="tcard">
+<p class="tcard-title">A font file that is really code</p>
+
+A file such as
+`public/fonts/fa-solid-400.woff2` that holds JavaScript instead of a font. A
+real `.woff2` font starts with the letters `wOF2`. The names keep changing
+([fake fonts][osm-ab]; [our post](/news/2026-11-04-fake-font-javascript/)).
+</div>
+<div class="tcard">
+<p class="tcard-title">An editor task that runs when you open the folder</p>
+
+A `.vscode/tasks.json`
+with `"runOn": "folderOpen"`, often labelled like a normal tool such as
+`eslint-check`, with its output hidden ([fake fonts][osm-ab]).
+</div>
+<div class="tcard">
+<p class="tcard-title">Code after the end of a config file</p>
+
+In `postcss.config.mjs`,
+`tailwind.config.js`, `eslint.config.mjs` and similar, extra code after the
+real end of the file, often pushed far to the right by a long run of spaces
+([OpenSourceMalware][osm-march]).
+</div>
+<div class="tcard">
+<p class="tcard-title">temp_auto_push.bat</p>
+
+, in a project or listed in a `.gitignore` nobody on
+your team wrote. It means a computer that pushes to that project is infected
+([our post](/news/2026-11-04-temp-auto-push-bat/)).
+</div>
+<div class="tcard">
+<p class="tcard-title">It keeps coming back</p>
+
+Your antivirus removes it and it is back the next
+time you run `npm run dev`. Something that starts it has not been found yet
+([our post](/news/2026-11-04-polinrider-keeps-coming-back/)).
+</div>
+<div class="tcard">
+<p class="tcard-title">MicrosoftSystem64</p>
+
+running on your computer, or folders named
+`.pcl-data` and `.pcl-state` in your home folder. That is related malware,
+below.
+</div>
+</div>
+
+## Related malware: MicrosoftSystem64
+
+`MicrosoftSystem64` is a remote-access tool installed by malicious npm
+packages. It is related to PolinRider through the group behind it, not part
+of PolinRider itself. SafeDep places the packages that install it in a
+cluster that kmsec.uk and OX Security link to Famous Chollima, also called
+Contagious Interview, a group tied to North Korea ([SafeDep][safedep-ms64]).
+OpenSourceMalware considers PolinRider a parallel or sub-campaign of
+Contagious Interview ([OpenSourceMalware][osm-blast]). No report we have
+read calls `MicrosoftSystem64` a PolinRider payload.
+
+polinrider checks for it too, because it targets the same developers and
+needs the same response: a program or process named `MicrosoftSystem64`, and
+the folders `~/.pcl-data` and `~/.pcl-state`.
+[MicrosoftSystem64 on your computer](/news/2026-11-04-microsoftsystem64/) has
+the detail.
+
+## Why cleaning once is not enough
+
+If you clean GitHub while an infected computer still holds a valid token, the
+malware pushes itself back within minutes. That is why the order is fixed:
+check every computer first, change every password and token, then clean the
+repositories, then scan every future push.
+[Order matters](/docs/guides/order/).
+
+## Timeline
+
+<Timeline
+  items={[
+    {
+      when: 'May 2025',
+      text: 'The earliest known PolinRider code, found later in nine npm versions published after an account takeover.',
+      source: 'OpenSourceMalware, 30 October 2026',
+      href: 'https://opensourcemalware.com/blog/polinrider-malware-found-in-2025-npm-packages',
+    },
+    {
+      when: '8 March 2026',
+      text: 'First public report: hidden JavaScript added to config files in hundreds of GitHub repositories.',
+      source: 'OpenSourceMalware',
+      href: 'https://opensourcemalware.com/blog/polinrider-dprk-compromised-hundreds-of-github-repos',
+    },
+    {
+      when: '31 March 2026',
+      text: 'The editor task that runs on folder open, and the history rewriting, described as part of the same operation.',
+      source: 'OpenSourceMalware',
+      href: 'https://opensourcemalware.com/blog/tasksjacker-dprk-attack-github-vscode',
+    },
+    {
+      when: '12 April 2026',
+      text: 'About 1,951 infected repositories across 1,047 owners. Fake font files become part of the kit.',
+      source: 'OpenSourceMalware',
+      href: 'https://opensourcemalware.com/blog/polinrider-rides-again-north-korean-attack-expands-across-github',
+    },
+    {
+      when: '4 July 2026',
+      text: '108 malicious packages and extensions across npm, Packagist, Go and Chrome.',
+      source: 'The Hacker News',
+      href: 'https://thehackernews.com/2026/07/north-korean-hackers-publish-108.html',
+    },
+    {
+      when: '15 July 2026',
+      text: 'About 4,367 infected repositories across 2,152 owners.',
+      source: 'OpenSourceMalware',
+      href: 'https://opensourcemalware.com/blog/polinrider-blast-radius-grows',
+    },
+    {
+      when: '9 September 2026',
+      text: 'An operator seen working by hand on a decoy network, installing a stealer and a clipboard monitor.',
+      source: 'Deception.Pro',
+      href: 'https://blog.deception.pro/blog/hok-dprk-polinrider-sep-2026',
+    },
+    {
+      when: '26 September 2026',
+      text: 'Fake font files renamed and moved, to get past detection.',
+      source: 'OpenSourceMalware',
+      href: 'https://opensourcemalware.com/blog/polinrider-is-a-b-testing-its-way-past-your-detections',
+    },
+    {
+      when: '30 September 2026',
+      text: 'A loader that reads its server addresses from Ethereum, found in 35 GitHub repositories.',
+      source: 'SafeDep',
+      href: 'https://safedep.io/polinrider-ethereum-c2-github-repositories/',
+    },
+  ]}
+/>
+
+Newer reports, and our weekly indicator reviews, are in [News](/news/).
+
+## What polinrider looks for
+
+Every indicator traces to a public source. They sit in plain files anyone can
+read: file names, text in files, package names, network addresses, file
+hashes and the paths the related malware uses. A confirmed match means
+infection; a match a normal project could also have is shown for you to
+review. [The full indicator set](/threat/indicators/).
+
+## Sources
+
+1. OpenSourceMalware, [Hundreds of GitHub Repos Compromised By DPRK's PolinRider Campaign][osm-march], 8 March 2026
+2. OpenSourceMalware, [PolinRider Confirmed Footprint Grows 6.5x Since March][osm-blast], 15 July 2026
+3. OpenSourceMalware, [PolinRider is A/B Testing its Way Past Your Detections][osm-ab], 26 September 2026
+4. OpenSourceMalware, [How to Investigate a GitHub Repo's Real History][osm-history], 6 October 2026
+5. The Hacker News, [North Korean Hackers Publish 108 Malicious Packages and Extensions in PolinRider Campaign][thn], 4 July 2026
+6. SafeDep, [PolinRider Switches to Ethereum C2 in 30+ Repositories][safedep-eth], 30 September 2026
+7. SafeDep, [Inside MicrosoftSystem64: A Supply Chain RAT Exfiltrating to HuggingFace][safedep-ms64], 28 May 2026
+8. Deception.Pro, [Hands-on-Keyboard Activity from the DPRK "PolinRider" Supply Chain Attack][dp], 9 September 2026
+
+[osm-march]: https://opensourcemalware.com/blog/polinrider-dprk-compromised-hundreds-of-github-repos
+[osm-blast]: https://opensourcemalware.com/blog/polinrider-blast-radius-grows
+[osm-ab]: https://opensourcemalware.com/blog/polinrider-is-a-b-testing-its-way-past-your-detections
+[osm-history]: https://opensourcemalware.com/blog/how-to-investigate-a-github-repos-real-history
+[thn]: https://thehackernews.com/2026/07/north-korean-hackers-publish-108.html
+[safedep-eth]: https://safedep.io/polinrider-ethereum-c2-github-repositories/
+[safedep-ms64]: https://safedep.io/microsoftsystem64-binary-payload-analysis/
+[dp]: https://blog.deception.pro/blog/hok-dprk-polinrider-sep-2026

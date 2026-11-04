@@ -23,7 +23,7 @@ the organization scanner, the account scanner and all three local checks at once
 
 "Related malware" is `MicrosoftSystem64` and the npm packages that install
 it: malware from the same DPRK-linked group, not part of PolinRider itself.
-[What PolinRider is](/campaign/what-it-is/#related-malware-microsoftsystem64)
+[What PolinRider is](/threat/#related-malware-microsoftsystem64)
 explains the link and its sources.
 
 Format: one entry per line. Lines starting with `#` and blank lines are ignored.

@@ -82,7 +82,7 @@ Opens <http://localhost:3000>. Edit any file under `docs-site/` and the page
 reloads by itself, so you can adjust the design by looking at it.
 
 - `docs-site/src/content/` holds the words, one folder per section: `docs/`
-  (with the weekly `indicator-reviews/`), `campaign/`, `news/`, `releases/`
+  (with the weekly `indicator-reviews/`), `threat/`, `news/`, `releases/`
   and `elsewhere.yaml`
 - `docs-site/src/pages/` and `src/layouts/` hold every page's HTML
 - `docs-site/src/styles/` holds the design: `theme.css` for colours and type

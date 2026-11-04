@@ -356,3 +356,43 @@ pre.astro-code {
 .prose .run-block {
   margin-bottom: 1.25rem;
 }
+
+/* Card grids inside a Markdown page (the threat page). */
+.prose .tgrid {
+  display: grid;
+  gap: 0.9rem;
+  margin: 1.25rem 0 1.75rem;
+}
+@media (min-width: 44rem) {
+  .prose .tgrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .prose .tgrid-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.prose .tcard {
+  padding: 1.1rem 1.2rem;
+  border: 1px solid var(--pr-border);
+  border-radius: var(--pr-radius);
+  background: var(--pr-surface);
+  font-size: 1rem;
+  line-height: 1.55;
+}
+.prose .tcard > * {
+  margin-bottom: 0;
+}
+.prose .tcard > * + * {
+  margin-top: 0.5rem;
+}
+.prose .tcard-title {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: var(--pr-heading);
+  font-weight: 650;
+}
+.prose .tcard-title .ticon {
+  flex: none;
+  color: var(--pr-accent);
+}
