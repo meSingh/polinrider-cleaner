@@ -1,0 +1,14 @@
+{
+  "name": "PolinRider Scanner and Cleaner",
+  "short_name": "PolinRider Scanner",
+  "description": "Check a machine, a GitHub account or a whole organization for PolinRider malware, and clean it up.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "browser",
+  "background_color": "#ffffff",
+  "theme_color": "#0f1220",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
