@@ -559,9 +559,10 @@ manifests use those links. A download through the API does not count:
 `packages` job's fetch of `SHA256SUMS` is not recorded, and a release check
 done with `gh release download` needs no row. Tested on 2026-11-04 (ADR-0053).
 
-The downloads before the log began were recorded from memory in
-`.github/scripts/downloads-ours-start.csv`, which seeds `ours.csv` on the
-first run and is not read again.
+Our counted downloads from before the log began, three `curl` test downloads
+on 2026-11-04, are in `.github/scripts/downloads-ours-start.csv`, which seeds
+`ours.csv` on the first run and is not read again. The earlier release checks
+and the winget manifest check used `gh release download` and are not in it.
 
 ### Signing
 

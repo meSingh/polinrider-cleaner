@@ -9,11 +9,14 @@
 
 GitHub keeps one running total per release file and no history. It cannot say
 when a file was downloaded or by whom, so a week after a post or a release
-there is no way to tell whether anyone came. And a good share of the totals is
+there is no way to tell whether anyone came. And some of the totals could be
 us: every release is checked by downloading all eleven files, the winget
 manifest check fetches the Windows zip and `SHA256SUMS`, test machines fetch
-binaries. On 2026-11-04, 19 of the 126 downloads ever made, checksums and
-attestations aside, were ours, and every one of v2.3.0's was.
+binaries. The release and winget checks went through `gh release download`,
+which GitHub does not count (below), so none of the 126 downloads made by
+2026-11-04, checksums and attestations aside, is ours by any record kept.
+v2.3.0's eleven files each read 1 the morning after its release, after its
+release check; those were someone else's.
 
 The Traffic log workflow (`traffic.yml`) already ran daily and kept what GitHub
 forgets on the `traffic` branch, so the totals belong there.
@@ -26,10 +29,15 @@ download` at 04:43 UTC, then two from its `releases/download/` link with
 `curl` at 04:51 and 05:28, moved the count from 1 to 2 between 04:57 and
 05:02 and to 3 between 05:37 and 05:42, and it was still 3 at 05:43. The two link
 downloads counted, each about ten minutes later; the API download never did.
-So a download through the asset's API URL, which is what `gh release
-download` fetches, is not counted, and the count lags by minutes, not days.
-The `packages` job's fetch is therefore not recorded as ours, and neither is
-the test download made with `gh`; the two `curl` downloads are.
+A second test confirmed it on another file: a `gh release download` of
+v2.2.0's `polinrider-v2.2.0.intoto.jsonl` at 05:45 UTC left its count at 2 for
+an hour, and one `curl` download from its link at 06:46 moved it to 3 between
+06:56 and 07:01. So a download through the asset's API URL, which is what
+`gh release download` fetches, is not counted, and the count lags by minutes,
+not days. The `packages` job's fetch, our earlier release checks and the
+winget check all went through the API, so none of them is recorded as ours,
+and neither are the two test downloads made with `gh`; the three `curl`
+downloads are.
 
 ## Decision
 
@@ -44,7 +52,8 @@ because it has no dates.
 Our own downloads are a ledger, `ours.csv`, written by running the workflow
 by hand with the `own_*` inputs, and taken off each week to leave "people".
 The ledger starts from `.github/scripts/downloads-ours-start.csv`, the
-downloads of ours known before the log existed. Checksums and attestations
+downloads of ours that GitHub counted before the log existed: the three `curl`
+test downloads above. Checksums and attestations
 are kept out of the main columns: they are fetched to check a download, not
 to run anything.
 
@@ -66,8 +75,8 @@ What it makes worse, and where it is wrong:
   not recorded reads as a person. Nothing can detect it.
 - **The counting rule is GitHub's, and observed, not documented.** If GitHub
   starts counting API downloads, the `packages` job's fetch will read as a
-  person once per release, and recorded `gh release download` checks would
-  start to match. Nothing here would notice. The test above is cheap to repeat.
+  person once per release, and so would every release check made with
+  `gh release download`, none of which is recorded. Nothing here would notice. The test above is cheap to repeat.
 - **Weeks are approximate at the edges.** The scheduled run is meant for
   03:17 UTC but GitHub starts it hours late (between 07:45 and 11:05 UTC
   from 15 October to 3 November 2026), and GitHub's count itself lags. A download near midnight
