@@ -12,8 +12,9 @@
 # fails on any internal link that does not reach a page, an anchor on it or
 # a redirect.
 #
-# Release pages are dated from their tags (docs-site/src/releaseDate.ts), so
-# the build fetches the tags, and the Release workflow runs this on main once
+# Release pages are dated from their tags (docs-site/src/releaseDate.ts) and
+# every page's "Last updated" from its file's last commit, so the build
+# fetches the full history and the tags, and the Release workflow runs this on main once
 # a release is published, which is when that date first exists.
 name: Docs
 
@@ -40,7 +41,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          # The release pages read their dates from the tags.
+          # Full history: every page shows the day its own file last changed
+          # (docs-site/src/git.ts), which a shallow clone cannot tell; it
+          # would give every page the date of the commit being built. Tags
+          # come with it, and the release pages read their dates from them.
+          fetch-depth: 0
           fetch-tags: true
 
       - name: Node

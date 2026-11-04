@@ -1,7 +1,9 @@
-// The day a page last changed, from git, as Starlight showed it: the date of
-// the last commit that touched the file. The deploy checkout is shallow, so
-// there every page shows the date of the commit the site was built from.
-// Outside a git checkout, the day of the build.
+// The day a page last changed, from git: the date of the last commit that
+// touched the file. The Docs workflow checks out the full history
+// (fetch-depth: 0) so each page gets its own date; in a shallow clone every
+// page would show the date of the commit being built. On a pull request the
+// files it changes show the date GitHub made its merge commit. Outside a
+// git checkout, the day of the build.
 import { execFileSync } from 'node:child_process';
 
 export function lastUpdated(filePath?: string): string {
