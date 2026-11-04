@@ -1,0 +1,38 @@
+---
+// The list on the News page, built from the posts themselves so a new post
+// only needs its own file. Newest first. Styled like the Releases list.
+import { longDate } from '../releaseDate';
+import { newsPosts } from '../news';
+
+const posts = newsPosts();
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+
+{posts.length === 0 && <p>No posts yet.</p>}
+
+<ul class="news-list">
+  {posts.map((p) => (
+    <li>
+      <a href={`${base}/${p.id}/`}>
+        <span class="title">{p.title}</span>
+        <time datetime={p.date}>{longDate(p.date)}</time>
+      </a>
+      <p>{p.description}</p>
+    </li>
+  ))}
+</ul>
+
+<style>
+  .news-list { list-style: none; padding: 0; margin: 1.5rem 0 0; display: grid; gap: 1rem; }
+  .news-list li {
+    margin: 0; padding: 1rem 1.25rem; border: 1px solid var(--border, var(--gray-6));
+    border-radius: var(--radius, 0.75rem); background: var(--gray-7);
+  }
+  .news-list a {
+    display: flex; flex-direction: column; gap: 0.25rem;
+    text-decoration: none; color: var(--foreground);
+  }
+  .news-list .title { font-size: 1.125rem; font-weight: 600; }
+  .news-list time { color: var(--muted-foreground); font-size: 0.875rem; }
+  .news-list p { margin: 0.5rem 0 0; color: var(--gray-2); }
+</style>
