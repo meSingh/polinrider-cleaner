@@ -38,9 +38,13 @@ const items = await timeline();
 </Base>
 
 <style>
+  /* The same width as the top bar, so the title lines up under the logo;
+   * the reading column keeps its measure from the left edge. */
   .page {
-    max-width: calc(56rem + 2 * var(--gutter));
     padding-top: 2.5rem;
+  }
+  .page > :global(*) {
+    max-width: 56rem;
   }
   .head {
     display: flex;

@@ -13,6 +13,10 @@ import ThemeToggle from './ThemeToggle.astro';
 import { REPO_URL, SHORT_TITLE, SITE_TITLE } from '../siteConfig.mjs';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+// On pages with a sidebar the content sits in the wider .frame; the bar
+// takes the same width there, so the logo lines up with the content's
+// left edge on every layout.
+const { frame = false } = Astro.props as { frame?: boolean };
 const links = [
   { label: 'Docs', href: `${base}/docs/`, match: '/docs/' },
   { label: 'Threat', href: `${base}/threat/`, match: '/threat/' },
@@ -25,7 +29,7 @@ const current = (match: string) => (path.startsWith(`${base}${match}`) ? 'page' 
 ---
 
 <header class="site-header no-print">
-  <div class="bar wrap">
+  <div class:list={['bar', frame ? 'frame' : 'wrap']}>
     <a href={`${base}/`} class="brand" aria-label={`${SITE_TITLE}, home`}>
       <BrandMark />
       <span translate="no">{SHORT_TITLE}</span>
