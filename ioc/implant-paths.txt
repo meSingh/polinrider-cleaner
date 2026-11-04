@@ -1,5 +1,6 @@
-# Second-stage implant install locations. Existence of any of these is a
-# confirmed compromise, not a signal to weigh.
+# Install locations of known implants: MicrosoftSystem64 (related DPRK malware,
+# Contagious Interview) and, below, files of PolinRider's own later stages.
+# Existence of any of these is a confirmed compromise, not a signal to weigh.
 #
 # The implant is a Node.js Single Executable Application: a native binary with
 # the V8 engine and the JavaScript payload statically linked in. It does not
@@ -44,8 +45,9 @@
 
 # --- the same agent under a new name. The pino-ulid dropper installs the
 # MicrosoftSystem64 agent's persistence as `pkg-agent`. Only the LaunchAgent is
-# carried: com.launchkeeper is the campaign's own reverse-DNS prefix, already in
-# the MicrosoftSystem64 plist above. ~/.config/systemd/user/pkg-agent.service and
+# carried: com.launchkeeper is the MicrosoftSystem64 family's own reverse-DNS
+# prefix, already in the MicrosoftSystem64 plist above.
+# ~/.config/systemd/user/pkg-agent.service and
 # ~/.config/autostart/pkg-agent.desktop are deliberately absent -- `pkg-agent`
 # is a name a legitimate tool could use, and this file is INFECTED tier.
 # Source: OpenSSF malicious-packages MAL-2026-16154 (`pino-ulid`; Amazon

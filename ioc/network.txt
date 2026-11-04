@@ -21,8 +21,9 @@ fullnode.mainnet.aptoslabs.com
 188.43.33.249
 23.27.13.43
 
-# --- second-stage controller and delivery, corroborated by two independent
-# analyses (safedep.io and JFrog Security Research), April-May 2026
+# --- MicrosoftSystem64 controller and delivery (related DPRK malware),
+# corroborated by two independent analyses (safedep.io and JFrog Security
+# Research), April-May 2026
 195.201.194.107
 copilot-ai.whisdev.org
 
