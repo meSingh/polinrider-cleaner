@@ -3,6 +3,38 @@ import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 import lucode from 'lucode-starlight';
 
+// Plausible analytics. Off until this holds the site's script ID from the
+// Plausible dashboard (Site settings, Site installation), which looks like
+// `pa-` followed by letters and digits. While it is empty, nothing is added to
+// any page. The ID is public: it appears in every page that loads the script.
+const PLAUSIBLE_SCRIPT_ID = '';
+
+// Downloads are release assets: .tar.gz and .zip archives, .deb packages and
+// .intoto.jsonl attestations. Setting fileExtensions replaces Plausible's
+// default list rather than adding to it. The links point at github.com, so
+// outbound link clicks are counted as well.
+const plausibleOptions = {
+  fileDownloads: { fileExtensions: ['gz', 'zip', 'deb', 'jsonl'] },
+  outboundLinks: true,
+};
+
+function plausibleHead(id) {
+  if (!id) return [];
+  if (!/^pa-[A-Za-z0-9_-]+$/.test(id)) {
+    throw new Error(`PLAUSIBLE_SCRIPT_ID is not a Plausible script ID: ${id}`);
+  }
+  return [
+    { tag: 'script', attrs: { async: true, src: `https://plausible.io/js/${id}.js` } },
+    {
+      tag: 'script',
+      content:
+        'window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},' +
+        'plausible.init=plausible.init||function(i){plausible.o=i||{}};' +
+        `plausible.init(${JSON.stringify(plausibleOptions)})`,
+    },
+  ];
+}
+
 // The site is published to GitHub Pages at /polinrider-cleaner/, so every
 // internal link has to be built with that base or the whole thing 404s once
 // it leaves localhost.
@@ -49,6 +81,8 @@ export default defineConfig({
       },
 
       lastUpdated: true,
+
+      head: plausibleHead(PLAUSIBLE_SCRIPT_ID),
 
       customCss: ['./src/styles/custom.css'],
 
