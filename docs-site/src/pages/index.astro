@@ -109,7 +109,7 @@ const trust = [
 >
   <section class="hero wrap">
     <p class="badge"><span class="dot" aria-hidden="true"></span>Open source PolinRider malware scanner and cleaner</p>
-    <h1>Check for PolinRider.<br />Clean it up safely.</h1>
+    <h1>Under attack by PolinRider?<br /><span class="accent">Find the malware and remove it safely.</span></h1>
     <p class="tagline">
       One open source program checks your computer, your GitHub account and your organisation for PolinRider malware,
       and helps you remove it safely.
@@ -403,11 +403,14 @@ const trust = [
     background: var(--pr-accent);
   }
   h1 {
-    max-width: 18ch;
+    max-width: 22ch;
     margin: 0;
     font-size: clamp(2.25rem, 1.2rem + 4.2vw, 4rem);
     line-height: 1.06;
     letter-spacing: -0.035em;
+  }
+  .accent {
+    color: var(--pr-accent);
   }
   .tagline {
     max-width: 38rem;

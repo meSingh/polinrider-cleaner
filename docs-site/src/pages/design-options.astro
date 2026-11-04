@@ -1,136 +1,91 @@
 ---
-// Design options for Mandeep to choose from: eight headlines, a logo
-// exploration grid and four logo marks. Not linked from anywhere, not indexed (noindex, left out of the
-// sitemap and of search). Delete the page once he has chosen.
+// Logo options, round 7, for Mandeep: marks in the spirit of the image most
+// often shown for PolinRider (a skeleton riding a horse, in an officer's
+// cap), drawn from the defender's side so ours never reads as the
+// malware's own mascot. Original geometry only; the source image was used
+// for inspiration and nothing in it is traced or copied. No national
+// insignia; the caps are generic peaked caps, each shown with and without.
+// Not linked, noindex, out of the sitemap and search. Delete once chosen.
 import Base from '../layouts/Base.astro';
-import Icon from '../components/Icon.astro';
 
-const base = import.meta.env.BASE_URL.replace(/\/$/, '');
-
-const checks = [
-  { icon: 'computer', label: 'Check my computer', note: 'macOS · Linux · Windows' },
-  { icon: 'user', label: 'Check my GitHub account' },
-  { icon: 'org', label: 'Check my GitHub organisation' },
-] as const;
-
-// The pill and subline Mandeep chose, with eight headlines to pick from,
-// written for someone under attack with no room to decode a clever line:
-// each says "PolinRider" and "malware" or "threat", says what this is or
-// what to do (scan or check, remove or clean up), and claims nothing we
-// cannot back. The second line is in the accent colour.
-const pill = 'Open source PolinRider malware scanner and cleaner';
-const sub =
-  'One open source program checks your computer, your GitHub account and your organisation for PolinRider malware, and helps you remove it safely.';
-const heroes = [
-  { id: '1', angle: 'Question, then the fix', before: 'Got PolinRider malware?', accent: 'Scan for it and remove it safely.' },
-  { id: '2', angle: 'What it does', before: 'Remove PolinRider malware', accent: 'from your computer and your GitHub.' },
-  { id: '3', angle: 'What it is', before: 'PolinRider malware scanner', accent: 'and step-by-step removal tool.' },
-  { id: '4', angle: 'Worry, then action', before: 'Worried about PolinRider malware?', accent: 'Check your computer and GitHub now.' },
-  { id: '5', angle: 'Two steps', before: 'Scan for PolinRider malware.', accent: 'Then clean up, one step at a time.' },
-  { id: '6', angle: 'Under attack', before: 'Under attack by PolinRider?', accent: 'Find the malware and remove it safely.' },
-  { id: '7', angle: 'The threat', before: 'The PolinRider threat on your machine?', accent: 'Scan it, then clean it up.' },
-  { id: '8', angle: 'Free and plain', before: 'Free PolinRider malware removal', accent: 'for your computer and GitHub.' },
-];
-
-// Logos, round 6. Image generation was not available in this session (the
-// AI Gateway account has no payment method; design-shotgun needs an OpenAI
-// key), so the exploration is twenty quick sketches drawn in code across
-// five styles. Four were shortlisted and redrawn, then tested with the
-// logo-design skill at 16 and 32px, in one colour and reversed. All
-// original geometry. --ink is the mark, --acc the brand colour for its
-// two-tone form, --bgc the background (for cut-outs such as an eye).
-const sketches = [{"num": "01", "label": "letter P scan", "svg": "<path fill=\"none\" stroke=\"var(--ink)\" stroke-width=\"30\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M78 222V40h58a50 50 0 0 1 0 100H78\"/><path fill=\"none\" stroke=\"var(--ink)\" stroke-width=\"16\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M36 92H220\"/>", "note": "reads as the peso sign"}, {"num": "02", "label": "letter pr stencil", "svg": "<path fill=\"var(--ink)\" d=\"M40 60h40v156H40z M92 60h44a48 48 0 0 1 0 96H92v-36h40a12 12 0 0 0 0-24H92z M188 112c0-30 18-52 50-52v38c-10 0-14 6-14 16v102h-36z\"/>", "note": "reads as Adobe Premiere"}, {"num": "03", "label": "letter P node", "svg": "<path fill=\"none\" stroke=\"var(--ink)\" stroke-width=\"28\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M84 226V128\"/><circle cx=\"128\" cy=\"92\" r=\"52\" fill=\"none\" stroke=\"var(--ink)\" stroke-width=\"28\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"84\" cy=\"226\" r=\"6\" fill=\"var(--ink)\"/>", "note": "shortlisted as D"}, {"num": "04", "label": "letter PR ligature", "svg": "<path fill=\"none\" stroke=\"var(--ink)\" stroke-width=\"26\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M62 226V36h60a44 44 0 0 1 0 88H62M122 124h20a44 44 0 0 1 44 44v58M150 124l60 102\"/>", "note": "a plain R, nothing ownable"}, {"num": "05", "label": "abstract hex cut", "svg": "<path fill=\"var(--ink)\" d=\"M128 20 222 74v108l-94 54-94-54V74z M128 128 222 74 222 182z\" fill-rule=\"evenodd\"/>", "note": "reads as Pac-Man"}, {"num": "06", "label": "abstract scoop", "svg": "<path fill=\"var(--ink)\" fill-rule=\"evenodd\" d=\"M128 24a104 104 0 1 0 0 208 104 104 0 0 0 0-208Z M196 60a52 52 0 1 0 0.1 0Z\"/><circle cx=\"224\" cy=\"40\" r=\"16\" fill=\"var(--ink)\"/>", "note": "shortlisted as B"}, {"num": "07", "label": "abstract stripes", "svg": "<g fill=\"none\" stroke=\"var(--ink)\" stroke-width=\"22\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M60 72h136\"/><path d=\"M60 112h136\"/><path d=\"M60 152h52\"/><path d=\"M60 192h136\"/></g>", "note": "reads as a text-align icon"}, {"num": "08", "label": "abstract offset squares", "svg": "<rect x=\"40\" y=\"40\" width=\"120\" height=\"120\" rx=\"24\" fill=\"none\" stroke=\"var(--ink)\" stroke-width=\"22\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><rect x=\"96\" y=\"96\" width=\"120\" height=\"120\" rx=\"24\" fill=\"var(--ink)\"/>", "note": "reads as a copy icon"}, {"num": "09", "label": "abstract drain", "svg": "<path fill=\"none\" stroke=\"var(--ink)\" stroke-width=\"22\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M128 128m-96 0a96 96 0 1 0 96-96 M128 128m-56 0a56 56 0 1 0 56-56\"/><circle cx=\"128\" cy=\"128\" r=\"16\" fill=\"var(--ink)\"/>", "note": "reads as a radar or @"}, {"num": "10", "label": "mascot owl", "svg": "<circle cx=\"88\" cy=\"112\" r=\"40\" fill=\"none\" stroke=\"var(--ink)\" stroke-width=\"22\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"168\" cy=\"112\" r=\"40\" fill=\"none\" stroke=\"var(--ink)\" stroke-width=\"22\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"88\" cy=\"112\" r=\"10\" fill=\"var(--ink)\"/><circle cx=\"168\" cy=\"112\" r=\"10\" fill=\"var(--ink)\"/><path fill=\"var(--ink)\" d=\"M128 150l-18 24h36z\"/><path fill=\"none\" stroke=\"var(--ink)\" stroke-width=\"22\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M48 80 36 44M208 80l12-36\"/>", "note": "cute, but says nothing about cleaning"}, {"num": "11", "label": "mascot hedgehog", "svg": "<path fill=\"var(--ink)\" d=\"M36 196a92 92 0 0 1 184 0z\"/><path fill=\"var(--ink)\" d=\"M60 128 40 96l44 8zM96 100 84 60l36 28zM140 92l12-40 18 44zM178 112l30-32-4 46z\"/><circle cx=\"196\" cy=\"168\" r=\"8\" fill=\"var(--bgc)\"/>", "note": "reads as a sun or crown"}, {"num": "12", "label": "mascot cat", "svg": "<path fill=\"var(--ink)\" d=\"M48 216V64l52 48h56l52-48v152a24 24 0 0 1-24 24H72a24 24 0 0 1-24-24Z\"/><circle cx=\"100\" cy=\"164\" r=\"12\" fill=\"var(--bgc)\"/><circle cx=\"156\" cy=\"164\" r=\"12\" fill=\"var(--bgc)\"/>", "note": "a generic cat"}, {"num": "13", "label": "mascot woodpecker", "svg": "<path fill=\"var(--ink)\" d=\"M84 228V96a60 60 0 0 1 120 0v12L248 124l-44 12v92z\"/><circle cx=\"150\" cy=\"96\" r=\"12\" fill=\"var(--bgc)\"/><path fill=\"var(--ink)\" d=\"M48 40l44 44-12 12z\"/>", "note": "shortlisted as A"}, {"num": "14", "label": "badge gauge check", "svg": "<circle cx=\"128\" cy=\"128\" r=\"100\" fill=\"none\" stroke=\"var(--ink)\" stroke-width=\"20\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path fill=\"none\" stroke=\"var(--ink)\" stroke-width=\"24\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M88 130l28 28 56-60\"/><g fill=\"none\" stroke=\"var(--ink)\" stroke-width=\"10\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M128 14v16M242 128h-16M128 242v-16M14 128h16\"/></g>", "note": "crosshair clich\u00e9"}, {"num": "15", "label": "badge tile pr", "svg": "<rect x=\"20\" y=\"20\" width=\"216\" height=\"216\" rx=\"56\" fill=\"var(--ink)\"/><path fill=\"none\" stroke=\"var(--bgc)\" stroke-width=\"24\" stroke-linecap=\"round\" d=\"M84 190V70h34a32 32 0 0 1 0 64H84M150 190v-48a40 40 0 0 1 40-40\"/>", "note": "reads as Adobe Premiere"}, {"num": "16", "label": "badge octagon bar", "svg": "<path fill=\"var(--ink)\" fill-rule=\"evenodd\" d=\"M86 20h84l66 66v84l-66 66H86L20 170V86z M64 112h128v32H64z\"/>", "note": "reads as a no-entry sign"}, {"num": "17", "label": "geo quadrants", "svg": "<rect x=\"28\" y=\"28\" width=\"92\" height=\"92\" rx=\"14\" fill=\"var(--ink)\"/><rect x=\"136\" y=\"28\" width=\"92\" height=\"92\" rx=\"14\" fill=\"var(--ink)\"/><rect x=\"28\" y=\"136\" width=\"92\" height=\"92\" rx=\"14\" fill=\"var(--ink)\"/><rect x=\"136\" y=\"136\" width=\"92\" height=\"92\" rx=\"46\" fill=\"none\" stroke=\"var(--ink)\" stroke-width=\"18\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>", "note": "reads as an app grid"}, {"num": "18", "label": "geo funnel", "svg": "<path fill=\"var(--ink)\" d=\"M28 40h200l-76 96v80l-48 24V136z\"/>", "note": "reads as a filter icon"}, {"num": "19", "label": "geo viewfinder", "svg": "<g fill=\"none\" stroke=\"var(--ink)\" stroke-width=\"24\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M36 92V36h56M164 36h56v56M220 164v56h-56M92 220H36v-56\"/></g><circle cx=\"128\" cy=\"128\" r=\"30\" fill=\"var(--ink)\"/>", "note": "shortlisted as C"}, {"num": "20", "label": "geo capsule split", "svg": "<rect x=\"28\" y=\"84\" width=\"200\" height=\"88\" rx=\"44\" fill=\"none\" stroke=\"var(--ink)\" stroke-width=\"20\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path fill=\"var(--ink)\" d=\"M128 84h56a44 44 0 0 1 0 88h-56z\"/>", "note": "reads as a toggle switch"}];
-const marks = [{"id": "A", "name": "Woodpecker", "rationale": "A woodpecker digs the bugs out of a branch: polinrider digs the malware out of your history.", "svg": "<path fill=\"var(--ink)\" fill-rule=\"evenodd\" d=\"M60 112a58 58 0 1 1 116 0a58 58 0 1 1 -116 0Z M121 100a11 11 0 1 0 22 0a11 11 0 1 0 -22 0Z\"/>\n<path fill=\"var(--ink)\" d=\"M168 92 244 112 168 132Z\"/>\n<path fill=\"var(--acc)\" d=\"M74 74 40 34 102 58Z\" data-accent=\"1\"/>\n<path fill=\"var(--ink)\" d=\"M74 136h88v52a14 14 0 0 1-14 14H88a14 14 0 0 1-14-14Z\"/>\n<path d=\"M20 226H236\" stroke=\"var(--ink)\" stroke-width=\"18\" stroke-linecap=\"round\"/>\n<path d=\"M118 202v24\" stroke=\"var(--ink)\" stroke-width=\"18\"/>\n<circle cx=\"214\" cy=\"226\" r=\"16\" fill=\"var(--ink)\"/>"}, {"id": "B", "name": "Scoop", "rationale": "A clean piece taken out of the whole, the infected bit leaving: removal, at a glance.", "svg": "<path fill=\"var(--ink)\" d=\"M213.1 109.1 L213.6 110.8 L214.1 112.4 L214.6 114.1 L215.0 115.8 L215.4 117.5 L215.8 119.2 L216.2 120.9 L216.5 122.6 L216.8 124.4 L217.0 126.1 L217.3 127.8 L217.5 129.5 L217.6 131.3 L217.8 133.0 L217.9 134.8 L217.9 136.5 L218.0 138.3 L218.0 140.0 L218.0 141.7 L217.9 143.5 L217.9 145.2 L217.8 147.0 L217.6 148.7 L217.5 150.5 L217.3 152.2 L217.0 153.9 L216.8 155.6 L216.5 157.4 L216.2 159.1 L215.8 160.8 L215.4 162.5 L215.0 164.2 L214.6 165.9 L214.1 167.6 L213.6 169.2 L213.1 170.9 L212.6 172.6 L212.0 174.2 L211.4 175.8 L210.7 177.5 L210.1 179.1 L209.4 180.7 L208.6 182.3 L207.9 183.8 L207.1 185.4 L206.3 186.9 L205.5 188.5 L204.6 190.0 L203.7 191.5 L202.8 193.0 L201.9 194.5 L200.9 195.9 L199.9 197.4 L198.9 198.8 L197.9 200.2 L196.8 201.6 L195.7 202.9 L194.6 204.3 L193.5 205.6 L192.3 206.9 L191.1 208.2 L189.9 209.5 L188.7 210.7 L187.5 211.9 L186.2 213.1 L184.9 214.3 L183.6 215.5 L182.3 216.6 L180.9 217.7 L179.6 218.8 L178.2 219.9 L176.8 220.9 L175.4 221.9 L173.9 222.9 L172.5 223.9 L171.0 224.8 L169.5 225.7 L168.0 226.6 L166.5 227.5 L164.9 228.3 L163.4 229.1 L161.8 229.9 L160.3 230.6 L158.7 231.4 L157.1 232.1 L155.5 232.7 L153.8 233.4 L152.2 234.0 L150.6 234.6 L148.9 235.1 L147.2 235.6 L145.6 236.1 L143.9 236.6 L142.2 237.0 L140.5 237.4 L138.8 237.8 L137.1 238.2 L135.4 238.5 L133.6 238.8 L131.9 239.0 L130.2 239.3 L128.5 239.5 L126.7 239.6 L125.0 239.8 L123.2 239.9 L121.5 239.9 L119.7 240.0 L118.0 240.0 L116.3 240.0 L114.5 239.9 L112.8 239.9 L111.0 239.8 L109.3 239.6 L107.5 239.5 L105.8 239.3 L104.1 239.0 L102.4 238.8 L100.6 238.5 L98.9 238.2 L97.2 237.8 L95.5 237.4 L93.8 237.0 L92.1 236.6 L90.4 236.1 L88.8 235.6 L87.1 235.1 L85.4 234.6 L83.8 234.0 L82.2 233.4 L80.5 232.7 L78.9 232.1 L77.3 231.4 L75.7 230.6 L74.2 229.9 L72.6 229.1 L71.1 228.3 L69.5 227.5 L68.0 226.6 L66.5 225.7 L65.0 224.8 L63.5 223.9 L62.1 222.9 L60.6 221.9 L59.2 220.9 L57.8 219.9 L56.4 218.8 L55.1 217.7 L53.7 216.6 L52.4 215.5 L51.1 214.3 L49.8 213.1 L48.5 211.9 L47.3 210.7 L46.1 209.5 L44.9 208.2 L43.7 206.9 L42.5 205.6 L41.4 204.3 L40.3 202.9 L39.2 201.6 L38.1 200.2 L37.1 198.8 L36.1 197.4 L35.1 195.9 L34.1 194.5 L33.2 193.0 L32.3 191.5 L31.4 190.0 L30.5 188.5 L29.7 186.9 L28.9 185.4 L28.1 183.8 L27.4 182.3 L26.6 180.7 L25.9 179.1 L25.3 177.5 L24.6 175.8 L24.0 174.2 L23.4 172.6 L22.9 170.9 L22.4 169.2 L21.9 167.6 L21.4 165.9 L21.0 164.2 L20.6 162.5 L20.2 160.8 L19.8 159.1 L19.5 157.4 L19.2 155.6 L19.0 153.9 L18.7 152.2 L18.5 150.5 L18.4 148.7 L18.2 147.0 L18.1 145.2 L18.1 143.5 L18.0 141.7 L18.0 140.0 L18.0 138.3 L18.1 136.5 L18.1 134.8 L18.2 133.0 L18.4 131.3 L18.5 129.5 L18.7 127.8 L19.0 126.1 L19.2 124.4 L19.5 122.6 L19.8 120.9 L20.2 119.2 L20.6 117.5 L21.0 115.8 L21.4 114.1 L21.9 112.4 L22.4 110.8 L22.9 109.1 L23.4 107.4 L24.0 105.8 L24.6 104.2 L25.3 102.5 L25.9 100.9 L26.6 99.3 L27.4 97.7 L28.1 96.2 L28.9 94.6 L29.7 93.1 L30.5 91.5 L31.4 90.0 L32.3 88.5 L33.2 87.0 L34.1 85.5 L35.1 84.1 L36.1 82.6 L37.1 81.2 L38.1 79.8 L39.2 78.4 L40.3 77.1 L41.4 75.7 L42.5 74.4 L43.7 73.1 L44.9 71.8 L46.1 70.5 L47.3 69.3 L48.5 68.1 L49.8 66.9 L51.1 65.7 L52.4 64.5 L53.7 63.4 L55.1 62.3 L56.4 61.2 L57.8 60.1 L59.2 59.1 L60.6 58.1 L62.1 57.1 L63.5 56.1 L65.0 55.2 L66.5 54.3 L68.0 53.4 L69.5 52.5 L71.1 51.7 L72.6 50.9 L74.2 50.1 L75.7 49.4 L77.3 48.6 L78.9 47.9 L80.5 47.3 L82.2 46.6 L83.8 46.0 L85.4 45.4 L87.1 44.9 L88.8 44.4 L90.4 43.9 L92.1 43.4 L93.8 43.0 L95.5 42.6 L97.2 42.2 L98.9 41.8 L100.6 41.5 L102.4 41.2 L104.1 41.0 L105.8 40.7 L107.5 40.5 L109.3 40.4 L111.0 40.2 L112.8 40.1 L114.5 40.1 L116.3 40.0 L118.0 40.0 L119.7 40.0 L121.5 40.1 L123.2 40.1 L125.0 40.2 L126.7 40.4 L128.5 40.5 L130.2 40.7 L131.9 41.0 L133.6 41.2 L135.4 41.5 L137.1 41.8 L138.8 42.2 L140.5 42.6 L142.2 43.0 L143.9 43.4 L145.6 43.9 L147.2 44.4 L148.9 44.9 L148.7 45.8 L148.4 46.7 L148.1 47.6 L147.8 48.5 L147.6 49.4 L147.4 50.4 L147.2 51.3 L147.0 52.2 L146.8 53.1 L146.6 54.1 L146.5 55.0 L146.4 55.9 L146.3 56.9 L146.2 57.8 L146.1 58.8 L146.1 59.7 L146.0 60.6 L146.0 61.6 L146.0 62.5 L146.0 63.5 L146.1 64.4 L146.1 65.4 L146.2 66.3 L146.3 67.2 L146.4 68.2 L146.5 69.1 L146.7 70.1 L146.8 71.0 L147.0 71.9 L147.2 72.8 L147.4 73.8 L147.6 74.7 L147.9 75.6 L148.1 76.5 L148.4 77.4 L148.7 78.3 L149.0 79.2 L149.4 80.1 L149.7 80.9 L150.1 81.8 L150.5 82.7 L150.9 83.5 L151.3 84.4 L151.7 85.2 L152.2 86.1 L152.6 86.9 L153.1 87.7 L153.6 88.5 L154.1 89.3 L154.6 90.1 L155.2 90.9 L155.7 91.6 L156.3 92.4 L156.9 93.1 L157.5 93.9 L158.1 94.6 L158.7 95.3 L159.3 96.0 L160.0 96.7 L160.6 97.4 L161.3 98.0 L162.0 98.7 L162.7 99.3 L163.4 99.9 L164.1 100.5 L164.9 101.1 L165.6 101.7 L166.4 102.3 L167.1 102.8 L167.9 103.4 L168.7 103.9 L169.5 104.4 L170.3 104.9 L171.1 105.4 L171.9 105.8 L172.8 106.3 L173.6 106.7 L174.5 107.1 L175.3 107.5 L176.2 107.9 L177.1 108.3 L177.9 108.6 L178.8 109.0 L179.7 109.3 L180.6 109.6 L181.5 109.9 L182.4 110.1 L183.3 110.4 L184.2 110.6 L185.2 110.8 L186.1 111.0 L187.0 111.2 L187.9 111.3 L188.9 111.5 L189.8 111.6 L190.8 111.7 L191.7 111.8 L192.6 111.9 L193.6 111.9 L194.5 112.0 L195.5 112.0 L196.4 112.0 L197.4 112.0 L198.3 111.9 L199.2 111.9 L200.2 111.8 L201.1 111.7 L202.1 111.6 L203.0 111.5 L203.9 111.4 L204.9 111.2 L205.8 111.0 L206.7 110.8 L207.6 110.6 L208.6 110.4 L209.5 110.2 L210.4 109.9 L211.3 109.6 L212.2 109.3Z\"/>\n<circle cx=\"226\" cy=\"30\" r=\"20\" fill=\"var(--acc)\" data-accent=\"1\"/>"}, {"id": "C", "name": "Scan frame", "rationale": "The plainest sign for a scanner: a frame and the line passing through it.", "svg": "<g fill=\"none\" stroke=\"var(--ink)\" stroke-width=\"26\" stroke-linecap=\"round\" stroke-linejoin=\"round\">\n<path d=\"M34 86V34h52M170 34h52v52M222 170v52h-52M86 222H34v-52\"/></g>\n<path d=\"M66 128H190\" stroke=\"var(--acc)\" stroke-width=\"26\" stroke-linecap=\"round\" data-accent=\"1\"/>"}, {"id": "D", "name": "P lens", "rationale": "A P whose bowl is a lens, with something found inside: the name and the scan in one letter.", "svg": "<g fill=\"none\" stroke=\"var(--ink)\" stroke-width=\"30\" stroke-linecap=\"round\"><path d=\"M76 98V232\"/><circle cx=\"140\" cy=\"98\" r=\"64\"/></g>\n<circle cx=\"140\" cy=\"98\" r=\"22\" fill=\"var(--acc)\" data-accent=\"1\"/>"}, {"id": "now", "name": "Today's mark, for comparison", "rationale": "The ring and scan line in public/favicon.svg. It is close to the London Underground roundel.", "svg": "<circle cx=\"128\" cy=\"128\" r=\"88\" fill=\"none\" stroke=\"var(--acc)\" stroke-width=\"24\"/><path d=\"M24 128h208\" stroke=\"var(--acc)\" stroke-width=\"24\" stroke-linecap=\"round\"/><circle cx=\"128\" cy=\"128\" r=\"26\" fill=\"var(--acc)\"/>"}];
+// --ink is the mark, --acc the brand colour for the two-tone form, --bgc the
+// background (the halo where two shapes cross).
+const marks = [{"id": "A", "name": "Struck", "rationale": "The rider's skull with one stroke through it: PolinRider, removed.", "variants": [["With cap", "<path fill=\"var(--ink)\" fill-rule=\"evenodd\" d=\"M80.0 166.0A60.0 60.0 0 1 1 176.0 166.0L162.0 184.0V210.0Q162.0 220.0 152.0 220.0H104.0Q94.0 220.0 94.0 210.0V184.0ZM91.0 144.0a15.0 15.0 0 1 0 30.0 0a15.0 15.0 0 1 0 -30.0 0ZM135.0 144.0a15.0 15.0 0 1 0 30.0 0a15.0 15.0 0 1 0 -30.0 0ZM128.0 164.0L121.0 178.0H135.0ZM110.0 192.0h6.0v20.0h-6.0ZM125.0 192.0h6.0v20.0h-6.0ZM140.0 192.0h6.0v20.0h-6.0Z\"/><path fill=\"var(--ink)\" d=\"M42.0 62.0Q128.0 26.0 214.0 62.0L196.0 76.0H60.0ZM64.0 81.0H192.0V92.0H64.0ZM56.0 97.0H200.0Q174.0 116.0 128.0 118.0Q82.0 116.0 56.0 97.0Z\"/><path d=\"M36 220 220 36\" stroke=\"var(--bgc)\" stroke-width=\"46\" stroke-linecap=\"round\"/><path d=\"M36 220 220 36\" stroke=\"var(--acc)\" stroke-width=\"22\" stroke-linecap=\"round\" data-accent=\"1\"/>"], ["Without cap", "<path fill=\"var(--ink)\" fill-rule=\"evenodd\" d=\"M80.0 166.0A60.0 60.0 0 1 1 176.0 166.0L162.0 184.0V210.0Q162.0 220.0 152.0 220.0H104.0Q94.0 220.0 94.0 210.0V184.0ZM91.0 144.0a15.0 15.0 0 1 0 30.0 0a15.0 15.0 0 1 0 -30.0 0ZM135.0 144.0a15.0 15.0 0 1 0 30.0 0a15.0 15.0 0 1 0 -30.0 0ZM128.0 164.0L121.0 178.0H135.0ZM110.0 192.0h6.0v20.0h-6.0ZM125.0 192.0h6.0v20.0h-6.0ZM140.0 192.0h6.0v20.0h-6.0Z\"/><path d=\"M36 220 220 36\" stroke=\"var(--bgc)\" stroke-width=\"46\" stroke-linecap=\"round\"/><path d=\"M36 220 220 36\" stroke=\"var(--acc)\" stroke-width=\"22\" stroke-linecap=\"round\" data-accent=\"1\"/>"]]}, {"id": "B", "name": "Horse skull, found", "rationale": "The horse's skull caught inside the scanner's frame. At small sizes it can read as any animal's skull.", "variants": [["", "<path fill=\"var(--ink)\" fill-rule=\"evenodd\" d=\"M52 112C52 78 86 58 120 62C150 66 170 82 196 94L224 108C234 114 232 128 220 130L150 132C120 150 82 152 62 138C55 132 52 122 52 112ZM88.0 100.0a16.0 16.0 0 1 0 32.0 0a16.0 16.0 0 1 0 -32.0 0ZM206.0 117.0a6.0 6.0 0 1 0 12.0 0a6.0 6.0 0 1 0 -12.0 0Z\"/><path fill=\"var(--ink)\" d=\"M86 148C120 158 170 154 212 142L216 151C176 170 120 176 90 166Z\"/><rect x=\"148\" y=\"131\" width=\"7\" height=\"12\" rx=\"2\" fill=\"var(--ink)\"/><rect x=\"166\" y=\"131\" width=\"7\" height=\"12\" rx=\"2\" fill=\"var(--ink)\"/><rect x=\"184\" y=\"131\" width=\"7\" height=\"12\" rx=\"2\" fill=\"var(--ink)\"/><g fill=\"none\" stroke=\"var(--acc)\" stroke-width=\"20\" stroke-linecap=\"round\" stroke-linejoin=\"round\" data-accent=\"1\"><path d=\"M24 72V24h48M184 24h48v48M232 184v48h-48M72 232H24v-48\"/></g>"]]}, {"id": "C", "name": "Unseated", "rationale": "The horse stays; its skull rider is swept off and away. The cleanup, in one picture.", "variants": [["With cap", "<path fill=\"var(--ink)\" fill-rule=\"evenodd\" d=\"M13.6 226.8H132.4L125.2 198.0C116.2 178.2 107.2 163.8 109.0 147.6L141.4 154.8C152.2 156.6 159.4 147.6 155.8 136.8L148.6 122.4C136.0 99.0 118.0 81.0 94.6 70.2L87.4 46.8L74.8 64.8L64.0 43.2L55.0 68.4C31.6 81.0 19.0 106.2 17.2 135.0C15.4 163.8 24.4 194.4 13.6 226.8ZM88.3 108.0a8.1 8.1 0 1 0 16.2 0a8.1 8.1 0 1 0 -16.2 0Z\"/><path d=\"M70 64C104 26 156 18 196 40\" fill=\"none\" stroke=\"var(--acc)\" stroke-width=\"14\" stroke-linecap=\"round\" data-accent=\"1\"/><g transform=\"rotate(24 206 92)\"><path fill=\"var(--ink)\" fill-rule=\"evenodd\" d=\"M185.8 102.9A25.2 25.2 0 1 1 226.2 102.9L220.3 110.5V121.4Q220.3 125.6 216.1 125.6H195.9Q191.7 125.6 191.7 121.4V110.5ZM190.5 93.7a6.3 6.3 0 1 0 12.6 0a6.3 6.3 0 1 0 -12.6 0ZM208.9 93.7a6.3 6.3 0 1 0 12.6 0a6.3 6.3 0 1 0 -12.6 0ZM206.0 102.1L203.1 108.0H208.9ZM198.4 113.8h2.5v8.4h-2.5ZM204.7 113.8h2.5v8.4h-2.5ZM211.0 113.8h2.5v8.4h-2.5Z\"/><path fill=\"var(--ink)\" d=\"M169.9 59.2Q206.0 44.1 242.1 59.2L234.6 65.1H177.4ZM179.1 67.2H232.9V71.8H179.1ZM175.8 73.9H236.2Q225.3 81.9 206.0 82.8Q186.7 81.9 175.8 73.9Z\"/></g>"], ["Without cap", "<path fill=\"var(--ink)\" fill-rule=\"evenodd\" d=\"M13.6 226.8H132.4L125.2 198.0C116.2 178.2 107.2 163.8 109.0 147.6L141.4 154.8C152.2 156.6 159.4 147.6 155.8 136.8L148.6 122.4C136.0 99.0 118.0 81.0 94.6 70.2L87.4 46.8L74.8 64.8L64.0 43.2L55.0 68.4C31.6 81.0 19.0 106.2 17.2 135.0C15.4 163.8 24.4 194.4 13.6 226.8ZM88.3 108.0a8.1 8.1 0 1 0 16.2 0a8.1 8.1 0 1 0 -16.2 0Z\"/><path d=\"M70 64C104 26 156 18 196 40\" fill=\"none\" stroke=\"var(--acc)\" stroke-width=\"14\" stroke-linecap=\"round\" data-accent=\"1\"/><g transform=\"rotate(24 206 92)\"><path fill=\"var(--ink)\" fill-rule=\"evenodd\" d=\"M185.8 102.9A25.2 25.2 0 1 1 226.2 102.9L220.3 110.5V121.4Q220.3 125.6 216.1 125.6H195.9Q191.7 125.6 191.7 121.4V110.5ZM190.5 93.7a6.3 6.3 0 1 0 12.6 0a6.3 6.3 0 1 0 -12.6 0ZM208.9 93.7a6.3 6.3 0 1 0 12.6 0a6.3 6.3 0 1 0 -12.6 0ZM206.0 102.1L203.1 108.0H208.9ZM198.4 113.8h2.5v8.4h-2.5ZM204.7 113.8h2.5v8.4h-2.5ZM211.0 113.8h2.5v8.4h-2.5Z\"/></g>"]]}, {"id": "D", "name": "Knight, cleared", "rationale": "The horse without its rider, cut cleanly from a disc: what is left once PolinRider is gone. The strongest at 16px.", "variants": [["", "<path fill=\"var(--ink)\" fill-rule=\"evenodd\" d=\"M12.0 128.0a116.0 116.0 0 1 0 232.0 0a116.0 116.0 0 1 0 -232.0 0ZM65.0 205.5H178.6L171.7 178.0C163.1 159.1 154.5 145.3 156.2 129.8L187.2 136.7C197.5 138.4 204.4 129.8 200.9 119.5L194.0 105.8C182.0 83.4 164.8 66.2 142.4 55.9L135.6 33.5L123.5 50.7L113.2 30.1L104.6 54.2C82.2 66.2 70.2 90.3 68.5 117.8C66.8 145.3 75.4 174.6 65.0 205.5Z\"/><circle cx=\"144\" cy=\"92\" r=\"9\" fill=\"var(--acc)\" data-accent=\"1\"/>"]]}, {"id": "E", "name": "The rider, caught", "rationale": "Mandeep's literal idea, the skull rider on its horse, held inside the scan ring.", "variants": [["With cap", "<path fill=\"var(--ink)\" fill-rule=\"evenodd\" d=\"M91.5 201.8H181.3L175.8 180.0C169.0 165.0 162.2 154.2 163.6 141.9L188.1 147.4C196.2 148.7 201.7 141.9 199.0 133.8L193.5 122.9C184.0 105.2 170.4 91.6 152.7 83.4L147.3 65.8L137.8 79.4L129.6 63.0L122.8 82.1C105.1 91.6 95.6 110.6 94.2 132.4C92.9 154.2 99.7 177.3 91.5 201.8ZM148.0 112.0a6.1 6.1 0 1 0 12.2 0a6.1 6.1 0 1 0 -12.2 0Z\"/><path d=\"M80.7 113.4A21.6 21.6 0 1 1 115.3 113.4L110.2 119.8V129.2Q110.2 132.8 106.6 132.8H89.4Q85.8 132.8 85.8 129.2V119.8Z\" fill=\"var(--bgc)\" stroke=\"var(--bgc)\" stroke-width=\"14\" stroke-linejoin=\"round\"/><path d=\"M67.0 75.9Q98.0 63.0 129.0 75.9L122.5 81.0H73.5ZM75.0 82.8H121.0V86.7H75.0ZM72.1 88.5H123.9Q114.6 95.4 98.0 96.1Q81.4 95.4 72.1 88.5Z\" fill=\"var(--bgc)\" stroke=\"var(--bgc)\" stroke-width=\"14\" stroke-linejoin=\"round\"/><path fill=\"var(--ink)\" fill-rule=\"evenodd\" d=\"M80.7 113.4A21.6 21.6 0 1 1 115.3 113.4L110.2 119.8V129.2Q110.2 132.8 106.6 132.8H89.4Q85.8 132.8 85.8 129.2V119.8ZM84.7 105.4a5.4 5.4 0 1 0 10.8 0a5.4 5.4 0 1 0 -10.8 0ZM100.5 105.4a5.4 5.4 0 1 0 10.8 0a5.4 5.4 0 1 0 -10.8 0ZM98.0 112.6L95.5 117.7H100.5ZM91.5 122.7h2.2v7.2h-2.2ZM96.9 122.7h2.2v7.2h-2.2ZM102.3 122.7h2.2v7.2h-2.2Z\"/><path fill=\"var(--ink)\" d=\"M67.0 75.9Q98.0 63.0 129.0 75.9L122.5 81.0H73.5ZM75.0 82.8H121.0V86.7H75.0ZM72.1 88.5H123.9Q114.6 95.4 98.0 96.1Q81.4 95.4 72.1 88.5Z\"/><circle cx=\"128\" cy=\"128\" r=\"114\" fill=\"none\" stroke=\"var(--acc)\" stroke-width=\"14\" data-accent=\"1\"/><g stroke=\"var(--acc)\" stroke-width=\"14\" stroke-linecap=\"round\" data-accent=\"1\"><path d=\"M128 6v22M250 128h-22M128 250v-22M6 128h22\"/></g>"], ["Without cap", "<path fill=\"var(--ink)\" fill-rule=\"evenodd\" d=\"M91.5 201.8H181.3L175.8 180.0C169.0 165.0 162.2 154.2 163.6 141.9L188.1 147.4C196.2 148.7 201.7 141.9 199.0 133.8L193.5 122.9C184.0 105.2 170.4 91.6 152.7 83.4L147.3 65.8L137.8 79.4L129.6 63.0L122.8 82.1C105.1 91.6 95.6 110.6 94.2 132.4C92.9 154.2 99.7 177.3 91.5 201.8ZM148.0 112.0a6.1 6.1 0 1 0 12.2 0a6.1 6.1 0 1 0 -12.2 0Z\"/><path d=\"M80.7 113.4A21.6 21.6 0 1 1 115.3 113.4L110.2 119.8V129.2Q110.2 132.8 106.6 132.8H89.4Q85.8 132.8 85.8 129.2V119.8Z\" fill=\"var(--bgc)\" stroke=\"var(--bgc)\" stroke-width=\"14\" stroke-linejoin=\"round\"/><path fill=\"var(--ink)\" fill-rule=\"evenodd\" d=\"M80.7 113.4A21.6 21.6 0 1 1 115.3 113.4L110.2 119.8V129.2Q110.2 132.8 106.6 132.8H89.4Q85.8 132.8 85.8 129.2V119.8ZM84.7 105.4a5.4 5.4 0 1 0 10.8 0a5.4 5.4 0 1 0 -10.8 0ZM100.5 105.4a5.4 5.4 0 1 0 10.8 0a5.4 5.4 0 1 0 -10.8 0ZM98.0 112.6L95.5 117.7H100.5ZM91.5 122.7h2.2v7.2h-2.2ZM96.9 122.7h2.2v7.2h-2.2ZM102.3 122.7h2.2v7.2h-2.2Z\"/><circle cx=\"128\" cy=\"128\" r=\"114\" fill=\"none\" stroke=\"var(--acc)\" stroke-width=\"14\" data-accent=\"1\"/><g stroke=\"var(--acc)\" stroke-width=\"14\" stroke-linecap=\"round\" data-accent=\"1\"><path d=\"M128 6v22M250 128h-22M128 250v-22M6 128h22\"/></g>"]]}];
 ---
 
-<Base title="Design options" description="Headline and logo options for review." noindex hasCanonical={false}>
+<Base title="Design options" description="Logo options for review." noindex hasCanonical={false}>
   <div class="wrap intro">
     <p class="eyebrow">For Mandeep</p>
-    <h1>Design options</h1>
-    <p>Eight headlines and four logo marks, from an exploration of twenty. Pick one of each. This page is not linked anywhere and is not indexed.</p>
+    <h1>Logo options: the rider</h1>
+    <p>
+      Five marks in the spirit of the skeleton rider, drawn from the defender's side. Pick one. This page is not linked
+      anywhere and is not indexed. The home page headline is now option 6.
+    </p>
+
+    <section class="source" aria-labelledby="source-h">
+      <h2 id="source-h">Where the image comes from</h2>
+      <p>
+        The picture most often shown for PolinRider is the banner of OpenSourceMalware's dossier,{' '}
+        <a href="https://github.com/OpenSourceMalware/PolinRider" target="_blank" rel="noopener noreferrer">OpenSourceMalware/PolinRider</a>{' '}
+        on GitHub (<code>images/PolinRider-banner-image-smaller.jpg</code>), added on 7 March 2026 by the account
+        6mile and carrying the OpenSourceMalware logo. It shows a flaming skeleton in a peaked officer's cap with a red
+        star badge, riding a glowing, burning horse that breathes green fire onto burning GitHub repository windows,
+        under the title "PolinRider: DPRK GitHub Attack". Who drew it is not stated.
+      </p>
+      <p>
+        The repository has no licence, so the image is all rights reserved. It was used here as inspiration only:
+        nothing is traced, its composition is not copied, and none of these marks carries a star, flag or emblem.
+      </p>
+    </section>
   </div>
 
-  {heroes.map((h) => (
-    <section class="opt-hero" aria-label={`Headline option ${h.id}`}>
-      <p class="opt-label wrap">Headline {h.id} · {h.angle}</p>
-      <div class="hero">
-        <p class="badge"><span class="dot" aria-hidden="true"></span>{pill}</p>
-        <h2 class="h1">{h.before}<br /><span class="accent">{h.accent}</span></h2>
-        <p class="tagline">{sub}</p>
-        <div class="checks">
-          {checks.map((c, i) => (
-            <a class:list={['check', { primary: i === 0 }]} href={`${base}/#how`}>
-              <Icon name={c.icon} size={20} />
-              <span>{c.label}{'note' in c && <small>{c.note}</small>}</span>
-            </a>
-          ))}
-        </div>
-      </div>
-    </section>
-  ))}
-
-  <section class="wrap logos" aria-labelledby="logos-h">
-    <h2 id="logos-h">Logo marks</h2>
-    <h3 class="sub-h">Exploration: twenty sketches</h3>
-    <p>
-      Image generation was not available in this session, so these were drawn quickly in code: lettermarks, abstract
-      symbols, mascot-lite, badges and geometric marks. Rough on purpose. Each says why it was dropped or kept.
-    </p>
-    <ul class="sketches">
-      {sketches.map((k) => (
-        <li class:list={[{ kept: k.note.startsWith('shortlisted') }]}>
-          <svg viewBox="0 0 256 256" width="72" height="72" aria-hidden="true" set:html={k.svg} />
-          <span class="sk-label">{k.num} {k.label}</span>
-          <span class="sk-note">{k.note}</span>
-        </li>
-      ))}
-    </ul>
-    <h3 class="sub-h">The four finals</h3>
-    <p>
-      Each in two tones (the mark in ink, one part in the brand colour) and in one colour, at 16, 32 and 64px, beside
-      the wordmark and in a browser tab, on light and on dark.
-    </p>
+  <section class="wrap logos" aria-label="Logo marks">
     <ul>
       {marks.map((m) => (
         <li>
-          <p class="mark-name">{m.id === 'now' ? m.name : `${m.id}. ${m.name}`}</p>
+          <p class="mark-name">{m.id}. {m.name}</p>
           <p class="mark-note">{m.rationale}</p>
-          <div class="panels">
-            {['light', 'dark'].map((t) => (
-              <div class:list={['panel', t]}>
-                <div class="row">
-                  <span class="row-label">Two-tone</span>
-                  <div class="sizes">
-                    {[16, 32, 64].map((px) => (
-                      <span class="size">
-                        <svg viewBox="0 0 256 256" width={px} height={px} aria-hidden="true" set:html={m.svg} />
-                        <small>{px}</small>
+          {m.variants.map(([label, svg]) => (
+            <div class="variant">
+              {label && <p class="variant-label">{label}</p>}
+              <div class="panels">
+                {['light', 'dark'].map((t) => (
+                  <div class:list={['panel', t]}>
+                    <div class="row">
+                      <span class="row-label">Two-tone</span>
+                      <div class="sizes">
+                        {[16, 32, 64].map((px) => (
+                          <span class="size">
+                            <svg viewBox="0 0 256 256" width={px} height={px} aria-hidden="true" set:html={svg} />
+                            <small>{px}</small>
+                          </span>
+                        ))}
+                      </div>
+                      <div class="lockup">
+                        <svg viewBox="0 0 256 256" width="30" height="30" aria-hidden="true" set:html={svg} />
+                        <span>polinrider</span>
+                      </div>
+                    </div>
+                    <div class="row mono">
+                      <span class="row-label">One colour</span>
+                      <div class="sizes">
+                        {[16, 32, 64].map((px) => (
+                          <span class="size">
+                            <svg viewBox="0 0 256 256" width={px} height={px} aria-hidden="true" set:html={svg} />
+                            <small>{px}</small>
+                          </span>
+                        ))}
+                      </div>
+                      <span class="tab">
+                        <svg viewBox="0 0 256 256" width="16" height="16" aria-hidden="true" set:html={svg} />
+                        PolinRider malware scanner…
                       </span>
-                    ))}
+                    </div>
                   </div>
-                  <div class="lockup">
-                    <svg viewBox="0 0 256 256" width="30" height="30" aria-hidden="true" set:html={m.svg} />
-                    <span>polinrider</span>
-                  </div>
-                </div>
-                <div class="row mono">
-                  <span class="row-label">One colour</span>
-                  <div class="sizes">
-                    {[16, 32, 64].map((px) => (
-                      <span class="size">
-                        <svg viewBox="0 0 256 256" width={px} height={px} aria-hidden="true" set:html={m.svg} />
-                        <small>{px}</small>
-                      </span>
-                    ))}
-                  </div>
-                  <span class="tab">
-                    <svg viewBox="0 0 256 256" width="16" height="16" aria-hidden="true" set:html={m.svg} />
-                    PolinRider malware scanner…
-                  </span>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </li>
       ))}
     </ul>
@@ -145,170 +100,57 @@ const marks = [{"id": "A", "name": "Woodpecker", "rationale": "A woodpecker digs
     margin: 0;
     font-size: var(--text-h1);
   }
-  .opt-hero {
-    margin-top: 3rem;
-    border-block: 1px solid var(--pr-border);
-  }
-  .opt-label {
-    margin: 0;
-    padding-block: 0.6rem;
-    color: var(--pr-muted);
-    font-size: var(--text-xs);
-    font-weight: 650;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-  }
-  .hero {
-    position: relative;
-    isolation: isolate;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: clamp(2.5rem, 7vw, 4.5rem) var(--gutter) clamp(2.5rem, 6vw, 4rem);
-    overflow: hidden;
-    text-align: center;
-  }
-  .hero::before {
-    content: '';
-    position: absolute;
-    z-index: -1;
-    top: 0;
-    left: 50%;
-    width: min(60rem, 120vw);
-    height: 28rem;
-    transform: translateX(-50%);
-    background: radial-gradient(ellipse at 50% 35%, var(--pr-glow), transparent 65%);
-  }
-  .badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.55rem;
-    margin: 0 0 1.5rem;
-    padding: 0.35rem 0.9rem;
-    border: 1px solid var(--pr-accent);
-    border-radius: 999px;
-    background: var(--pr-bg);
-    color: var(--pr-accent);
-    font-size: var(--text-xs);
-    font-weight: 650;
-  }
-  .dot {
-    width: 0.45rem;
-    height: 0.45rem;
-    border-radius: 50%;
-    background: var(--pr-accent);
-  }
-  .h1 {
-    max-width: 24ch;
-    margin: 0;
-    font-size: clamp(2.25rem, 1.2rem + 4.2vw, 4rem);
-    line-height: 1.06;
-    letter-spacing: -0.035em;
-  }
-  .accent {
-    color: var(--pr-accent);
-  }
-  .tagline {
-    max-width: 40rem;
-    margin: 1.25rem 0 0;
-    font-size: clamp(1.0625rem, 1rem + 0.4vw, 1.25rem);
-    line-height: 1.55;
-    text-wrap: balance;
-  }
-  .checks {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 0.75rem;
+  .source {
+    max-width: 52rem;
     margin-top: 2rem;
-  }
-  .check {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.6rem;
-    padding: 0.8rem 1.3rem;
-    border: 1px solid var(--pr-border-strong);
-    border-radius: 999px;
-    background: var(--pr-bg);
-    color: var(--pr-heading);
-    font-size: 1rem;
-    font-weight: 600;
-    text-align: start;
-    text-decoration: none;
-  }
-  .check.primary {
-    border-color: var(--pr-pill-bg);
-    background: var(--pr-pill-bg);
-    color: var(--pr-pill-text);
-  }
-  .check small {
-    display: block;
-    font-size: 0.75rem;
-    font-weight: 500;
-    opacity: 0.8;
-  }
-
-  .logos {
-    margin-top: 4rem;
-  }
-  .logos h2 {
-    margin: 0 0 0.5rem;
-    font-size: var(--text-h2);
-  }
-  .sub-h {
-    margin: 2.5rem 0 0.5rem;
-    font-size: 1.25rem;
-  }
-  .logos .sketches {
-    grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
-    gap: 0.75rem;
-  }
-  .sketches li {
-    display: grid;
-    justify-items: center;
-    gap: 0.35rem;
-    padding: 0.9rem 0.6rem;
+    padding: 1.25rem 1.4rem;
     border: 1px solid var(--pr-border);
-    border-radius: var(--pr-radius-sm);
-    background: var(--pr-bg);
-    text-align: center;
-    --ink: var(--pr-heading);
-    --bgc: var(--pr-bg);
+    border-radius: var(--pr-radius);
+    background: var(--pr-surface);
+    font-size: 1rem;
   }
-  .sketches li.kept {
-    border-color: var(--pr-accent);
-    background: var(--pr-accent-bg);
-    --bgc: var(--pr-accent-bg);
+  .source h2 {
+    margin: 0 0 0.5rem;
+    font-size: 1.125rem;
   }
-  .sk-label {
-    color: var(--pr-heading);
-    font-size: 0.8125rem;
-    font-weight: 600;
+  .source p {
+    margin: 0.6rem 0 0;
   }
-  .sk-note {
-    color: var(--pr-muted);
-    font-size: 0.75rem;
+  .source code {
+    font-size: 0.85em;
+    overflow-wrap: anywhere;
   }
-  .kept .sk-note {
-    color: var(--pr-accent);
-    font-weight: 600;
+  .logos {
+    margin-top: 2.5rem;
   }
   .logos ul {
     display: grid;
-    gap: 2rem;
-    margin: 2rem 0 0;
+    gap: 2.5rem;
+    margin: 0;
     padding: 0;
     list-style: none;
   }
   .mark-name {
     margin: 0;
     color: var(--pr-heading);
+    font-size: 1.125rem;
     font-weight: 650;
   }
   .mark-note {
     margin: 0.2rem 0 0.75rem;
     color: var(--pr-muted);
     font-size: var(--text-sm);
+  }
+  .variant + .variant {
+    margin-top: 1rem;
+  }
+  .variant-label {
+    margin: 0 0 0.4rem;
+    color: var(--pr-text);
+    font-size: var(--text-xs);
+    font-weight: 650;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
   }
   .panels {
     display: grid;
@@ -346,16 +188,16 @@ const marks = [{"id": "A", "name": "Woodpecker", "rationale": "A woodpecker digs
     --muted: #959dac;
     --tab: #141821;
   }
-  .row.mono {
-    --acc: var(--ink);
-    padding-top: 1rem;
-    border-top: 1px solid var(--tab);
-  }
   .row {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 1rem 1.75rem;
+  }
+  .row.mono {
+    --acc: var(--ink);
+    padding-top: 1rem;
+    border-top: 1px solid var(--tab);
   }
   .row-label {
     width: 5.5rem;
@@ -399,5 +241,8 @@ const marks = [{"id": "A", "name": "Woodpecker", "rationale": "A woodpecker digs
     background: var(--tab);
     color: var(--word);
     font-size: 0.75rem;
+  }
+  .tab svg {
+    --bgc: var(--tab);
   }
 </style>
