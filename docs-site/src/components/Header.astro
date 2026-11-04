@@ -7,7 +7,6 @@
 // JavaScript.
 import BrandMark from './BrandMark.astro';
 import Icon from './Icon.astro';
-import { releases } from '../releases';
 import GitHubMark from './GitHubMark.astro';
 import Search from './Search.astro';
 import ThemeToggle from './ThemeToggle.astro';
@@ -23,9 +22,7 @@ const links = [
   { label: 'Docs', href: `${base}/docs/`, match: '/docs/' },
   { label: 'Updates', href: `${base}/updates/`, match: '/updates/' },
 ];
-// The latest release, as a quiet pill beside Download: read from the
-// releases, so it moves on by itself. Releases live in the footer.
-const latest = (await releases())[0];
+// Releases live in the footer.
 // The repository, the last item in the nav, with the GitHub mark.
 const path = Astro.url.pathname;
 const current = (match: string) => (path.startsWith(`${base}${match}`) ? 'page' : undefined);
@@ -38,7 +35,6 @@ const current = (match: string) => (path.startsWith(`${base}${match}`) ? 'page' 
         <BrandMark />
         <span translate="no">{SHORT_TITLE}</span>
       </a>
-      <a class="version" href={latest.href} aria-label={`Latest release: ${latest.version}`}>v{latest.version}</a>
     </div>
 
     <div class="find"><Search /></div>
@@ -74,8 +70,7 @@ const current = (match: string) => (path.startsWith(`${base}${match}`) ? 'page' 
     background: color-mix(in srgb, var(--pr-bg) 92%, transparent);
     backdrop-filter: blur(8px);
   }
-  /* Left to right: the brand with the latest version as a small tag, a
-   * search bar that takes the free space, the nav, the theme button and
+  /* Left to right: the brand, a search bar that takes the free space, the nav, the theme button and
    * Download. The nav, the theme button and Download sit the same distance
    * apart (--gap). Below 66rem the nav moves into the menu; below 50rem
    * search becomes an icon beside the theme button and the menu. */
@@ -107,23 +102,6 @@ const current = (match: string) => (path.startsWith(`${base}${match}`) ? 'page' 
     letter-spacing: -0.02em;
     text-decoration: none;
     white-space: nowrap;
-  }
-  /* The latest version: a small tilted tag on the wordmark, in the accent,
-   * like a sticker. Text only. */
-  .version {
-    flex: none;
-    color: var(--pr-accent);
-    font-size: 0.75rem;
-    font-weight: 750;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: 0.01em;
-    line-height: 1;
-    text-decoration: none;
-    white-space: nowrap;
-    transform: translateY(-0.6em) rotate(-7deg);
-  }
-  .version:hover {
-    text-decoration: underline;
   }
   .find {
     margin-inline-start: auto;
@@ -248,7 +226,7 @@ const current = (match: string) => (path.startsWith(`${base}${match}`) ? 'page' 
     }
   }
   /* Below 50rem: tighter gaps and slightly smaller round buttons, so the
-   * brand, the version and search, theme and menu fit on one row. */
+   * brand and search, theme and menu fit on one row. */
   @media (max-width: 50rem) {
     .bar {
       --gap: 0.5rem;
@@ -278,28 +256,12 @@ const current = (match: string) => (path.startsWith(`${base}${match}`) ? 'page' 
       gap: 0.5rem;
       font-size: 1rem;
     }
-    .version {
-      font-size: 0.6875rem;
-    }
   }
   /* Just above the width the nav appears at, search drops its shortcut
    * hint so the bar keeps its room. */
   @media (min-width: 66rem) and (max-width: 74rem) {
     .find :global(.open .kbd) {
       display: none;
-    }
-  }
-  /* Narrow phones: the tag tucks under the end of the wordmark, still
-   * tilted, so the row keeps room for the three buttons. */
-  @media (max-width: 23.5rem) {
-    .id {
-      display: grid;
-      gap: 0;
-    }
-    .version {
-      justify-self: end;
-      margin-top: -0.2rem;
-      transform: rotate(-7deg);
     }
   }
   /* The smallest phones (320px): everything a little smaller again. */
