@@ -40,7 +40,7 @@ export const GET: APIRoute = async () => {
   const posts = await newsPosts();
   const items: { date: string; xml: string }[] = [];
   for (const p of posts) {
-    const url = `${site}/updates/${p.id}/`;
+    const url = `${site}${p.path}`;
     items.push({
       date: p.date,
       xml: [
@@ -49,6 +49,7 @@ export const GET: APIRoute = async () => {
         `      <link>${url}</link>`,
         `      <guid isPermaLink="true">${url}</guid>`,
         `      <pubDate>${rfc822(p.date)}</pubDate>`,
+        `      <category>${escape(p.categoryLabel)}</category>`,
         `      <description>${escape(p.description)}</description>`,
         `      <content:encoded><![CDATA[${await html(news.find((n) => n.id === p.id)!)}]]></content:encoded>`,
         '    </item>',
@@ -56,7 +57,7 @@ export const GET: APIRoute = async () => {
     });
   }
   for (const r of await reviews()) {
-    const url = `${site}/updates/indicator-reviews/${r.id}/`;
+    const url = `${site}/indicator-reviews/${r.id}/`;
     const entry = reviewEntries.find((e) => e.id === r.id)!;
     const title = `Weekly indicator review, ${longDate(r.date)}${r.outcome ? `: ${r.outcome}` : ''}`;
     items.push({
@@ -67,6 +68,7 @@ export const GET: APIRoute = async () => {
         `      <link>${url}</link>`,
         `      <guid isPermaLink="true">${url}</guid>`,
         `      <pubDate>${rfc822(r.date)}</pubDate>`,
+        '      <category>Indicator review</category>',
         `      <description>${escape(r.summary?.replace(/`/g, '') ?? title)}</description>`,
         `      <content:encoded><![CDATA[${await html(entry)}]]></content:encoded>`,
         '    </item>',

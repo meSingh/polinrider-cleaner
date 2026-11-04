@@ -16,6 +16,8 @@ import { lastUpdated } from '../../git';
 import { firstCommitDay } from '../../sources.mjs';
 import { ogImage } from '../../og';
 import { answer } from '../../threat-data';
+import { newsPosts } from '../../news';
+const articleUrl = Object.fromEntries((await newsPosts()).map((p) => [p.id, p.href]));
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
@@ -234,7 +236,7 @@ const schema = [
       <ul class="signs">
         <li>
           <strong>A font file that is really code</strong>
-          <span>A file such as <code>public/fonts/fa-solid-400.woff2</code> that holds JavaScript instead of a font. A real <code>.woff2</code> font starts with the letters <code>wOF2</code>. The names keep changing (<a href={src.osmAb} {...ext}>fake fonts</a>; <a href={`${base}/updates/2026-11-04-fake-font-javascript/`}>our post</a>).</span>
+          <span>A file such as <code>public/fonts/fa-solid-400.woff2</code> that holds JavaScript instead of a font. A real <code>.woff2</code> font starts with the letters <code>wOF2</code>. The names keep changing (<a href={src.osmAb} {...ext}>fake fonts</a>; <a href={articleUrl['2026-11-04-fake-font-javascript']}>our post</a>).</span>
         </li>
         <li>
           <strong>An editor task that runs when you open the folder</strong>
@@ -246,11 +248,11 @@ const schema = [
         </li>
         <li>
           <strong>temp_auto_push.bat</strong>
-          <span>In a project or listed in a <code>.gitignore</code> nobody on your team wrote. It means a computer that pushes to that project is infected (<a href={`${base}/updates/2026-11-04-temp-auto-push-bat/`}>our post</a>).</span>
+          <span>In a project or listed in a <code>.gitignore</code> nobody on your team wrote. It means a computer that pushes to that project is infected (<a href={articleUrl['2026-11-04-temp-auto-push-bat']}>our post</a>).</span>
         </li>
         <li>
           <strong>It keeps coming back</strong>
-          <span>Your antivirus removes it and it is back the next time you run <code>npm run dev</code>. Something that starts it has not been found yet (<a href={`${base}/updates/2026-11-04-polinrider-keeps-coming-back/`}>our post</a>).</span>
+          <span>Your antivirus removes it and it is back the next time you run <code>npm run dev</code>. Something that starts it has not been found yet (<a href={articleUrl['2026-11-04-polinrider-keeps-coming-back']}>our post</a>).</span>
         </li>
         <li>
           <strong>MicrosoftSystem64</strong>
@@ -272,7 +274,7 @@ const schema = [
         <p>
           polinrider checks for it too, because it targets the same developers and needs the same response: a program
           or process named <code>MicrosoftSystem64</code>, and the folders <code>~/.pcl-data</code> and{' '}
-          <code>~/.pcl-state</code>. <a href={`${base}/updates/2026-11-04-microsoftsystem64/`}>MicrosoftSystem64 on your computer</a> has the detail.
+          <code>~/.pcl-state</code>. <a href={articleUrl['2026-11-04-microsoftsystem64']}>MicrosoftSystem64 on your computer</a> has the detail.
         </p>
       </div>
     </section>

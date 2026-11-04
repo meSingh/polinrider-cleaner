@@ -26,7 +26,7 @@ export const GET: APIRoute = async () => {
     ...threat.filter((t) => t.id !== 'index').map((t) => section(t.data.title, `${SITE_URL}/what-is-polinrider/${t.id}/`, flatten(t.body ?? ''))),
     ...posts.map((p) => {
       const e = news.find((n) => n.id === p.id)!;
-      return section(p.title, `${SITE_URL}/updates/${p.id}/`, `Published ${p.date}.\n\n${flatten(plainArticleMarkdown(e.body ?? ''))}`);
+      return section(p.title, `${SITE_URL}${p.path}`, `Published ${p.date}.\n\n${flatten(plainArticleMarkdown(e.body ?? ''))}`);
     }),
   ];
   return new Response(parts.join('\n---\n\n'), { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });

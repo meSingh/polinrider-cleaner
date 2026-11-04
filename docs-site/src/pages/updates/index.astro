@@ -1,15 +1,16 @@
 ---
 // Updates: what's happening with PolinRider, newest first. "Where things
-// stand" at the top (content/status.md), then one line of time in three
-// kinds: our articles, the weekly indicator reviews (one line each) and
-// articles worth reading elsewhere. The tabs filter by kind; without
-// JavaScript every entry shows.
+// stand" at the top (content/status.md), then one line of time: our
+// articles, articles published elsewhere and the weekly indicator reviews
+// (one line each). The tabs filter by category; without JavaScript every
+// entry shows.
 import { getEntry, render } from 'astro:content';
 import Base from '../../layouts/Base.astro';
 import Crumbs from '../../components/Crumbs.astro';
 import Icon from '../../components/Icon.astro';
 import UpdatesTimeline from '../../components/UpdatesTimeline.astro';
 import { timeline } from '../../news';
+import { categories } from '../../categories.mjs';
 import { longDate } from '../../releaseDate';
 import { abs, breadcrumbs } from '../../schema';
 
@@ -17,12 +18,14 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 const items = await timeline();
 const status = (await getEntry('status', 'status'))!;
 const { Content: Status } = await render(status);
+// A tab for every category in use, in the order of src/categories.mjs,
+// then the indicator reviews.
+const used = new Set(items.map((i) => i.category));
 const tabs = [
   ['all', 'All'],
-  ['update', 'Our updates'],
-  ['reading', 'Worth reading'],
-  ['review', 'Indicator reviews'],
-] as const;
+  ...categories.filter((c) => used.has(c.slug)).map((c) => [c.slug, c.title]),
+  ['indicator-reviews', 'Indicator reviews'],
+];
 ---
 
 <Base
@@ -66,7 +69,7 @@ const tabs = [
   const show = (kind: string) => {
     for (const b of buttons) b.setAttribute('aria-pressed', String(b.dataset.filter === kind));
     for (const li of document.querySelectorAll<HTMLElement>('.updates-timeline .item'))
-      li.hidden = kind !== 'all' && li.dataset.kind !== kind;
+      li.hidden = kind !== 'all' && li.dataset.category !== kind;
     for (const g of document.querySelectorAll<HTMLElement>('.updates-timeline .group'))
       g.hidden = !g.querySelector('.item:not([hidden])');
   };

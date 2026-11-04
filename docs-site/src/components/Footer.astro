@@ -7,9 +7,14 @@
 import Badges from './Badges.astro';
 import { ANALYTICS_ON, REPO_URL, SITE_TITLE } from '../siteConfig.mjs';
 import { releases } from '../releases';
+import { timeline } from '../news';
+import { categories } from '../categories.mjs';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 const latest = (await releases())[0];
+// Each category page in use, so every one is reachable from every page.
+const used = new Set((await timeline()).map((i) => i.category));
+const categoryLinks = categories.filter((c) => used.has(c.slug)).map((c) => [c.title, `${base}/${c.slug}/`]);
 
 const columns = [
   {
@@ -34,7 +39,8 @@ const columns = [
     title: 'Updates',
     links: [
       ['All updates', `${base}/updates/`],
-      ['Indicator reviews', `${base}/updates/indicator-reviews/`],
+      ...categoryLinks,
+      ['Indicator reviews', `${base}/indicator-reviews/`],
       ['RSS', `${base}/updates/rss.xml`],
     ],
   },

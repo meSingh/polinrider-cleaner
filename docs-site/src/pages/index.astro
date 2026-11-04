@@ -12,7 +12,7 @@ import LastUpdated from '../components/LastUpdated.astro';
 import UpdatesTimeline from '../components/UpdatesTimeline.astro';
 import Badges from '../components/Badges.astro';
 import { Code } from 'astro:components';
-import { timeline } from '../news';
+import { newsPosts, timeline } from '../news';
 import { releases } from '../releases';
 import { software, sourceCode } from '../schema';
 
@@ -27,6 +27,7 @@ const latest = [
   ...all.filter((i) => i.kind === 'reading').slice(0, 1),
 ].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
 const newest = (await releases())[0];
+const articleUrl = Object.fromEntries((await newsPosts()).map((p) => [p.id, p.href]));
 const themes = { light: 'github-light-default', dark: 'github-dark-default' } as const;
 
 // The answer to type at "What should I check?" for each button.
@@ -197,7 +198,7 @@ const trust = [
           </div>
           <p class="small">
             If it says it could not run, it tells you why, and it found nothing either way.{' '}
-            <a href={`${base}/updates/2026-11-04-polinrider-or-false-alarm/`}>Is it PolinRider or a false alarm?</a>
+            <a href={articleUrl['2026-11-04-polinrider-or-false-alarm']}>Is it PolinRider or a false alarm?</a>
           </p>
         </div>
       </li>
@@ -329,7 +330,7 @@ const trust = [
       ))}
     </ul>
     <p class="small center-line">
-      Every week's indicator review is public: <a href={`${base}/updates/indicator-reviews/`}>read them all</a>.
+      Every week's indicator review is public: <a href={`${base}/indicator-reviews/`}>read them all</a>.
     </p>
     <div class="badge-row">
       <Badges size="lg" center exclude={['License', 'Platforms']} />

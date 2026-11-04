@@ -1,9 +1,12 @@
-// The three kinds of Updates (/updates/): our own articles, the weekly
-// indicator reviews and articles published elsewhere ("Worth reading").
-// Each is read from its own collection; the folders keep their old names
-// (content/news, content/docs/indicator-reviews). Newest first throughout.
+// What Updates (/updates/) lists: our articles, each in a category and at
+// /<category>/<slug>/ (src/categories.mjs); articles published elsewhere,
+// also in a category, which link out; and the weekly indicator reviews at
+// /indicator-reviews/<date>/. Each is read from its own collection; the
+// folders keep their old names (content/news, content/docs/
+// indicator-reviews). Newest first throughout.
 import { getCollection } from 'astro:content';
 import { longDate } from './releaseDate';
+import { articlePath, articleSlug, category } from './categories.mjs';
 
 /** Every YYYY-MM-DD in a line written as "2 November 2026". For display
  * only: the reviews themselves are never edited. */
@@ -13,6 +16,10 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
 export interface NewsPost {
   id: string; // e.g. 2026-11-04-temp-auto-push-bat
+  slug: string; // temp-auto-push-bat
+  category: string; // guides
+  categoryLabel: string; // Guide
+  path: string; // /guides/temp-auto-push-bat/ (no base)
   href: string;
   title: string;
   description: string;
@@ -40,7 +47,11 @@ export async function newsPosts(): Promise<NewsPost[]> {
   return (await getCollection('news'))
     .map(({ id, data, body }) => ({
       id,
-      href: `${base}/updates/${id}/`,
+      slug: articleSlug(id, data.slug),
+      category: data.category,
+      categoryLabel: category(data.category)!.label,
+      path: articlePath(id, data),
+      href: `${base}${articlePath(id, data)}`,
       minutes: readingMinutes(body),
       title: data.title,
       description: data.description,
@@ -76,7 +87,7 @@ export async function reviews(): Promise<Review[]> {
     .filter((e) => e.id !== 'index')
     .map(({ id }) => ({
       id,
-      href: `${base}/updates/indicator-reviews/${id}/`,
+      href: `${base}/indicator-reviews/${id}/`,
       date: id.slice(0, 10),
       label: humanDates(rows.get(id)?.label ?? id),
       outcome: rows.get(id)?.outcome,
@@ -87,7 +98,7 @@ export async function reviews(): Promise<Review[]> {
 
 export async function elsewhere() {
   return (await getCollection('elsewhere'))
-    .map(({ id, data }) => ({ id, ...data }))
+    .map(({ id, data }) => ({ id, ...data, categoryLabel: category(data.category)!.label }))
     .sort((a, b) => (a.date < b.date ? 1 : -1));
 }
 
@@ -102,6 +113,10 @@ export const inline = (s: string) =>
 
 export interface TimelineItem {
   kind: 'update' | 'review' | 'reading';
+  /** The category slug, or 'indicator-reviews'; what the Updates tabs filter on. */
+  category: string;
+  /** The label shown on the entry: "Guide", "Worth reading". */
+  label: string;
   date: string;
   title: string;
   /** One line, as HTML (inline code kept). Not shown for a review. */
@@ -125,6 +140,8 @@ export async function timeline(): Promise<TimelineItem[]> {
   const items: TimelineItem[] = [
     ...(await newsPosts()).map((p) => ({
       kind: 'update' as const,
+      category: p.category,
+      label: p.categoryLabel,
       date: p.date,
       title: p.title,
       summary: inline(p.description),
@@ -133,6 +150,8 @@ export async function timeline(): Promise<TimelineItem[]> {
     })),
     ...(await reviews()).map((r) => ({
       kind: 'review' as const,
+      category: 'indicator-reviews',
+      label: 'Indicator review',
       date: r.date,
       title: reviewLine(r.outcome),
       summary: '',
@@ -140,6 +159,8 @@ export async function timeline(): Promise<TimelineItem[]> {
     })),
     ...(await elsewhere()).map((x) => ({
       kind: 'reading' as const,
+      category: x.category,
+      label: x.categoryLabel,
       date: x.date,
       title: x.title,
       summary: inline(x.summary),
@@ -151,4 +172,11 @@ export async function timeline(): Promise<TimelineItem[]> {
   // both before an outside article.
   const rank = { update: 0, review: 1, reading: 2 };
   return items.sort((a, b) => (a.date === b.date ? rank[a.kind] - rank[b.kind] : a.date < b.date ? 1 : -1));
+}
+
+/** An article's address by its file id, for templates that link one. */
+export async function articleHref(id: string): Promise<string> {
+  const p = (await newsPosts()).find((x) => x.id === id);
+  if (!p) throw new Error(`No article with id ${id}`);
+  return p.href;
 }

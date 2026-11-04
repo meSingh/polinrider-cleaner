@@ -1,12 +1,13 @@
 ---
 // Updates as one line of time, newest first, optionally under month
 // headings. Three kinds that look different on purpose:
-//   update   our articles: label, title, one line and a reading time; the
-//            main weight of the page;
+//   update   our articles: their category, title, one line and a reading
+//            time; the main weight of the page;
 //   review   a weekly indicator review: one compact line, the outcome;
-//   reading  worth reading elsewhere: label with the publisher, title and
-//            a sentence on why it matters; opens in a new tab.
-// Each entry carries data-kind, so the Updates page can filter them.
+//   reading  an article published elsewhere: its category with the
+//            publisher, title and a sentence on why it matters; opens in a
+//            new tab.
+// Each entry carries data-category, so the Updates page can filter them.
 import type { TimelineItem } from '../news';
 
 interface Props {
@@ -35,7 +36,7 @@ for (const i of items) {
         {g.label && <h2 class="month">{g.label}</h2>}
         <ol>
           {g.items.map((i) => (
-            <li class:list={['item', i.kind]} data-kind={i.kind}>
+            <li class:list={['item', i.kind]} data-category={i.category}>
               <time datetime={i.date}>{day(i.date)}</time>
               {i.kind === 'review' ? (
                 <a class="review-line" href={i.href}>
@@ -45,7 +46,7 @@ for (const i of items) {
               ) : (
                 <div class="entry">
                   <p class="kicker">
-                    {i.kind === 'update' ? 'Update' : <>Worth reading · {i.source} <span aria-hidden="true">↗</span></>}
+                    {i.kind === 'update' ? i.label : <>{i.label} · {i.source} <span aria-hidden="true">↗</span></>}
                   </p>
                   <h3 class="title">
                     <a href={i.href}>{i.title}</a>

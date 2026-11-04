@@ -5,6 +5,7 @@
 import { defineCollection } from 'astro:content';
 import { file, glob } from 'astro/loaders';
 import { z } from 'astro/zod';
+import { categorySlugs } from './categories.mjs';
 
 const byPath = ({ entry }: { entry: string }) => entry.replace(/\.mdx?$/, '');
 const pages = (base: string, pattern: string | string[] = '**/*.{md,mdx}') =>
@@ -40,7 +41,16 @@ export const collections = {
   threat: defineCollection({ loader: pages('./src/content/threat'), schema: page }),
   news: defineCollection({
     loader: pages('./src/content/news'),
-    schema: page.extend({ description: z.string(), date: day, review: day.optional() }),
+    // Every article has one category (src/categories.mjs), which is the first
+    // part of its address; `slug` overrides the rest (the file name without
+    // its date).
+    schema: page.extend({
+      description: z.string(),
+      date: day,
+      review: day.optional(),
+      category: z.enum(categorySlugs as [string, ...string[]]),
+      slug: z.string().optional(),
+    }),
   }),
   reviews: defineCollection({ loader: pages('./src/content/docs/indicator-reviews'), schema: page }),
   releases: defineCollection({
@@ -69,6 +79,9 @@ export const collections = {
       title: z.string(),
       date: day,
       summary: z.string(),
+      // Usually worth-reading; an outside article can be an announcement or
+      // analysis too. It links out either way.
+      category: z.enum(categorySlugs as [string, ...string[]]).default('worth-reading'),
     }),
   }),
 };

@@ -25,7 +25,7 @@ export const GET: APIRoute = async () => {
     '## Start here',
     link('The PolinRider threat', f.pages.threat.url, 'what it is, how it spreads, the signs, key facts with sources, questions people ask'),
     link('Quick start', `${SITE_URL}/docs/quick-start/`, 'install, verify and run the scanner'),
-    link('Is it PolinRider or a false alarm?', `${SITE_URL}/updates/2026-11-04-polinrider-or-false-alarm/`, 'how to read a result'),
+    link('Is it PolinRider or a false alarm?', f.pages.updates.find((u) => u.url.endsWith('/polinrider-or-false-alarm/'))!.url, 'how to read a result'),
     link('Removing PolinRider: do it in this order', `${SITE_URL}/docs/guides/order/`, 'why it comes back, and the order that stops it'),
     '',
     ...groups.flatMap((g) => [`## Docs: ${g}`, ...f.pages.docs.filter((d) => d.group === g).map((d) => link(d.title, d.url, d.description)), '']),

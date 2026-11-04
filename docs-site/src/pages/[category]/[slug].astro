@@ -1,0 +1,40 @@
+---
+// One of our articles (content/news), at /<category>/<slug>/, as a plain
+// article. Its one related link is the weekly review it came from, when it
+// came from one.
+import { getCollection, render } from 'astro:content';
+import Update from '../../layouts/Update.astro';
+import { readingMinutes } from '../../news';
+import { longDate } from '../../releaseDate';
+import { citations } from '../../schema';
+import { ogImage } from '../../og';
+import { articleSlug, category } from '../../categories.mjs';
+
+export async function getStaticPaths() {
+  return (await getCollection('news')).map((entry) => ({
+    params: { category: entry.data.category, slug: articleSlug(entry.id, entry.data.slug) },
+    props: { entry },
+  }));
+}
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const { title, description, date, review } = entry.data;
+const cat = category(entry.data.category)!;
+---
+
+<Update
+  kind="update"
+  label={cat.label}
+  crumb={{ label: cat.title, href: `${base}/${cat.slug}/` }}
+  title={title}
+  description={description}
+  date={date}
+  minutes={readingMinutes(entry.body)}
+  file={entry.filePath}
+  citations={citations(entry.body)}
+  image={ogImage(`${cat.slug}/${articleSlug(entry.id, entry.data.slug)}`, `${title}. ${description}`)}
+  related={review ? { label: `Indicator review, ${longDate(review)}`, href: `${base}/indicator-reviews/${review}/` } : undefined}
+>
+  <Content />
+</Update>

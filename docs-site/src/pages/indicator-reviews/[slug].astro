@@ -3,11 +3,11 @@
 // after it merges; only the page around it changes. Its one related link is
 // the update written from it, when there is one.
 import { getCollection, render } from 'astro:content';
-import Update from '../../../layouts/Update.astro';
-import { humanDates, newsPosts } from '../../../news';
-import { longDate } from '../../../releaseDate';
-import { citations } from '../../../schema';
-import { ogImage } from '../../../og';
+import Update from '../../layouts/Update.astro';
+import { humanDates, newsPosts } from '../../news';
+import { longDate } from '../../releaseDate';
+import { citations } from '../../schema';
+import { ogImage } from '../../og';
 
 export async function getStaticPaths() {
   return (await getCollection('reviews'))
@@ -24,16 +24,19 @@ const description =
   `Weekly PolinRider indicator review for ${longDate(day)}: the published sources checked again, and what changed in the scanner's indicator set and why.`;
 const title = humanDates(entry.data.title);
 const post = (await newsPosts()).find((p) => p.review === day);
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 ---
 
 <Update
   kind="review"
+  label="Indicator review"
+  crumb={{ label: 'Indicator reviews', href: `${base}/indicator-reviews/` }}
   title={title}
   description={description}
   date={day}
   file={entry.filePath}
   citations={citations(entry.body)}
-  image={ogImage(`updates/indicator-reviews/${entry.id}`, `${title}. ${description}`)}
+  image={ogImage(`indicator-reviews/${entry.id}`, `${title}. ${description}`)}
   related={post ? { label: post.title, href: post.href } : undefined}
 >
   <Content />

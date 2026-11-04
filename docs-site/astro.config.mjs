@@ -6,7 +6,7 @@ import { defineConfig } from 'astro/config';
 import mdx from '@astrojs/mdx';
 import sitemap from '@astrojs/sitemap';
 import { satteri } from '@astrojs/markdown-satteri';
-import { readdirSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { asides } from './src/markdown/asides.mjs';
 import { baseLinks } from './src/markdown/base-links.mjs';
@@ -14,7 +14,7 @@ import { BASE, SITE_ORIGIN } from './src/siteConfig.mjs';
 import { pagefindIndex } from './src/markdown/pagefind.mjs';
 import { externalLinks } from './src/markdown/external-links.mjs';
 import { ogImages } from './src/markdown/og-images.mjs';
-import { lastCommitDay, sourcesOf } from './src/sources.mjs';
+import { articlePaths, lastCommitDay, sourcesOf } from './src/sources.mjs';
 
 const src = fileURLToPath(new URL('./src', import.meta.url));
 
@@ -23,25 +23,20 @@ const src = fileURLToPath(new URL('./src', import.meta.url));
 // canonical link to the new address for search engines. GitHub Pages serves
 // files only, so these are the redirects there can be.
 const moved = (from, to) => [from, to];
-// The pages in a content folder, leaving out drafts (never built).
-const pages = (dir) =>
-  readdirSync(new URL(`./src/content/${dir}/`, import.meta.url))
-    .filter((f) => /\.mdx?$/.test(f) && !/^index\./.test(f))
-    .filter((f) => !/^draft:\s*true\s*$/m.test(readFileSync(new URL(`./src/content/${dir}/${f}`, import.meta.url), 'utf8')))
-    .map((f) => f.replace(/\.mdx?$/, ''));
 const redirects = Object.fromEntries([
   moved('/quick-start/', '/docs/quick-start/'),
-  ...pages('docs/guides').map((p) => moved(`/guides/${p}/`, `/docs/guides/${p}/`)),
-  ...pages('docs/reference').map((p) => moved(`/reference/${p}/`, `/docs/reference/${p}/`)),
-  ...pages('docs/project').map((p) => moved(`/project/${p}/`, `/docs/project/${p}/`)),
-  moved('/indicator-reviews/', '/updates/indicator-reviews/'),
+  // Only the pages the old site actually had (as of v2.3.0). /guides/ is
+  // now also an article category, so a docs page added later must not get
+  // a redirect there that could collide with an article's address.
+  ...['account', 'ci', 'machine', 'order', 'organization'].map((p) => moved(`/guides/${p}/`, `/docs/guides/${p}/`)),
+  ...['exit-codes', 'false-positives', 'verifying'].map((p) => moved(`/reference/${p}/`, `/docs/reference/${p}/`)),
+  ...['contributing', 'disclaimer', 'security'].map((p) => moved(`/project/${p}/`, `/docs/project/${p}/`)),
   // The campaign pages became one explainer, What is PolinRider?, in
   // November 2026.
   moved('/campaign/', '/what-is-polinrider/'),
   moved('/campaign/what-it-is/', '/what-is-polinrider/'),
   moved('/campaign/how-it-hides/', '/what-is-polinrider/#why-your-git-history-looks-clean'),
   moved('/campaign/indicators/', '/what-is-polinrider/indicators/'),
-  ...pages('docs/indicator-reviews').map((p) => moved(`/indicator-reviews/${p}/`, `/updates/indicator-reviews/${p}/`)),
 ]);
 
 // Frozen copies of the documentation (src/content/docs-versions) are kept
@@ -83,7 +78,7 @@ export default defineConfig({
       mdastPlugins: [asides()],
       // Pages link to each other from the site root, /docs/guides/order/,
       // and the base is added here, so content never names it.
-      hastPlugins: [baseLinks(BASE)],
+      hastPlugins: [baseLinks(BASE, articlePaths())],
     }),
     // Both themes are written into every code block as CSS variables, and
     // the page's theme picks one (src/styles/prose.css). Both pass WCAG AA
