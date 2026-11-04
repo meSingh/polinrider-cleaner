@@ -1,6 +1,9 @@
 ---
 title: <The headline says what is new, in plain words>
 description: <One human sentence, under 155 characters. Quote it if it has a colon.>
+# One of: announcements, guides, worth-reading, analysis. It becomes the
+# first part of the address, /<category>/<title-slug>/.
+category: <category>
 date: "YYYY-MM-DD"
 review: "YYYY-MM-DD"
 sidebar:
@@ -15,6 +18,11 @@ Copy this file to docs-site/src/content/news/YYYY-MM-DD-short-slug.mdx.
 afterwards. `review` is the date of the indicator review the post comes from;
 delete the line if there is none. The page shows the date and the review link
 by itself.
+
+Category: `analysis` for what a new report shows about the campaign,
+`guides` for what a reader should do about something, `announcements` for
+this project's own releases and changes, `worth-reading` for someone else's
+article we recommend. A post from the weekly review is usually `analysis`.
 
 When to write one: only when a week changes what a reader would do. A new
 way in, a new file or artifact on disk or in a repository, a new way it
