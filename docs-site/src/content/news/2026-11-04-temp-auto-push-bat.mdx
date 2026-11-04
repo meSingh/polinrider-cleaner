@@ -1,0 +1,181 @@
+---
+title: Found temp_auto_push.bat in your repository?
+description: "What PolinRider's propagation script does, why your Git history still looks clean and what to do first, from the published analysis."
+date: "2026-11-04"
+sidebar:
+  label: "temp_auto_push.bat"
+  order: -20261104
+---
+
+`temp_auto_push.bat` is the script the PolinRider campaign uses to push its
+payload into repositories. If you found it in a repository, or listed in a
+`.gitignore` that nobody on your team wrote, a computer that pushes to that
+repository has very likely been infected. Check that computer before you touch
+the repository. Cleaning the repository first does not last.
+
+## What the file does
+
+OpenSourceMalware published the script in full in its first report on the
+campaign, on 8 March 2026 ([Hundreds of GitHub Repos Compromised][osm-march]).
+It is a Windows batch file. Run inside a Git repository, it:
+
+1. reads the current branch and the last commit's date, time, message, author
+   name and email;
+2. sets the Windows clock back to the date and time of that commit;
+3. sets the repository's local Git name and email to that commit's author;
+4. stages every change in the folder and amends the last commit with the same
+   message, using `--no-verify` so no commit hook runs;
+5. sets the clock back to the real time;
+6. force-pushes the branch to `origin`, again with `--no-verify`.
+
+By then another part of the malware has already appended its obfuscated
+loader to a config file such as `postcss.config.mjs`, `tailwind.config.js` or
+`eslint.config.mjs` ([same report][osm-march]). The script folds that change
+into a commit that already existed and pushes it over the original.
+
+## Why your history still looks clean
+
+The clock was wound back, so Git records the amended commit with the old date.
+The author, the message and the branch are unchanged. To anyone reading
+`git log`, the commit looks as if it was never touched
+([same report][osm-march]).
+
+Two things do change.
+
+- **The commit's ID.** A commit's hash is computed from everything in it, so
+  the rewritten commit gets a new one. That only helps someone who still has a
+  copy from before the rewrite
+  ([How to Investigate a GitHub Repo's Real History][osm-history]).
+- **GitHub's own record of the push.** The repository activity feed lists
+  every push and force-push with the account that made it and GitHub's server
+  time. None of that comes from the commit, so a changed clock or a changed Git
+  name cannot forge it ([same guide][osm-history]). Our page
+  [Why your Git history looks clean](/threat/#why-your-git-history-looks-clean)
+  shows where to look.
+
+## In the repository, or only in `.gitignore`
+
+You can meet the name in two ways.
+
+**The file itself, committed.** OpenSourceMalware uses the file name to find
+victims. A GitHub code search for it, run on 10 April 2026, found 101
+repositories, and 22 of those also carried a malicious `.vscode/tasks.json`
+([PolinRider DPRK Attack Expands Across GitHub][osm-april]).
+
+**Only as a line in `.gitignore`.** In September 2026 OpenSourceMalware
+reported that infected computers add this block to `.gitignore`:
+
+```text
+config.bat
+temp_auto_push.bat
+temp_interactive_push.bat
+branch_structure.json
+```
+
+These are the working files of the push tool on the developer's own computer,
+and the entries keep them out of `git status`, so the developer does not
+notice them. OpenSourceMalware found the block in every infected organization
+it examined. Where it appears, at least one contributor's computer is
+infected, even if no payload has reached that repository yet
+([PolinRider is A/B Testing its Way Past Your Detections][osm-ab]).
+
+One repository traced in October shows the pattern: its history dated a
+commit 16 April 2025, but a force-push on 25 June 2026 had replaced it with a
+rewritten copy that added `temp_auto_push.bat` to `.gitignore`
+([GhostAction Copycats PolinRider][osm-ghostaction]).
+
+## Not only a Windows problem
+
+The script found so far is a Windows batch file, and changing the Windows
+clock needs administrator rights. OpenSourceMalware also reported evidence of
+the same history rewriting on other operating systems, though no tool for them
+had been left behind ([first report][osm-march]). Not finding the `.bat` file
+on a Mac or a Linux machine does not clear it.
+
+## Why it keeps coming back
+
+The script runs on the infected computer, with the Git credentials already
+stored there. Nobody logs in from somewhere else. It runs again whenever its
+trigger fires: a scheduled task, a background process or someone opening an
+infected project again
+([A Developer's Guide to Getting Rid of PolinRider][osm-guide]).
+
+It also spreads between people. A teammate who opens one of the rewritten
+repositories in VS Code and trusts the folder is infected in turn, and their
+computer starts doing the same. VS Code's Workspace Trust prompt is the main
+thing standing between them and the task that runs on opening
+([A/B Testing][osm-ab]). So a repository cleaned while an infected
+computer can still push to it is reinfected.
+[Order matters](/docs/guides/order/) explains the order that
+holds.
+
+If you publish a Go module or a Composer package straight from the repository,
+the rewritten commit is the release. OpenSourceMalware reported compromised Go
+modules spread this way
+([PolinRider Caused Dozens of npm, Go, PHP Compromises][osm-go];
+[PolinRider Jumps the Fence][osm-fence]).
+
+## What to do
+
+1. **Do not open the repository in an editor, and do not install or build
+   it,** until it has been checked. Opening it in VS Code is how the infection
+   spreads between people, and installing dependencies or running a build runs
+   whatever the project carries ([Real History][osm-history]). If VS Code asks
+   whether to trust the folder, say no. If it asks whether to allow the
+   folder's automatic tasks, choose Disallow ([A/B Testing][osm-ab]).
+2. **Find the computer.** In the repository's activity feed, find the
+   force-pushes and the account that made each one ([Real History][osm-history]).
+   The feed records whose credentials pushed, not who was at the keyboard
+   ([A/B Testing][osm-ab]), so treat that account's owner as a probable victim
+   ([Real History][osm-history]).
+   If the name is only in `.gitignore`, every contributor's computer is a
+   suspect.
+3. **Check that computer first**, before anything on GitHub. Look for
+   `temp_auto_push.bat` and `config.bat` anywhere on its disk
+   ([Developer's Guide][osm-guide]). Then
+   [check the rest of it](/docs/guides/machine/).
+4. **Rotate every credential, from a clean computer**
+   ([PolinRider Jumps the Fence][osm-fence]).
+5. **Then clean the repositories**, and sign your commits from now on
+   ([same post][osm-fence]). The
+   [account](/docs/guides/account/) and
+   [organization](/docs/guides/organization/) guides cover it.
+
+## What polinrider looks for
+
+Both files are in the indicator set. On a computer or in a folder, the check
+reports `temp_auto_push.bat` and `temp_interactive_push.bat` as confirmed
+findings. On GitHub it reads every branch and tag: the file itself is a
+confirmed finding, and a `.gitignore` that lists it is a line to review,
+because it points at a contributor's computer rather than a payload in that
+repository. Why the `.gitignore` names and `temp_interactive_push.bat` sit
+where they do is recorded in the
+[2026-09-28 indicator review](/news/indicator-reviews/2026-09-28/).
+
+:::tip[Check yours]
+Start with the computer. Download `polinrider` from the
+[quick start](/docs/quick-start/) and run it with no arguments.
+It asks what to check (this computer, a GitHub account or an organization)
+and changes nothing until you type `yes`.
+:::
+
+## Sources
+
+1. OpenSourceMalware, [Hundreds of GitHub Repos Compromised By DPRK's PolinRider Campaign][osm-march], 8 March 2026
+2. OpenSourceMalware, [PolinRider DPRK Attack Expands Across GitHub][osm-april], 12 April 2026
+3. OpenSourceMalware, [PolinRider Jumps the Fence to Go, Packagist, npm, PyPI][osm-fence], 8 July 2026
+4. OpenSourceMalware, [PolinRider Caused Dozens of npm, Go, PHP Compromises][osm-go], 31 July 2026
+5. OpenSourceMalware, [A Developer's Guide to Getting Rid of PolinRider][osm-guide], 13 August 2026
+6. OpenSourceMalware, [PolinRider is A/B Testing its Way Past Your Detections][osm-ab], 26 September 2026
+7. OpenSourceMalware, [How to Investigate a GitHub Repo's Real History][osm-history], 6 October 2026
+8. OpenSourceMalware, [GhostAction Copycats PolinRider by Hiding a Stealer in a Fake Font File][osm-ghostaction], 16 October 2026
+9. [Indicator review, 2026-09-28](/news/indicator-reviews/2026-09-28/) and [`ioc/filenames.txt`](https://github.com/meSingh/polinrider-scanner/blob/main/ioc/filenames.txt)
+
+[osm-march]: https://opensourcemalware.com/blog/polinrider-dprk-compromised-hundreds-of-github-repos
+[osm-april]: https://opensourcemalware.com/blog/polinrider-rides-again-north-korean-attack-expands-across-github
+[osm-fence]: https://opensourcemalware.com/blog/polinrider-jumps-the-fence
+[osm-go]: https://opensourcemalware.com/blog/polinrider-caused-dozens-of-npm-and-go-compromises
+[osm-guide]: https://opensourcemalware.com/blog/developer-guide-getting-over-polinrider
+[osm-ab]: https://opensourcemalware.com/blog/polinrider-is-a-b-testing-its-way-past-your-detections
+[osm-history]: https://opensourcemalware.com/blog/how-to-investigate-a-github-repos-real-history
+[osm-ghostaction]: https://opensourcemalware.com/blog/ghostaction-copycats-polinrider-by-hiding-a-stealer-in-a-fake-font-file

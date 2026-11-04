@@ -1,0 +1,853 @@
+---
+// The home page, for someone who fears their computer or their GitHub is
+// infected. The first screen: what this is and three buttons, one for each
+// thing it can check. Then the whole process as numbered steps, from
+// installing it to what you can do if it finds the malware. Then why there
+// is no risk in running it, why it can be trusted and the latest news.
+// Every fact is from the docs it links to.
+import Base from '../layouts/Base.astro';
+import Icon from '../components/Icon.astro';
+import RunBlock from '../components/RunBlock.astro';
+import LastUpdated from '../components/LastUpdated.astro';
+import NewsTimeline from '../components/NewsTimeline.astro';
+import Badges from '../components/Badges.astro';
+import { Code } from 'astro:components';
+import { timeline } from '../news';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const d = `${base}/docs`;
+const latest = (await timeline()).slice(0, 4);
+const themes = { light: 'github-light-default', dark: 'github-dark-default' } as const;
+
+// The answer to type at "What should I check?" for each button.
+const checks = [
+  { answer: 'computer', icon: 'computer', label: 'Check my computer', note: 'macOS · Linux · Windows' },
+  { answer: 'account', icon: 'user', label: 'Check my GitHub account' },
+  { answer: 'organization', icon: 'org', label: 'Check my GitHub organisation' },
+] as const;
+
+// The fixes the guided flow offers for an infected repository, in its own
+// words (src/guide_fix.rs) and the account guide's.
+const repoChoices = [
+  {
+    word: 'restore',
+    name: 'Restore',
+    icon: 'undo',
+    tone: 'clean',
+    flag: 'Recommended: the cleanest fix',
+    what: "Puts each branch back where GitHub's own push record says it was before the attack.",
+    rows: [
+      ['Changes', 'Each branch moves back to that earlier commit. Nothing is edited.'],
+      ['History', 'Not rewritten.'],
+      ['When', "Offered only where the record shows a clean state, after that commit is fetched and checked clean."],
+    ],
+  },
+  {
+    word: 'remove',
+    name: 'Remove',
+    icon: 'repo',
+    tone: 'accent',
+    what: 'Adds one commit per branch that takes the malware out.',
+    rows: [
+      ['Changes', 'One new commit on each branch.'],
+      ['History', 'Kept. The malware stays in older commits.'],
+      ['Undo', 'Easy: it is one commit.'],
+    ],
+  },
+  {
+    word: 'erase',
+    name: 'Erase',
+    icon: 'review',
+    tone: 'review',
+    flag: 'Rewrites history',
+    what: 'Takes the malware out of every commit in the history and pushes it all back.',
+    rows: [
+      ['Changes', 'Every commit on those branches.'],
+      ['History', 'Rewritten. Every commit ID changes, and every existing copy must be updated; it shows how.'],
+    ],
+  },
+  {
+    word: 'archive',
+    name: 'Archive',
+    icon: 'lock',
+    tone: 'muted',
+    what: 'For a repository nobody uses: stop using it.',
+    rows: [
+      ['Changes', 'A large infected notice at the top of the README, a new description, and the repository made read-only.'],
+      ['History', 'Not touched. Nothing is removed.'],
+    ],
+  },
+  {
+    word: 'skip',
+    name: 'Skip',
+    icon: 'arrow',
+    tone: 'muted',
+    what: 'Leaves it as it is for now.',
+    rows: [['Changes', 'Nothing.']],
+  },
+];
+
+const safety = [
+  { title: 'It only looks until you type yes', text: 'Every check reads. Nothing on your computer or on GitHub changes until you answer yes.' },
+  { title: 'Nothing is deleted', text: 'Confirmed files move to a quarantine folder, with a list of how to put each one back.' },
+  { title: 'You see every change first', text: 'Each fix on GitHub is shown as a dry run of exactly what would change, before you agree.' },
+  { title: 'It never overwrites newer work', text: 'Every push it makes is refused if someone pushed after the check, so nothing new is lost.' },
+];
+
+const trust = [
+  { icon: 'doc', title: 'Open source', text: 'Every line is public and MIT licensed.' },
+  { icon: 'signature', title: 'Signed and attested', text: 'Every commit is signed. Every release carries build provenance and SHA256SUMS.' },
+  { icon: 'calendar', title: 'Checked every week', text: 'The indicators are reviewed against published reports every week, and every review is public.' },
+  { icon: 'shield', title: 'Built during a real cleanup', text: "On the author's own account: 57 repositories and 304 refs. Two of ten restore points were infected too." },
+] as const;
+---
+
+<Base
+  title="Find and remove PolinRider"
+  description="Check your computer, a GitHub account or a whole organization for the PolinRider supply-chain malware, and clean it up safely."
+  type="website"
+>
+  <section class="hero wrap">
+    <p class="badge"><span class="dot" aria-hidden="true"></span>Open source PolinRider malware scanner and cleaner</p>
+    <h1>Under attack by PolinRider?<br /><span class="accent">Find the malware and remove it safely.</span></h1>
+    <p class="tagline">
+      One open source program checks your computer, your GitHub account and your organisation for PolinRider malware,
+      and helps you remove it safely.
+    </p>
+    <div class="checks">
+      {checks.map((c) => (
+        <a class="check" href="#how" data-answer={c.answer}>
+          <Icon name={c.icon} size={20} />
+          <span>
+            {c.label}
+            {'note' in c && <small>{c.note}</small>}
+          </span>
+        </a>
+      ))}
+    </div>
+    <div class="hero-foot">
+      <a class="textlink" href={`${base}/threat/`}>What is PolinRider? <Icon name="arrow" size={18} /></a>
+      <LastUpdated />
+    </div>
+  </section>
+
+  <section id="how" class="wrap how" aria-labelledby="how-h">
+    <div class="how-inner">
+    <h2 id="how-h">How it works</h2>
+    <ol class="steps">
+      <li>
+        <span class="n" aria-hidden="true">1</span>
+        <div class="step">
+          <h3>Install it</h3>
+          <p>Choose your system. Run only its commands.</p>
+          <RunBlock install />
+        </div>
+      </li>
+      <li>
+        <span class="n" aria-hidden="true">2</span>
+        <div class="step">
+          <h3>Run it and say what to check</h3>
+          <div class="code-block copy-wrap">
+            <Code code="polinrider" lang="bash" themes={themes} defaultColor={false} />
+          </div>
+          <p>
+            It asks <em>What should I check?</em> Type <code class="answer-word" data-answer-word>computer</code><span data-answer-others>, or <code>account</code> or <code>organization</code> for GitHub</span>.
+            Answers are words, never numbers.
+          </p>
+        </div>
+      </li>
+      <li>
+        <span class="n" aria-hidden="true">3</span>
+        <div class="step">
+          <h3>It scans. Nothing changes.</h3>
+          <p>
+            It only reads, and shows each check as it runs. A GitHub check copies every repository first, so the
+            evidence is kept before anything is touched.
+          </p>
+        </div>
+      </li>
+      <li>
+        <span class="n" aria-hidden="true">4</span>
+        <div class="step">
+          <h3>You get one of three answers</h3>
+          <div class="answers">
+            <div class="answer verdict-clean">
+              <p class="ah"><Icon name="clean" size={22} /><strong>Clean</strong></p>
+              <p>None of today's signs found. Not proof it was never there: if you had a reason to check, change your passwords and tokens anyway.</p>
+            </div>
+            <div class="answer verdict-review">
+              <p class="ah"><Icon name="review" size={22} /><strong>Review</strong></p>
+              <p>Something a normal project can also have. Read each <code>[review]</code> line and ask: did I put this here? If not, treat it as found.</p>
+            </div>
+            <div class="answer verdict-compromised">
+              <p class="ah"><Icon name="compromised" size={22} /><strong>Compromised</strong></p>
+              <p>Something only the malware leaves. It lists what it found and the exact command for each next step. Go to step 5.</p>
+            </div>
+          </div>
+          <p class="small">
+            If it says it could not run, it tells you why, and it found nothing either way.{' '}
+            <a href={`${base}/news/2026-11-04-polinrider-or-false-alarm/`}>Is it PolinRider or a false alarm?</a>
+          </p>
+        </div>
+      </li>
+      <li>
+        <span class="n bad" aria-hidden="true">5</span>
+        <div class="step">
+          <h3>If it is compromised, these are your choices, in this order</h3>
+          <p class="order-note">
+            The order is fixed. If you clean GitHub while an infected computer still holds a valid token, the
+            malware pushes itself back within minutes. <a href={`${d}/guides/order/`}>Why</a>
+          </p>
+
+          <div class="choice">
+            <h4><Icon name="computer" size={20} />This computer</h4>
+            <p>
+              Type <code>yes</code> and every confirmed file moves into a quarantine folder, with a list of how to
+              put each one back. Nothing is deleted. A startup entry, a crontab line or a shell startup file is
+              never changed for you: it prints the command that removes it.
+            </p>
+            <p>
+              If it says <em>This machine cannot be trusted until it is rebuilt</em>, quarantine contains it but
+              only a clean reinstall makes it safe. <a href={`${d}/guides/machine/`}>Checking a computer</a>
+            </p>
+          </div>
+
+          <div class="choice">
+            <h4><Icon name="key" size={20} />Your passwords and tokens</h4>
+            <p>
+              Change every one, from a different computer you trust: GitHub tokens and SSH keys, npm and cloud
+              tokens, and the passwords saved in your browser.
+            </p>
+          </div>
+
+          <div class="choice">
+            <h4><Icon name="repo" size={20} />Your repositories</h4>
+            <p>
+              Every repository is first copied into an evidence folder. Then, for each infected one, it asks which
+              fix to use:
+            </p>
+            <ul class="fixes">
+              {repoChoices.map((c) => (
+                <li class:list={['fix', `tone-${c.tone}`]}>
+                  <div class="fix-top">
+                    <span class="fix-icon"><Icon name={c.icon} size={20} /></span>
+                    <span class="fix-name">{c.name}</span>
+                    <span class="fix-type">type <code>{c.word}</code></span>
+                  </div>
+                  {'flag' in c && c.flag && <p class="fix-flag">{c.flag}</p>}
+                  <p class="fix-what">{c.what}</p>
+                  <dl>
+                    {c.rows.map(([k, v]) => (
+                      <>
+                        <dt>{k}</dt>
+                        <dd>{v}</dd>
+                      </>
+                    ))}
+                  </dl>
+                </li>
+              ))}
+            </ul>
+            <p>
+              Each fix shows exactly what would change on GitHub and pushes only after you type <code>yes</code>.
+              Afterwards, delete every local copy and clone it again.{' '}
+              <a href={`${d}/guides/account/`}>A GitHub account</a> · <a href={`${d}/guides/organization/`}>An organisation</a>
+            </p>
+          </div>
+
+          <div class="choice">
+            <h4><Icon name="ci" size={20} />Every future push</h4>
+            <p>
+              Add the scanner to your CI, so a reinfection is caught on the next push.{' '}
+              <a href={`${d}/guides/ci/`}>Every future push</a>
+            </p>
+          </div>
+        </div>
+      </li>
+    </ol>
+    </div>
+  </section>
+
+  <section class="wrap safe" aria-labelledby="safe-h">
+    <div class="safe-panel">
+      <div class="safe-intro">
+        <p class="eyebrow">Before you run it</p>
+        <h2 id="safe-h">No risk in running it</h2>
+        <p>
+          It is built for a computer that may already be infected, run by someone under stress. So it looks
+          first, shows you everything and changes only what you agree to.
+        </p>
+        <p class="small">
+          What it cannot promise: signatures change, so a clean result is about today's signs. Change your
+          passwords anyway if you had a reason to check. <a href={`${d}/project/disclaimer/`}>The full disclaimer</a>
+        </p>
+      </div>
+      <ol class="guarantees">
+        {safety.map((g) => (
+          <li>
+            <span class="tick" aria-hidden="true"><Icon name="clean" size={22} /></span>
+            <span><strong>{g.title}</strong>{g.text}</span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  </section>
+
+  <section class="wrap trust" aria-labelledby="trust-h">
+    <div class="trust-head">
+      <div>
+        <p class="eyebrow">Check it, do not take our word</p>
+        <h2 id="trust-h">Why you can trust it</h2>
+      </div>
+      <a class="pill" href={`${d}/reference/verifying/`}>Verify it yourself <Icon name="arrow" size={18} /></a>
+    </div>
+    <ul class="proof">
+      {trust.map((t) => (
+        <li>
+          <span class="picon"><Icon name={t.icon} size={22} /></span>
+          <strong>{t.title}</strong>
+          <span>{t.text}</span>
+        </li>
+      ))}
+    </ul>
+    <p class="small center-line">
+      Every week's indicator review is public: <a href={`${base}/news/indicator-reviews/`}>read them all</a>.
+    </p>
+    <div class="badge-row">
+      <Badges size="lg" center exclude={['License', 'Platforms']} />
+    </div>
+  </section>
+
+  <section class="wrap latest" aria-labelledby="latest-h">
+    <div class="latest-head">
+      <h2 id="latest-h">Latest</h2>
+      <a class="textlink" href={`${base}/news/`}>All news <Icon name="arrow" size={16} /></a>
+    </div>
+    <NewsTimeline items={latest} />
+  </section>
+</Base>
+
+<script>
+  // A check button sets the word to type in step 2, then the link scrolls
+  // there. Without JavaScript step 2 lists all three words.
+  const word = document.querySelector<HTMLElement>('[data-answer-word]');
+  const others = document.querySelector<HTMLElement>('[data-answer-others]');
+  for (const a of document.querySelectorAll<HTMLAnchorElement>('.check[data-answer]')) {
+    a.addEventListener('click', () => {
+      if (word) word.textContent = a.dataset.answer ?? 'computer';
+      if (others) others.hidden = true;
+    });
+  }
+</script>
+
+<style>
+  code {
+    padding: 0.05em 0.35em;
+    border: 1px solid var(--pr-border);
+    border-radius: 6px;
+    background: var(--pr-surface);
+    color: var(--pr-heading);
+    font-size: 0.88em;
+  }
+  .answer-word {
+    border-color: var(--pr-accent);
+    background: var(--pr-accent-bg);
+  }
+  h2 {
+    margin: 0;
+    font-size: clamp(1.625rem, 1.2rem + 1.4vw, 2.125rem);
+    letter-spacing: -0.025em;
+  }
+  .small {
+    color: var(--pr-muted);
+    font-size: var(--text-sm);
+  }
+
+  /* Hero */
+  .hero {
+    position: relative;
+    isolation: isolate;
+    overflow-x: clip;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-block: clamp(3rem, 8vw, 5.5rem) 1rem;
+    text-align: center;
+  }
+  /* A soft glow of the brand colour behind the headline. */
+  .hero::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    top: 0;
+    left: 50%;
+    width: min(60rem, 120vw);
+    height: 28rem;
+    transform: translateX(-50%);
+    background: radial-gradient(ellipse at 50% 35%, var(--pr-glow), transparent 65%);
+    pointer-events: none;
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    margin: 0 0 1.75rem;
+    padding: 0.35rem 0.9rem;
+    border: 1px solid var(--pr-border);
+    border-radius: 999px;
+    font-size: var(--text-xs);
+  }
+  .dot {
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 50%;
+    background: var(--pr-accent);
+  }
+  h1 {
+    max-width: 22ch;
+    margin: 0;
+    font-size: clamp(2.25rem, 1.2rem + 4.2vw, 4rem);
+    line-height: 1.06;
+    letter-spacing: -0.035em;
+  }
+  .accent {
+    color: var(--pr-accent);
+  }
+  .tagline {
+    max-width: 38rem;
+    margin: 1.25rem 0 0;
+    font-size: clamp(1.125rem, 1rem + 0.5vw, 1.3125rem);
+    line-height: 1.5;
+    text-wrap: balance;
+  }
+  .checks {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.75rem;
+    margin-top: 2.25rem;
+  }
+  .check {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.8rem 1.3rem;
+    border: 1px solid var(--pr-border-strong);
+    border-radius: 999px;
+    background: var(--pr-bg);
+    color: var(--pr-heading);
+    font-size: 1rem;
+    font-weight: 600;
+    text-align: start;
+    text-decoration: none;
+  }
+  .check:first-child {
+    border-color: var(--pr-pill-bg);
+    background: var(--pr-pill-bg);
+    color: var(--pr-pill-text);
+  }
+  .check:hover {
+    border-color: var(--pr-heading);
+    color: var(--pr-heading);
+  }
+  .check:first-child:hover {
+    color: var(--pr-pill-text);
+    opacity: 0.88;
+  }
+  .check small {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 500;
+    opacity: 0.8;
+  }
+  .hero-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem 1.75rem;
+    margin-top: 1.75rem;
+  }
+  .hero-foot :global(.last-updated) {
+    margin: 0;
+  }
+
+  /* How it works */
+  .how-inner {
+    max-width: 56rem;
+    margin-inline: auto;
+  }
+  .how {
+    margin-top: clamp(3.5rem, 8vw, 6rem);
+    scroll-margin-top: calc(var(--nav-height) + 1rem);
+  }
+  .steps {
+    max-width: 56rem;
+    margin: 2rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .steps > li {
+    position: relative;
+    display: grid;
+    grid-template-columns: 2.5rem minmax(0, 1fr);
+    gap: 0 1.25rem;
+    padding-bottom: 2.5rem;
+  }
+  .steps > li::after {
+    content: '';
+    position: absolute;
+    top: 2.75rem;
+    bottom: 0.5rem;
+    left: 1.25rem;
+    width: 1px;
+    background: var(--pr-border);
+  }
+  .steps > li:last-child::after {
+    display: none;
+  }
+  .n {
+    display: grid;
+    place-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border: 1px solid var(--pr-accent);
+    border-radius: 50%;
+    background: var(--pr-accent-bg);
+    color: var(--pr-accent);
+    font-weight: 700;
+  }
+  .n.bad {
+    border-color: var(--pr-bad-border);
+    background: var(--pr-bad-bg);
+    color: var(--pr-bad);
+  }
+  .step {
+    min-width: 0;
+  }
+  .step h3 {
+    margin: 0.4rem 0 0.6rem;
+    font-size: 1.375rem;
+  }
+  .step p {
+    margin: 0.6rem 0 0;
+  }
+  .step :global(.run-block),
+  .step .code-block {
+    margin-top: 0.9rem;
+  }
+  .step .code-block :global(pre) {
+    margin: 0;
+    padding: 0.9rem 6.5rem 0.9rem 1.25rem;
+    border: 1px solid var(--pr-border);
+    border-radius: var(--pr-radius);
+    background: var(--pr-code-bg) !important;
+    font-size: 1.0625rem;
+    line-height: 1.75;
+  }
+  .step .code-block :global(.copy-btn) {
+    opacity: 1;
+  }
+  .answers {
+    display: grid;
+    gap: 0.75rem;
+    margin-top: 1rem;
+  }
+  @media (min-width: 46rem) {
+    .answers {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+  .answer {
+    padding: 1rem 1.1rem;
+    border: 1px solid var(--b);
+    border-radius: var(--pr-radius);
+    background: var(--bg);
+    font-size: 0.9375rem;
+    line-height: 1.5;
+  }
+  .answer p {
+    margin: 0.5rem 0 0;
+  }
+  .answer .ah {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    color: var(--c);
+  }
+  .ah strong {
+    color: var(--c);
+    font-size: 1.125rem;
+  }
+  .order-note {
+    padding: 0.8rem 1rem;
+    border-inline-start: 3px solid var(--pr-review);
+    border-radius: var(--pr-radius-sm);
+    background: var(--pr-review-bg);
+    font-size: 0.9375rem;
+  }
+  .choice {
+    margin-top: 1.5rem;
+  }
+  .choice h4 {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    margin: 0;
+    color: var(--pr-heading);
+    font-size: 1.125rem;
+  }
+  .choice h4 :global(svg) {
+    box-sizing: content-box;
+    padding: 0.35rem;
+    border-radius: 8px;
+    background: var(--pr-accent-bg);
+    color: var(--pr-accent);
+  }
+  .choice p {
+    font-size: 1rem;
+  }
+  /* The repository fixes: a white card each, a coloured edge and icon by
+   * what the fix does. Green is the recommended one, amber the one that
+   * rewrites history. */
+  .fixes {
+    display: grid;
+    gap: 0.85rem;
+    margin: 1rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  @media (min-width: 44rem) {
+    .fixes {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+  .fix {
+    --edge: var(--pr-border-strong);
+    --ink: var(--pr-muted);
+    --chip: var(--pr-surface);
+    padding: 1.1rem 1.2rem 1.15rem;
+    border: 1px solid var(--pr-border);
+    border-inline-start: 4px solid var(--edge);
+    border-radius: var(--pr-radius);
+    background: var(--pr-bg);
+    font-size: 0.9375rem;
+    line-height: 1.5;
+  }
+  .tone-clean {
+    --edge: var(--pr-clean);
+    --ink: var(--pr-clean);
+    --chip: var(--pr-clean-bg);
+  }
+  .tone-accent {
+    --edge: var(--pr-accent);
+    --ink: var(--pr-accent);
+    --chip: var(--pr-accent-bg);
+  }
+  .tone-review {
+    --edge: var(--pr-review);
+    --ink: var(--pr-review);
+    --chip: var(--pr-review-bg);
+  }
+  .fix p {
+    margin: 0;
+  }
+  .fix-top {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+  }
+  .fix-icon {
+    display: inline-grid;
+    place-items: center;
+    flex: none;
+    width: 2.2rem;
+    height: 2.2rem;
+    border-radius: 10px;
+    background: var(--chip);
+    color: var(--ink);
+  }
+  .fix-name {
+    color: var(--pr-heading);
+    font-size: 1.125rem;
+    font-weight: 700;
+  }
+  .fix-type {
+    margin-inline-start: auto;
+    color: var(--pr-muted);
+    font-size: var(--text-xs);
+  }
+  .fix-type code {
+    font-size: 0.8125rem;
+  }
+  .fix-flag {
+    display: inline-block;
+    margin-top: 0.7rem !important;
+    padding: 0.15rem 0.6rem;
+    border-radius: 999px;
+    background: var(--chip);
+    color: var(--ink);
+    font-size: var(--text-xs);
+    font-weight: 650;
+  }
+  .fix-what {
+    margin-top: 0.6rem !important;
+    color: var(--pr-heading);
+    font-weight: 500;
+  }
+  .fix dl {
+    display: grid;
+    grid-template-columns: 5rem minmax(0, 1fr);
+    gap: 0.35rem 0.75rem;
+    margin: 0.75rem 0 0;
+    padding-top: 0.75rem;
+    border-top: 1px dashed var(--pr-border);
+  }
+  .fix dt {
+    color: var(--pr-muted);
+    font-size: var(--text-xs);
+    font-weight: 650;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding-top: 0.15rem;
+  }
+  .fix dd {
+    margin: 0;
+    color: var(--pr-text);
+  }
+
+  /* No risk in running it */
+  .safe {
+    margin-top: clamp(3rem, 7vw, 5rem);
+  }
+  .safe-panel {
+    display: grid;
+    gap: 2rem;
+    padding: clamp(1.5rem, 4vw, 2.5rem);
+    border: 1px solid var(--pr-clean-border);
+    border-radius: calc(var(--pr-radius) + 6px);
+    background: var(--pr-clean-bg);
+  }
+  @media (min-width: 60rem) {
+    .safe-panel {
+      grid-template-columns: 2fr 3fr;
+      gap: 3rem;
+    }
+  }
+  .safe-intro p {
+    margin: 0.9rem 0 0;
+  }
+  .guarantees {
+    display: grid;
+    gap: 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .guarantees li {
+    display: flex;
+    gap: 0.9rem;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--pr-clean-border);
+  }
+  .guarantees li:first-child {
+    padding-top: 0;
+  }
+  .guarantees li:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
+  .tick {
+    flex: none;
+    color: var(--pr-clean);
+  }
+  .guarantees strong {
+    display: block;
+    margin-bottom: 0.2rem;
+    color: var(--pr-heading);
+    font-size: 1.0625rem;
+  }
+
+  /* Why you can trust it */
+  /* A tinted band behind the trust section, full width. */
+  .trust {
+    margin-top: clamp(3rem, 7vw, 5rem);
+    padding-block: clamp(2.5rem, 6vw, 4rem);
+    box-shadow: 0 0 0 100vmax var(--pr-tint);
+    clip-path: inset(0 -100vmax);
+    background: var(--pr-tint);
+  }
+  .trust-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem 2rem;
+  }
+  .proof {
+    display: grid;
+    gap: 0;
+    margin: 1.75rem 0 0;
+    padding: 0;
+    list-style: none;
+    background: var(--pr-bg);
+    border: 1px solid var(--pr-border);
+    border-radius: var(--pr-radius);
+    overflow: hidden;
+  }
+  @media (min-width: 44rem) {
+    .proof {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+  @media (min-width: 66rem) {
+    .proof {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+  .proof li {
+    display: grid;
+    align-content: start;
+    gap: 0.4rem;
+    padding: 1.4rem;
+    border-bottom: 1px solid var(--pr-border);
+    border-inline-end: 1px solid var(--pr-border);
+    font-size: 0.9375rem;
+    line-height: 1.55;
+  }
+  .proof strong {
+    margin-top: 0.5rem;
+    color: var(--pr-heading);
+    font-size: 1.0625rem;
+  }
+  .picon {
+    display: inline-grid;
+    place-items: center;
+    width: 2.6rem;
+    height: 2.6rem;
+    border: 1px solid var(--pr-border-strong);
+    border-radius: 12px;
+    background: var(--pr-surface);
+    color: var(--pr-accent);
+  }
+  .center-line {
+    margin: 1.75rem 0 0;
+    text-align: center;
+  }
+  .badge-row {
+    margin-top: 1rem;
+  }
+
+  /* Latest */
+  .latest {
+    max-width: calc(56rem + 2 * var(--gutter));
+    margin-top: clamp(3rem, 7vw, 5rem);
+  }
+  .latest-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+</style>

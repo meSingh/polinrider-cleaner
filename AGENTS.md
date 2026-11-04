@@ -142,7 +142,7 @@ the sandbox and the test harness.
 | `ioc/` | the indicator set, single source of truth, read at runtime |
 | `conformance/` | the specification: fixture trees as data with the verdict each must produce |
 | `docs/adr/` | one record per design decision, with its reasoning and its cost |
-| `docs-site/` | the documentation site, Astro Starlight, including the weekly indicator reviews |
+| `docs-site/` | the documentation site, plain Astro (ADR-0055), including the weekly indicator reviews |
 | `ci/` | the vendorable CI scanner, its workflow template and installer, and the sandbox demo |
 | `.github/scripts/` | scripts the workflows run that are not part of the tool: `downloads.py`, the release download history |
 | `packaging/` | the `.deb` builder, the tap, bucket and winget manifest writers and the bump pull request script, all used by `release.yml` |
@@ -379,13 +379,31 @@ grep -n '^version' Cargo.toml; grep -n 'v[0-9]\+\.[0-9]\+\.[0-9]\+' README.md
 
 **1a. Write the release page, in the same pull request.** Copy
 `docs-site/release-page-template.mdx` to
-`docs-site/src/content/docs/releases/vX.Y.Z.mdx` and fill it in: what is new,
+`docs-site/src/content/releases/vX.Y.Z.mdx` and fill it in: what is new,
 what changed, and breaking changes (say "None" when there are none). Quote
-`version` and `date` in the frontmatter and keep `slug: releases/vX.Y.Z`, or
-the dots are dropped from the URL. The Releases page lists it by itself, and
-the download links point at the assets the tag will publish. Write it for
+`version` and `date` in the frontmatter. The address comes from the file
+name, dots kept (`/releases/vX.Y.Z/`). The Releases page lists it by itself.
+The page reads New, Changed, Breaking changes and then Download, so a reader
+knows what is at stake before downloading; the download buttons point at the
+assets the tag will publish. Write it for
 someone running the tool, not for a reviewer of the code; the tag message
 below can reuse it.
+
+**1b. For a new minor or major release, freeze its docs, in the same pull
+request.** Docs are kept per release line (2.3.x): a patch release shares
+its line's docs and needs no freeze. Once the docs describe the release, run:
+
+```bash
+npm run freeze-docs --prefix docs-site -- X.Y.Z
+```
+
+It copies `docs-site/src/content/docs/` to
+`docs-site/src/content/docs-versions/X.Y/`, which the site serves at
+`/docs/X.Y/`, and records it in `docs-site/src/docs-versions.json`. Run for
+a patch release, it says so and changes nothing. It only writes files. The
+Docs build fails while the newest release line has no frozen copy, so a
+forgotten freeze stops the pull request, not the release. Never edit a frozen copy by hand; to
+correct one, fix `src/content/docs/` and freeze again (ADR-0056).
 
 **The release date comes from the tag, never from a hand edit.** Put the day
 you expect to tag in `date` and in the `<Released version date />` line the

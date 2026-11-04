@@ -1,0 +1,15 @@
+---
+// Runs in <head> before anything paints: sets data-theme on <html> from the
+// reader's stored choice, light when there is none, so a dark page never
+// flashes white and nobody gets dark without asking for it.
+---
+
+<script is:inline>
+  (() => {
+    let t = 'light';
+    try {
+      if (localStorage.getItem('starlight-theme') === 'dark') t = 'dark';
+    } catch {}
+    document.documentElement.dataset.theme = t;
+  })();
+</script>

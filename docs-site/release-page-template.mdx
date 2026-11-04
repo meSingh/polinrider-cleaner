@@ -2,7 +2,6 @@
 title: polinrider-cleaner X.Y.Z
 description: One sentence on what this release brings, for the list and for search.
 version: "X.Y.Z"
-slug: releases/vX.Y.Z
 # The expected release day. Once the tag exists the site shows the tag's date
 # instead, so this never needs correcting after the release.
 date: "YYYY-MM-DD"
@@ -10,8 +9,9 @@ date: "YYYY-MM-DD"
 breaking: one line on what breaks and what to do about it.
 ---
 
-import Downloads from '../../../components/Downloads.astro';
-import Released from '../../../components/Released.astro';
+import Downloads from '~/components/Downloads.astro';
+import Released from '~/components/Released.astro';
+import RunBlock from '~/components/RunBlock.astro';
 
 <Released version="X.Y.Z" date="YYYY-MM-DD" /> No breaking changes.
 
@@ -31,5 +31,9 @@ None. Exit codes, commands and flags are as in the previous release.
 
 <Downloads version="X.Y.Z" packages />
 
-[Verify what you downloaded](/polinrider-cleaner/reference/verifying/) before
+Or use a package manager. Choose your system, then run only its commands:
+
+<RunBlock />
+
+[Verify what you downloaded](/docs/reference/verifying/) before
 you run it.

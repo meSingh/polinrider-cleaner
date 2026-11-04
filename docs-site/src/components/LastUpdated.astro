@@ -1,28 +1,21 @@
 ---
-// When the site last changed, worked out when it is built so it cannot go
-// stale by somebody forgetting to edit it: the date of the commit the site
-// was built from (the deploy checkout is shallow, which still has that one
-// commit). Outside a git checkout it falls back to the build date.
-import { execSync } from 'node:child_process';
+// "Last updated" with how long ago. With no date, the date of the commit the
+// site was built from (the deploy checkout is shallow, which still has that
+// one commit), so the home page cannot go stale by somebody forgetting to
+// edit it. A page passes its own date from git (src/git.ts).
+import { lastUpdated } from '../git';
+import { longDate } from '../releaseDate';
 
-let updated: string;
-try {
-  updated = execSync('git log -1 --format=%cs', { encoding: 'utf8' }).trim();
-} catch {
-  updated = new Date().toISOString().slice(0, 10);
+interface Props {
+  date?: string;
+  align?: 'center' | 'start';
 }
-
-const long = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'UTC',
-  });
+const { date, align = 'center' } = Astro.props;
+const updated = date ?? lastUpdated();
 ---
 
-<p class="last-updated">
-  <span>Last updated: <time datetime={updated}>{long(updated)}</time><span class="ago" data-since={updated}></span></span>
+<p class:list={['last-updated', align]}>
+  <span>Last updated: <time datetime={updated}>{longDate(updated)}</time><span class="ago" data-since={updated}></span></span>
 </p>
 
 <script>
@@ -53,8 +46,12 @@ const long = (iso: string) =>
     gap: 0.25rem 1.25rem;
     margin: 0 0 2rem;
     font-size: 0.875rem;
-    color: var(--muted-foreground);
+    color: var(--pr-muted);
     text-align: center;
+  }
+  .last-updated.start {
+    justify-content: flex-start;
+    text-align: start;
   }
   .last-updated > span::before {
     content: '';
@@ -63,8 +60,8 @@ const long = (iso: string) =>
     height: 0.5rem;
     margin-right: 0.45rem;
     border-radius: 50%;
-    background: var(--accent);
-    box-shadow: 0 0 8px var(--accent);
+    background: var(--pr-accent);
+    box-shadow: 0 0 8px var(--pr-accent);
     vertical-align: 0.05rem;
   }
 </style>

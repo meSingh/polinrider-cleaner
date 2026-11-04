@@ -1,0 +1,152 @@
+---
+// A page of writing outside the docs: the threat page, a News post, an
+// indicator review or a release. The trail, the title, a line under it, the
+// text and "On this page" beside it. An optional list on the left (the
+// releases, the reviews) for sections a reader moves along.
+import Base from './Base.astro';
+import Crumbs from '../components/Crumbs.astro';
+import Toc from '../components/Toc.astro';
+import PageFoot from '../components/PageFoot.astro';
+import type { MarkdownHeading } from 'astro';
+
+interface Props {
+  title: string;
+  description?: string;
+  crumbs: { label: string; href: string }[];
+  headings?: MarkdownHeading[];
+  tocDepth?: number;
+  /** The search index's label for this page: Docs, Campaign, News, Releases. */
+  section: string;
+  /** The source file, for "Edit this page" and the git date. */
+  file?: string;
+  /** false where the page shows its own date instead. */
+  foot?: boolean;
+  side?: { title: string; items: { label: string; href: string; badge?: string }[] };
+  class?: string;
+}
+const { title, description, crumbs, headings = [], tocDepth = 2, section, file, foot = true, side, class: extra } = Astro.props;
+const path = Astro.url.pathname;
+---
+
+<Base title={title} description={description}>
+  <div class:list={['article frame', extra, { 'has-side': side }]}>
+    {side && (
+      <nav class="side no-print" aria-label={side.title}>
+        <p class="side-title">{side.title}</p>
+        <ul>
+          {side.items.map((i) => (
+            <li>
+              <a href={i.href} aria-current={i.href === path ? 'page' : undefined}>
+                {i.label}
+                {i.badge && <span class="tag tag-accent">{i.badge}</span>}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </nav>
+    )}
+    <article class="body" data-pagefind-body data-pagefind-meta={`section:${section}`}>
+      <Crumbs items={crumbs} />
+      <h1 data-pagefind-meta="title">{title}</h1>
+      <div class="meta"><slot name="meta" /></div>
+      <Toc headings={headings} depth={tocDepth} />
+      <div class="prose"><slot /></div>
+      {foot && <PageFoot file={file} />}
+      <slot name="after" />
+    </article>
+    <aside class="toc-col no-print" aria-label="On this page">
+      <Toc headings={headings} depth={tocDepth} />
+    </aside>
+  </div>
+</Base>
+
+<style>
+  .article {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--frame-gap);
+    padding-top: 2.5rem;
+  }
+  .body {
+    min-width: 0;
+    max-width: 56rem;
+    width: 100%;
+    margin-inline: auto;
+  }
+  h1 {
+    margin: 0.75rem 0 0;
+    font-size: var(--text-h1);
+    letter-spacing: -0.025em;
+  }
+  .meta:not(:empty) {
+    margin-top: 0.9rem;
+    color: var(--pr-muted);
+    font-size: var(--text-sm);
+  }
+  .meta :global(a) {
+    color: var(--pr-text);
+  }
+  .prose {
+    margin-top: 2rem;
+  }
+  .toc-col {
+    display: none;
+  }
+  /* The in-text copy of "On this page" shows only below the wide layout. */
+  @media (min-width: 72rem) {
+    .body > :global(.toc) {
+      display: none;
+    }
+    .article {
+      grid-template-columns: minmax(0, 1fr) var(--toc-width);
+    }
+    .article.has-side {
+      grid-template-columns: var(--side-width) minmax(0, 1fr) var(--toc-width);
+    }
+    .toc-col {
+      display: block;
+    }
+  }
+  .side {
+    font-size: var(--text-sm);
+  }
+  .side-title {
+    margin: 0 0 0.5rem;
+    color: var(--pr-muted);
+    font-size: 0.75rem;
+    font-weight: 650;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+  }
+  .side ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-inline-start: 1px solid var(--pr-border);
+  }
+  .side a {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-inline-start: -1px;
+    padding: 0.32rem 0.9rem;
+    border-inline-start: 2px solid transparent;
+    color: var(--pr-text);
+    text-decoration: none;
+  }
+  .side a:hover {
+    border-inline-start-color: var(--pr-border-strong);
+    color: var(--pr-heading);
+  }
+  .side a[aria-current='page'] {
+    border-inline-start-color: var(--pr-accent);
+    color: var(--pr-accent);
+    font-weight: 650;
+  }
+  @media (max-width: 71.99rem) {
+    .side {
+      display: none;
+    }
+  }
+</style>

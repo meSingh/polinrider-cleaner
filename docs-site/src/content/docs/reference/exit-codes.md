@@ -1,5 +1,6 @@
 ---
 title: Exit codes
+description: "What each exit code from polinrider means: clean, review, compromised or could not run."
 ---
 
 Every scanner in this repository uses the same four codes. They are a contract:

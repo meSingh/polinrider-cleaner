@@ -1,0 +1,113 @@
+---
+// Which release line these docs are for, and the others. Docs are kept per
+// minor release (2.3.x): patch releases share them (ADR-0056). The list
+// opens over the sidebar instead of pushing it down. A <details>, so it
+// works without JavaScript; with it, a click outside or Escape closes it.
+import type { DocsVersion } from '../docs';
+
+interface Props {
+  current: DocsVersion;
+  versions: DocsVersion[];
+}
+const { current, versions } = Astro.props;
+const latestLine = versions.find((v) => v.latest)!.line;
+// The latest line is served at /docs/; its own frozen copy is not listed.
+const listed = versions.filter((v) => v.latest || v.line !== latestLine);
+const name = (v: DocsVersion) => `${v.line}.x${v.latest ? ' (latest)' : ''}`;
+const isCurrent = (v: DocsVersion) => v.line === current.line && (v.latest || !current.latest);
+---
+
+<details class="switch">
+  <summary><span class="k">Version</span> <span class="v">{name(current.line === latestLine ? versions.find((v) => v.latest)! : current)}</span></summary>
+  <ul>
+    {listed.map((v) => (
+      <li><a href={v.root} aria-current={isCurrent(v) ? 'true' : undefined}>{name(v)}</a></li>
+    ))}
+  </ul>
+</details>
+
+<script>
+  for (const d of document.querySelectorAll<HTMLDetailsElement>('details.switch')) {
+    document.addEventListener('click', (e) => {
+      if (d.open && !d.contains(e.target as Node)) d.open = false;
+    });
+    d.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && d.open) {
+        d.open = false;
+        d.querySelector('summary')?.focus();
+      }
+    });
+  }
+</script>
+
+<style>
+  .switch {
+    position: relative;
+    font-size: var(--text-sm);
+  }
+  summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.55rem 0.85rem;
+    border: 1px solid var(--pr-border);
+    border-radius: var(--pr-radius-sm);
+    background: var(--pr-bg);
+    cursor: pointer;
+    list-style: none;
+  }
+  summary::-webkit-details-marker {
+    display: none;
+  }
+  summary::after {
+    content: '';
+    width: 0.45rem;
+    height: 0.45rem;
+    margin-inline-start: auto;
+    border-right: 2px solid var(--pr-muted);
+    border-bottom: 2px solid var(--pr-muted);
+    transform: translateY(-2px) rotate(45deg);
+  }
+  .switch[open] summary::after {
+    transform: translateY(2px) rotate(-135deg);
+  }
+  summary:hover {
+    border-color: var(--pr-border-strong);
+  }
+  .k {
+    color: var(--pr-muted);
+  }
+  .v {
+    color: var(--pr-heading);
+    font-weight: 650;
+  }
+  ul {
+    position: absolute;
+    top: calc(100% + 0.3rem);
+    left: 0;
+    right: 0;
+    z-index: 30;
+    margin: 0;
+    padding: 0.35rem;
+    list-style: none;
+    border: 1px solid var(--pr-border-strong) !important;
+    border-radius: var(--pr-radius-sm);
+    background: var(--pr-bg);
+    box-shadow: 0 12px 30px rgb(0 0 0 / 0.18);
+  }
+  a {
+    display: block;
+    margin: 0 !important;
+    padding: 0.45rem 0.65rem !important;
+    border: 0 !important;
+    border-radius: 6px;
+    color: var(--pr-text);
+    text-decoration: none;
+  }
+  a:hover,
+  a[aria-current='true'] {
+    background: var(--pr-surface);
+    color: var(--pr-heading) !important;
+  }
+</style>

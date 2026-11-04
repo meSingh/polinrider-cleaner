@@ -1,0 +1,409 @@
+/* Pages written in Markdown: the docs, the campaign pages, News, the
+ * indicator reviews and the releases. Everything here is scoped to .prose so
+ * it never leaks into the page's own chrome. */
+
+.prose {
+  color: var(--pr-text);
+  font-size: var(--text-body);
+  line-height: var(--line-height);
+}
+.prose > :first-child {
+  margin-top: 0;
+}
+.prose :is(p, ul, ol, table, pre, blockquote, aside, .verdicts, .downloads, figure) {
+  margin-block: 0 1.25rem;
+}
+.prose :is(h2, h3, h4) {
+  scroll-margin-top: calc(var(--nav-height) + 1rem);
+}
+.prose h2 {
+  margin: 3rem 0 1rem;
+  font-size: var(--text-h2);
+}
+.prose h3 {
+  margin: 2.25rem 0 0.75rem;
+  font-size: var(--text-h3);
+}
+.prose h4 {
+  margin: 1.75rem 0 0.5rem;
+  font-size: var(--text-h4);
+}
+.prose strong {
+  color: var(--pr-heading);
+  font-weight: 650;
+}
+.prose a:not(.card) {
+  color: var(--pr-accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+.prose a:not(.card):hover {
+  color: var(--pr-heading);
+}
+.prose :is(ul, ol) {
+  padding-inline-start: 1.4rem;
+}
+.prose li + li,
+.prose li > :is(ul, ol) {
+  margin-top: 0.4rem;
+}
+.prose li::marker {
+  color: var(--pr-muted);
+}
+.prose hr {
+  margin: 2.5rem 0;
+  border: 0;
+  border-top: 1px solid var(--pr-border);
+}
+.prose blockquote {
+  margin-inline: 0;
+  padding: 0.25rem 0 0.25rem 1.25rem;
+  border-inline-start: 3px solid var(--pr-border-strong);
+  color: var(--pr-text);
+}
+.prose img {
+  height: auto;
+  border-radius: var(--pr-radius);
+}
+
+/* Inline code: a quiet chip, never a second link colour. */
+.prose :not(pre) > code {
+  padding: 0.1em 0.35em;
+  border: 1px solid var(--pr-border);
+  border-radius: 6px;
+  background: var(--pr-surface);
+  color: var(--pr-heading);
+  font-size: 0.88em;
+  overflow-wrap: anywhere;
+}
+
+/* Code blocks. Shiki writes both themes' colours into each token as
+ * --shiki-light and --shiki-dark; the page's theme picks one. */
+.prose pre,
+.code-block pre {
+  position: relative;
+  margin-inline: 0;
+  padding: 1rem 1.25rem;
+  overflow-x: auto;
+  border: 1px solid var(--pr-border);
+  border-radius: var(--pr-radius);
+  background: var(--pr-code-bg) !important;
+  font-size: var(--text-code);
+  line-height: 1.7;
+  tab-size: 2;
+}
+pre.astro-code span {
+  color: var(--shiki-light);
+}
+:root[data-theme='dark'] pre.astro-code span {
+  color: var(--shiki-dark);
+}
+pre.astro-code {
+  color: var(--pr-heading);
+}
+
+/* The copy button that src/scripts/copy.ts adds to every code block. */
+.copy-wrap {
+  position: relative;
+}
+.copy-btn {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.55rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--pr-border-strong);
+  border-radius: 999px;
+  background: var(--pr-bg);
+  color: var(--pr-text);
+  font: 600 0.8125rem/1.2 var(--font);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.copy-wrap:hover .copy-btn,
+.copy-btn:focus-visible,
+.copy-btn[data-copied] {
+  opacity: 1;
+}
+@media (hover: none) {
+  .copy-btn {
+    opacity: 1;
+  }
+}
+.copy-btn:hover {
+  color: var(--pr-heading);
+}
+.copy-btn[data-copied] {
+  border-color: var(--pr-clean-border);
+  color: var(--pr-clean);
+}
+
+/* Tables: no heavy grid, room to breathe, scroll sideways when wide. */
+.prose table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  font-size: 1rem;
+}
+.prose :is(th, td) {
+  padding: 0.7rem 1.25rem 0.7rem 0;
+  border-bottom: 1px solid var(--pr-border);
+  text-align: start;
+  vertical-align: top;
+}
+.prose th {
+  color: var(--pr-heading);
+  font-weight: 650;
+  border-bottom-color: var(--pr-border-strong);
+}
+.prose :is(th, td):last-child {
+  padding-inline-end: 0;
+}
+/* A two-column key and value table with an empty header row. */
+.prose thead:has(th:empty:first-child) {
+  display: none;
+}
+
+/* Callouts. Caution and danger reuse the review and compromised colours on
+ * purpose: both mean "slow down here". Each has an icon and its word, so
+ * the colour is never the only signal. */
+.aside {
+  --c: var(--pr-accent);
+  --bg: var(--pr-accent-bg);
+  padding: 1.1rem 1.25rem;
+  border-inline-start: 3px solid var(--c);
+  border-radius: var(--pr-radius);
+  background: var(--bg);
+  color: var(--pr-text);
+}
+.aside-caution {
+  --c: var(--pr-review);
+  --bg: var(--pr-review-bg);
+}
+.aside-danger {
+  --c: var(--pr-bad);
+  --bg: var(--pr-bad-bg);
+}
+.prose .aside-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.4rem;
+  color: var(--c);
+  font-size: 1.0625rem;
+  font-weight: 650;
+}
+.aside-title::before {
+  content: '';
+  flex: none;
+  width: 1.1rem;
+  height: 1.1rem;
+  background: currentColor;
+  -webkit-mask: var(--icon) center / contain no-repeat;
+  mask: var(--icon) center / contain no-repeat;
+  --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 11v5M12 7.5h.01'/%3E%3C/svg%3E");
+}
+.aside-tip .aside-title::before {
+  --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3Z'/%3E%3C/svg%3E");
+}
+.aside-caution .aside-title::before {
+  --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10.3 4.2 2.8 17.3A2 2 0 0 0 4.5 20.3h15a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0Z'/%3E%3Cpath d='M12 9.5v4.2M12 17h.01'/%3E%3C/svg%3E");
+}
+.aside-danger .aside-title::before {
+  --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8.2 2.8h7.6l5.4 5.4v7.6l-5.4 5.4H8.2l-5.4-5.4V8.2Z'/%3E%3Cpath d='M12 7.5v5.5M12 16.5h.01'/%3E%3C/svg%3E");
+}
+.aside-body > :last-child {
+  margin-bottom: 0;
+}
+.aside-body > * {
+  margin-bottom: 0.6rem;
+}
+
+/* Numbered steps (<Steps>, a wrapper round a plain list): a counter in a ring, a rule down the side. */
+.prose .steps-wrap > ol {
+  counter-reset: step;
+  list-style: none;
+  padding: 0;
+}
+.prose .steps-wrap > ol > li {
+  counter-increment: step;
+  position: relative;
+  margin: 0;
+  padding: 0 0 1.5rem 3rem;
+}
+.prose .steps-wrap > ol > li::before {
+  content: counter(step);
+  position: absolute;
+  inset-inline-start: 0;
+  top: -0.05rem;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--pr-border-strong);
+  border-radius: 50%;
+  background: var(--pr-bg);
+  color: var(--pr-heading);
+  font-size: 0.9375rem;
+  font-weight: 650;
+}
+.prose .steps-wrap > ol > li::after {
+  content: '';
+  position: absolute;
+  inset-inline-start: 1rem;
+  top: 2.2rem;
+  bottom: 0.3rem;
+  width: 1px;
+  background: var(--pr-border);
+}
+.prose .steps-wrap > ol > li:last-child::after {
+  display: none;
+}
+
+/* The tool's answers: colour, icon and word together (Verdict.astro). */
+.verdicts {
+  display: grid;
+  gap: 1rem;
+}
+@media (min-width: 50rem) {
+  .verdicts-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.verdict {
+  --c: var(--pr-none);
+  --bg: var(--pr-none-bg);
+  --b: var(--pr-none-border);
+  padding: 1.15rem 1.25rem 1.25rem;
+  border: 1px solid var(--b);
+  border-radius: var(--pr-radius);
+  background: var(--bg);
+}
+.verdict-clean {
+  --c: var(--pr-clean);
+  --bg: var(--pr-clean-bg);
+  --b: var(--pr-clean-border);
+}
+.verdict-review {
+  --c: var(--pr-review);
+  --bg: var(--pr-review-bg);
+  --b: var(--pr-review-border);
+}
+.verdict-compromised {
+  --c: var(--pr-bad);
+  --bg: var(--pr-bad-bg);
+  --b: var(--pr-bad-border);
+}
+.verdict-head {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0;
+  color: var(--c);
+}
+.verdict-head svg {
+  flex: none;
+}
+.verdict-head strong {
+  color: var(--c);
+  font-size: 1.125rem;
+  font-weight: 650;
+}
+.verdict-code {
+  margin-inline-start: auto;
+  color: var(--pr-muted);
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+}
+.verdict-body {
+  margin-top: 0.6rem;
+  color: var(--pr-text);
+  font-size: 1rem;
+  line-height: 1.55;
+}
+.verdict-body > * {
+  margin: 0;
+}
+.verdict-body > * + * {
+  margin-top: 0.5rem;
+}
+
+/* The light theme's comment grey is 4.4:1 on the code background, just
+ * under AA; comments take the site's muted grey instead (5.6:1). */
+:root:not([data-theme='dark']) pre.astro-code span[style*='--shiki-light:#6E7781' i] {
+  color: var(--pr-muted);
+}
+
+/* A block inside a page that draws its own lists (the docs overview). */
+.prose .not-prose :is(ul, ol) {
+  padding: 0;
+}
+.prose .not-prose li + li {
+  margin-top: 0;
+}
+
+
+
+.prose .run-block {
+  margin-bottom: 1.25rem;
+}
+
+/* Card grids inside a Markdown page (the threat page). */
+.prose .tgrid {
+  display: grid;
+  gap: 0.9rem;
+  margin: 1.25rem 0 1.75rem;
+}
+@media (min-width: 44rem) {
+  .prose .tgrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .prose .tgrid-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.prose .tcard {
+  padding: 1.1rem 1.2rem;
+  border: 1px solid var(--pr-border);
+  border-radius: var(--pr-radius);
+  background: var(--pr-surface);
+  font-size: 1rem;
+  line-height: 1.55;
+}
+.prose .tcard > * {
+  margin-bottom: 0;
+}
+.prose .tcard > * + * {
+  margin-top: 0.5rem;
+}
+.prose .tcard-title {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: var(--pr-heading);
+  font-weight: 650;
+}
+.prose .tcard-title .ticon {
+  flex: none;
+  color: var(--pr-accent);
+}
+
+/* A long path in one cell must wrap rather than take the table's width and
+ * squeeze the other columns into a word per line (seen on the indicator
+ * reviews' Sources tables). Every column keeps a readable minimum, and the
+ * browser gives the rest to the columns with the most text. */
+.prose td {
+  min-width: 9.5rem;
+}
+/* A code span in a cell is capped, so one long path cannot claim the
+ * table's width; it breaks only where it cannot fit. */
+.prose td code {
+  display: inline-block;
+  max-width: min(14rem, 100%);
+  overflow-wrap: anywhere;
+}

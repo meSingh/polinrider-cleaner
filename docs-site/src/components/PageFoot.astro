@@ -1,0 +1,41 @@
+---
+// Under a page of writing: when it last changed (from git) and a link to
+// propose a correction on GitHub. A correction should be a pull request, not
+// an issue somebody has to translate into one.
+import LastUpdated from './LastUpdated.astro';
+import { EDIT_URL } from '../siteConfig.mjs';
+import { lastUpdated } from '../git';
+
+interface Props {
+  /** The page's source file, relative to docs-site/ (an entry's filePath). */
+  file?: string;
+}
+const { file } = Astro.props;
+const day = lastUpdated(file);
+---
+
+<div class="page-foot">
+  <LastUpdated date={day} align="start" />
+  {file && <a href={`${EDIT_URL}${file}`}>Edit this page on GitHub</a>}
+</div>
+
+<style>
+  .page-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem 2rem;
+    margin-top: 3.5rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--pr-border);
+    color: var(--pr-muted);
+    font-size: var(--text-sm);
+  }
+  .page-foot :global(.last-updated) {
+    margin: 0;
+  }
+  a {
+    color: var(--pr-text);
+  }
+</style>

@@ -1,0 +1,133 @@
+---
+// News as one line of time, newest first, optionally under month headings.
+// Our posts and the weekly reviews carry no label; an article published
+// elsewhere shows its publisher and an arrow icon, and opens in a new tab.
+import Icon from './Icon.astro';
+import type { TimelineItem } from '../news';
+
+interface Props {
+  items: TimelineItem[];
+  months?: boolean;
+}
+const { items, months = false } = Astro.props;
+
+const month = (iso: string) =>
+  new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+const day = (iso: string) =>
+  new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+
+const groups: { label: string; items: TimelineItem[] }[] = [];
+for (const i of items) {
+  const label = months ? month(i.date) : '';
+  if (!groups.length || groups[groups.length - 1].label !== label) groups.push({ label, items: [] });
+  groups[groups.length - 1].items.push(i);
+}
+---
+
+<div class="news-timeline">
+  {groups.map((g) => (
+    <section>
+      {g.label && <h2 class="month">{g.label}</h2>}
+      <ol>
+        {g.items.map((i) => (
+          <li>
+            <time datetime={i.date}>{day(i.date)}</time>
+            <a
+              class="entry"
+              href={i.href}
+              {...(i.source ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+            >
+              <span class="title">
+                {i.title}
+                {i.source && (
+                  <>
+                    {' '}
+                    <Icon name="external" size={15} class="ext" />
+                    <span class="sr-only"> (on {i.source}, opens in a new tab)</span>
+                  </>
+                )}
+              </span>
+              {i.source && <span class="source" aria-hidden="true">{i.source}</span>}
+              {i.summary && <span class="summary" set:html={i.summary} />}
+            </a>
+          </li>
+        ))}
+      </ol>
+    </section>
+  ))}
+</div>
+
+<style>
+  .month {
+    margin: 2.5rem 0 0.5rem;
+    color: var(--pr-heading);
+    font-size: 1rem;
+    font-weight: 650;
+    letter-spacing: 0;
+  }
+  section:first-child .month {
+    margin-top: 0;
+  }
+  ol {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  li {
+    display: grid;
+    grid-template-columns: 4.5rem minmax(0, 1fr);
+    gap: 0 1rem;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--pr-border);
+  }
+  time {
+    padding-top: 0.15rem;
+    color: var(--pr-muted);
+    font-size: var(--text-sm);
+    white-space: nowrap;
+  }
+  .entry {
+    display: grid;
+    gap: 0.25rem;
+    color: var(--pr-text);
+    text-decoration: none;
+  }
+  .title {
+    color: var(--pr-heading);
+    font-size: 1.125rem;
+    font-weight: 650;
+    line-height: 1.35;
+  }
+  .entry:hover .title {
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+  .title :global(.ext) {
+    display: inline;
+    vertical-align: -0.1em;
+    color: var(--pr-muted);
+  }
+  .source {
+    color: var(--pr-muted);
+    font-size: var(--text-sm);
+    font-weight: 600;
+  }
+  .summary {
+    font-size: 1rem;
+    line-height: 1.55;
+  }
+  .summary :global(code) {
+    padding: 0.05em 0.3em;
+    border: 1px solid var(--pr-border);
+    border-radius: 5px;
+    background: var(--pr-surface);
+    color: var(--pr-heading);
+    font-size: 0.88em;
+  }
+  @media (max-width: 30rem) {
+    li {
+      grid-template-columns: 1fr;
+      gap: 0.25rem;
+    }
+  }
+</style>

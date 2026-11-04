@@ -1,0 +1,66 @@
+---
+// One button that switches between light and dark. Light is the default for
+// a reader who has never chosen; a choice is remembered. ThemeScript.astro
+// applies it before the page paints. The icon shows the theme the button
+// switches to, and its label says so.
+import Icon from './Icon.astro';
+---
+
+<button type="button" class="theme-toggle" aria-label="Switch to dark theme" title="Switch to dark theme">
+  <span class="to-dark"><Icon name="moon" size={18} /></span>
+  <span class="to-light"><Icon name="sun" size={18} /></span>
+</button>
+
+<script>
+  // The key the site used under Starlight, so a reader's earlier choice of
+  // light or dark still holds.
+  const key = 'starlight-theme';
+  const label = () => {
+    const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    document.querySelectorAll('.theme-toggle').forEach((b) => {
+      b.setAttribute('aria-label', `Switch to ${next} theme`);
+      b.setAttribute('title', `Switch to ${next} theme`);
+    });
+  };
+  document.querySelectorAll<HTMLButtonElement>('.theme-toggle').forEach((b) =>
+    b.addEventListener('click', () => {
+      const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+      document.documentElement.dataset.theme = next;
+      try {
+        localStorage.setItem(key, next);
+      } catch {
+        /* Private windows can refuse storage; the choice then lasts this page. */
+      }
+      label();
+    }),
+  );
+  label();
+</script>
+
+<style>
+  .theme-toggle {
+    display: inline-grid;
+    place-items: center;
+    width: 2.4rem;
+    height: 2.4rem;
+    border: 1px solid var(--pr-border);
+    border-radius: 999px;
+    background: var(--pr-bg);
+    color: var(--pr-text);
+    cursor: pointer;
+  }
+  .theme-toggle:hover {
+    border-color: var(--pr-border-strong);
+    color: var(--pr-heading);
+  }
+  .to-light,
+  :global([data-theme='dark']) .to-dark {
+    display: none;
+  }
+  :global([data-theme='dark']) .to-light {
+    display: contents;
+  }
+  .to-dark {
+    display: contents;
+  }
+</style>

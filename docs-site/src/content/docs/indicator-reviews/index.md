@@ -1,5 +1,6 @@
 ---
-title: Indicator reviews
+title: PolinRider indicator reviews
+description: The PolinRider indicator set is checked against published sources every week. Every review, including the weeks with no change.
 sidebar:
   label: Overview
   order: -99999999
@@ -26,17 +27,17 @@ Newest first.
 
 | Date | Outcome | What it found |
 |---|---|---|
-| [2026-11-02](/polinrider-cleaner/indicator-reviews/2026-11-02/) | 15 indicators added | Island's write-up of the `MicrosoftSystem64` ULID cluster, 88 GitHub repositories reached through npm dependencies. Eight more names in the ioredis and Redis OM impersonation family, two of them live on npm, a third C2 address and six dropper hashes. `pretty-logger`, named by Island, is a 2014 package and was left out. The dossier has not moved in eighteen weeks |
-| [2026-10-26 (Socket)](/polinrider-cleaner/indicator-reviews/2026-10-26-socket/) | 9 indicators added | Socket's tracker read in full for the first time, from the maintainer's browser after eight weeks of 403: 348 releases, 218 packages. Nine attacker-owned npm names added. Eighteen infected legitimate packages, two crates and the two Chrome extensions earlier reviews could not name are recorded with their malicious versions, not carried by name. 140 Go modules and 19 Composer packages are victims' repositories |
-| [2026-10-26](/polinrider-cleaner/indicator-reviews/2026-10-26/) | no change | The dossier has not moved in sixteen weeks. Three new OpenSourceMalware posts read, none PolinRider: a podcast recap of the GhostAction copycat, and two on a Brotli CVE. 85 OpenSSF records match the campaign and every package name is already carried. `webrunc` (PyPI), named only in a spoken summary, not added. The 2026-10-19 and 2026-10-21 pull requests have merged |
-| [2026-10-21](/polinrider-cleaner/indicator-reviews/2026-10-21/) | 2 indicators added | A short window, two days after the 2026-10-19 review, whose pull request is still open. Two June `MicrosoftSystem64` droppers from the `toskypi` cluster, named by Microsoft Threat Intelligence and never carried: `utils-terminal` to `bad-packages.txt`, `logger-active` to `weak.txt`. `html-to-gutenberg` was poisoned again on 2026-10-11 and 2026-10-17, so its publisher account is still compromised. The `\u`-escape gap is confirmed closed |
-| [2026-10-19](/polinrider-cleaner/indicator-reviews/2026-10-19/) | 12 indicators added | Every analysis host but socket.dev is reachable again. The eight names rejected as substrings of live packages were re-checked under 2.1.0's whole-name rule and all added. Searching the OpenSSF database for last week's C2 found two more of the ULID dropper family, one still live on npm, and the agent renamed to `pkg-agent`. OpenSourceMalware found a GhostAction copycat reusing the fake-font launcher with no shared indicators: not added, but the existing `fa-solid-400.woff2` entry already flags it |
-| [2026-10-12](/polinrider-cleaner/indicator-reviews/2026-10-12/) | 12 indicators added | The sandbox lost every analysis host except GitHub and the registries, so this is a weaker review than the last three. A wider search of the OpenSSF database found ten April–July package names the previous search shape missed: two named as PolinRider, eight installing the `MicrosoftSystem64` second stage. Nine to `bad-packages.txt`, one to `weak.txt`, plus a C2 address and the implant's `.vbs` launcher. Also found that the local check has never read `weak.txt` |
-| [2026-10-05](/polinrider-cleaner/indicator-reviews/2026-10-05/) | 83 indicators added | A second analyst team decoded the Ethereum dead drop end to end: two operator wallets, eleven C2 servers, 35 live repositories. It also showed that the `0xa322` wallet address in `strong.txt` has been in the wrong case since it was added, and settled the XOR-key boundary the 2026-09-28 entry could not. 55 package names lifted from the OpenSSF malicious-packages database, which turns out to be readable from here, five rejected as substrings of live packages. First current-variant font indicator. Two self-tests that failed for four weeks now pass |
-| [2026-09-28](/polinrider-cleaner/indicator-reviews/2026-09-28/) | 11 indicators added | The campaign is A/B testing three fake-font variants at once. Added the single-quoted `A8` marker, two XOR keys, the `.gitignore` machine fingerprint and `allowAutomaticTasks`. Reversed last week's rejection of the C2 paths: this build leaves them in plain text. The font indicators are a variant behind and cannot catch up as fixed strings. |
-| [2026-09-21](/polinrider-cleaner/indicator-reviews/2026-09-21/) | 8 indicators added | The `A8-` campaign marker, five Ethereum RPC resolvers and two NullReceiver C2 addresses read off the chain. CloudSEK's GHAPPIER report rejected as a separate loader family sharing victims, not infrastructure. Found one PolinRider post the previous week's sweep missed. |
-| [2026-09-14](/polinrider-cleaner/indicator-reviews/2026-09-14/) | 19 indicators added | The egress block on the analysis hosts lifted. Drained a backlog: the ChainVeil and ViteVenom npm clusters, the NullReceiver marker, wallet and C2. Three known-malicious names rejected as substrings of real packages. npm-CLI persistence found, not implemented. |
-| [2026-09-07](/polinrider-cleaner/indicator-reviews/2026-09-07/) | 3 indicators added | Two npm package names and one BSC RPC node, all gaps against the April 2026 dossier. Nothing new published upstream. |
+| [2026-11-02](/news/indicator-reviews/2026-11-02/) | 15 indicators added | Island's write-up of the `MicrosoftSystem64` ULID cluster, 88 GitHub repositories reached through npm dependencies. Eight more names in the ioredis and Redis OM impersonation family, two of them live on npm, a third C2 address and six dropper hashes. `pretty-logger`, named by Island, is a 2014 package and was left out. The dossier has not moved in eighteen weeks |
+| [2026-10-26 (Socket)](/news/indicator-reviews/2026-10-26-socket/) | 9 indicators added | Socket's tracker read in full for the first time, from the maintainer's browser after eight weeks of 403: 348 releases, 218 packages. Nine attacker-owned npm names added. Eighteen infected legitimate packages, two crates and the two Chrome extensions earlier reviews could not name are recorded with their malicious versions, not carried by name. 140 Go modules and 19 Composer packages are victims' repositories |
+| [2026-10-26](/news/indicator-reviews/2026-10-26/) | no change | The dossier has not moved in sixteen weeks. Three new OpenSourceMalware posts read, none PolinRider: a podcast recap of the GhostAction copycat, and two on a Brotli CVE. 85 OpenSSF records match the campaign and every package name is already carried. `webrunc` (PyPI), named only in a spoken summary, not added. The 2026-10-19 and 2026-10-21 pull requests have merged |
+| [2026-10-21](/news/indicator-reviews/2026-10-21/) | 2 indicators added | A short window, two days after the 2026-10-19 review, whose pull request is still open. Two June `MicrosoftSystem64` droppers from the `toskypi` cluster, named by Microsoft Threat Intelligence and never carried: `utils-terminal` to `bad-packages.txt`, `logger-active` to `weak.txt`. `html-to-gutenberg` was poisoned again on 2026-10-11 and 2026-10-17, so its publisher account is still compromised. The `\u`-escape gap is confirmed closed |
+| [2026-10-19](/news/indicator-reviews/2026-10-19/) | 12 indicators added | Every analysis host but socket.dev is reachable again. The eight names rejected as substrings of live packages were re-checked under 2.1.0's whole-name rule and all added. Searching the OpenSSF database for last week's C2 found two more of the ULID dropper family, one still live on npm, and the agent renamed to `pkg-agent`. OpenSourceMalware found a GhostAction copycat reusing the fake-font launcher with no shared indicators: not added, but the existing `fa-solid-400.woff2` entry already flags it |
+| [2026-10-12](/news/indicator-reviews/2026-10-12/) | 12 indicators added | The sandbox lost every analysis host except GitHub and the registries, so this is a weaker review than the last three. A wider search of the OpenSSF database found ten April–July package names the previous search shape missed: two named as PolinRider, eight installing the `MicrosoftSystem64` second stage. Nine to `bad-packages.txt`, one to `weak.txt`, plus a C2 address and the implant's `.vbs` launcher. Also found that the local check has never read `weak.txt` |
+| [2026-10-05](/news/indicator-reviews/2026-10-05/) | 83 indicators added | A second analyst team decoded the Ethereum dead drop end to end: two operator wallets, eleven C2 servers, 35 live repositories. It also showed that the `0xa322` wallet address in `strong.txt` has been in the wrong case since it was added, and settled the XOR-key boundary the 2026-09-28 entry could not. 55 package names lifted from the OpenSSF malicious-packages database, which turns out to be readable from here, five rejected as substrings of live packages. First current-variant font indicator. Two self-tests that failed for four weeks now pass |
+| [2026-09-28](/news/indicator-reviews/2026-09-28/) | 11 indicators added | The campaign is A/B testing three fake-font variants at once. Added the single-quoted `A8` marker, two XOR keys, the `.gitignore` machine fingerprint and `allowAutomaticTasks`. Reversed last week's rejection of the C2 paths: this build leaves them in plain text. The font indicators are a variant behind and cannot catch up as fixed strings. |
+| [2026-09-21](/news/indicator-reviews/2026-09-21/) | 8 indicators added | The `A8-` campaign marker, five Ethereum RPC resolvers and two NullReceiver C2 addresses read off the chain. CloudSEK's GHAPPIER report rejected as a separate loader family sharing victims, not infrastructure. Found one PolinRider post the previous week's sweep missed. |
+| [2026-09-14](/news/indicator-reviews/2026-09-14/) | 19 indicators added | The egress block on the analysis hosts lifted. Drained a backlog: the ChainVeil and ViteVenom npm clusters, the NullReceiver marker, wallet and C2. Three known-malicious names rejected as substrings of real packages. npm-CLI persistence found, not implemented. |
+| [2026-09-07](/news/indicator-reviews/2026-09-07/) | 3 indicators added | Two npm package names and one BSC RPC node, all gaps against the April 2026 dossier. Nothing new published upstream. |
 
 ## Sources checked every week
 
@@ -70,10 +71,10 @@ Two different things, with two different destinations.
 
 | Found | Goes to | Decided by |
 |---|---|---|
-| **An indicator** — a string, package name, host, address, hash, implant path, process name | a line in [`ioc/`](https://github.com/meSingh/polinrider-cleaner/tree/main/ioc/) | the reviewer, following the classification rule below |
+| **An indicator** — a string, package name, host, address, hash, implant path, process name | a line in [`ioc/`](https://github.com/meSingh/polinrider-scanner/tree/main/ioc/) | the reviewer, following the classification rule below |
 | **A technique** — a change in how the campaign spreads, persists or hides | a new check in the scanner | the maintainer. A review describes it and stops |
 
-The classification rule, from [`ioc/README.md`](https://github.com/meSingh/polinrider-cleaner/blob/main/ioc/README.md) and not
+The classification rule, from [`ioc/README.md`](https://github.com/meSingh/polinrider-scanner/blob/main/ioc/README.md) and not
 negotiable: `strong.txt` only if a match means infection with no plausible
 alternative; `weak.txt` if a legitimate project could contain the same string.
 A false positive in `strong.txt` costs every user of this repository a panic. A
@@ -86,7 +87,7 @@ the reviewer actually read.
 ### Package names, since 2.1.0
 
 The binary reads manifests and lockfiles for the packages they install and
-compares names whole ([ADR-0041](https://github.com/meSingh/polinrider-cleaner/blob/main/docs/adr/0041-package-names-are-read-from-manifests-and-compared-whole.md)).
+compares names whole ([ADR-0041](https://github.com/meSingh/polinrider-scanner/blob/main/docs/adr/0041-package-names-are-read-from-manifests-and-compared-whole.md)).
 Outside a manifest a name counts only where it stands on its own. So the rule
 for `bad-packages.txt` changes:
 
@@ -107,13 +108,13 @@ packages (`sass-format`, `typeorm-encrypt`, `clsx-tailwind`, `tailwind-anim`,
 against its source and the registry under this rule, and record the outcome.
 Earlier entries stay as they were written.
 
-The [2026-10-19](/polinrider-cleaner/indicator-reviews/2026-10-19/) review did
+The [2026-10-19](/news/indicator-reviews/2026-10-19/) review did
 that: all eight are attacker-owned, none is a live legitimate package, and all
 eight are now in `bad-packages.txt`.
 
 ## Adding an entry
 
-1. Copy [`docs-site/indicator-review-template.md`](https://github.com/meSingh/polinrider-cleaner/blob/main/docs-site/indicator-review-template.md)
+1. Copy [`docs-site/indicator-review-template.md`](https://github.com/meSingh/polinrider-scanner/blob/main/docs-site/indicator-review-template.md)
    to `docs-site/src/content/docs/indicator-reviews/YYYY-MM-DD.md`, dated in
    Asia/Kolkata, and fill in the date in its frontmatter.
 2. Fill every section. The **considered and not added** section is not optional
@@ -121,4 +122,4 @@ eight are now in `bad-packages.txt`.
    re-deriving the same rejection.
 3. Add a row to the table above, newest first.
 4. Update the **Indicator review** section at the end of the
-   [main README](https://github.com/meSingh/polinrider-cleaner/blob/main/README.md) with the new date and a two-line summary.
+   [main README](https://github.com/meSingh/polinrider-scanner/blob/main/README.md) with the new date and a two-line summary.

@@ -1,0 +1,178 @@
+---
+// The top bar on every page: the name, the four sections, search, the theme
+// button and one obvious button, "Download", which goes to the install page.
+// On a phone the sections move into a Menu panel; search, the theme button
+// and the menu stay in the bar. The menu is a <details>, so it works without
+// JavaScript.
+import Icon from './Icon.astro';
+import GitHubMark from './GitHubMark.astro';
+import Search from './Search.astro';
+import ThemeToggle from './ThemeToggle.astro';
+import { REPO_URL } from '../siteConfig.mjs';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const links = [
+  { label: 'Docs', href: `${base}/docs/`, match: '/docs/' },
+  { label: 'Threat', href: `${base}/threat/`, match: '/threat/' },
+  { label: 'News', href: `${base}/news/`, match: '/news/' },
+  { label: 'Releases', href: `${base}/releases/`, match: '/releases/' },
+];
+// The repository, the last item in the nav, with the GitHub mark.
+const path = Astro.url.pathname;
+const current = (match: string) => (path.startsWith(`${base}${match}`) ? 'page' : undefined);
+---
+
+<header class="site-header no-print">
+  <div class="bar wrap">
+    <a href={`${base}/`} class="brand">
+      <img src={`${base}/favicon.svg`} alt="" width="28" height="28" />
+      <span translate="no">polinrider</span>
+      <span class="sr-only">, home</span>
+    </a>
+
+    <nav class="nav" aria-label="Main">
+      {links.map((l) => <a href={l.href} aria-current={current(l.match)}>{l.label}</a>)}
+      <a class="gh" href={REPO_URL}><GitHubMark size={16} />GitHub</a>
+    </nav>
+
+    <div class="tools">
+      <Search />
+      <ThemeToggle />
+      <a class="pill dl" href={`${base}/docs/quick-start/`}>Download</a>
+      <details class="menu">
+        <summary aria-label="Menu"><Icon name="menu" size={22} /></summary>
+        <div class="panel">
+          <nav aria-label="Main">
+            {links.map((l) => <a href={l.href} aria-current={current(l.match)}>{l.label}</a>)}
+            <a href={REPO_URL} class="gh"><GitHubMark size={16} />GitHub</a>
+            <a href={`${base}/docs/quick-start/`}>Download</a>
+          </nav>
+        </div>
+      </details>
+    </div>
+  </div>
+</header>
+
+<style>
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    border-bottom: 1px solid var(--pr-border);
+    background: color-mix(in srgb, var(--pr-bg) 92%, transparent);
+    backdrop-filter: blur(8px);
+  }
+  .bar {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    height: var(--nav-height);
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    color: var(--pr-heading);
+    font-size: 1.125rem;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .brand img {
+    border-radius: 7px;
+  }
+  .nav {
+    display: none;
+    gap: 1.75rem;
+    margin-inline-start: 1.75rem;
+  }
+  .nav a {
+    color: var(--pr-text);
+    font-size: 0.9375rem;
+    font-weight: 550;
+    text-decoration: none;
+  }
+  .nav a:hover,
+  .nav a[aria-current='page'] {
+    color: var(--pr-heading);
+  }
+  .nav a[aria-current='page'] {
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 0.5em;
+  }
+  .tools {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-inline-start: auto;
+  }
+  .dl {
+    display: none;
+  }
+  .gh {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+  }
+  .dl {
+    padding: 0.5rem 1.05rem;
+    font-size: 0.9375rem;
+  }
+  .menu {
+    position: relative;
+  }
+  .menu summary {
+    display: grid;
+    place-items: center;
+    width: 2.4rem;
+    height: 2.4rem;
+    border: 1px solid var(--pr-border);
+    border-radius: 999px;
+    color: var(--pr-heading);
+    cursor: pointer;
+    list-style: none;
+  }
+  .menu summary::-webkit-details-marker {
+    display: none;
+  }
+  .panel {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 0.6rem);
+    width: min(18rem, calc(100vw - 2rem));
+    padding: 0.5rem;
+    border: 1px solid var(--pr-border-strong);
+    border-radius: var(--pr-radius);
+    background: var(--pr-bg);
+    box-shadow: 0 18px 40px rgb(0 0 0 / 0.25);
+  }
+  .panel nav {
+    display: grid;
+  }
+  .panel nav a {
+    padding: 0.65rem 0.8rem;
+    border-radius: var(--pr-radius-sm);
+    color: var(--pr-heading);
+    font-weight: 550;
+    text-decoration: none;
+  }
+  .panel nav a:hover,
+  .panel nav a[aria-current='page'] {
+    background: var(--pr-surface);
+  }
+  @media (min-width: 50rem) {
+    .dl {
+      display: inline-flex;
+    }
+  }
+  @media (min-width: 66rem) {
+    .nav {
+      display: flex;
+    }
+    .menu {
+      display: none;
+    }
+  }
+</style>

@@ -1,0 +1,138 @@
+# Articles about PolinRider published elsewhere, shown under "Elsewhere" on
+# the News page and opened in a new tab. Newest first is worked out by the
+# page; the order here does not matter.
+#
+# An article goes in only when someone has opened it and read it, it names
+# PolinRider and is about the campaign, and it comes from a security vendor,
+# a researcher or a news outlet. A rewrite of another outlet's report is left
+# out in favour of the original. `date` is the publication date shown on the
+# article, never the day it was added. `summary` is our own words: one plain
+# sentence on what a reader learns, under 25 words.
+#
+# First filled on 2026-11-04 from a read of each page that day.
+
+- id: opensourcemalware-com-blog-polinrider-malware-found-in-2025-npm-packages
+  url: https://opensourcemalware.com/blog/polinrider-malware-found-in-2025-npm-packages
+  source: OpenSourceMalware
+  title: "Earliest Known PolinRider Malware Found in 2025 npm Packages"
+  date: "2026-10-30"
+  summary: "Nine npm versions published in May 2025 after an account takeover carry the PolinRider payload, eight months before the first known victims."
+
+- id: opensourcemalware-com-blog-ghostaction-copycats-polinrider-by-hiding-a-stealer-in-a-fake-font-file
+  url: https://opensourcemalware.com/blog/ghostaction-copycats-polinrider-by-hiding-a-stealer-in-a-fake-font-file
+  source: OpenSourceMalware
+  title: "GhostAction Copycats PolinRider by Hiding a Stealer in a Fake Font File"
+  date: "2026-10-16"
+  summary: "GhostAction copies PolinRider's hidden editor task and fake font file to run a stealer, with no shared indicators linking the two."
+
+- id: opensourcemalware-com-blog-how-to-investigate-a-github-repos-real-history
+  url: https://opensourcemalware.com/blog/how-to-investigate-a-github-repos-real-history
+  source: OpenSourceMalware
+  title: "How to Investigate a GitHub Repo's Real History"
+  date: "2026-10-06"
+  summary: "How to rebuild a repository's true history after a force-push using push events and npm publish records, with a PolinRider case study."
+
+- id: safedep-io-polinrider-ethereum-c2-github-repositories
+  url: https://safedep.io/polinrider-ethereum-c2-github-repositories/
+  source: SafeDep
+  title: "PolinRider Switches to Ethereum C2 in 30+ Repositories"
+  date: "2026-09-30"
+  summary: "SafeDep traces a PolinRider loader that now reads its C2 addresses from Ethereum transactions, found in 35 GitHub repositories."
+
+- id: opensourcemalware-com-blog-polinrider-is-a-b-testing-its-way-past-your-detections
+  url: https://opensourcemalware.com/blog/polinrider-is-a-b-testing-its-way-past-your-detections
+  source: OpenSourceMalware
+  title: "PolinRider is A/B Testing its Way Past Your Detections"
+  date: "2026-09-26"
+  summary: "Renamed fake font files and moved tasks.json entries look like deliberate A/B tests against detection; lists the checks that still work."
+
+- id: blog-deception-pro-blog-hok-dprk-polinrider-sep-2026
+  url: https://blog.deception.pro/blog/hok-dprk-polinrider-sep-2026
+  source: Deception.Pro (MalBeacon)
+  title: "[Op Report] Hands-on-Keyboard Activity from the DPRK \"PolinRider\" Supply Chain Attack"
+  date: "2026-09-09"
+  summary: "A decoy corporate network records a PolinRider operator deploying an infostealer and clipboard monitor by hand, with indicators and defences."
+
+- id: opensourcemalware-com-blog-polinrider-npm-case-study-dprk-attack
+  url: https://opensourcemalware.com/blog/polinrider-npm-case-study-dprk-attack
+  source: OpenSourceMalware
+  title: "NPM Isn't Prepared For North Korean PolinRider Attack"
+  date: "2026-08-25"
+  summary: "One compromised maintainer kept shipping infected npm releases after a takedown, showing why per-version takedowns cannot keep up."
+
+- id: opensourcemalware-com-blog-developer-guide-getting-over-polinrider
+  url: https://opensourcemalware.com/blog/developer-guide-getting-over-polinrider
+  source: OpenSourceMalware
+  title: "A Developer's Guide to Getting Rid of PolinRider"
+  date: "2026-08-13"
+  summary: "An ordered clean-up guide for infected developers: contain the machine, clean GitHub repositories, then rotate credentials more widely."
+
+- id: opensourcemalware-com-blog-polinrider-caused-dozens-of-npm-and-go-compromises
+  url: https://opensourcemalware.com/blog/polinrider-caused-dozens-of-npm-and-go-compromises
+  source: OpenSourceMalware
+  title: "PolinRider Caused Dozens of npm, Go, PHP Compromises"
+  date: "2026-07-31"
+  summary: "Twenty npm and Go packages plus a PHP package were infected by automatic spread from developer machines, not targeted account takeovers."
+
+- id: opensourcemalware-com-blog-chainveil-and-vitevenom-dprk-polinrider-campaign
+  url: https://opensourcemalware.com/blog/chainveil-and-vitevenom-dprk-polinrider-campaign
+  source: OpenSourceMalware
+  title: "ChainVeil and ViteVenom are DPRK’s PolinRider Campaign"
+  date: "2026-07-17"
+  summary: "Shared wallet addresses and XOR keys tie the ChainVeil and ViteVenom npm typosquats to PolinRider rather than separate actors."
+
+- id: opensourcemalware-com-blog-polinrider-blast-radius-grows
+  url: https://opensourcemalware.com/blog/polinrider-blast-radius-grows
+  source: OpenSourceMalware
+  title: "PolinRider Confirmed Footprint Grows 6.5x Since March"
+  date: "2026-07-15"
+  summary: "A July hunt raises confirmed infections to about 4,367 repositories across 2,152 owners, with fake font files increasingly used."
+
+- id: securityonline-info-polinrider-supply-chain-attack
+  url: https://securityonline.info/polinrider-supply-chain-attack/
+  source: SecurityOnline
+  title: "North Korea-Linked PolinRider Supply Chain Attack Expands Across Open Source"
+  date: "2026-07-09"
+  summary: "News write-up of Socket's count of 162 malicious artifacts across npm, Packagist, Go and Chrome, with remediation advice."
+
+- id: opensourcemalware-com-blog-polinrider-jumps-the-fence
+  url: https://opensourcemalware.com/blog/polinrider-jumps-the-fence
+  source: OpenSourceMalware
+  title: "PolinRider Jumps the Fence to Go, Packagist, npm, PyPI"
+  date: "2026-07-08"
+  summary: "Why PolinRider reached Go and Packagist straight from infected GitHub repositories while npm and PyPI needed separate publishing credentials."
+
+- id: securityweek-com-north-korean-hackers-target-open-source-developers-in-supply-chain-attacks
+  url: https://www.securityweek.com/north-korean-hackers-target-open-source-developers-in-supply-chain-attacks/
+  source: SecurityWeek
+  title: "North Korean Hackers Target Open Source Developers in Supply Chain Attacks"
+  date: "2026-07-06"
+  summary: "News report on PolinRider hijacking maintainer accounts across four ecosystems to deliver a RAT and an infostealer, citing Socket."
+
+- id: thehackernews-com-2026-07-north-korean-hackers-publish-108-html
+  url: https://thehackernews.com/2026/07/north-korean-hackers-publish-108.html
+  source: The Hacker News
+  title: "North Korean Hackers Publish 108 Malicious Packages and Extensions in PolinRider Campaign"
+  date: "2026-07-04"
+  summary: "News report on 108 malicious packages and extensions across npm, Packagist, Go and Chrome, delivering DEV#POPPER and OmniStealer."
+
+- id: opensourcemalware-com-blog-polinrider-rides-again-north-korean-attack-expands-across-github
+  url: https://opensourcemalware.com/blog/polinrider-rides-again-north-korean-attack-expands-across-github
+  source: OpenSourceMalware
+  title: "PolinRider DPRK Attack Expands Across GitHub"
+  date: "2026-04-12"
+  summary: "Infections triple to about 1,951 repositories across 1,047 owners, and the campaign merges with the TasksJacker cluster."
+
+- id: opensourcemalware-com-blog-tasksjacker-dprk-attack-github-vscode
+  url: https://opensourcemalware.com/blog/tasksjacker-dprk-attack-github-vscode
+  source: OpenSourceMalware
+  title: "TasksJacker DPRK Attack Compromises GitHub Users Via VS Code Tasks"
+  date: "2026-03-31"
+  summary: "Introduces TasksJacker, the auto-running tasks.json and history-rewriting phase, and argues it is the same operation as PolinRider."
+
+- id: opensourcemalware-com-blog-polinrider-dprk-compromised-hundreds-of-github-repos
+  url: https://opensourcemalware.com/blog/polinrider-dprk-compromised-hundreds-of-github-repos
+  source: OpenSourceMalware
+  title: "Hundreds of GitHub Repos Compromised By DPRK's PolinRider Campaign"
+  date: "2026-03-08"
+  summary: "The first public report: obfuscated JavaScript appended to config files in hundreds of GitHub repositories, using blockchain-based C2."

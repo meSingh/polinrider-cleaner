@@ -1,0 +1,188 @@
+---
+// The install and run commands, set larger than ordinary code because they
+// are the one thing on the page a reader has to type or copy. One tab per
+// system; the reader's own system is chosen first, and a choice is shared
+// with every other RunBlock on the site. Long lines wrap rather than scroll,
+// so nothing is hidden off the edge of a phone. Coloured like every other
+// code block on the site. Without JavaScript all three systems are shown,
+// one under another.
+import { Code } from 'astro:components';
+interface Props {
+  /** Only the install commands, without the line that runs it. */
+  install?: boolean;
+}
+const run = Astro.props.install ? '' : '\npolinrider';
+const brew = `brew install meSingh/tap/polinrider-cleaner${run}`;
+const scoop =
+  'scoop bucket add mesingh https://github.com/meSingh/scoop-bucket\n' + `scoop install polinrider-cleaner${run}`;
+
+const systems = [
+  { id: 'macos', label: 'macOS', code: brew },
+  {
+    id: 'linux',
+    label: 'Linux',
+    code: brew,
+    note: 'On Debian or Ubuntu you can use the <code>.deb</code> from the <a href="https://github.com/meSingh/polinrider-scanner/releases/latest">latest release</a> instead.',
+  },
+  { id: 'windows', label: 'Windows', code: scoop },
+];
+const uid = `run-${Math.random().toString(36).slice(2, 8)}`;
+---
+
+<pr-tabs class="run-block" data-sync="os">
+  <div class="tablist" role="tablist" aria-label="Your system" hidden>
+    {systems.map((s, i) => (
+      <button type="button" role="tab" id={`${uid}-tab-${s.id}`} data-key={s.id} aria-controls={`${uid}-${s.id}`} aria-selected={i === 0 ? 'true' : 'false'} tabindex={i === 0 ? 0 : -1}>
+        {s.label}
+      </button>
+    ))}
+  </div>
+  {systems.map((s) => (
+    <div class="panel" role="tabpanel" id={`${uid}-${s.id}`} aria-labelledby={`${uid}-tab-${s.id}`} data-key={s.id}>
+      <p class="nojs-label">{s.label}</p>
+      <div class="code-block copy-wrap">
+        <Code code={s.code} lang="bash" themes={{ light: 'github-light-default', dark: 'github-dark-default' }} defaultColor={false} wrap />
+      </div>
+      {s.note && <p class="note" set:html={s.note} />}
+    </div>
+  ))}
+</pr-tabs>
+
+<script>
+  // Tabs, with the WAI-ARIA keyboard pattern: arrow keys move between tabs.
+  // The choice is remembered and shared between every group with the same
+  // data-sync. The first visit picks the reader's own system.
+  const guess = () => {
+    const p = `${navigator.platform} ${navigator.userAgent}`.toLowerCase();
+    return p.includes('win') ? 'windows' : p.includes('mac') ? 'macos' : p.includes('linux') ? 'linux' : '';
+  };
+
+  class Tabs extends HTMLElement {
+    connectedCallback() {
+      const list = this.querySelector<HTMLElement>('[role="tablist"]');
+      if (!list) return;
+      list.hidden = false;
+      this.classList.add('js');
+      const sync = this.dataset.sync ?? '';
+      let saved = '';
+      try {
+        saved = localStorage.getItem(`pr-tabs-${sync}`) ?? '';
+      } catch {
+        /* Storage may be refused; the guess stands. */
+      }
+      this.select(saved || guess(), false);
+      const tabs = [...list.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+      tabs.forEach((tab, i) => {
+        tab.addEventListener('click', () => this.choose(tab.dataset.key!));
+        tab.addEventListener('keydown', (e) => {
+          const step = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+          if (!step) return;
+          e.preventDefault();
+          const next = tabs[(i + step + tabs.length) % tabs.length];
+          this.choose(next.dataset.key!);
+          next.focus();
+        });
+      });
+    }
+    choose(key: string) {
+      const sync = this.dataset.sync ?? '';
+      try {
+        localStorage.setItem(`pr-tabs-${sync}`, key);
+      } catch {
+        /* Private windows can refuse storage. */
+      }
+      document.querySelectorAll<Tabs>(`pr-tabs[data-sync="${sync}"]`).forEach((t) => t.select(key, false));
+    }
+    select(key: string, focus: boolean) {
+      const tabs = [...this.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+      if (!tabs.some((t) => t.dataset.key === key)) key = tabs[0]?.dataset.key ?? '';
+      for (const t of tabs) {
+        const on = t.dataset.key === key;
+        t.setAttribute('aria-selected', String(on));
+        t.tabIndex = on ? 0 : -1;
+        if (on && focus) t.focus();
+      }
+      for (const p of this.querySelectorAll<HTMLElement>('[role="tabpanel"]')) p.hidden = p.dataset.key !== key;
+    }
+  }
+  if (!customElements.get('pr-tabs')) customElements.define('pr-tabs', Tabs);
+</script>
+
+<style>
+  .run-block {
+    display: block;
+    text-align: start;
+  }
+  .tablist {
+    display: inline-flex;
+    gap: 2px;
+    margin-bottom: 0.75rem;
+    padding: 3px;
+    border: 1px solid var(--pr-border);
+    border-radius: 999px;
+    background: var(--pr-surface);
+  }
+  .tablist[hidden] {
+    display: none;
+  }
+  [role='tab'] {
+    padding: 0.4rem 1rem;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--pr-text);
+    font: 600 0.9375rem/1.2 var(--font);
+    cursor: pointer;
+  }
+  [role='tab']:hover {
+    color: var(--pr-heading);
+  }
+  [role='tab'][aria-selected='true'] {
+    background: var(--pr-bg);
+    color: var(--pr-heading);
+    box-shadow: inset 0 0 0 1px var(--pr-border-strong);
+  }
+  .panel + .panel {
+    margin-top: 1rem;
+  }
+  .js .panel + .panel {
+    margin-top: 0;
+  }
+  .nojs-label {
+    margin: 0 0 0.4rem;
+    color: var(--pr-heading);
+    font-size: var(--text-sm);
+    font-weight: 650;
+  }
+  .js .nojs-label {
+    display: none;
+  }
+  .run-block :global(pre) {
+    margin: 0;
+    padding: 0.9rem 6.5rem 0.9rem 1.25rem;
+    border: 1px solid var(--pr-border);
+    border-radius: var(--pr-radius);
+    background: var(--pr-code-bg) !important;
+    font-size: 1.0625rem;
+    line-height: 1.75;
+    /* Wrap, never scroll: the scoop line is long on a phone. */
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  /* The copy button stays visible here: a reader in a hurry should not have
+   * to find it by hovering. */
+  .run-block :global(.copy-btn) {
+    opacity: 1;
+  }
+  .note {
+    margin: 0.75rem 0 0;
+    color: var(--pr-muted);
+    font-size: var(--text-sm);
+  }
+  .note :global(a) {
+    color: var(--pr-accent);
+  }
+  .note :global(code) {
+    font-size: 0.9em;
+  }
+</style>

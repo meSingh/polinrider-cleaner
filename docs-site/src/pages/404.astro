@@ -1,0 +1,41 @@
+---
+// Not found. Most visitors here followed an old link: the site moved its
+// docs under /docs/ in November 2026, and the old addresses redirect, so a
+// 404 means a page that never existed or was removed.
+import Base from '../layouts/Base.astro';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+
+<Base title="404" description="This page does not exist." noindex hasCanonical={false}>
+  <div class="wrap nf">
+    <p class="code">404</p>
+    <h1>This page does not exist</h1>
+    <p>Try search at the top of the page, or start from one of these.</p>
+    <ul>
+      <li><a href={`${base}/docs/quick-start/`}>Install and run polinrider</a></li>
+      <li><a href={`${base}/docs/`}>Documentation</a></li>
+      <li><a href={`${base}/threat/`}>The PolinRider threat</a></li>
+      <li><a href={`${base}/news/`}>News</a></li>
+    </ul>
+  </div>
+</Base>
+
+<style>
+  .nf {
+    max-width: calc(40rem + 2 * var(--gutter));
+    padding-top: 4rem;
+  }
+  .code {
+    margin: 0;
+    color: var(--pr-muted);
+    font-family: var(--font-mono);
+  }
+  h1 {
+    margin: 0.5rem 0 1rem;
+    font-size: var(--text-h1);
+  }
+  li + li {
+    margin-top: 0.4rem;
+  }
+</style>

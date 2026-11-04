@@ -1,0 +1,79 @@
+---
+// The top of the docs: the work in the order it is done, each page with
+// its own one-line description.
+import type { NavGroup } from '../docs';
+
+interface Props {
+  nav: NavGroup[];
+}
+const { nav } = Astro.props;
+---
+
+<p>Everything polinrider does, in the order you will need it.</p>
+
+<ol class="overview not-prose">
+  {nav.map((g, i) => (
+    <li>
+      <h2 id={g.label.toLowerCase().replace(/[^a-z]+/g, '-')}>
+        {g.label !== 'The project' && g.label !== 'More' && <span class="n">{i + 1}</span>}
+        {g.label}
+      </h2>
+      <ul>
+        {g.items.map((p) => (
+          <li>
+            <a class="card" href={p.href}>
+              <span class="card-title">{p.label}</span>
+              {p.description && <p>{p.description}</p>}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </li>
+  ))}
+</ol>
+
+<style>
+  .overview {
+    margin: 2rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .overview > li + li {
+    margin-top: 2.5rem;
+  }
+  h2 {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    margin: 0 0 1rem;
+    font-size: var(--text-h3);
+  }
+  .n {
+    display: grid;
+    place-items: center;
+    width: 1.9rem;
+    height: 1.9rem;
+    border: 1px solid var(--pr-border-strong);
+    border-radius: 50%;
+    font-size: 0.9375rem;
+  }
+  ul {
+    display: grid;
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  @media (min-width: 40rem) {
+    ul {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+  .card {
+    height: 100%;
+    text-decoration: none;
+  }
+  .card p {
+    color: var(--pr-text);
+  }
+</style>

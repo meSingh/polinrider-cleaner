@@ -1,5 +1,6 @@
 ---
-title: Order matters
+title: "Removing PolinRider: do it in this order"
+description: "Why PolinRider comes back after a cleanup, and the order that stops it: machines, credentials, repositories, then every future push."
 ---
 
 If more than one of these applies to you, the order is fixed and it is not a
@@ -24,8 +25,10 @@ campaign, and it is the single most common way a cleanup fails.
 
 Cleaning the remote while an infected machine still holds a valid token puts you
 back where you started within minutes. The payload's whole purpose is to
-propagate: it force-pushes to every remote the machine can write to. A clean
-repository plus an infected laptop is a clean repository for about as long as it
+propagate: it amends your latest commit and force-pushes the current branch to
+`origin` with `-uf --no-verify`
+([why your history looks clean](/threat/#why-your-git-history-looks-clean)). A
+clean repository plus an infected laptop is a clean repository for about as long as it
 takes the next commit to land.
 
 This is documented behaviour of the campaign, and it is the single most common

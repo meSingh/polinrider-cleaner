@@ -5,9 +5,14 @@
 <h1 align="center">{{PRODUCT_NAME}}</h1>
 
 <p align="center">
-  Detect and clean up after the <strong>PolinRider</strong> supply-chain campaign,
-  on a developer machine, in a folder of code, on a GitHub organization or on a
-  personal account.
+  <strong>Find out whether PolinRider reached you, and clean it up.</strong>
+</p>
+
+<p align="center">
+  A scanner and cleaner for the DPRK-linked supply-chain campaign that spreads
+  through npm packages, VS Code extensions and fake interview projects. It
+  checks a developer machine, a folder of code, a personal GitHub account or a
+  whole organization.
 </p>
 
 <p align="center">
@@ -392,9 +397,9 @@ This campaign rotates its signatures, so the indicator set is reviewed weekly
 against the published sources and every review is written down, including the
 weeks that found nothing. Each review keeps its own dated entry, and entries are
 never edited or removed:
-[the indicator reviews](https://polinriderscanner.com/indicator-reviews/).
+[the indicator reviews](https://polinriderscanner.com/news/indicator-reviews/).
 
-**Last reviewed: [2 November 2026](https://polinriderscanner.com/indicator-reviews/2026-11-02/).**
+**Last reviewed: [2 November 2026](https://polinriderscanner.com/news/indicator-reviews/2026-11-02/).**
 
 Island's report on the `MicrosoftSystem64` npm cluster behind 88 GitHub repositories
 added eight package names, a C2 address and six hashes. Two of the names, `oracle-redis` and `ioredis-xyz`, are still live on npm.

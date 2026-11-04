@@ -43,7 +43,7 @@ If you disagree with one, open an issue and quote its number.
 | [0025](./0025-walk-the-filesystem-once-with-prune-and-checkpoint-it.md) | Walk the filesystem once, with -prune, and checkpoint it | Accepted |
 | [0026](./0026-2-0-0-is-one-binary-built-against-a-conformance-corpus.md) | 2.0.0 is one binary, built against a conformance corpus | Accepted |
 | [0027](./0027-development-and-testing-happen-in-a-container.md) | Development and testing happen in a container | Accepted |
-| [0028](./0028-the-documentation-site-is-astro-starlight.md) | The documentation site is Astro Starlight, on a Node toolchain | Accepted |
+| [0028](./0028-the-documentation-site-is-astro-starlight.md) | The documentation site is Astro Starlight, on a Node toolchain | Superseded by 0055 |
 | [0029](./0029-host-state-is-read-through-one-boundary-and-can-be-supplied.md) | Host state is read through one boundary, and can be supplied | Accepted |
 | [0030](./0030-2-0-does-not-checkpoint-a-scan.md) | 2.0 does not checkpoint a scan | Accepted |
 | [0031](./0031-clean-strips-an-appended-payload-in-place-and-never-touches-git.md) | clean strips an appended payload in place, and never touches git | Accepted |
@@ -69,6 +69,8 @@ If you disagree with one, open an issue and quote its number.
 | [0051](./0051-the-github-check-compares-known-hashes.md) | The GitHub check compares the small files against the known hashes | Accepted |
 | [0052](./0052-content-patterns-at-the-confirmed-tier.md) | Match campaign patterns in file contents | Accepted |
 | [0053](./0053-release-downloads-are-counted-daily-with-our-own-kept-apart.md) | Count release downloads daily, with our own kept apart | Accepted |
+| [0055](./0055-the-documentation-site-is-plain-astro.md) | Build the documentation site with plain Astro, not Starlight | Accepted |
+| [0056](./0056-the-docs-are-versioned-by-release-line.md) | Keep a frozen copy of the docs for each release line | Accepted |
 | [0055](./0055-the-repository-is-polinrider-scanner-from-3-0-0.md) | Rename the repository and its packages to polinrider-scanner, from 3.0.0 | Proposed |
 
 ## Adding one
