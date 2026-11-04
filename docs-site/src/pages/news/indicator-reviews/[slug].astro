@@ -6,6 +6,7 @@ import Article from '../../../layouts/Article.astro';
 import { humanDates, newsPosts, reviews } from '../../../news';
 import { longDate } from '../../../releaseDate';
 import { citations } from '../../../schema';
+import { ogImage } from '../../../og';
 
 export async function getStaticPaths() {
   return (await getCollection('reviews'))
@@ -44,6 +45,7 @@ const description =
   section="Indicator review"
   file={entry.filePath}
   published={day}
+  image={ogImage(`news/indicator-reviews/${entry.id}`, `${humanDates(entry.data.title)}. ${description}`)}
   citations={citations(entry.body)}
   side={{
     title: 'Indicator reviews',

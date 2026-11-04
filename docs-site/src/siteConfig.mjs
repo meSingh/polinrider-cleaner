@@ -57,5 +57,5 @@ export const SOCIAL_IMAGE = {
   url: `${SITE_URL}/social-preview.jpg`,
   width: 1200,
   height: 630,
-  alt: 'PolinRider Scanner and Cleaner. Under attack by PolinRider? Find the malware and remove it safely. polinriderscanner.com',
+  alt: 'PolinRider Scanner and Cleaner. Under attack by PolinRider? Find the malware and remove it safely. Checks your computer, your GitHub account and your GitHub organisation. polinriderscanner.com',
 };

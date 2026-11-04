@@ -55,12 +55,15 @@ const isCurrent = (v: DocsVersion) => v.line === current.line && (v.latest || !c
     position: relative;
     font-size: var(--text-sm);
   }
+  /* Label, value, the latest tag and the chevron in one row that fits the
+   * 12rem sidebar: the chevron never shrinks, and the label and tag are set
+   * small enough that "Version 3.0.x latest" leaves room for it. */
   summary {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.4rem;
     white-space: nowrap;
-    padding: 0.55rem 0.85rem;
+    padding: 0.55rem 0.75rem;
     border: 1px solid var(--pr-border);
     border-radius: var(--pr-radius-sm);
     background: var(--pr-bg);
@@ -72,6 +75,7 @@ const isCurrent = (v: DocsVersion) => v.line === current.line && (v.latest || !c
   }
   summary::after {
     content: '';
+    flex: none;
     width: 0.45rem;
     height: 0.45rem;
     margin-inline-start: auto;
@@ -87,6 +91,13 @@ const isCurrent = (v: DocsVersion) => v.line === current.line && (v.latest || !c
   }
   .k {
     color: var(--pr-muted);
+    font-size: var(--text-xs);
+  }
+  summary .tag,
+  a .tag {
+    flex: none;
+    padding: 0.05rem 0.4rem;
+    font-size: 0.6875rem;
   }
   .v {
     color: var(--pr-heading);

@@ -99,9 +99,13 @@ const schema = [
 </Base>
 
 <style>
+  /* The same width as the top bar, so the title lines up under the logo;
+   * the reading column keeps its measure from the left edge. */
   .page {
-    max-width: 48rem;
     padding-block: 2.5rem 4rem;
+  }
+  .page > :global(*) {
+    max-width: 48rem;
   }
   h1 {
     margin: 0.75rem 0 0;

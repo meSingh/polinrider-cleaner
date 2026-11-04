@@ -13,6 +13,7 @@ import { baseLinks } from './src/markdown/base-links.mjs';
 import { BASE, SITE_ORIGIN } from './src/siteConfig.mjs';
 import { pagefindIndex } from './src/markdown/pagefind.mjs';
 import { externalLinks } from './src/markdown/external-links.mjs';
+import { ogImages } from './src/markdown/og-images.mjs';
 import { lastCommitDay, sourcesOf } from './src/sources.mjs';
 
 const src = fileURLToPath(new URL('./src', import.meta.url));
@@ -61,7 +62,8 @@ export default defineConfig({
     sitemap({
       filter: (page) => {
         const path = new URL(page).pathname.slice(BASE.length);
-        return !(path in redirects) && !frozen.some((f) => path.startsWith(f));
+        // The /og/ cards become images; they are not pages.
+        return !(path in redirects) && !frozen.some((f) => path.startsWith(f)) && !path.startsWith('/og/');
       },
       // lastmod from git: the last commit to the files the page is made of.
       serialize: (item) => {
@@ -69,6 +71,7 @@ export default defineConfig({
         return lastmod ? { ...item, lastmod } : item;
       },
     }),
+    ogImages({ base: BASE }),
     externalLinks({ origin: SITE_ORIGIN, base: BASE }),
     pagefindIndex(),
   ],

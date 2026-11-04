@@ -60,9 +60,13 @@ const all = await releases();
 </Base>
 
 <style>
+  /* The same width as the top bar, so the title lines up under the logo;
+   * the reading column keeps its measure from the left edge. */
   .page {
-    max-width: calc(64rem + 2 * var(--gutter));
     padding-top: 2.5rem;
+  }
+  .page > :global(*) {
+    max-width: 64rem;
   }
   h1 {
     margin: 0.75rem 0 0;

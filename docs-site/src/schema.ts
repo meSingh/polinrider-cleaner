@@ -127,6 +127,7 @@ export function article(a: {
   modified?: string;
   citations?: string[];
   section?: string;
+  image?: string;
 }): Node {
   return {
     '@type': a.type,
@@ -139,7 +140,7 @@ export function article(a: {
     ...(a.modified ? { dateModified: a.modified } : {}),
     ...(a.section ? { articleSection: a.section } : {}),
     inLanguage: 'en-IN',
-    image: SOCIAL_IMAGE.url,
+    image: a.image ?? SOCIAL_IMAGE.url,
     author: { '@id': ids.person },
     publisher: { '@id': ids.person },
     isPartOf: { '@id': ids.website },

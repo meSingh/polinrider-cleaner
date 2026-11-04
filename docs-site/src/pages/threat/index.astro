@@ -15,29 +15,14 @@ import { threatFaq } from '../../faq';
 import { abs, article, breadcrumbs, faqPage } from '../../schema';
 import { lastUpdated } from '../../git';
 import { firstCommitDay } from '../../sources.mjs';
+import { ogImage } from '../../og';
+import { answer } from '../../threat-data';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
-const src = {
-  osmMarch: 'https://opensourcemalware.com/blog/polinrider-dprk-compromised-hundreds-of-github-repos',
-  osmBlast: 'https://opensourcemalware.com/blog/polinrider-blast-radius-grows',
-  osmAb: 'https://opensourcemalware.com/blog/polinrider-is-a-b-testing-its-way-past-your-detections',
-  osmHistory: 'https://opensourcemalware.com/blog/how-to-investigate-a-github-repos-real-history',
-  osm2025: 'https://opensourcemalware.com/blog/polinrider-malware-found-in-2025-npm-packages',
-  osmTasks: 'https://opensourcemalware.com/blog/tasksjacker-dprk-attack-github-vscode',
-  osmApril: 'https://opensourcemalware.com/blog/polinrider-rides-again-north-korean-attack-expands-across-github',
-  thn: 'https://thehackernews.com/2026/07/north-korean-hackers-publish-108.html',
-  safedepEth: 'https://safedep.io/polinrider-ethereum-c2-github-repositories/',
-  safedepMs64: 'https://safedep.io/microsoftsystem64-binary-payload-analysis/',
-  dp: 'https://blog.deception.pro/blog/hok-dprk-polinrider-sep-2026',
-};
-
-const stats = [
-  { figure: 'About 4,367', what: 'infected repositories, across 2,152 owners', source: 'OpenSourceMalware, 15 July 2026', href: src.osmBlast },
-  { figure: '108', what: 'malicious packages and extensions across npm, Packagist, Go and Chrome', source: 'The Hacker News, 4 July 2026', href: src.thn },
-  { figure: '35', what: 'GitHub repositories with a loader that reads its server addresses from Ethereum', source: 'SafeDep, 30 September 2026', href: src.safedepEth },
-  { figure: 'May 2025', what: 'the earliest known PolinRider code, found later in nine npm versions', source: 'OpenSourceMalware, 30 October 2026', href: src.osm2025 },
-];
+// The sources and the four key figures live in src/threat-data.ts, which the
+// page's social image (src/pages/og) reads too.
+import { src, stats } from '../../threat-data';
 
 const spread = [
   { icon: 'computer', title: 'Your computer runs it', text: 'You install a package or an extension, or simply open an infected project in your editor.' },
@@ -130,6 +115,7 @@ const schema = [
 <Base
   title="The PolinRider threat"
   titleTag="PolinRider malware: what it is, how it spreads, the signs"
+  image={ogImage('threat', `PolinRider: the supply-chain malware. ${answer}`)}
   schema={schema}
   description="PolinRider malware hides in developers' projects, steals their logins and spreads to everything they push. How it gets in, how it hides and the signs."
 >
