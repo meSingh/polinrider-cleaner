@@ -15,10 +15,10 @@ export function sourcesOf(path) {
   const id = rest.join('/');
   if (section === 'docs' && !id) return ['src/content/docs', 'src/pages/docs'];
   if (section === 'docs') return one('src/content/docs', id);
-  if (section === 'news' && !id) return ['src/content/news', 'src/content/docs/indicator-reviews', 'src/content/elsewhere.yaml'];
-  if (section === 'news' && id === 'indicator-reviews') return ['src/content/docs/indicator-reviews'];
-  if (section === 'news' && rest[0] === 'indicator-reviews') return one('src/content/docs/indicator-reviews', rest[1]);
-  if (section === 'news') return one('src/content/news', id);
+  if (section === 'updates' && !id) return ['src/content/news', 'src/content/docs/indicator-reviews', 'src/content/elsewhere.yaml'];
+  if (section === 'updates' && id === 'indicator-reviews') return ['src/content/docs/indicator-reviews'];
+  if (section === 'updates' && rest[0] === 'indicator-reviews') return one('src/content/docs/indicator-reviews', rest[1]);
+  if (section === 'updates') return one('src/content/news', id);
   if (section === 'releases' && !id) return ['src/content/releases'];
   if (section === 'releases') return one('src/content/releases', id);
   if (section === 'threat' && !id) return ['src/pages/threat/index.astro'];

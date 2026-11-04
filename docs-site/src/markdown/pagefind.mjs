@@ -2,7 +2,7 @@
 // writes a static index to dist/pagefind/. Searching then happens in the
 // reader's browser against those files: nothing is sent anywhere. Only the
 // part of a page marked data-pagefind-body is indexed, which the layouts set
-// on the docs, the campaign pages, News and Releases (and not on frozen
+// on the docs, the campaign pages, Updates and Releases (and not on frozen
 // copies of the docs, which would repeat every result).
 import { fileURLToPath } from 'node:url';
 import * as pagefind from 'pagefind';

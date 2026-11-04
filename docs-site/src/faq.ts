@@ -30,7 +30,7 @@ export const threatFaq: Faq[] = [
   },
   {
     q: 'Does antivirus remove PolinRider?',
-    a: `Not reliably. In most variants the payload is decrypted from a blockchain transaction into memory and never written to disk as a program, and the campaign changes its signatures. Windows Defender does flag some variants, such as <code>Trojan:NPM/PolinRider.SF</code>. A detection tells you something ran; a clean scan does not tell you that you are clear. <a href="${base}/news/2026-11-04-polinrider-keeps-coming-back/">Why it keeps coming back</a>.`,
+    a: `Not reliably. In most variants the payload is decrypted from a blockchain transaction into memory and never written to disk as a program, and the campaign changes its signatures. Windows Defender does flag some variants, such as <code>Trojan:NPM/PolinRider.SF</code>. A detection tells you something ran; a clean scan does not tell you that you are clear. <a href="${base}/updates/2026-11-04-polinrider-keeps-coming-back/">Why it keeps coming back</a>.`,
   },
   {
     q: 'Why does my Git history look clean?',

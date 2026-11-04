@@ -3,13 +3,13 @@
 // infected. The first screen: what this is and three buttons, one for each
 // thing it can check. Then the whole process as numbered steps, from
 // installing it to what you can do if it finds the malware. Then why there
-// is no risk in running it, why it can be trusted and the latest news.
+// is no risk in running it, why it can be trusted and the latest updates.
 // Every fact is from the docs it links to.
 import Base from '../layouts/Base.astro';
 import Icon from '../components/Icon.astro';
 import RunBlock from '../components/RunBlock.astro';
 import LastUpdated from '../components/LastUpdated.astro';
-import NewsTimeline from '../components/NewsTimeline.astro';
+import UpdatesTimeline from '../components/UpdatesTimeline.astro';
 import Badges from '../components/Badges.astro';
 import { Code } from 'astro:components';
 import { timeline } from '../news';
@@ -18,7 +18,14 @@ import { software, sourceCode } from '../schema';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 const d = `${base}/docs`;
-const latest = (await timeline()).slice(0, 4);
+// Latest: the two newest updates, the newest weekly review and the newest
+// article worth reading, newest first, so all three kinds show.
+const all = await timeline();
+const latest = [
+  ...all.filter((i) => i.kind === 'update').slice(0, 2),
+  ...all.filter((i) => i.kind === 'review').slice(0, 1),
+  ...all.filter((i) => i.kind === 'reading').slice(0, 1),
+].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
 const newest = (await releases())[0];
 const themes = { light: 'github-light-default', dark: 'github-dark-default' } as const;
 
@@ -190,7 +197,7 @@ const trust = [
           </div>
           <p class="small">
             If it says it could not run, it tells you why, and it found nothing either way.{' '}
-            <a href={`${base}/news/2026-11-04-polinrider-or-false-alarm/`}>Is it PolinRider or a false alarm?</a>
+            <a href={`${base}/updates/2026-11-04-polinrider-or-false-alarm/`}>Is it PolinRider or a false alarm?</a>
           </p>
         </div>
       </li>
@@ -322,7 +329,7 @@ const trust = [
       ))}
     </ul>
     <p class="small center-line">
-      Every week's indicator review is public: <a href={`${base}/news/indicator-reviews/`}>read them all</a>.
+      Every week's indicator review is public: <a href={`${base}/updates/indicator-reviews/`}>read them all</a>.
     </p>
     <div class="badge-row">
       <Badges size="lg" center exclude={['License', 'Platforms']} />
@@ -332,9 +339,9 @@ const trust = [
   <section class="wrap latest" aria-labelledby="latest-h">
     <div class="latest-head">
       <h2 id="latest-h">Latest</h2>
-      <a class="textlink" href={`${base}/news/`}>All news <Icon name="arrow" size={16} /></a>
+      <a class="textlink" href={`${base}/updates/`}>All updates <Icon name="arrow" size={16} /></a>
     </div>
-    <NewsTimeline items={latest} />
+    <UpdatesTimeline items={latest} />
   </section>
 </Base>
 

@@ -1,4 +1,4 @@
-// The per-page social images. The build writes one HTML card per News post,
+// The per-page social images. The build writes one HTML card per update,
 // weekly review, release and the threat page under dist/og/ (src/pages/og);
 // this step opens each in headless Chrome, saves it as dist/og/<slug>.jpg and
 // deletes the HTML, so only the images are published. Static output: nothing

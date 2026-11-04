@@ -34,13 +34,18 @@ const redirects = Object.fromEntries([
   ...pages('docs/guides').map((p) => moved(`/guides/${p}/`, `/docs/guides/${p}/`)),
   ...pages('docs/reference').map((p) => moved(`/reference/${p}/`, `/docs/reference/${p}/`)),
   ...pages('docs/project').map((p) => moved(`/project/${p}/`, `/docs/project/${p}/`)),
-  moved('/indicator-reviews/', '/news/indicator-reviews/'),
+  moved('/indicator-reviews/', '/updates/indicator-reviews/'),
   // The campaign pages became one threat page in November 2026.
   moved('/campaign/', '/threat/'),
   moved('/campaign/what-it-is/', '/threat/'),
   moved('/campaign/how-it-hides/', '/threat/#why-your-git-history-looks-clean'),
   moved('/campaign/indicators/', '/threat/indicators/'),
-  ...pages('docs/indicator-reviews').map((p) => moved(`/indicator-reviews/${p}/`, `/news/indicator-reviews/${p}/`)),
+  ...pages('docs/indicator-reviews').map((p) => moved(`/indicator-reviews/${p}/`, `/updates/indicator-reviews/${p}/`)),
+  // News became Updates in November 2026; every News address goes on.
+  moved('/news/', '/updates/'),
+  moved('/news/indicator-reviews/', '/updates/indicator-reviews/'),
+  ...pages('news').map((p) => moved(`/news/${p}/`, `/updates/${p}/`)),
+  ...pages('docs/indicator-reviews').map((p) => moved(`/news/indicator-reviews/${p}/`, `/updates/indicator-reviews/${p}/`)),
 ]);
 
 // Frozen copies of the documentation (src/content/docs-versions) are kept

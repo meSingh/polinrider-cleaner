@@ -90,8 +90,8 @@ export async function facts() {
     indicatorSet: {
       folder: `${REPO_URL}/tree/main/ioc`,
       page: `${SITE_URL}/threat/indicators/`,
-      lastReview: allReviews[0] ? { date: allReviews[0].date, url: `${SITE_URL}/news/indicator-reviews/${allReviews[0].id}/` } : undefined,
-      reviews: `${SITE_URL}/news/indicator-reviews/`,
+      lastReview: allReviews[0] ? { date: allReviews[0].date, url: `${SITE_URL}/updates/indicator-reviews/${allReviews[0].id}/` } : undefined,
+      reviews: `${SITE_URL}/updates/indicator-reviews/`,
       files: indicatorFiles.map((f) => ({ ...f, url: raw(`ioc/${f.file}`) })),
     },
     pages: {
@@ -101,9 +101,9 @@ export async function facts() {
         g.items.map((i) => ({ group: g.label, title: docs.get(i.id)!.data.title, description: i.description, url: `${SITE_URL}/docs/${i.id}/` })),
       ),
       reference: threat.filter((t) => t.id !== 'index').map((t) => ({ title: t.data.title, description: t.data.description, url: `${SITE_URL}/threat/${t.id}/` })),
-      news: posts.map((p) => ({ title: p.title, description: p.description, date: p.date, url: `${SITE_URL}/news/${p.id}/` })),
+      updates: posts.map((p) => ({ title: p.title, description: p.description, date: p.date, url: `${SITE_URL}/updates/${p.id}/` })),
     },
-    feeds: { rss: `${SITE_URL}/news/rss.xml`, sitemap: `${SITE_URL}/sitemap-index.xml`, llms: `${SITE_URL}/llms.txt`, llmsFull: `${SITE_URL}/llms-full.txt` },
+    feeds: { rss: `${SITE_URL}/updates/rss.xml`, sitemap: `${SITE_URL}/sitemap-index.xml`, llms: `${SITE_URL}/llms.txt`, llmsFull: `${SITE_URL}/llms-full.txt` },
   };
 }
 

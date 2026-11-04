@@ -28,7 +28,7 @@ const page = z.object({
 export const collections = {
   // The documentation for the latest release, served at /docs/. The weekly
   // indicator reviews live in the same folder, because ioc/ cites each one
-  // by that path, but are their own collection, served under /news/.
+  // by that path, but are their own collection, served under /updates/.
   docs: defineCollection({
     loader: pages('./src/content/docs', ['**/*.{md,mdx}', '!indicator-reviews/**']),
     schema: page,
@@ -51,6 +51,13 @@ export const collections = {
       date: day,
       breaking: z.string().optional(),
     }),
+  }),
+  // "Where things stand" at the top of /updates/: two or three plain
+  // sentences and the day they were written. Changed without touching a
+  // layout (content/status.md).
+  status: defineCollection({
+    loader: glob({ pattern: 'status.md', base: './src/content' }),
+    schema: z.object({ updated: day }),
   }),
   // Articles about the campaign published elsewhere, each one read and
   // checked before it was added. See the file's header.

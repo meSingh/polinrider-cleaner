@@ -117,7 +117,7 @@ export function breadcrumbs(crumbs: { label: string; href: string }[], name: str
 }
 
 /** A page of writing: TechArticle for docs and reference, NewsArticle for
- * News posts. citation is every outside source the page links to. */
+ * updates. citation is every outside source the page links to. */
 export function article(a: {
   type: 'TechArticle' | 'NewsArticle';
   url: string;

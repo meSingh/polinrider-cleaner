@@ -1,6 +1,7 @@
-// The three kinds of News: our own posts, the weekly indicator reviews and
-// articles published elsewhere. Each is read from its own collection. Newest
-// first throughout.
+// The three kinds of Updates (/updates/): our own articles, the weekly
+// indicator reviews and articles published elsewhere ("Worth reading").
+// Each is read from its own collection; the folders keep their old names
+// (content/news, content/docs/indicator-reviews). Newest first throughout.
 import { getCollection } from 'astro:content';
 import { longDate } from './releaseDate';
 
@@ -18,13 +19,29 @@ export interface NewsPost {
   date: string; // YYYY-MM-DD, the day it was published
   review?: string; // YYYY-MM-DD of the indicator review it came from
   label: string; // a short name, for lists
+  minutes: number; // reading time
+}
+
+/** Reading time at 220 words a minute, from the Markdown with code and
+ * link targets left out. */
+export function readingMinutes(body = ''): number {
+  const words = body
+    .replace(/^import .*$/gm, '')
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/\]\([^)]*\)/g, ']')
+    .replace(/^\[[^\]]+\]:.*$/gm, '')
+    .replace(/<[^>]+>/g, ' ')
+    .split(/\s+/)
+    .filter((w) => /\w/.test(w)).length;
+  return Math.max(1, Math.round(words / 220));
 }
 
 export async function newsPosts(): Promise<NewsPost[]> {
   return (await getCollection('news'))
-    .map(({ id, data }) => ({
+    .map(({ id, data, body }) => ({
       id,
-      href: `${base}/news/${id}/`,
+      href: `${base}/updates/${id}/`,
+      minutes: readingMinutes(body),
       title: data.title,
       description: data.description,
       date: data.date,
@@ -59,7 +76,7 @@ export async function reviews(): Promise<Review[]> {
     .filter((e) => e.id !== 'index')
     .map(({ id }) => ({
       id,
-      href: `${base}/news/indicator-reviews/${id}/`,
+      href: `${base}/updates/indicator-reviews/${id}/`,
       date: id.slice(0, 10),
       label: humanDates(rows.get(id)?.label ?? id),
       outcome: rows.get(id)?.outcome,
@@ -84,27 +101,45 @@ export const inline = (s: string) =>
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
 
 export interface TimelineItem {
+  kind: 'update' | 'review' | 'reading';
   date: string;
   title: string;
-  /** One line, as HTML (inline code kept). */
+  /** One line, as HTML (inline code kept). Not shown for a review. */
   summary: string;
   href: string;
-  /** Published elsewhere: opens in a new tab, with its publisher's name. */
+  /** Our articles: reading time. */
+  minutes?: number;
+  /** Worth reading: the publisher, and it opens in a new tab. */
   source?: string;
 }
 
-/** Everything in News, newest first: our posts, the weekly reviews and
+/** A review's compact line: "15 indicators added this week". */
+export const reviewLine = (outcome?: string) => {
+  const o = (outcome ?? 'Reviewed').replace(/`/g, '');
+  return `${o.charAt(0).toUpperCase()}${o.slice(1)} this week`;
+};
+
+/** Everything in Updates, newest first: our articles, the weekly reviews and
  * articles published elsewhere, in one line of time. */
 export async function timeline(): Promise<TimelineItem[]> {
   const items: TimelineItem[] = [
-    ...(await newsPosts()).map((p) => ({ date: p.date, title: p.title, summary: inline(p.description), href: p.href })),
+    ...(await newsPosts()).map((p) => ({
+      kind: 'update' as const,
+      date: p.date,
+      title: p.title,
+      summary: inline(p.description),
+      href: p.href,
+      minutes: p.minutes,
+    })),
     ...(await reviews()).map((r) => ({
+      kind: 'review' as const,
       date: r.date,
-      title: `Weekly indicator review: ${r.outcome ?? r.label}`,
-      summary: r.summary ? inline(r.summary) : '',
+      title: reviewLine(r.outcome),
+      summary: '',
       href: r.href,
     })),
     ...(await elsewhere()).map((x) => ({
+      kind: 'reading' as const,
       date: x.date,
       title: x.title,
       summary: inline(x.summary),
@@ -112,8 +147,8 @@ export async function timeline(): Promise<TimelineItem[]> {
       source: x.source,
     })),
   ];
-  // Newest first; on the same day our own post comes before a review, and
+  // Newest first; on the same day our own article comes before a review, and
   // both before an outside article.
-  const rank = (i: TimelineItem) => (i.source ? 2 : i.title.startsWith('Weekly indicator review') ? 1 : 0);
-  return items.sort((a, b) => (a.date === b.date ? rank(a) - rank(b) : a.date < b.date ? 1 : -1));
+  const rank = { update: 0, review: 1, reading: 2 };
+  return items.sort((a, b) => (a.date === b.date ? rank[a.kind] - rank[b.kind] : a.date < b.date ? 1 : -1));
 }

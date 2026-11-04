@@ -7,10 +7,12 @@ interface Props {
   items: Faq[];
 }
 const { items } = Astro.props;
+// Inside an Updates article (layouts/Update.astro) questions are not shown.
+const hidden = (Astro.locals as { plainArticle?: boolean }).plainArticle === true;
 const slug = (q: string) => q.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 ---
 
-<div class="faq not-prose">
+{!hidden && (<div class="faq not-prose">
   {
     items.map((i) => (
       <div class="qa">
@@ -19,7 +21,7 @@ const slug = (q: string) => q.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(
       </div>
     ))
   }
-</div>
+</div>)}
 
 <style>
   .faq {

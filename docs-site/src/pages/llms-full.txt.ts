@@ -1,6 +1,6 @@
 // llms-full.txt: the site's writing in one Markdown file, for a language
 // model that wants all of it at once. The threat page's key facts and
-// questions, every live docs page, the indicator set and every News post.
+// questions, every live docs page, the indicator set and every update.
 import type { APIRoute } from 'astro';
 import { getCollection } from 'astro:content';
 import { facts, flatten, policy } from '../machine';
@@ -31,7 +31,7 @@ export const GET: APIRoute = async () => {
     ...posts.map((p) => {
       const e = news.find((n) => n.id === p.id)!;
       const extra = p.id === '2026-11-04-polinrider-or-false-alarm' ? `\n\n## Questions people ask\n\n${qa(falseAlarmFaq)}` : '';
-      return section(p.title, `${SITE_URL}/news/${p.id}/`, `Published ${p.date}.\n\n${flatten(e.body ?? '')}${extra}`);
+      return section(p.title, `${SITE_URL}/updates/${p.id}/`, `Published ${p.date}.\n\n${flatten(e.body ?? '')}${extra}`);
     }),
   ];
   return new Response(parts.join('\n---\n\n'), { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
