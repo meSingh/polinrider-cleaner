@@ -48,7 +48,25 @@ The second stage has been the **DEV#POPPER** remote access trojan and
 | Fake fonts | `.woff2` files under `public/`, `static/`, `assets/` whose bytes are JavaScript, not a font |
 | Editor tasks | `.vscode/tasks.json` with `"runOn": "folderOpen"` running `curl ... \| bash` |
 | Propagation script | `temp_auto_push.bat` |
-| Second-stage implant | a binary or process named `MicrosoftSystem64`, and the directories `~/.pcl-data` and `~/.pcl-state` |
+
+## Related malware: MicrosoftSystem64
+
+`MicrosoftSystem64` is a remote-access trojan installed by malicious npm
+packages. It is related to PolinRider through the group behind it, not part of
+PolinRider itself. SafeDep places the packages that install it in a cluster
+that kmsec.uk and OX Security attribute to Famous Chollima, also tracked as
+Contagious Interview, a DPRK-linked group
+([SafeDep](https://safedep.io/microsoftsystem64-binary-payload-analysis/)).
+OpenSourceMalware considers PolinRider a parallel or sub-campaign of
+Contagious Interview
+([OpenSourceMalware](https://opensourcemalware.com/blog/polinrider-blast-radius-grows)).
+No report we have read calls `MicrosoftSystem64` a PolinRider payload.
+
+This tool checks for it as well, because it targets the same developers and
+needs the same response on a computer: a binary or process named
+`MicrosoftSystem64`, and the folders `~/.pcl-data` and `~/.pcl-state`.
+[MicrosoftSystem64 on your computer](/polinrider-cleaner/news/2026-11-04-microsoftsystem64/)
+has the detail.
 
 ## Reinfection
 
