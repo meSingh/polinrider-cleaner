@@ -1,6 +1,6 @@
 ---
-title: <A question or a plain statement the reader would search for>
-description: <Under 155 characters. What the reader will know after reading.>
+title: <The headline says what is new, in plain words>
+description: <One human sentence, under 155 characters. Quote it if it has a colon.>
 date: "YYYY-MM-DD"
 review: "YYYY-MM-DD"
 sidebar:
@@ -13,64 +13,84 @@ How to use this template. Delete this block before publishing.
 Copy this file to docs-site/src/content/news/YYYY-MM-DD-short-slug.mdx.
 `date` is the day it is published, in Asia/Kolkata, and is never changed
 afterwards. `review` is the date of the indicator review the post comes from;
-delete the line if there is none. The page shows the date, the review link
-and an "Our post" label by itself; the post needs no import for them.
-`sidebar.label` is the short name used where the title is too long.
+delete the line if there is none. The page shows the date and the review link
+by itself.
 
 When to write one: only when a week changes what a reader would do. A new
 way in, a new file or artifact on disk or in a repository, a new way it
 survives cleaning or a cluster large enough that many readers may have
-installed it. A week that only adds package names is not a post. Every
-week stays recorded in the indicator reviews either way.
+installed it. A week that only adds package names is not a post. Every week
+stays recorded in the indicator reviews either way.
 
-Rules, not suggestions:
+Who it is for: a developer who has just heard of this, or just found it on
+their own machine. Write like someone who has cleaned it up on their own
+computers and is explaining it to a colleague. Not like a report, and not for
+a search engine.
 
-1. Cite every claim. Every number, date, file name and statement about the
-   campaign links to a source you have read: a public write-up, an indicator
-   review or a page on this site. If it cannot be confirmed, leave it out or
-   say plainly that it is unconfirmed.
-2. Never invent or extend an indicator, a number or an attribution. Name
-   only indicators already in ioc/ and recorded in a review. Never print a
-   payload, a full key or anything a reader could paste into a working
-   attack. Never quote a line of ioc/strong.txt or a match for
-   ioc/strong-patterns.txt verbatim: a .mdx page is not exempt from the
-   repository's own self-scan, which fails CI on a confirmed indicator.
-   Attribution is a claim like any other: MicrosoftSystem64 was once
-   described on this site as PolinRider's own implant, and no source said
-   so. Say only the link a source states.
-3. No numbers that are not in a source. Say who counted and link it.
-4. One call to action, at the end: check your machine, your account or your
-   organization. Nothing to buy, star or share.
-5. Style: lead with the answer. Short sections. Plain words for a stressed
-   reader. No em dashes. No Oxford commas. Indian English.
-6. Link the guide that fits and the review the post came from. Link
-   pages on this site from the site root, [Order matters](/docs/guides/order/),
-   never with the site's address or base path: the build fails if a page
-   names it (scripts/check-base.mjs).
-7. Re-check every claim against its source before publishing.
+How it reads:
 
-The post links the review it came from, through `review` in the front
+1. 500 to 900 words. Three to five minutes.
+2. The headline says what is new. The first paragraph says what happened and
+   who it affects, in plain words.
+3. Prose, with three to five short subheadings. No bullet walls with bold
+   labels, no "key facts" lists, no FAQ blocks, no boxes, no "see also"
+   lists. A numbered list only for steps someone will follow in order, and
+   a code block only for a command worth copying.
+4. End on what to do. One plain sentence pointing to the cleanup checklist
+   is enough; no call-to-action box.
+5. No em dashes. No Oxford commas. Indian English.
+6. Before publishing, read it aloud. Cut any sentence that only says
+   something is important, any contrast that knocks down a claim nobody
+   made, and any closing line that repeats the paragraph before it.
+
+How it credits sources, like a journalist:
+
+7. Name the source once, where its information appears, with the link on
+   its name: "OpenSourceMalware found that ...", "SafeDep traced ...". Do
+   not put a citation after every sentence.
+8. Keep each source's qualifiers ("about", "reports", "at this time") and
+   say only the link a source states. Attribution is a claim like any
+   other: MicrosoftSystem64 was once described on this site as PolinRider's
+   own implant, and no source said so.
+9. No numbers, dates, names or file paths that are not in a source you have
+   read. If something cannot be confirmed, leave it out or say plainly that
+   it is unconfirmed.
+10. End with a short Sources list: publisher, title as a link, date. Our own
+    indicator review goes there too.
+11. At most two or three links to our own pages in the whole article, placed
+    where they help. Link them from the site root, for example
+    [the cleanup checklist](/docs/guides/getting-rid-of-polinrider/), never
+    with the site's address: the build fails if a page names it
+    (scripts/check-base.mjs).
+
+Safety:
+
+12. Never invent or extend an indicator. Name only indicators already in
+    ioc/ and recorded in a review. Never print a payload, a full key or
+    anything a reader could paste into a working attack. Never quote a line
+    of ioc/strong.txt or a match for ioc/strong-patterns.txt: a .mdx page is
+    not exempt from the repository's own self-scan, which fails CI on a
+    confirmed indicator.
+13. Re-check every claim against its source before publishing.
+
+The post links the review it came from through `review` in the front
 matter. Nothing links back from the review: reviews are never edited after
 they merge.
 */}
 
-<One or two sentences: the answer, for someone who found this by search.>
+<What happened and who it affects, in two to four plain sentences. Name the
+source that found it, with the link on its name.>
 
-## What it is
+## <What it is, or what changed>
 
-## What it means for you
+## <Why it matters on your computer or in your repositories>
 
-## What to do
+## <What to do>
 
-1. ...
-
-:::tip[Check yours]
-Download `polinrider` from the [quick start](/docs/quick-start/)
-and run it with no arguments. It asks what to check and changes nothing until
-you type `yes`.
-:::
+<Plain steps. End with one sentence that points to
+[the cleanup checklist](/docs/guides/getting-rid-of-polinrider/).>
 
 ## Sources
 
-1. [Source title](https://...), publisher, date
-2. [Indicator review, YYYY-MM-DD](/news/indicator-reviews/YYYY-MM-DD/)
+- <Publisher>, [<Title>](https://...), <date>
+- Our [indicator review of <date>](/news/indicator-reviews/YYYY-MM-DD/)
