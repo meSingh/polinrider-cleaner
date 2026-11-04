@@ -1,6 +1,7 @@
 // The licence notices of what this site ships to a browser: Astro's page
 // scripts, Pagefind's search (its script, WebAssembly and index format),
-// Shiki's code colours and the Geist typeface. The code is MIT licensed, and the
+// Shiki's code colours, the GitHub mark from Primer Octicons and the Geist
+// typeface. The code is MIT licensed, and the
 // MIT licence asks that its notice travel with copies of the software. Geist
 // is under the SIL Open Font License 1.1, which asks the same of its notice
 // and licence. This page is that copy, served at
@@ -27,6 +28,14 @@ const notice = (name: string) => {
   return `${name} ${pkg.version}\n${'-'.repeat(name.length + pkg.version.length + 1)}\n\n${text}`;
 };
 
+// The GitHub mark in the top bar: mark-github-16 from Primer Octicons, with
+// the licence that came with it, kept in src/assets/octicons/.
+const octicons = () => {
+  const text = readFileSync(join(process.cwd(), 'src/assets/octicons/LICENSE'), 'utf8').trim();
+  const head = 'Primer Octicons (the GitHub mark), github.com/primer/octicons';
+  return `${head}\n${'-'.repeat(head.length)}\n\n${text}`;
+};
+
 // Geist, self-hosted from the vercel/geist-font repository at tag v1.8.1
 // (fonts/Geist/webfonts, the two variable-weight files).
 const geist = () => {
@@ -41,7 +50,7 @@ export const GET: APIRoute = () =>
       '=================================\n\n' +
       'This site is built with the following open source software, parts of which\n' +
       'are served with every page. Their licence notices follow.\n\n' +
-      [...packages.map(notice), geist()].join('\n\n\n') +
+      [...packages.map(notice), geist(), octicons()].join('\n\n\n') +
       '\n',
     { headers: { 'Content-Type': 'text/plain; charset=utf-8' } },
   );

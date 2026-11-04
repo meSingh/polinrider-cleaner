@@ -5,6 +5,7 @@
 // and the menu stay in the bar. The menu is a <details>, so it works without
 // JavaScript.
 import Icon from './Icon.astro';
+import GitHubMark from './GitHubMark.astro';
 import Search from './Search.astro';
 import ThemeToggle from './ThemeToggle.astro';
 import { REPO_URL } from '../siteConfig.mjs';
@@ -16,6 +17,7 @@ const links = [
   { label: 'News', href: `${base}/news/`, match: '/news/' },
   { label: 'Releases', href: `${base}/releases/`, match: '/releases/' },
 ];
+// The repository, the last item in the nav, with the GitHub mark.
 const path = Astro.url.pathname;
 const current = (match: string) => (path.startsWith(`${base}${match}`) ? 'page' : undefined);
 ---
@@ -30,20 +32,20 @@ const current = (match: string) => (path.startsWith(`${base}${match}`) ? 'page' 
 
     <nav class="nav" aria-label="Main">
       {links.map((l) => <a href={l.href} aria-current={current(l.match)}>{l.label}</a>)}
+      <a class="gh" href={REPO_URL}><GitHubMark size={16} />GitHub</a>
     </nav>
 
     <div class="tools">
       <Search />
       <ThemeToggle />
-      <a class="gh wide" href={REPO_URL}>GitHub</a>
       <a class="pill dl" href={`${base}/docs/quick-start/`}>Download</a>
       <details class="menu">
         <summary aria-label="Menu"><Icon name="menu" size={22} /></summary>
         <div class="panel">
           <nav aria-label="Main">
             {links.map((l) => <a href={l.href} aria-current={current(l.match)}>{l.label}</a>)}
+            <a href={REPO_URL} class="gh"><GitHubMark size={16} />GitHub</a>
             <a href={`${base}/docs/quick-start/`}>Download</a>
-            <a href={REPO_URL}>GitHub</a>
           </nav>
         </div>
       </details>
@@ -85,15 +87,13 @@ const current = (match: string) => (path.startsWith(`${base}${match}`) ? 'page' 
     gap: 1.75rem;
     margin-inline-start: 1.75rem;
   }
-  .nav a,
-  .gh {
+  .nav a {
     color: var(--pr-text);
     font-size: 0.9375rem;
     font-weight: 550;
     text-decoration: none;
   }
   .nav a:hover,
-  .gh:hover,
   .nav a[aria-current='page'] {
     color: var(--pr-heading);
   }
@@ -108,9 +108,13 @@ const current = (match: string) => (path.startsWith(`${base}${match}`) ? 'page' 
     gap: 0.75rem;
     margin-inline-start: auto;
   }
-  .wide,
   .dl {
     display: none;
+  }
+  .gh {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
   }
   .dl {
     padding: 0.5rem 1.05rem;
@@ -164,8 +168,7 @@ const current = (match: string) => (path.startsWith(`${base}${match}`) ? 'page' 
     }
   }
   @media (min-width: 66rem) {
-    .nav,
-    .wide {
+    .nav {
       display: flex;
     }
     .menu {

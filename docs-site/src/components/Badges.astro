@@ -4,13 +4,17 @@
 import { badges } from '../badges';
 
 interface Props {
-  compact?: boolean;
+  /** md in the footer, lg where the badges are the point. */
+  size?: 'md' | 'lg';
+  /** Labels to leave out here, such as License. */
+  exclude?: string[];
+  center?: boolean;
 }
-const { compact = false } = Astro.props;
-const list = await badges();
+const { size = 'md', exclude = [], center = false } = Astro.props;
+const list = (await badges()).filter((b) => !exclude.includes(b.label));
 ---
 
-<ul class:list={['badges', { compact }]}>
+<ul class:list={['badges', size, { center }]}>
   {list.map((b) => {
     const inner = (
       <>
@@ -66,8 +70,23 @@ const list = await badges();
   .dot.good {
     background: var(--pr-clean);
   }
-  .compact .chip {
-    padding: 0.2rem 0.6rem;
-    font-size: 0.75rem;
+  .center {
+    justify-content: center;
+  }
+  .md .chip {
+    padding: 0.35rem 0.85rem;
+    font-size: 0.875rem;
+  }
+  .lg {
+    gap: 0.65rem;
+  }
+  .lg .chip {
+    gap: 0.55rem;
+    padding: 0.55rem 1.1rem;
+    font-size: 1rem;
+  }
+  .lg .dot {
+    width: 0.6rem;
+    height: 0.6rem;
   }
 </style>

@@ -57,7 +57,8 @@ export default defineConfig({
     sitemap({
       filter: (page) => {
         const path = new URL(page).pathname.slice(BASE.length);
-        return !(path in redirects) && !frozen.some((f) => path.startsWith(f));
+        // design-options is a page for choosing a design, not for readers.
+        return !(path in redirects) && !frozen.some((f) => path.startsWith(f)) && path !== '/design-options/';
       },
     }),
     pagefindIndex(),

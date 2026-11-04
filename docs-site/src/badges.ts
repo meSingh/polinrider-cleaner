@@ -66,7 +66,6 @@ export function badges(): Promise<Badge[]> {
       { label: 'Commits', value: 'signed', href: `${REPO_URL}/commits/main`, tone: 'neutral' },
       { label: 'Releases', value: 'attested provenance', href: `${REPO_URL}/releases/latest`, tone: 'neutral' },
       { label: 'License', value: 'MIT', href: `${REPO_URL}/blob/main/LICENSE`, tone: 'neutral' },
-      { label: 'AGENTS.md', value: 'supported', href: `${REPO_URL}/blob/main/AGENTS.md`, tone: 'neutral' },
     ];
   })();
   return cached;

@@ -84,6 +84,9 @@
   --pr-border-strong: #cdd1d8;
   --pr-accent: #0b6a80;
   --pr-accent-bg: #ecf7f9;
+  /* A soft band behind alternate sections, and the hero's glow. */
+  --pr-tint: #f2f8fa;
+  --pr-glow: rgb(11 106 128 / 0.12);
   --pr-pill-bg: #0f1220;
   --pr-pill-text: #ffffff;
 
@@ -115,6 +118,8 @@
   --pr-border-strong: #3a4150;
   --pr-accent: #7adcea;
   --pr-accent-bg: rgb(122 220 234 / 0.1);
+  --pr-tint: #10161d;
+  --pr-glow: rgb(122 220 234 / 0.12);
   --pr-pill-bg: #f4f6fa;
   --pr-pill-text: #0c0f15;
 
