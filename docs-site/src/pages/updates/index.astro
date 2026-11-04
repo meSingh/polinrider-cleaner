@@ -44,7 +44,10 @@ const tabs = [
     <section class="status" aria-labelledby="status-h">
       <h2 id="status-h">Where things stand</h2>
       <div class="status-body"><Status /></div>
-      <p class="status-date">Updated <time datetime={status.data.updated}>{longDate(status.data.updated)}</time></p>
+      <p class="status-date">
+        Updated <time datetime={status.data.updated}>{longDate(status.data.updated)}</time>
+        {status.data.sources && <> · Sources: {status.data.sources}</>}
+      </p>
     </section>
 
     <div class="tabs no-print" role="group" aria-label="Show">

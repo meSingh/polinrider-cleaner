@@ -57,7 +57,7 @@ export const collections = {
   // layout (content/status.md).
   status: defineCollection({
     loader: glob({ pattern: 'status.md', base: './src/content' }),
-    schema: z.object({ updated: day }),
+    schema: z.object({ updated: day, sources: z.string().optional() }),
   }),
   // Articles about the campaign published elsewhere, each one read and
   // checked before it was added. See the file's header.

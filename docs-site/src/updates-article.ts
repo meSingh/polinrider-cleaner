@@ -6,3 +6,9 @@ export const plainArticle = (html: string) =>
   html
     .replace(/<aside class="aside aside-tip" aria-label="Check yours">[\s\S]*?<\/aside>/g, '')
     .replace(/<h2[^>]*id="questions-people-ask"[^>]*>[\s\S]*?<\/h2>/g, '');
+
+/** The same for an article's Markdown, for llms-full.txt. */
+export const plainArticleMarkdown = (md: string) =>
+  md
+    .replace(/^:::tip\[Check yours\][\s\S]*?^:::\s*$/gm, '')
+    .replace(/^## Questions people ask\s*$/gm, '');
