@@ -1,6 +1,6 @@
 ---
-// Every release since 2.0, newest first: version, date, one line and a
-// download link. Built from the release pages, so a new release only needs
+// Every release since 2.0, newest first: version, date and one line. The
+// whole entry is the link to the release, where Download comes last. Built from the release pages, so a new release only needs
 // its own page.
 import Base from '../../layouts/Base.astro';
 import Crumbs from '../../components/Crumbs.astro';
@@ -33,20 +33,19 @@ const all = await releases();
 
     <ol class="list">
       {all.map((r, i) => (
-        <li class="item">
-          <div class="head">
-            <a class="version" href={r.href}>{r.version}</a>
-            {i === 0 && <span class="tag tag-accent">latest</span>}
-            <time datetime={r.date}>{longDate(r.date)}</time>
-          </div>
-          <p>{r.description}</p>
-          {r.breaking && (
-            <p class="breaking"><Icon name="review" size={18} /><span><strong>Breaking:</strong> {r.breaking}</span></p>
-          )}
-          <p class="links">
-            <a class="dl" href={`${r.href}#download`}><Icon name="download" size={17} /> Download {r.version}</a>
-            <a href={r.href}>What changed</a>
-          </p>
+        <li>
+          <a class="item" href={r.href}>
+            <span class="head">
+              <span class="version">{r.version}</span>
+              {i === 0 && <span class="tag tag-accent">latest</span>}
+              <time datetime={r.date}>{longDate(r.date)}</time>
+            </span>
+            <span class="desc">{r.description}</span>
+            {r.breaking && (
+              <span class="breaking"><Icon name="review" size={18} /><span><strong>Breaking:</strong> {r.breaking}</span></span>
+            )}
+            <span class="go">What changed and downloads <Icon name="arrow" size={16} /></span>
+          </a>
         </li>
       ))}
     </ol>
@@ -60,7 +59,7 @@ const all = await releases();
 
 <style>
   .page {
-    max-width: calc(52rem + 2 * var(--gutter));
+    max-width: calc(64rem + 2 * var(--gutter));
     padding-top: 2.5rem;
   }
   h1 {
@@ -76,14 +75,28 @@ const all = await releases();
     font-size: var(--text-sm);
   }
   .list {
+    display: grid;
+    gap: 1rem;
     margin: 2.5rem 0;
     padding: 0;
     list-style: none;
-    border-top: 1px solid var(--pr-border);
   }
   .item {
-    padding: 1.6rem 0;
-    border-bottom: 1px solid var(--pr-border);
+    display: grid;
+    gap: 0.6rem;
+    padding: 1.4rem 1.6rem;
+    border: 1px solid var(--pr-border);
+    border-radius: var(--pr-radius);
+    background: var(--pr-surface);
+    color: var(--pr-text);
+    text-decoration: none;
+  }
+  .item:hover {
+    border-color: var(--pr-border-strong);
+    color: var(--pr-text);
+  }
+  .item:hover .version {
+    text-decoration: underline;
   }
   .head {
     display: flex;
@@ -96,17 +109,10 @@ const all = await releases();
     font-size: 1.5rem;
     font-weight: 650;
     letter-spacing: -0.02em;
-    text-decoration: none;
-  }
-  .version:hover {
-    text-decoration: underline;
   }
   time {
     color: var(--pr-muted);
     font-size: var(--text-sm);
-  }
-  .item p {
-    margin: 0.6rem 0 0;
   }
   .breaking {
     display: flex;
@@ -120,16 +126,12 @@ const all = await releases();
     flex: none;
     margin-top: 0.2rem;
   }
-  .links {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem 1.5rem;
-    font-size: var(--text-sm);
-    font-weight: 600;
-  }
-  .links a {
+  .go {
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
+    color: var(--pr-heading);
+    font-size: var(--text-sm);
+    font-weight: 600;
   }
 </style>

@@ -1,8 +1,8 @@
 ---
 // The top bar on every page: the name, the four sections, search, the theme
-// and one obvious button, "Download", which goes to the install page. On a
-// phone the sections and the theme move into a Menu panel; search and the
-// menu stay in the bar. The menu is a <details>, so it works without
+// button and one obvious button, "Download", which goes to the install page.
+// On a phone the sections move into a Menu panel; search, the theme button
+// and the menu stay in the bar. The menu is a <details>, so it works without
 // JavaScript.
 import Icon from './Icon.astro';
 import Search from './Search.astro';
@@ -34,7 +34,7 @@ const current = (match: string) => (path.startsWith(`${base}${match}`) ? 'page' 
 
     <div class="tools">
       <Search />
-      <div class="wide"><ThemeToggle /></div>
+      <ThemeToggle />
       <a class="gh wide" href={REPO_URL}>GitHub</a>
       <a class="pill dl" href={`${base}/docs/quick-start/`}>Download</a>
       <details class="menu">
@@ -45,7 +45,6 @@ const current = (match: string) => (path.startsWith(`${base}${match}`) ? 'page' 
             <a href={`${base}/docs/quick-start/`}>Download</a>
             <a href={REPO_URL}>GitHub</a>
           </nav>
-          <div class="panel-theme"><span>Theme</span><ThemeToggle /></div>
         </div>
       </details>
     </div>
@@ -158,16 +157,6 @@ const current = (match: string) => (path.startsWith(`${base}${match}`) ? 'page' 
   .panel nav a:hover,
   .panel nav a[aria-current='page'] {
     background: var(--pr-surface);
-  }
-  .panel-theme {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-top: 0.4rem;
-    padding: 0.7rem 0.8rem 0.3rem;
-    border-top: 1px solid var(--pr-border);
-    color: var(--pr-muted);
-    font-size: var(--text-sm);
   }
   @media (min-width: 50rem) {
     .dl {

@@ -8,23 +8,9 @@ date: "2026-10-26"
 
 import Downloads from '~/components/Downloads.astro';
 import Released from '~/components/Released.astro';
+import RunBlock from '~/components/RunBlock.astro';
 
 <Released version="2.2.0" date="2026-10-26" /> No breaking changes.
-
-## Download
-
-<Downloads version="2.2.0" packages />
-
-Or through a package manager:
-
-```bash
-brew install meSingh/tap/polinrider-cleaner
-scoop bucket add mesingh https://github.com/meSingh/scoop-bucket
-scoop install polinrider-cleaner
-```
-
-[Verify what you downloaded](/docs/reference/verifying/) before
-you run it.
 
 ## New
 
@@ -65,3 +51,14 @@ you run it.
 None. Exit codes, commands and flags are as in 2.1.0. `--purge-evidence` is
 new, and the guided flow asks one more question at the end, which `done` or
 `q` answers.
+
+## Download
+
+<Downloads version="2.2.0" packages />
+
+Or use a package manager. Choose your system, then run only its commands:
+
+<RunBlock />
+
+[Verify what you downloaded](/docs/reference/verifying/) before
+you run it.

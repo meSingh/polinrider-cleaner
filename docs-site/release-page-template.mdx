@@ -11,23 +11,9 @@ breaking: one line on what breaks and what to do about it.
 
 import Downloads from '~/components/Downloads.astro';
 import Released from '~/components/Released.astro';
+import RunBlock from '~/components/RunBlock.astro';
 
 <Released version="X.Y.Z" date="YYYY-MM-DD" /> No breaking changes.
-
-## Download
-
-<Downloads version="X.Y.Z" packages />
-
-Or through a package manager:
-
-```bash
-brew install meSingh/tap/polinrider-cleaner
-scoop bucket add mesingh https://github.com/meSingh/scoop-bucket
-scoop install polinrider-cleaner
-```
-
-[Verify what you downloaded](/docs/reference/verifying/) before
-you run it.
 
 ## New
 
@@ -40,3 +26,14 @@ you run it.
 ## Breaking changes
 
 None. Exit codes, commands and flags are as in the previous release.
+
+## Download
+
+<Downloads version="X.Y.Z" packages />
+
+Or use a package manager. Choose your system, then run only its commands:
+
+<RunBlock />
+
+[Verify what you downloaded](/docs/reference/verifying/) before
+you run it.

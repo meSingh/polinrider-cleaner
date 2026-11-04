@@ -3,8 +3,10 @@
 // are the one thing on the page a reader has to type or copy. One tab per
 // system; the reader's own system is chosen first, and a choice is shared
 // with every other RunBlock on the site. Long lines wrap rather than scroll,
-// so nothing is hidden off the edge of a phone. Without JavaScript all three
-// systems are shown, one under another.
+// so nothing is hidden off the edge of a phone. Coloured like every other
+// code block on the site. Without JavaScript all three systems are shown,
+// one under another.
+import { Code } from 'astro:components';
 const brew = 'brew install meSingh/tap/polinrider-cleaner\npolinrider';
 const scoop =
   'scoop bucket add mesingh https://github.com/meSingh/scoop-bucket\n' +
@@ -34,7 +36,9 @@ const uid = `run-${Math.random().toString(36).slice(2, 8)}`;
   {systems.map((s) => (
     <div class="panel" role="tabpanel" id={`${uid}-${s.id}`} aria-labelledby={`${uid}-tab-${s.id}`} data-key={s.id}>
       <p class="nojs-label">{s.label}</p>
-      <div class="code-block copy-wrap"><pre><code>{s.code}</code></pre></div>
+      <div class="code-block copy-wrap">
+        <Code code={s.code} lang="bash" themes={{ light: 'github-light-default', dark: 'github-dark-default' }} defaultColor={false} wrap />
+      </div>
       {s.note && <p class="note" set:html={s.note} />}
     </div>
   ))}
@@ -149,13 +153,12 @@ const uid = `run-${Math.random().toString(36).slice(2, 8)}`;
   .js .nojs-label {
     display: none;
   }
-  pre {
+  .run-block :global(pre) {
     margin: 0;
     padding: 0.9rem 6.5rem 0.9rem 1.25rem;
     border: 1px solid var(--pr-border);
     border-radius: var(--pr-radius);
-    background: var(--pr-code-bg);
-    color: var(--pr-heading);
+    background: var(--pr-code-bg) !important;
     font-size: 1.0625rem;
     line-height: 1.75;
     /* Wrap, never scroll: the scoop line is long on a phone. */

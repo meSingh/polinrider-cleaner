@@ -48,7 +48,7 @@
   --text-h4: 1.125rem;
 
   --nav-height: 4rem;
-  --content-width: 44rem;
+  --content-width: 50rem;
   --wide-width: 72rem;
   --gutter: 1.25rem;
 
@@ -64,37 +64,9 @@
   }
 }
 
-/* Dark. Used when the reader's system asks for it or they choose it. */
-:root {
-  --pr-bg: #0c0f15;
-  --pr-surface: #141821;
-  --pr-code-bg: #11151d;
-  --pr-heading: #f4f6fa;
-  --pr-text: #c3c9d4;
-  --pr-muted: #959dac;
-  --pr-border: #262c38;
-  --pr-border-strong: #3a4150;
-  --pr-accent: #7adcea;
-  --pr-accent-bg: rgb(122 220 234 / 0.1);
-  --pr-pill-bg: #f4f6fa;
-  --pr-pill-text: #0c0f15;
-
-  --pr-clean: #7ee2a8;
-  --pr-clean-bg: rgb(52 199 110 / 0.1);
-  --pr-clean-border: rgb(126 226 168 / 0.32);
-  --pr-review: #f5c76e;
-  --pr-review-bg: rgb(245 166 35 / 0.1);
-  --pr-review-border: rgb(245 199 110 / 0.32);
-  --pr-bad: #ff9a92;
-  --pr-bad-bg: rgb(255 95 85 / 0.1);
-  --pr-bad-border: rgb(255 154 146 / 0.34);
-  --pr-none: #c3c9d4;
-  --pr-none-bg: rgb(255 255 255 / 0.04);
-  --pr-none-border: #3a4150;
-
-  color-scheme: dark;
-}
-
+/* Light, the default: for a reader who has not chosen, and without
+ * JavaScript. */
+:root,
 :root[data-theme='light'] {
   --pr-bg: #ffffff;
   --pr-surface: #f5f6f8;
@@ -125,35 +97,33 @@
   color-scheme: light;
 }
 
-/* Without JavaScript the theme script never runs: follow the system. */
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme]) {
-    --pr-bg: #ffffff;
-    --pr-surface: #f5f6f8;
-    --pr-code-bg: #fafafb;
-    --pr-heading: #0f1220;
-    --pr-text: #474c59;
-    --pr-muted: #5f6573;
-    --pr-border: #e4e6eb;
-    --pr-border-strong: #cdd1d8;
-    --pr-accent: #0b6a80;
-    --pr-accent-bg: #ecf7f9;
-    --pr-pill-bg: #0f1220;
-    --pr-pill-text: #ffffff;
+/* Dark, when the reader chooses it with the toggle. */
+:root[data-theme='dark'] {
+  --pr-bg: #0c0f15;
+  --pr-surface: #141821;
+  --pr-code-bg: #11151d;
+  --pr-heading: #f4f6fa;
+  --pr-text: #c3c9d4;
+  --pr-muted: #959dac;
+  --pr-border: #262c38;
+  --pr-border-strong: #3a4150;
+  --pr-accent: #7adcea;
+  --pr-accent-bg: rgb(122 220 234 / 0.1);
+  --pr-pill-bg: #f4f6fa;
+  --pr-pill-text: #0c0f15;
 
-    --pr-clean: #13693a;
-    --pr-clean-bg: #eefaf2;
-    --pr-clean-border: #b9e3c8;
-    --pr-review: #85480a;
-    --pr-review-bg: #fff6e5;
-    --pr-review-border: #f1d49c;
-    --pr-bad: #b0241c;
-    --pr-bad-bg: #fff1f0;
-    --pr-bad-border: #f3c3bf;
-    --pr-none: #474c59;
-    --pr-none-bg: #f5f6f8;
-    --pr-none-border: #cdd1d8;
+  --pr-clean: #7ee2a8;
+  --pr-clean-bg: rgb(52 199 110 / 0.1);
+  --pr-clean-border: rgb(126 226 168 / 0.32);
+  --pr-review: #f5c76e;
+  --pr-review-bg: rgb(245 166 35 / 0.1);
+  --pr-review-border: rgb(245 199 110 / 0.32);
+  --pr-bad: #ff9a92;
+  --pr-bad-bg: rgb(255 95 85 / 0.1);
+  --pr-bad-border: rgb(255 154 146 / 0.34);
+  --pr-none: #c3c9d4;
+  --pr-none-bg: rgb(255 255 255 / 0.04);
+  --pr-none-border: #3a4150;
 
-    color-scheme: light;
-  }
+  color-scheme: dark;
 }

@@ -378,9 +378,10 @@ grep -n '^version' Cargo.toml; grep -n 'v[0-9]\+\.[0-9]\+\.[0-9]\+' README.md
 `docs-site/src/content/releases/vX.Y.Z.mdx` and fill it in: what is new,
 what changed, and breaking changes (say "None" when there are none). Quote
 `version` and `date` in the frontmatter. The address comes from the file
-name, dots kept (`/releases/vX.Y.Z/`). The Releases page lists it by itself,
-with Download first on the page, and the download links point at the assets
-the tag will publish. Write it for
+name, dots kept (`/releases/vX.Y.Z/`). The Releases page lists it by itself.
+The page reads New, Changed, Breaking changes and then Download, so a reader
+knows what is at stake before downloading; the download buttons point at the
+assets the tag will publish. Write it for
 someone running the tool, not for a reviewer of the code; the tag message
 below can reuse it.
 

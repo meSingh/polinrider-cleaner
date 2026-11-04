@@ -94,15 +94,10 @@
   tab-size: 2;
 }
 pre.astro-code span {
-  color: var(--shiki-dark);
-}
-:root[data-theme='light'] pre.astro-code span {
   color: var(--shiki-light);
 }
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme]) pre.astro-code span {
-    color: var(--shiki-light);
-  }
+:root[data-theme='dark'] pre.astro-code span {
+  color: var(--shiki-dark);
 }
 pre.astro-code {
   color: var(--pr-heading);
@@ -339,14 +334,9 @@ pre.astro-code {
 }
 
 /* The light theme's comment grey is 4.4:1 on the code background, just
- * under AA; comments take the site's muted grey instead (5.8:1). */
-:root[data-theme='light'] pre.astro-code span[style*='--shiki-light:#6E7781' i] {
+ * under AA; comments take the site's muted grey instead (5.6:1). */
+:root:not([data-theme='dark']) pre.astro-code span[style*='--shiki-light:#6E7781' i] {
   color: var(--pr-muted);
-}
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme]) pre.astro-code span[style*='--shiki-light:#6E7781' i] {
-    color: var(--pr-muted);
-  }
 }
 
 /* A block inside a page that draws its own lists (the docs overview). */
@@ -361,4 +351,8 @@ pre.astro-code {
 .prose td > code:only-child {
   white-space: nowrap;
   overflow-wrap: normal;
+}
+
+.prose .run-block {
+  margin-bottom: 1.25rem;
 }

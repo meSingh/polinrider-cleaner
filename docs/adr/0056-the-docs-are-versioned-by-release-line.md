@@ -30,13 +30,17 @@ keeping a copy in the repository.
   "Cutting a release", step 1b). The copy is served at `/docs/X.Y/`. A patch
   release replaces its line's copy. Links between docs pages inside the
   copy point at the copy; links elsewhere on the site do not change.
-- **The build fails** while the newest release, from 2.3 on, has no frozen
-  copy.
+- **The build fails** while the newest release has no frozen copy.
 - **A frozen copy is never edited by hand.** It records what the docs said
   for that release.
-- **A version switcher** on every docs page lists the latest, each frozen
-  copy and, for 2.2, 2.1 and 2.0, the docs folder at that release's tag on
-  GitHub. There is no backfill: versioning starts at 2.3.0.
+- **Every release line since 2.0 is on the site.** 2.0, 2.1 and 2.2 came
+  before versioning, so their copies were taken from each release's tag
+  (`npm run freeze-docs -- X.Y.Z --from-tag`), with their links rewritten
+  to this site's layout and links to repository files pointed at GitHub at
+  that tag. Their words are as they were at the tag. Nobody is sent to a
+  GitHub folder to read old docs.
+- **A version switcher** on every docs page lists the latest and each
+  frozen copy.
 - **Frozen copies are not indexed.** Each frozen page has a canonical link
   to the same page under `/docs/` and `noindex`, is left out of the sitemap
   and out of site search, so a search never lands a reader on old
@@ -57,7 +61,8 @@ Worse:
 
 - **The repository grows by one copy of the docs per minor release**, about
   a dozen Markdown files each. Fine for years at this pace; if it ever is
-  not, old lines can move to GitHub-only like 2.0 to 2.2.
+  not, the oldest lines could be dropped from the site and linked at their
+  tags instead.
 - **Components are shared, not frozen.** A frozen page renders with today's
   run block, verdict cards and downloads table. If one of those changes in a
   way that contradicts an old release, the frozen page shows the new one.

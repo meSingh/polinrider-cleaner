@@ -1,111 +1,66 @@
 ---
-// Light, dark or follow the system, as three small buttons, so the current
-// choice is visible without opening anything. "System" is the default. The
-// choice is stored under the key the site used under Starlight, so a reader's
-// earlier choice still holds; ThemeScript.astro applies it before the page
-// paints.
+// One button that switches between light and dark. Light is the default for
+// a reader who has never chosen; a choice is remembered. ThemeScript.astro
+// applies it before the page paints. The icon shows the theme the button
+// switches to, and its label says so.
 import Icon from './Icon.astro';
-
-const options = [
-  { value: 'auto', label: 'Follow the system', icon: 'laptop' },
-  { value: 'light', label: 'Light', icon: 'sun' },
-  { value: 'dark', label: 'Dark', icon: 'moon' },
-] as const;
 ---
 
-<pr-theme-toggle>
-  <div class="toggle" role="group" aria-label="Colour theme">
-    {options.map((o) => (
-      <button type="button" data-theme-value={o.value} aria-pressed={o.value === 'auto' ? 'true' : 'false'} title={o.label}>
-        <Icon name={o.icon} size={16} />
-        <span class="sr-only">{o.label}</span>
-      </button>
-    ))}
-  </div>
-</pr-theme-toggle>
-
-{/* Marks the stored choice before the page paints, so the toggle never flickers. */}
-<script is:inline>
-  (() => {
-    const t = (typeof localStorage !== 'undefined' && localStorage.getItem('starlight-theme')) || 'auto';
-    document.querySelectorAll('pr-theme-toggle button').forEach((b) => {
-      b.setAttribute('aria-pressed', String(b.dataset.themeValue === t));
-    });
-  })();
-</script>
+<button type="button" class="theme-toggle" aria-label="Switch to dark theme" title="Switch to dark theme">
+  <span class="to-dark"><Icon name="moon" size={18} /></span>
+  <span class="to-light"><Icon name="sun" size={18} /></span>
+</button>
 
 <script>
-  type Theme = 'auto' | 'dark' | 'light';
+  // The key the site used under Starlight, so a reader's earlier choice of
+  // light or dark still holds.
   const key = 'starlight-theme';
-  const parse = (t: unknown): Theme => (t === 'light' || t === 'dark' ? t : 'auto');
-  const load = (): Theme => {
-    try {
-      return parse(localStorage.getItem(key));
-    } catch {
-      return 'auto';
-    }
-  };
-  const system = (): 'light' | 'dark' =>
-    matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
-
-  function apply(theme: Theme) {
-    document.documentElement.dataset.theme = theme === 'auto' ? system() : theme;
-    document.querySelectorAll<HTMLButtonElement>('pr-theme-toggle button').forEach((b) => {
-      b.setAttribute('aria-pressed', String(b.dataset.themeValue === theme));
+  const label = () => {
+    const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    document.querySelectorAll('.theme-toggle').forEach((b) => {
+      b.setAttribute('aria-label', `Switch to ${next} theme`);
+      b.setAttribute('title', `Switch to ${next} theme`);
     });
-    try {
-      localStorage.setItem(key, theme === 'auto' ? '' : theme);
-    } catch {
-      /* Private windows can refuse storage; the choice then lasts this page. */
-    }
-  }
-
-  matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
-    if (load() === 'auto') apply('auto');
-  });
-
-  class ThemeToggle extends HTMLElement {
-    connectedCallback() {
-      this.querySelectorAll<HTMLButtonElement>('button').forEach((b) =>
-        b.addEventListener('click', () => apply(parse(b.dataset.themeValue))),
-      );
-    }
-  }
-  customElements.define('pr-theme-toggle', ThemeToggle);
-  apply(load());
+  };
+  document.querySelectorAll<HTMLButtonElement>('.theme-toggle').forEach((b) =>
+    b.addEventListener('click', () => {
+      const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+      document.documentElement.dataset.theme = next;
+      try {
+        localStorage.setItem(key, next);
+      } catch {
+        /* Private windows can refuse storage; the choice then lasts this page. */
+      }
+      label();
+    }),
+  );
+  label();
 </script>
 
 <style>
-  .toggle {
-    display: inline-flex;
-    gap: 2px;
-    padding: 3px;
+  .theme-toggle {
+    display: inline-grid;
+    place-items: center;
+    width: 2.4rem;
+    height: 2.4rem;
     border: 1px solid var(--pr-border);
     border-radius: 999px;
     background: var(--pr-bg);
-  }
-  button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 1.875rem;
-    height: 1.875rem;
-    border: 0;
-    border-radius: 999px;
-    background: transparent;
-    color: var(--pr-muted);
+    color: var(--pr-text);
     cursor: pointer;
   }
-  button:hover {
+  .theme-toggle:hover {
+    border-color: var(--pr-border-strong);
     color: var(--pr-heading);
   }
-  button[aria-pressed='true'] {
-    background: var(--pr-surface);
-    color: var(--pr-heading);
-    box-shadow: inset 0 0 0 1px var(--pr-border-strong);
+  .to-light,
+  :global([data-theme='dark']) .to-dark {
+    display: none;
   }
-  button:focus-visible {
-    outline: 2px solid var(--pr-accent);
-    outline-offset: 1px;
+  :global([data-theme='dark']) .to-light {
+    display: contents;
+  }
+  .to-dark {
+    display: contents;
   }
 </style>

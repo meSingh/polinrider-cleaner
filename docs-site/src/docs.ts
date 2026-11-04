@@ -65,8 +65,8 @@ export async function latestRelease(): Promise<string> {
   return (await releases())[0].version;
 }
 
-// Versioning starts at 2.3 (ADR-0056); older lines are on GitHub only.
-const FIRST_FROZEN = [2, 3];
+// Every release line from 2.0 has a copy on the site (ADR-0056).
+const FIRST_FROZEN = [2, 0];
 
 /** Every version built into the site, the latest first. */
 export async function builtVersions(): Promise<DocsVersion[]> {
