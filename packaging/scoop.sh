@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # scoop.sh - move the Scoop manifest to a new release.
 #
-#   packaging/scoop.sh VERSION SHA256SUMS < polinrider-cleaner.json > new.json
+#   packaging/scoop.sh VERSION SHA256SUMS < polinrider-scanner.json > new.json
 #
 # Reads the manifest as it is in meSingh/scoop-bucket and changes the version,
 # the download with its hash and the autoupdate url. Everything else, notes and
@@ -25,10 +25,10 @@ file="polinrider-v${version}-windows-x86_64.zip"
 hash=$(awk -v f="$file" '$2 == f || $2 == "*" f { print $1 }' "$sums")
 [[ "$hash" =~ ^[0-9a-f]{64}$ ]] || die "$file is not in SHA256SUMS"
 
-base="https://github.com/meSingh/polinrider-cleaner/releases/download"
+base="https://github.com/meSingh/polinrider-scanner/releases/download"
 # $version in the autoupdate url is Scoop's placeholder, not a shell variable.
 # shellcheck disable=SC2016
-auto='https://github.com/meSingh/polinrider-cleaner/releases/download/v$version/polinrider-v$version-windows-x86_64.zip'
+auto='https://github.com/meSingh/polinrider-scanner/releases/download/v$version/polinrider-v$version-windows-x86_64.zip'
 
 # --indent 4 is the bucket's own formatting, so the pull request shows only
 # what changed.

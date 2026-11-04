@@ -88,7 +88,7 @@ jobs:
           cd "${RUNNER_TEMP}"
           polinrider --version | tee deb-version.txt
           grep -q 'strong' deb-version.txt || { echo "the packaged binary cannot find its indicators"; exit 1; }
-          sudo dpkg -r polinrider-cleaner
+          sudo dpkg -r polinrider-scanner
 
       - name: The flat zip finds its indicators through a link, as winget runs it
         if: runner.os == 'Windows'

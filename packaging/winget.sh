@@ -4,7 +4,7 @@
 #   packaging/winget.sh VERSION SHA256SUMS OUTDIR [RELEASE_DATE]
 #
 # Writes the three files microsoft/winget-pkgs expects (version, installer and
-# defaultLocale) under OUTDIR/manifests/m/meSingh/PolinRiderCleaner/VERSION/,
+# defaultLocale) under OUTDIR/manifests/m/meSingh/PolinRiderScanner/VERSION/,
 # the path they take in that repository. Submitting them is done by hand; this
 # writes files and nothing else.
 #
@@ -28,15 +28,15 @@ version=$1 sums=$2 out=$3 date=${4:-$(date -u +%Y-%m-%d)}
 [[ -f "$sums" ]] || die "no SHA256SUMS at $sums"
 [[ "$date" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || die "RELEASE_DATE must be YYYY-MM-DD, not $date"
 
-id=meSingh.PolinRiderCleaner
+id=meSingh.PolinRiderScanner
 schema=1.12.0
-repo=https://github.com/meSingh/polinrider-cleaner
+repo=https://github.com/meSingh/polinrider-scanner
 file="polinrider-v${version}-windows-x86_64.zip"
 hash=$(awk -v f="$file" '$2 == f || $2 == "*" f { print $1 }' "$sums")
 [[ "$hash" =~ ^[0-9a-f]{64}$ ]] || die "$file is not in SHA256SUMS"
 hash=$(printf '%s' "$hash" | tr '[:lower:]' '[:upper:]')
 
-dir="${out}/manifests/m/meSingh/PolinRiderCleaner/${version}"
+dir="${out}/manifests/m/meSingh/PolinRiderScanner/${version}"
 mkdir -p "$dir"
 
 cat > "${dir}/${id}.yaml" <<EOF
@@ -76,7 +76,7 @@ PackageLocale: en-US
 Publisher: Mandeep Singh
 PublisherUrl: https://github.com/meSingh
 PublisherSupportUrl: ${repo}/issues
-PackageName: polinrider-cleaner
+PackageName: polinrider-scanner
 PackageUrl: ${repo}
 License: MIT
 LicenseUrl: ${repo}/blob/v${version}/LICENSE

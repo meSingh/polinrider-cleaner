@@ -68,6 +68,7 @@ If you disagree with one, open an issue and quote its number.
 | [0050](./0050-a-node-process-running-the-implants-script-is-the-implant.md) | A `node` process running a script from the implant's folder is the implant | Accepted |
 | [0051](./0051-the-github-check-compares-known-hashes.md) | The GitHub check compares the small files against the known hashes | Accepted |
 | [0052](./0052-content-patterns-at-the-confirmed-tier.md) | Match campaign patterns in file contents | Accepted |
+| [0055](./0055-the-repository-is-polinrider-scanner-from-3-0-0.md) | Rename the repository and its packages to polinrider-scanner, from 3.0.0 | Proposed |
 
 ## Adding one
 

@@ -356,10 +356,13 @@ descending. That was the six-hour scan ([ADR-0025](./docs/adr/0025-walk-the-file
 | Releases | GitHub Releases | Per tag, from `release.yml`: five binary archives, a Windows zip, two `.deb` packages and the source, all attested and in `SHA256SUMS` |
 | Homebrew tap | `meSingh/homebrew-tap` | Installs the binary and `ioc/`. `release.yml` opens the bump pull request; the maintainer merges it |
 | Scoop bucket | `meSingh/scoop-bucket` | Same, from the Windows zip |
-| winget | `microsoft/winget-pkgs` | Not submitted yet. `release.yml` writes the manifests as the `winget-manifests` artifact; submitting them is by hand |
+| winget | `microsoft/winget-pkgs` | Package `meSingh.PolinRiderScanner`, not merged yet. The first submission, `meSingh.PolinRiderCleaner`, was withdrawn with the rename (ADR-0055). `release.yml` writes the manifests as the `winget-manifests` artifact; submitting them is by hand |
 | Weekly indicator review | claude.ai routine "PolinRider indicator watch (2.0)" | Mondays 08:00 IST. Opens a draft `ioc/YYYY-MM-DD` pull request every week with signed commits, change or no change |
 | Beta binaries | `.github/workflows/beta-build.yml` | Builds and exercises every platform on each push to `main`. The only place the macOS and Windows live checks run |
-| Documentation site | GitHub Pages, from `main` | `docs-site/`, including the indicator reviews |
+| Documentation site | GitHub Pages, from `main`, at `polinriderscanner.com` | `docs-site/`, including the indicator reviews. The domain is set in the repository's Pages settings, not in a `CNAME` file |
+| Old site links | `meSingh/meSingh.github.io` | Redirect pages for `mesingh.github.io/polinrider-cleaner/...`, the site's address before 3.0.0. Keep it while old links get traffic |
+| `polinrider.com` | the registrar | A 301 to `polinriderscanner.com`. Pages serves one domain per site |
+| The old name | `meSingh/polinrider-cleaner` | The repository's name until 3.0.0; GitHub redirects it here. **Never create a repository with that name.** Doing so ends every redirect, including the links in releases before 3.0.0 and in the commits, pull requests and issues the tool has opened on other people's repositories (ADR-0055) |
 | Traffic log | `traffic` branch, from `.github/workflows/traffic.yml` | Views, clones, referrers, paths and stars, daily, kept past GitHub's 14 days. Needs the `TRAFFIC_TOKEN` secret: a fine-grained token on this repository with Administration: read only |
 
 ### Cutting a release
@@ -400,7 +403,7 @@ request.
 ```bash
 git checkout main && git pull
 VERSION=v2.1.0   # the release you are cutting
-git tag -s "$VERSION" -m "polinrider-cleaner $VERSION
+git tag -s "$VERSION" -m "{{PRODUCT_NAME}} $VERSION
 
 Summarise what changed and why it matters to someone running this."
 git push origin "$VERSION"
@@ -469,6 +472,13 @@ is found would depend on where winget puts it. The exe is already called
 > including the maintainer. A published tag is permanent. If you tagged the wrong
 > commit, cut the next patch version; do not try to move the tag.
 
+**Attestations name the repository.** A release's certificate records the
+repository's name when it was built, and `gh attestation verify --repo`
+compares against that name. Releases from 3.0.0 on name
+`meSingh/polinrider-scanner`; those before it name `meSingh/polinrider-cleaner`
+(ADR-0055). Every place that prints the verify command uses the new name and
+links the site's page for older releases.
+
 ### Maintaining SCORECARD_TOKEN
 
 The Scorecard workflow reads `secrets.SCORECARD_TOKEN`, a **fine-grained**
@@ -506,7 +516,7 @@ settings, Fine-grained tokens, Generate new token:
    the commit) and **Pull requests: Read and write** (the pull request).
    Metadata: Read-only is added by GitHub and is required. Nothing else.
 4. Store it in this repository only:
-   `gh secret set PACKAGING_TOKEN --repo meSingh/polinrider-cleaner`, which
+   `gh secret set PACKAGING_TOKEN --repo meSingh/polinrider-scanner`, which
    prompts for the value.
 
 It can write to the tap and the bucket, so it lives as a repository secret

@@ -38,13 +38,17 @@ sha256sum -c SHA256SUMS --ignore-missing
 
 # 2. the archive really was built by this repository's CI, at this tag
 gh attestation verify polinrider-__TAG__-macos-arm64.tar.gz \
-  --repo meSingh/polinrider-cleaner
+  --repo meSingh/polinrider-scanner
 
 # ...or offline, against the bundle attached here, with no network call
 gh attestation verify polinrider-__TAG__-macos-arm64.tar.gz \
   --bundle polinrider-__TAG__.intoto.jsonl \
-  --repo meSingh/polinrider-cleaner
+  --repo meSingh/polinrider-scanner
 ```
+
+Releases before 3.0.0 were built when this repository was called
+`meSingh/polinrider-cleaner`, and their attestations carry that name.
+[Verifying a release before 3.0.0](https://polinriderscanner.com/reference/verifying/#releases-before-300) shows the command for them.
 
 The tag itself is GPG-signed:
 
@@ -66,8 +70,8 @@ which you need only for those. Every change is shown as a dry run first and
 made only on a typed `yes`.
 
 1.x, the shell tool, is still available from the
-[v1.0.9 release](https://github.com/meSingh/polinrider-cleaner/releases/tag/v1.0.9).
+[v1.0.9 release](https://github.com/meSingh/polinrider-scanner/releases/tag/v1.0.9).
 
-See the [README](https://github.com/meSingh/polinrider-cleaner#readme) to get
-started, and [AGENTS.md](https://github.com/meSingh/polinrider-cleaner/blob/main/AGENTS.md)
+See the [README](https://github.com/meSingh/polinrider-scanner#readme) to get
+started, and [AGENTS.md](https://github.com/meSingh/polinrider-scanner/blob/main/AGENTS.md)
 if you are handing this to an AI agent.

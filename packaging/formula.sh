@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # formula.sh - move the Homebrew formula to a new release.
 #
-#   packaging/formula.sh VERSION SHA256SUMS < polinrider-cleaner.rb > new.rb
+#   packaging/formula.sh VERSION SHA256SUMS < polinrider-scanner.rb > new.rb
 #
 # Reads the formula as it is in meSingh/homebrew-tap and changes only the
 # version line, each archive url and the sha256 line under it, so anything
@@ -22,7 +22,7 @@ awk -v version="$version" -v sums="$sums" '
       split(line, f, /[ \t*]+/)
       hash[f[2]] = f[1]
     }
-    base = "https://github.com/meSingh/polinrider-cleaner/releases/download/v" version "/"
+    base = "https://github.com/meSingh/polinrider-scanner/releases/download/v" version "/"
   }
   /^[ \t]*version "/ {
     sub(/"[^"]*"/, "\"" version "\"")
