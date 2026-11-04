@@ -31,17 +31,24 @@ On 30 October 2026 a developer described it on the BleepingComputer forums
 - run `npm audit`;
 - confirmed VS Code's automatic tasks were off.
 
-The Defender entries they posted show what was detected: a command line, the
-Node.js program running obfuscated code passed to it with `node -e`. It was
-not a file.
+They attached logs from the Farbar Recovery Scan Tool (FRST). Its Windows
+Defender section holds seven detections of `Trojan:NPM/PolinRider.SF`, and
+each one names a command line rather than a file:
+`Path: CmdLine:_C:\Program Files\nodejs\node.exe -e`, followed by a long
+block of JavaScript passed to Node.js on the command line ([same thread][bc]).
 
-A volunteer helper read the scan logs and pointed at two entries as the
-source of the repeated infection: a registry Run entry and a script in the
-Startup folder, both named `MicrosoftCLROptimization`. The Run entry starts
-a script called `clr_init.vbs` at logon ([same thread][bc]). The developer
-had checked the Run keys and they looked clean. The name is borrowed from a
-real Microsoft .NET component ([Deception.Pro][dp]). As of 4 November the thread has no reply after the helper's, so
-whether that fixed it is not known.
+The same log also lists a registry Run value named
+`MicrosoftCLROptimization`, which runs a script called `clr_init.vbs` with
+`wscript.exe`, and a file of the same name in the user's Startup folder. So
+the Run keys the developer described as clean did hold an entry. Its name is
+borrowed from a real Microsoft .NET component, which makes it easy to read
+past ([Deception.Pro][dp]). Windows runs both a Run value and a Startup item
+each time the user logs on.
+
+A volunteer helper on the forum quoted those two entries back and called them
+the source of the repeated infection ([same thread][bc]). As of 4 November the
+thread has no reply after the helper's, so whether removing them fixed it is
+not known.
 
 ## Four places it comes back from
 
@@ -53,7 +60,7 @@ loads: the next `npm run dev`, the next build, the next CI run. Killing the
 process gives you a clean moment, not a clean project
 ([A Developer's Guide to Getting Rid of PolinRider][osm-guide]).
 
-That fits the forum case: Defender stopped a running command, and the next
+That fits the forum case: Defender caught a command line, and the next
 `npm run dev` started it again. Until the config file is cleaned, removing the
 detection cannot last.
 
@@ -77,10 +84,12 @@ detection cannot last.
   whatever credentials are valid on the computer, including ones you have
   just rotated ([Developer's Guide][osm-guide]).
 
-OpenSourceMalware's guide says a factory reset is not needed, because the
-payload does not stay on disk between runs ([Developer's Guide][osm-guide]).
-The two cases above show that some computers do carry files that start it
-again. Check for them either way.
+OpenSourceMalware's guide says a factory reset is not needed, but only on a
+condition: "Assuming you follow these steps in order", because the payload
+does not stay on disk between runs ([Developer's Guide][osm-guide]). The same
+guide's replaced `cli.js` is a file that persists and survives a reboot, and
+the two `MicrosoftCLROptimization` cases above are files too. Check for them
+whatever you decide about a reset.
 
 ### 3. GitHub
 
@@ -92,10 +101,11 @@ branches again ([Developer's Guide][osm-guide]).
 
 ### 4. Someone else's computer
 
-One small development agency's organization tried to clean up three times
-in 2026. Each time, a force-push from a different contributor's account put
-the payload back, the fastest within five hours, under a commit message the
-team already trusted
+Developers in one small development agency's organization tried to remove
+the malware at least three times in 2026. In each of the three cleanups
+OpenSourceMalware traced, a force-push from a different contributor's account
+put the payload back, the fastest about five hours later, under a commit
+message the team already trusted
 ([PolinRider is A/B Testing its Way Past Your Detections][osm-ab]).
 Cleaning a repository does not clean the computers that push to it. A
 collaborator who is still infected can reinfect you after you have finished,
