@@ -19,8 +19,14 @@
 #
 #   /usr/bin/polinrider
 #   /usr/share/polinrider/ioc/
-#   /usr/share/doc/polinrider-cleaner/copyright        the licence
-#   /usr/share/doc/polinrider-cleaner/DISCLAIMER.md
+#   /usr/share/doc/polinrider-scanner/copyright        the licence
+#   /usr/share/doc/polinrider-scanner/DISCLAIMER.md
+#
+# Up to 2.3.0 the package was called polinrider-cleaner. It installed the same
+# files, so the control file says this package Conflicts with and Replaces it
+# (Debian Policy 7.6.2): installing this one over it removes the old package
+# instead of failing on /usr/bin/polinrider. Provides keeps anything that asked
+# for the old name satisfied.
 
 set -euo pipefail
 
@@ -54,7 +60,7 @@ done < <(objdump -p "$bin" | awk '$1 == "NEEDED" { print $2 }')
 
 root=$(mktemp -d)
 trap 'rm -rf "$root"' EXIT
-doc="$root/usr/share/doc/polinrider-cleaner"
+doc="$root/usr/share/doc/polinrider-scanner"
 
 install -d -m 0755 "$root/DEBIAN" "$root/usr/bin" "$root/usr/share/polinrider" "$doc"
 install -m 0755 "$bin" "$root/usr/bin/polinrider"
@@ -74,17 +80,20 @@ chmod 0644 "$root/DEBIAN/md5sums"
 
 size=$(du -sk "$root/usr" | cut -f1)
 cat > "$root/DEBIAN/control" <<EOF
-Package: polinrider-cleaner
+Package: polinrider-scanner
 Version: ${version}
 Architecture: ${arch}
 Maintainer: Mandeep Singh <2369397+meSingh@users.noreply.github.com>
 Installed-Size: ${size}
 Depends: ${depends}
+Conflicts: polinrider-cleaner
+Replaces: polinrider-cleaner
+Provides: polinrider-cleaner
 Recommends: git
 Suggests: gh
 Section: utils
 Priority: optional
-Homepage: https://github.com/meSingh/polinrider-cleaner
+Homepage: https://github.com/meSingh/polinrider-scanner
 Description: Detect and clean up after the PolinRider supply-chain campaign
  Checks this machine, folders of code and GitHub accounts and organizations
  for the PolinRider campaign, and cleans up what it finds. Read-only unless

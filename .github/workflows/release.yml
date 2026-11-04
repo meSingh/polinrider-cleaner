@@ -230,7 +230,7 @@ jobs:
           if grep -q 'NOT USABLE' deb-version.txt; then
             echo "the packaged binary cannot find /usr/share/polinrider/ioc"; exit 1
           fi
-          sudo dpkg -r polinrider-cleaner
+          sudo dpkg -r polinrider-scanner
           [[ ! -e /usr/bin/polinrider && ! -e /usr/share/polinrider ]] \
             || { echo "removing the package left files behind"; exit 1; }
 
@@ -446,7 +446,7 @@ jobs:
           GH_TOKEN: ${{ secrets.PACKAGING_TOKEN }}
           TAG: ${{ needs.check.outputs.tag }}
         run: |
-          packaging/bump.sh meSingh/homebrew-tap Formula/polinrider-cleaner.rb \
+          packaging/bump.sh meSingh/homebrew-tap Formula/polinrider-scanner.rb \
             "${TAG#v}" release/SHA256SUMS packaging/formula.sh
 
       - name: Scoop bucket
@@ -455,5 +455,5 @@ jobs:
           GH_TOKEN: ${{ secrets.PACKAGING_TOKEN }}
           TAG: ${{ needs.check.outputs.tag }}
         run: |
-          packaging/bump.sh meSingh/scoop-bucket bucket/polinrider-cleaner.json \
+          packaging/bump.sh meSingh/scoop-bucket bucket/polinrider-scanner.json \
             "${TAG#v}" release/SHA256SUMS packaging/scoop.sh

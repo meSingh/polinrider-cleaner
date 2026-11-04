@@ -69,6 +69,7 @@ If you disagree with one, open an issue and quote its number.
 | [0051](./0051-the-github-check-compares-known-hashes.md) | The GitHub check compares the small files against the known hashes | Accepted |
 | [0052](./0052-content-patterns-at-the-confirmed-tier.md) | Match campaign patterns in file contents | Accepted |
 | [0053](./0053-release-downloads-are-counted-daily-with-our-own-kept-apart.md) | Count release downloads daily, with our own kept apart | Accepted |
+| [0055](./0055-the-repository-is-polinrider-scanner-from-3-0-0.md) | Rename the repository and its packages to polinrider-scanner, from 3.0.0 | Proposed |
 
 ## Adding one
 
