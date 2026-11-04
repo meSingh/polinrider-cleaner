@@ -5,44 +5,53 @@ date: "2026-11-04"
 sidebar:
   label: "False alarm?"
   order: -20261104
+tableOfContents:
+  maxHeadingLevel: 2
 ---
 
 import NewsMeta from '../../../components/NewsMeta.astro';
+import Verdict from '../../../components/Verdict.astro';
 
 <NewsMeta />
 
-polinrider gives one of three answers, and they mean different things. A
-`[HIT]` and the verdict `COMPROMISED` mean it found something that only the
-malware leaves. A `[review]` line means it found something a legitimate
-project can also have, and a person has to decide. `clean` means none of
-today's indicators is present, which is not the same as proof that nothing
-was ever there. This page explains each, and the harmless matches you are
-most likely to see.
+polinrider gives one of three answers, and they mean different things. Here
+is what each one means and what to do next.
 
 ## The three answers
 
-| You see | Exit code | What it means |
-|---|---|---|
-| `VERDICT: COMPROMISED` and `[HIT]` lines | `2` | At least one confirmed indicator |
-| `VERDICT: no confirmed indicator.` and `[review]` lines | `1` | Nothing confirmed; some lines need a person |
-| `VERDICT: clean against the current indicator set.` | `0` | None of today's indicators found |
-| A message that the check could not run | `3` | It could not tell you anything, for example a path that does not exist or a GitHub login that is missing |
+<div class="pr-verdicts pr-verdicts-stack">
+<Verdict kind="compromised" code={2} title="Compromised">
+You see `VERDICT: COMPROMISED` and `[HIT]` lines. It found at least one
+thing that only the malware leaves.
+</Verdict>
+<Verdict kind="review" code={1} title="Review">
+You see `VERDICT: no confirmed indicator.` and `[review]` lines. Nothing is
+confirmed, but some lines need a person to decide.
+</Verdict>
+<Verdict kind="clean" code={0} title="Clean">
+You see `VERDICT: clean against the current indicator set.` None of today's
+indicators is present. That is not proof that nothing was ever there.
+</Verdict>
+<Verdict kind="none" code={3} title="Could not run">
+A message says the check could not run, for example because a path does not
+exist or a GitHub login is missing. It tells you nothing either way.
+</Verdict>
+</div>
 
-The exit codes are a contract that scripts and CI can rely on
+Scripts and CI can rely on these exit codes
 ([Exit codes](/polinrider-cleaner/reference/exit-codes/)).
 
 ## How it decides what is confirmed
 
-The indicator set follows one rule. An entry may confirm infection only if a
-match means infection, with no plausible innocent explanation. Anything a
-legitimate project could also contain is review-only, and when the two are
-close, it goes to review. The reason is written into the rule itself: a false
-confirmation costs every user a panic, while keeping a real indicator at
-review tier costs one line of review output
+One rule. An indicator may confirm infection only if a match has no
+plausible innocent explanation. Anything a legitimate project could also
+contain is review-only. When the two are close, it goes to review.
+
+The reason is part of the rule: a false confirmation costs every user a
+panic, while keeping a real indicator at review costs one line of output
 ([Indicator reviews](/polinrider-cleaner/indicator-reviews/)).
 
-So a `[HIT]` is meant to be taken at its word, and a `[review]` is meant to be
-read.
+So take a `[HIT]` at its word, and read a `[review]`.
 
 ## If you see COMPROMISED
 
@@ -57,13 +66,13 @@ The box under the verdict says one of two things
   opened in an editor. If that happened, or you are not sure, treat the
   computer as compromised and rebuild it.
 
-Below the box, **WHAT TO DO NEXT** lists the steps for what was actually found,
-with the exact command for each. Follow it in order, and see
-[Order matters](/polinrider-cleaner/guides/order/) before touching GitHub.
+Below the box, **WHAT TO DO NEXT** lists a step for each thing found, with
+the exact command. Follow it in order. Check this computer before you touch
+GitHub ([Order matters](/polinrider-cleaner/guides/order/)).
 
 ## If you see review lines
 
-The tool prints three steps under a review-only result. In its own words
+The tool prints three steps. In its own words
 (from [`src/scan.rs`][scan-rs]):
 
 1. "Read each [review] line. It names a file, a process or a setting. Ask
@@ -73,50 +82,94 @@ The tool prints three steps under a review-only result. In its own words
 3. "If one of them is not yours, treat it as confirmed: disconnect from the
    network, and rotate your credentials from a different machine."
 
-The second point matters. A review line can mean "I could not look", not "I
-found something". Fix whatever stopped the check and run it again.
+The second step matters. A review line can mean "I could not look", not "I
+found something". Fix what stopped the check and run it again.
 
 ## Matches that are usually harmless
 
-Each of these is review-only, or is not reported at all, because a normal
-project can have it. Each still deserves the question: did you or your team
+Each of these is review-only, or not reported at all, because a normal
+project can have it. Each still deserves one question: did you or your team
 put it there?
 
-| You see | Why it can be harmless | What makes it real |
-|---|---|---|
-| A `.vscode/tasks.json` that runs on folder open, "verify the command by hand" | Teams use folder-open tasks for real work | The command runs `node` on a font file, or downloads and runs something. With a known indicator in it, it is a `[HIT]`, not a review ([`src/checks.rs`][checks-rs]) |
-| The word `folderOpen` or `allowAutomaticTasks` in another file, such as `.vscode/settings.json` | Only `tasks.json` runs commands; the words alone do nothing elsewhere ([False positives](/polinrider-cleaner/reference/false-positives/); [`ioc/weak.txt`][weak]) | A `tasks.json` that uses them |
-| A build config with a long tail after `export default`, or a line longer than 4,000 characters | Some configs legitimately run long; a flat ESLint config opens with `export default [` ([False positives](/polinrider-cleaner/reference/false-positives/)) | Code you did not write sitting after the end of the config, often after a long run of spaces |
-| `public/fonts/fa-solid-900.woff2` | It is a genuine Font Awesome file name ([OpenSourceMalware][osm-ab]) | Its first bytes are not a font's. A fake font is a `[HIT]` whatever it is called ([A font file that is really JavaScript](/polinrider-cleaner/news/2026-11-04-fake-font-javascript/)) |
-| `spellright.dict`, `branch_structure.json` or `clr_init.vbs` | A real VS Code extension's dictionary, or names a legitimate tool could also write ([ADR-0048][adr-0048]) | Nobody on the team uses the tool that writes it, or it sits beside other campaign files |
-| `temp_auto_push.bat` named inside a committed `.gitignore` | The repository itself may hold no payload | It says a contributor's computer is infected ([Found temp_auto_push.bat in your repository?](/polinrider-cleaner/news/2026-11-04-temp-auto-push-bat/)) |
+### A `tasks.json` that runs on folder open
 
-Two things are skipped on purpose and never reported: a Git LFS pointer
-standing in for a font, and an empty font file. Neither has font bytes, and
-neither is malware ([False positives](/polinrider-cleaner/reference/false-positives/)).
+The line says to verify the command by hand. Teams use folder-open tasks for
+real work.
+
+**It is real if** the command runs `node` on a font file, or downloads and
+runs something. With a known indicator in it, it is a `[HIT]`, not a review
+([`src/checks.rs`][checks-rs]).
+
+### `folderOpen` or `allowAutomaticTasks` in another file
+
+For example in `.vscode/settings.json`. Only `tasks.json` runs commands, so
+the words alone do nothing elsewhere
+([False positives](/polinrider-cleaner/reference/false-positives/);
+[`ioc/weak.txt`][weak]).
+
+**It is real if** a `tasks.json` uses them.
+
+### A long build config
+
+A tail after `export default`, or a line longer than 4,000 characters. Some
+configs legitimately run long, and a flat ESLint config opens with
+`export default [`
+([False positives](/polinrider-cleaner/reference/false-positives/)).
+
+**It is real if** code you did not write sits after the end of the config,
+often after a long run of spaces.
+
+### `public/fonts/fa-solid-900.woff2`
+
+It is a genuine Font Awesome file name ([OpenSourceMalware][osm-ab]).
+
+**It is real if** its first bytes are not a font's. A fake font is a `[HIT]`
+whatever it is called
+([A font file that is really JavaScript](/polinrider-cleaner/news/2026-11-04-fake-font-javascript/)).
+
+### `spellright.dict`, `branch_structure.json` or `clr_init.vbs`
+
+A real VS Code extension's dictionary, or names a legitimate tool could also
+write ([ADR-0048][adr-0048]).
+
+**It is real if** nobody on the team uses the tool that writes it, or it sits
+beside other campaign files.
+
+### `temp_auto_push.bat` named in a committed `.gitignore`
+
+The repository itself may hold no payload.
+
+**It means** a contributor's computer is infected
+([Found temp_auto_push.bat in your repository?](/polinrider-cleaner/news/2026-11-04-temp-auto-push-bat/)).
+
+### Never reported
+
+A Git LFS pointer standing in for a font, and an empty font file. Neither has
+font bytes, and neither is malware
+([False positives](/polinrider-cleaner/reference/false-positives/)).
 
 ## If you see clean
 
-`clean` means none of the current indicators is on what was checked. The
-campaign changes its signatures, so an older or rotated variant could have
-been there and gone ([Exit codes](/polinrider-cleaner/reference/exit-codes/)).
+None of the current indicators is on what was checked. The campaign changes
+its signatures, so an older or rotated variant could have been there and gone
+([Exit codes](/polinrider-cleaner/reference/exit-codes/)).
+
 The tool says so itself: if you had a reason to check, rotate your
-credentials anyway, because they may have been taken from another computer
-or a shared secret store ([`src/scan.rs`][scan-rs]).
+credentials anyway. They may have been taken from another computer or a
+shared secret store ([`src/scan.rs`][scan-rs]).
 
-Check that it looked where you meant it to: this computer, the folder that
-holds your projects and, if you push code, your GitHub account or
-organization.
+Check that it looked where you meant: this computer, the folder that holds
+your projects and, if you push code, your GitHub account or organization.
 
-## If another tool or your antivirus flagged it
+## If your antivirus flagged it
 
-A detection named for PolinRider by your antivirus, such as Windows
-Defender's `Trojan:NPM/PolinRider.SF`, is not a false alarm to wave away. In
-the case described in
+A detection named for PolinRider, such as Windows Defender's
+`Trojan:NPM/PolinRider.SF`, is not a false alarm to wave away. In the case in
 [PolinRider keeps coming back after you clean it](/polinrider-cleaner/news/2026-11-04-polinrider-keeps-coming-back/),
 Defender caught the payload's command line as it ran.
+
 A clean result from another scanner is a first pass, not a clean bill of
-health: OpenSourceMalware says this of its own scanner, which was built
+health. OpenSourceMalware says this of its own scanner, which was built
 against the campaign's original signature
 ([A Developer's Guide to Getting Rid of PolinRider][osm-guide]).
 
@@ -124,7 +177,8 @@ against the campaign's original signature
 
 Both directions are worth reporting.
 
-- A harmless file reported as `[HIT]` or a review line that should never fire:
+- A harmless file reported as `[HIT]`, or a review line that should never
+  fire:
   [open a false-positive issue](https://github.com/meSingh/polinrider-cleaner/issues/new?template=false-positive.md).
 - Something real that was missed:
   [open a missed-detection issue](https://github.com/meSingh/polinrider-cleaner/issues/new?template=missed-detection.md),

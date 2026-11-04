@@ -1,13 +1,10 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
-import lucode from 'lucode-starlight';
+import { PLAUSIBLE_SCRIPT_ID, REPO_URL } from './src/siteConfig.mjs';
 
-// Plausible analytics. Off until this holds the site's script ID from the
-// Plausible dashboard (Site settings, Site installation), which looks like
-// `pa-` followed by letters and digits. While it is empty, nothing is added to
-// any page. The ID is public: it appears in every page that loads the script.
-const PLAUSIBLE_SCRIPT_ID = '';
+// Plausible analytics: the script ID is set in src/siteConfig.mjs, because
+// the footer reads it too.
 
 // Downloads are release assets: .tar.gz and .zip archives, .deb packages and
 // .intoto.jsonl attestations. Setting fileExtensions replaces Plausible's
@@ -75,16 +72,6 @@ const siteHead = [
     : []),
 ];
 
-// The footer. The privacy line appears only while Plausible is switched on,
-// so the footer never claims analytics the page does not load.
-const footerText =
-  'Built by [Mandeep Singh](https://github.com/meSingh) after cleaning up a real ' +
-  'PolinRider incident.' +
-  (PLAUSIBLE_SCRIPT_ID
-    ? ' Visits are counted with [Plausible](https://plausible.io/data-policy), ' +
-      'without cookies or personal data.'
-    : '');
-
 // The site is published to GitHub Pages at /polinrider-cleaner/, so every
 // internal link has to be built with that base or the whole thing 404s once
 // it leaves localhost.
@@ -101,27 +88,51 @@ export default defineConfig({
         'Check a machine, a GitHub account or a whole organization for PolinRider malware, ' +
         'and clean it up. Free and open source. Changes nothing until you say yes.',
 
-      // Lucode: a shadcn/ui-styled Starlight theme. It supplies the component
-      // overrides, tokens and Expressive Code config; everything below is
-      // ordinary Starlight configuration on top of it.
-      plugins: [
-        lucode({
-          // Where the site came from. Shown on every page. The licence notices
-          // of the theme and of Starlight ship with the site in
-          // /third-party-notices.txt; see src/pages/third-party-notices.txt.ts.
-          footerText,
-          navLinks: [
-            { label: 'Quick start', link: '/quick-start/' },
-            { label: 'The campaign', link: '/campaign/what-it-is/' },
-            { label: 'News', link: '/news/' },
-            { label: 'Releases', link: '/releases/' },
-          ],
-        }),
-      ],
+      // The look is plain Starlight: its own colour, type and layout tokens
+      // set in src/styles/theme.css, and a few components replaced where the
+      // design needs different markup. Each override says why at its top.
+      components: {
+        Header: './src/components/overrides/Header.astro',
+        SiteTitle: './src/components/overrides/SiteTitle.astro',
+        ThemeSelect: './src/components/overrides/ThemeSelect.astro',
+        Hero: './src/components/overrides/Hero.astro',
+        PageTitle: './src/components/overrides/PageTitle.astro',
+        Footer: './src/components/overrides/Footer.astro',
+      },
 
-      social: [
-        { icon: 'github', label: 'GitHub', href: 'https://github.com/meSingh/polinrider-cleaner' },
-      ],
+      // Code blocks take their colours from the theme's own tokens, so they
+      // follow light and dark with the rest of the page.
+      expressiveCode: {
+        useStarlightUiThemeColors: true,
+        styleOverrides: {
+          borderRadius: '14px',
+          borderColor: 'var(--pr-border)',
+          codeBackground: 'var(--pr-code-bg)',
+          codeFontFamily: 'var(--__sl-font-mono)',
+          codeFontSize: 'var(--sl-text-code)',
+          codeLineHeight: '1.7',
+          codePaddingBlock: '1rem',
+          codePaddingInline: '1.25rem',
+          frames: {
+            frameBoxShadowCssValue: 'none',
+            editorBackground: 'var(--pr-code-bg)',
+            terminalBackground: 'var(--pr-code-bg)',
+            terminalTitlebarBackground: 'var(--pr-code-bg)',
+            terminalTitlebarBorderBottomColor: 'var(--pr-border)',
+            terminalTitlebarDotsOpacity: '0',
+            editorTabBarBackground: 'var(--pr-code-bg)',
+            editorActiveTabBackground: 'var(--pr-code-bg)',
+            editorTabBarBorderBottomColor: 'var(--pr-border)',
+            inlineButtonBackground: 'var(--pr-heading)',
+            inlineButtonForeground: 'var(--pr-heading)',
+            inlineButtonBorder: 'var(--pr-border-strong)',
+            tooltipSuccessBackground: 'var(--pr-clean)',
+            tooltipSuccessForeground: 'var(--pr-bg)',
+          },
+        },
+      },
+
+      social: [{ icon: 'github', label: 'GitHub', href: REPO_URL }],
 
       // A correction should be a pull request, not an issue somebody has to
       // translate into one.
@@ -133,7 +144,7 @@ export default defineConfig({
 
       head: [...siteHead, ...plausibleHead(PLAUSIBLE_SCRIPT_ID)],
 
-      customCss: ['./src/styles/custom.css'],
+      customCss: ['./src/styles/theme.css', './src/styles/custom.css'],
 
       // Releases and indicator reviews each show their own list in the
       // sidebar. See src/routeData.ts.

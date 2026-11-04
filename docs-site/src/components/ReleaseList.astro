@@ -45,19 +45,19 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 <style>
   .release-list { list-style: none; padding: 0; margin: 1.5rem 0 0; display: grid; gap: 1rem; }
   .release-list li {
-    margin: 0; padding: 1rem 1.25rem; border: 1px solid var(--border, var(--gray-6));
-    border-radius: var(--radius, 0.75rem); background: var(--gray-7);
+    margin: 0; padding: 1rem 1.25rem; border: 1px solid var(--pr-border);
+    border-radius: var(--pr-radius); background: var(--pr-surface);
   }
   .release-list a {
     display: flex; align-items: baseline; gap: 0.75rem; flex-wrap: wrap;
-    text-decoration: none; color: var(--foreground);
+    text-decoration: none; color: var(--pr-heading);
   }
   .release-list .version { font-size: 1.25rem; font-weight: 600; }
   .release-list .latest {
     font-size: 0.75rem; padding: 0.1rem 0.5rem; border-radius: 999px;
-    background: var(--accent-low); color: var(--accent); font-weight: 600;
+    background: var(--pr-accent-bg); color: var(--pr-accent); font-weight: 600;
   }
-  .release-list time { color: var(--muted-foreground); font-size: 0.875rem; }
-  .release-list p { margin: 0.5rem 0 0; color: var(--gray-2); }
-  .release-list .breaking { color: var(--orange); }
+  .release-list time { color: var(--pr-muted); font-size: 0.875rem; }
+  .release-list p { margin: 0.5rem 0 0; color: var(--pr-text); }
+  .release-list .breaking { color: var(--pr-review); }
 </style>

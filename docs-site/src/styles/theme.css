@@ -1,0 +1,175 @@
+/* The site's look, set on Starlight's own tokens.
+ *
+ * Who reads this site: someone who fears their computer is infected. So the
+ * text is large and dark enough to read when tired, there is plenty of space,
+ * and three colours are kept for the tool's three answers and used for
+ * nothing else:
+ *
+ *   clean        green   exit 0
+ *   review       amber   exit 1
+ *   compromised  red     exit 2
+ *
+ * Colour never carries a meaning alone: every verdict also has its word and
+ * an icon. Every text colour below meets WCAG AA (4.5:1) on the background it
+ * sits on, in both themes; the pairs are listed in the commit that set them.
+ */
+
+@font-face {
+  font-family: 'Geist';
+  src: url('../assets/fonts/geist-variable.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Geist';
+  src: url('../assets/fonts/geist-italic-variable.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* Type and layout, the same in both themes. */
+:root {
+  --sl-font: 'Geist';
+
+  --sl-text-body: 1.125rem; /* 18px */
+  --sl-text-body-sm: 1rem;
+  --sl-text-code: 0.9375rem; /* 15px */
+  --sl-text-code-sm: 0.875rem;
+  --sl-line-height: 1.6;
+  --sl-line-height-headings: 1.15;
+
+  --sl-text-h1: 2.125rem;
+  --sl-text-h2: 1.5rem;
+  --sl-text-h3: 1.25rem;
+  --sl-text-h4: 1.125rem;
+  --sl-text-h5: 1rem;
+
+  --sl-nav-height: 4rem;
+  --sl-sidebar-width: 17rem;
+  --sl-content-width: 44rem;
+
+  --pr-radius: 14px;
+  --pr-radius-sm: 8px;
+}
+@media (min-width: 50em) {
+  :root {
+    --sl-text-h1: 2.5rem;
+    --sl-text-h2: 1.75rem;
+    --sl-text-h3: 1.3125rem;
+    --sl-text-h4: 1.125rem;
+  }
+}
+
+/* Dark. Starlight treats dark as the default and light as the override. */
+:root {
+  --pr-bg: #0c0f15;
+  --pr-surface: #141821;
+  --pr-code-bg: #11151d;
+  --pr-heading: #f4f6fa;
+  --pr-text: #c3c9d4;
+  --pr-muted: #959dac;
+  --pr-border: #262c38;
+  --pr-border-strong: #3a4150;
+  --pr-accent: #7adcea;
+  --pr-accent-bg: rgb(122 220 234 / 0.1);
+  --pr-pill-bg: #f4f6fa;
+  --pr-pill-text: #0c0f15;
+
+  --pr-clean: #7ee2a8;
+  --pr-clean-bg: rgb(52 199 110 / 0.1);
+  --pr-clean-border: rgb(126 226 168 / 0.32);
+  --pr-review: #f5c76e;
+  --pr-review-bg: rgb(245 166 35 / 0.1);
+  --pr-review-border: rgb(245 199 110 / 0.32);
+  --pr-bad: #ff9a92;
+  --pr-bad-bg: rgb(255 95 85 / 0.1);
+  --pr-bad-border: rgb(255 154 146 / 0.34);
+  --pr-none: #c3c9d4;
+  --pr-none-bg: rgb(255 255 255 / 0.04);
+  --pr-none-border: #3a4150;
+
+  --sl-color-white: var(--pr-heading);
+  --sl-color-gray-1: #e3e7ee;
+  --sl-color-gray-2: var(--pr-text);
+  --sl-color-gray-3: var(--pr-muted);
+  --sl-color-gray-4: #687082;
+  --sl-color-gray-5: var(--pr-border-strong);
+  --sl-color-gray-6: var(--pr-surface);
+  --sl-color-black: var(--pr-bg);
+
+  --sl-color-accent-low: #0f3a44;
+  --sl-color-accent: #4fc6d8;
+  --sl-color-accent-high: var(--pr-accent);
+
+  --sl-color-text: var(--pr-text);
+  --sl-color-text-accent: var(--pr-accent);
+  --sl-color-text-invert: var(--pr-bg);
+  --sl-color-bg: var(--pr-bg);
+  --sl-color-bg-nav: var(--pr-bg);
+  --sl-color-bg-sidebar: var(--pr-bg);
+  --sl-color-bg-inline-code: var(--pr-surface);
+  --sl-color-hairline-light: var(--pr-border);
+  --sl-color-hairline: var(--pr-border);
+  --sl-color-hairline-shade: var(--pr-border);
+
+  --sl-color-orange: var(--pr-review);
+  --sl-color-orange-low: var(--pr-review-bg);
+  --sl-color-orange-high: var(--pr-review);
+  --sl-color-red: var(--pr-bad);
+  --sl-color-red-low: var(--pr-bad-bg);
+  --sl-color-red-high: var(--pr-bad);
+  --sl-color-green: var(--pr-clean);
+  --sl-color-green-low: var(--pr-clean-bg);
+  --sl-color-green-high: var(--pr-clean);
+  /* Starlight colours notes blue and tips purple. Neither is a verdict, so
+   * both take the accent. */
+  --sl-color-blue: var(--pr-accent);
+  --sl-color-blue-low: var(--pr-accent-bg);
+  --sl-color-blue-high: var(--pr-accent);
+  --sl-color-purple: var(--pr-accent);
+  --sl-color-purple-low: var(--pr-accent-bg);
+  --sl-color-purple-high: var(--pr-accent);
+
+  color-scheme: dark;
+}
+
+:root[data-theme='light'] {
+  --pr-bg: #ffffff;
+  --pr-surface: #f5f6f8;
+  --pr-code-bg: #fafafb;
+  --pr-heading: #0f1220;
+  --pr-text: #474c59;
+  --pr-muted: #5f6573;
+  --pr-border: #e4e6eb;
+  --pr-border-strong: #cdd1d8;
+  --pr-accent: #0b6a80;
+  --pr-accent-bg: #ecf7f9;
+  --pr-pill-bg: #0f1220;
+  --pr-pill-text: #ffffff;
+
+  --pr-clean: #13693a;
+  --pr-clean-bg: #eefaf2;
+  --pr-clean-border: #b9e3c8;
+  --pr-review: #85480a;
+  --pr-review-bg: #fff6e5;
+  --pr-review-border: #f1d49c;
+  --pr-bad: #b0241c;
+  --pr-bad-bg: #fff1f0;
+  --pr-bad-border: #f3c3bf;
+  --pr-none: #474c59;
+  --pr-none-bg: #f5f6f8;
+  --pr-none-border: #cdd1d8;
+
+  --sl-color-gray-1: #1d2130;
+  --sl-color-gray-4: #8b919d;
+  --sl-color-gray-7: var(--pr-surface);
+  --sl-color-accent-low: var(--pr-accent-bg);
+  --sl-color-accent: var(--pr-accent);
+  --sl-color-accent-high: #084f60;
+  --sl-color-text-accent: var(--pr-accent);
+  --sl-color-text-invert: #ffffff;
+
+  color-scheme: light;
+}

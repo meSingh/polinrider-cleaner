@@ -1,0 +1,32 @@
+---
+// One of the tool's answers, shown the same way everywhere on the site:
+// its colour, an icon and its word, so the colour never carries the meaning
+// alone. The words are the tool's own.
+//
+//   <Verdict kind="compromised" code={2} title="Compromised">What it means.</Verdict>
+//
+// kind: clean (exit 0), review (exit 1), compromised (exit 2) or none
+// (exit 3, the check could not run).
+interface Props {
+  kind: 'clean' | 'review' | 'compromised' | 'none';
+  title: string;
+  code?: number;
+}
+const { kind, title, code } = Astro.props;
+
+const icons = {
+  clean: '<circle cx="12" cy="12" r="9"/><path d="m8 12.5 2.7 2.7L16.2 9.5"/>',
+  review: '<path d="M10.3 4.2 2.8 17.3A2 2 0 0 0 4.5 20.3h15a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0Z"/><path d="M12 9.5v4.2"/><path d="M12 17h.01"/>',
+  compromised: '<path d="M8.2 2.8h7.6l5.4 5.4v7.6l-5.4 5.4H8.2l-5.4-5.4V8.2Z"/><path d="m9.2 9.2 5.6 5.6M14.8 9.2l-5.6 5.6"/>',
+  none: '<circle cx="12" cy="12" r="9"/><path d="M8 12h8"/>',
+};
+---
+
+<div class={`pr-verdict pr-verdict-${kind}`}>
+  <p class="head">
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={icons[kind]} />
+    <strong>{title}</strong>
+    {code !== undefined && <span class="code">exit {code}</span>}
+  </p>
+  <div class="body"><slot /></div>
+</div>

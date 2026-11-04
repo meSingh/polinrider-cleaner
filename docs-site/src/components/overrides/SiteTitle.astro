@@ -1,0 +1,29 @@
+---
+// The name in the top bar: the project's mark and its short name. The full
+// site title, "PolinRider scanner and cleaner", stays in every page's <title>,
+// where search engines read it; the bar only needs to say where you are.
+const { siteTitleHref } = Astro.locals.starlightRoute;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+
+<a href={siteTitleHref} class="pr-site-title">
+  <img src={`${base}/favicon.svg`} alt="" width="28" height="28" />
+  <span translate="no">polinrider</span>
+</a>
+
+<style>
+  .pr-site-title {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    color: var(--pr-heading);
+    font-size: 1.125rem;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  img {
+    border-radius: 7px;
+  }
+</style>

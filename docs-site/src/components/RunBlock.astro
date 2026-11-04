@@ -1,0 +1,28 @@
+---
+// The install and run commands, set larger than ordinary code because they
+// are the one thing on the page a reader has to type or copy. One tab per
+// system; the choice is shared with every other RunBlock on the site. The
+// commands are shown as plain text, without syntax colours, so they read as
+// one thing to type.
+import { Tabs, TabItem, Code } from '@astrojs/starlight/components';
+
+const brew = 'brew install meSingh/tap/polinrider-cleaner\npolinrider';
+const scoop =
+  'scoop bucket add mesingh https://github.com/meSingh/scoop-bucket\n' +
+  'scoop install polinrider-cleaner\npolinrider';
+---
+
+<div class="pr-run">
+  <Tabs syncKey="os">
+    <TabItem label="macOS">
+      <Code code={brew} lang="txt" frame="none" wrap />
+    </TabItem>
+    <TabItem label="Linux">
+      <Code code={brew} lang="txt" frame="none" wrap />
+      <p class="aside">On Debian or Ubuntu you can use the <code>.deb</code> from the <a href="https://github.com/meSingh/polinrider-cleaner/releases/latest">latest release</a> instead.</p>
+    </TabItem>
+    <TabItem label="Windows">
+      <Code code={scoop} lang="txt" frame="none" wrap />
+    </TabItem>
+  </Tabs>
+</div>

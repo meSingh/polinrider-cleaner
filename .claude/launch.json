@@ -4,8 +4,25 @@
     {
       "name": "docs-site",
       "runtimeExecutable": "./ci/docs-serve.sh",
-      "runtimeArgs": ["4321"],
+      "runtimeArgs": [
+        "4321"
+      ],
       "port": 4321
+    },
+    {
+      "name": "docs-site-redesign",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "preview",
+        "--prefix",
+        "docs-site",
+        "--",
+        "--port",
+        "4323"
+      ],
+      "port": 4323,
+      "autoPort": false
     }
   ]
 }

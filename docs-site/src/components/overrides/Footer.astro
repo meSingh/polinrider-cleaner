@@ -1,0 +1,77 @@
+---
+// Below every page: Starlight's edit link, date and previous and next links,
+// then the site's own line. The privacy line appears only while Plausible is
+// switched on, so the footer never claims analytics the page does not load.
+import EditLink from 'virtual:starlight/components/EditLink';
+import LastUpdated from 'virtual:starlight/components/LastUpdated';
+import Pagination from 'virtual:starlight/components/Pagination';
+import { PLAUSIBLE_SCRIPT_ID, REPO_URL } from '../../siteConfig.mjs';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const splash = Astro.locals.starlightRoute.entry.data.template === 'splash';
+---
+
+<footer class="pr-footer">
+  {!splash && (
+    <>
+      <div class="meta">
+        <EditLink />
+        <LastUpdated />
+      </div>
+      <Pagination />
+    </>
+  )}
+  <div class="site">
+    <p>
+      Built by <a href="https://github.com/meSingh">Mandeep Singh</a> after cleaning up a real
+      PolinRider incident.
+      {PLAUSIBLE_SCRIPT_ID && (
+        <>
+          {' '}Visits are counted with <a href="https://plausible.io/data-policy">Plausible</a>,
+          without cookies or personal data.
+        </>
+      )}
+    </p>
+    <p class="links">
+      <a href={REPO_URL}>GitHub</a>
+      <a href={`${base}/project/security/`}>Report a vulnerability</a>
+      <a href={`${base}/third-party-notices.txt`}>Third-party notices</a>
+    </p>
+  </div>
+</footer>
+
+<style>
+  .pr-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.75rem 3rem;
+    margin-top: 3rem;
+    color: var(--pr-muted);
+    font-size: 0.9375rem;
+  }
+  .site {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--pr-border);
+    color: var(--pr-muted);
+    font-size: 0.9375rem;
+  }
+  .site p {
+    margin: 0;
+  }
+  .site a {
+    color: var(--pr-text);
+  }
+  .links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.5rem;
+    margin-top: 0.75rem !important;
+  }
+</style>

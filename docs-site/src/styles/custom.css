@@ -1,101 +1,487 @@
-/* Additions on top of the Lucode theme.
- *
- * Lucode ships a full OKLCH palette (--red, --orange, --green, --blue,
- * --purple, each with -low and -high) but leaves --accent as var(--gray-7),
- * which is grey. That is why the site read as flat. Everything below either
- * gives it an accent or maps the tool's own vocabulary onto tokens the theme
- * already defines, rather than inventing a second palette beside it.
- */
+/* Page styles on top of the tokens in theme.css. Starlight's own rules sit in
+ * cascade layers, so these plain rules win without !important. */
 
-/* The palette is taken from the project's artwork (docs/img/hero-lattice.jpg):
- * a deep navy night, cyan light from the lattice, and magenta flames held back
- * at the edges. Grays carry a slight navy tint so surfaces sit inside the
- * same night as the art instead of on neutral black. Everything is set on the
- * theme's own tokens, so Lucode's components pick it up without overrides.
- *
- *   navy    #050b1f  background      cyan     #3aecf8  accent
- *   surface #0b1a33  cards, code     magenta  #a53e8f  flames, --purple
- */
-:root[data-theme='dark'] {
-  --background: oklch(14.5% 0.04 265);
-  --foreground: oklch(97% 0.008 210);
-  --gray-1: oklch(97% 0.008 210);
-  --gray-2: oklch(87% 0.015 220);
-  --gray-3: oklch(72% 0.025 230);
-  --gray-4: oklch(58% 0.03 240);
-  --gray-5: oklch(37% 0.04 245);
-  --gray-6: oklch(27% 0.045 250);
-  --gray-7: oklch(20% 0.045 255);
+/* ---- Text ------------------------------------------------------------- */
 
-  --accent: oklch(86% 0.14 203);
-  --accent-low: oklch(30% 0.07 210);
-  --accent-high: oklch(93% 0.08 200);
-
-  --purple: oklch(70% 0.2 330);
-  --purple-low: oklch(28% 0.1 330);
-  --purple-high: oklch(84% 0.11 330);
-}
-:root[data-theme='light'] {
-  --background: oklch(98.5% 0.006 230);
-  --foreground: oklch(18% 0.04 265);
-  --gray-1: oklch(22% 0.04 262);
-  --gray-2: oklch(29% 0.04 258);
-  --gray-3: oklch(39% 0.035 252);
-  --gray-4: oklch(55% 0.03 245);
-  --gray-5: oklch(71% 0.02 238);
-  --gray-6: oklch(87% 0.015 230);
-  --gray-7: oklch(95.5% 0.01 225);
-
-  --accent: oklch(52% 0.11 205);
-  --accent-low: oklch(95% 0.03 200);
-  --accent-high: oklch(40% 0.09 210);
-
-  --purple: oklch(52% 0.2 330);
-  --purple-low: oklch(96% 0.02 330);
-  --purple-high: oklch(42% 0.18 330);
+/* Starlight leaves the body at the browser's 16px; the page text is 18px. */
+.sl-markdown-content {
+  font-size: var(--sl-text-body);
 }
 
-/* The scanner prints [HIT], [review] and [ok]. The page uses the theme's own
- * red, orange and green for those, so a reader moving between terminal and
- * documentation relearns nothing and the palette stays coherent. */
-code.hit    { color: var(--red);    font-weight: 600; }
-code.review { color: var(--orange); font-weight: 600; }
-code.ok     { color: var(--green);  font-weight: 600; }
-
-/* Badge strip: a row that wraps, no bullets, no baseline gaps. */
-.badges {
-  display: flex; flex-wrap: wrap; gap: 0.4rem; justify-content: center;
-  margin: 0 0 2rem; padding: 0; list-style: none;
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
-.badges li  { margin: 0; }
-.badges a   { display: block; line-height: 0; }
-.badges img { display: block; height: 20px; }
 
-/* Wide tables scroll inside the page instead of pushing the layout sideways. */
-.sl-markdown-content table { display: block; overflow-x: auto; }
+.sl-markdown-content :is(h2, h3, h4) {
+  color: var(--pr-heading);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+.sl-markdown-content :not(h1, h2, h3, h4, h5, h6) + h2 {
+  margin-top: 2.75rem;
+}
+.sl-markdown-content :not(h1, h2, h3, h4, h5, h6) + h3 {
+  margin-top: 2rem;
+}
+.sl-markdown-content p,
+.sl-markdown-content li {
+  text-wrap: pretty;
+}
+.sl-markdown-content strong {
+  color: var(--pr-heading);
+  font-weight: 600;
+}
+.sl-markdown-content a:not(:where(.not-content *, .pr-card)) {
+  color: var(--pr-accent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+.sl-markdown-content a:not(:where(.not-content *, .pr-card)):hover {
+  text-decoration-thickness: 2px;
+}
+.sl-markdown-content :is(ul, ol) {
+  padding-inline-start: 1.25rem;
+}
+.sl-markdown-content li::marker {
+  color: var(--pr-muted);
+}
+.sl-markdown-content li + li {
+  margin-top: 0.5rem;
+}
 
-/* The splash page. Lucode renders its body with no container, so the page
- * wraps each part in a ContainerSection; these give the headings and images
- * inside those sections the weight a landing page needs. */
-:root .hero[data-layout] { padding-block-end: 1.5rem; }
-.container-section .sl-markdown-content h2 {
-  font-size: 1.5rem; font-weight: 600; letter-spacing: -0.02em;
+/* Inline code: a quiet tint with a hairline, not a dark block. */
+.sl-markdown-content :not(pre) > code {
+  padding: 0.1em 0.35em;
+  border: 1px solid var(--pr-border);
+  border-radius: 6px;
+  background: var(--pr-surface);
+  color: var(--pr-heading);
+  font-size: 0.86em;
+}
+
+:focus-visible {
+  outline: 2px solid var(--pr-accent);
+  outline-offset: 2px;
+}
+
+/* ---- The tool's own tags ---------------------------------------------- */
+
+/* [HIT], [review] and [ok] keep the verdict colours, and their words. */
+code.hit {
+  color: var(--pr-bad);
+  font-weight: 600;
+}
+code.review {
+  color: var(--pr-review);
+  font-weight: 600;
+}
+code.ok {
+  color: var(--pr-clean);
+  font-weight: 600;
+}
+
+/* ---- Chrome ----------------------------------------------------------- */
+
+header.header {
+  border-bottom: 1px solid var(--pr-border);
+  background: color-mix(in srgb, var(--pr-bg) 92%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+/* The search button: a quiet field, not a second accent. */
+site-search > button {
+  border-radius: 999px;
+  border-color: var(--pr-border);
+  background: var(--pr-bg);
+  color: var(--pr-muted);
+}
+site-search > button:hover {
+  border-color: var(--pr-border-strong);
+  color: var(--pr-heading);
+}
+
+/* Sidebar: small grey group labels, a grey pill for the current page. */
+#starlight__sidebar {
+  border-inline-end: 1px solid var(--pr-border);
+}
+.sidebar-content {
+  font-size: 0.9375rem;
+}
+.sidebar-content a {
+  color: var(--pr-text);
+}
+.sidebar-content a:hover {
+  color: var(--pr-heading);
+}
+.sidebar-content .group-label .large {
+  color: var(--pr-heading);
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+.sidebar-content .top-level > li > a.large {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--pr-text);
+}
+.sidebar-content a[aria-current='page'],
+.sidebar-content a[aria-current='page']:hover {
+  background: var(--pr-surface);
+  color: var(--pr-heading);
+  font-weight: 600;
+  box-shadow: inset 2px 0 0 var(--pr-heading);
+}
+.sidebar-content .sl-badge {
+  border-color: var(--pr-border-strong);
+  background: transparent;
+  color: var(--pr-muted);
+}
+
+/* On this page. */
+starlight-toc h2,
+mobile-starlight-toc summary {
+  color: var(--pr-heading);
+}
+starlight-toc a {
+  color: var(--pr-muted);
+}
+starlight-toc a[aria-current='true'] {
+  color: var(--pr-heading);
+  font-weight: 600;
+}
+
+/* The title sits in its own panel; no rule between it and the page. */
+.content-panel + .content-panel {
+  border-top: 0;
+}
+.content-panel:has(> .sl-container > .pr-crumbs) {
+  padding-bottom: 0;
+}
+
+/* ---- Blocks ----------------------------------------------------------- */
+
+/* A terminal block with no title: no empty title bar above the commands. */
+.expressive-code .frame.is-terminal:not(.has-title) .header {
+  display: none;
+}
+.expressive-code .frame.is-terminal:not(.has-title) pre {
+  border-top: 1px solid var(--pr-border);
+  border-radius: var(--pr-radius);
+}
+
+/* Asides: soft tint, rounded, a thin bar. Caution and danger reuse the review
+ * and compromised colours on purpose: both mean "slow down here". */
+.starlight-aside {
+  border-inline-start-width: 3px;
+  border-radius: var(--pr-radius);
+  padding: 1.1rem 1.25rem;
+  color: var(--pr-text);
+}
+.starlight-aside__title {
+  font-size: 1.0625rem;
+}
+.starlight-aside--note,
+.starlight-aside--tip {
+  --sl-color-asides-text-accent: var(--pr-accent);
+  --sl-color-asides-border: var(--pr-accent);
+  background: var(--pr-accent-bg);
+}
+.starlight-aside--caution {
+  --sl-color-asides-text-accent: var(--pr-review);
+  --sl-color-asides-border: var(--pr-review);
+  background: var(--pr-review-bg);
+}
+.starlight-aside--danger {
+  --sl-color-asides-text-accent: var(--pr-bad);
+  --sl-color-asides-border: var(--pr-bad);
+  background: var(--pr-bad-bg);
+}
+
+/* Tables: no heavy grid, room to breathe, scroll sideways when wide. */
+.sl-markdown-content table {
+  display: block;
+  overflow-x: auto;
+  border-collapse: collapse;
+  font-size: 1rem;
+}
+.sl-markdown-content :is(th, td) {
+  padding: 0.7rem 1rem 0.7rem 0;
+  border: 0;
+  border-bottom: 1px solid var(--pr-border);
+  background: transparent;
+  vertical-align: top;
+}
+.sl-markdown-content th {
+  color: var(--pr-heading);
+  font-weight: 600;
+  border-bottom-color: var(--pr-border-strong);
+}
+.sl-markdown-content :is(th, td):first-child {
+  white-space: nowrap;
+}
+
+/* Tabs: plain words with an underline under the open one. */
+starlight-tabs [role='tablist'] {
+  border-bottom: 1px solid var(--pr-border);
+}
+starlight-tabs .tab > [role='tab'] {
+  --sl-tab-color-border: transparent;
+  padding: 0.5rem 1.1rem;
+  color: var(--pr-muted);
+  font-size: 1rem;
+  font-weight: 500;
+}
+starlight-tabs .tab > [role='tab']:hover {
+  color: var(--pr-heading);
+}
+starlight-tabs .tab > [role='tab'][aria-selected='true'] {
+  --sl-tab-color-border: var(--pr-heading);
+  color: var(--pr-heading);
+  font-weight: 600;
+}
+
+/* Starlight's numbered steps: quiet numbers on a hairline. */
+.sl-steps > li::before {
+  background: var(--pr-surface);
+  color: var(--pr-heading);
+  box-shadow: inset 0 0 0 1px var(--pr-border-strong);
+  font-weight: 600;
+}
+.sl-steps > li::after {
+  background: var(--pr-border);
+}
+
+/* The line under a News post's title. */
+.news-meta {
+  color: var(--pr-muted);
+  font-size: 0.9375rem;
+}
+
+/* ---- Verdicts --------------------------------------------------------- */
+
+/* Grids set their own gaps; Starlight's "space above every block" rule would
+ * push the second and later items down. */
+.sl-markdown-content :is(.pr-verdicts, .pr-cards, .pr-steps, .pr-two) > * {
   margin-top: 0;
 }
-.container-section .sl-markdown-content img { border-radius: var(--radius); }
 
-/* The current page in the sidebar. The theme fills it with the accent, which
- * on this palette is a bright cyan that its own text cannot be read against.
- * A dark tint of the same cyan with light text keeps it obvious and legible,
- * and a bar on the left marks it without relying on colour alone. */
-:root .entry-link[aria-current='page'] .entry-link-inner {
-  background-color: var(--accent-low);
-  color: var(--accent-high);
-  box-shadow: inset 3px 0 0 var(--accent);
+.pr-verdicts {
+  display: grid;
+  gap: 1rem;
 }
-/* Badges in the sidebar ("latest") use the accent rather than the theme's
- * fixed lime, which matched nothing else on the site. */
-:root .entry-badge {
-  background-color: var(--accent);
-  color: var(--background);
+@media (min-width: 50rem) {
+  .pr-verdicts:not(.pr-verdicts-stack) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+.pr-verdict {
+  --c: var(--pr-none);
+  --bg: var(--pr-none-bg);
+  --b: var(--pr-none-border);
+  padding: 1.15rem 1.25rem 1.25rem;
+  border: 1px solid var(--b);
+  border-radius: var(--pr-radius);
+  background: var(--bg);
+}
+.pr-verdict-clean {
+  --c: var(--pr-clean);
+  --bg: var(--pr-clean-bg);
+  --b: var(--pr-clean-border);
+}
+.pr-verdict-review {
+  --c: var(--pr-review);
+  --bg: var(--pr-review-bg);
+  --b: var(--pr-review-border);
+}
+.pr-verdict-compromised {
+  --c: var(--pr-bad);
+  --bg: var(--pr-bad-bg);
+  --b: var(--pr-bad-border);
+}
+.sl-markdown-content .pr-verdict .head {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0;
+  color: var(--c);
+}
+.sl-markdown-content .pr-verdict .head strong {
+  color: var(--c);
+  font-size: 1.125rem;
+  font-weight: 650;
+}
+.pr-verdict .code {
+  margin-inline-start: auto;
+  color: var(--pr-muted);
+  font-family: var(--__sl-font-mono);
+  font-size: 0.8125rem;
+}
+.sl-markdown-content .pr-verdict .body {
+  margin-top: 0.6rem;
+  color: var(--pr-text);
+  font-size: 1rem;
+  line-height: 1.55;
+}
+.sl-markdown-content .pr-verdict .body > * + * {
+  margin-top: 0.5rem;
+}
+
+/* ---- The run block ----------------------------------------------------- */
+
+/* In the run block the copy button stays visible: a reader in a hurry should
+ * not have to find it by hovering. The commands are short, so it covers
+ * nothing. */
+.pr-run .expressive-code .copy button {
+  opacity: 1 !important;
+}
+
+.pr-run {
+  --sl-text-code: 1.0625rem;
+}
+.pr-run .expressive-code pre {
+  padding-block: 0.4rem;
+}
+/* Room on the right so a wrapped command never runs under the copy button. */
+.pr-run .expressive-code pre > code {
+  padding-inline-end: 2.5rem;
+}
+.pr-run .aside {
+  color: var(--pr-muted);
+  font-size: 0.9375rem;
+}
+
+/* ---- Home -------------------------------------------------------------- */
+
+[data-has-hero] .content-panel {
+  border: 0;
+}
+[data-has-hero] .sl-markdown-content {
+  max-width: 64rem;
+  margin-inline: auto;
+}
+.pr-section {
+  padding-block: 2.5rem;
+  border-top: 1px solid var(--pr-border);
+}
+.pr-section > :is(h2, .sl-heading-wrapper) {
+  margin-top: 0 !important;
+  margin-bottom: 1.25rem;
+}
+.pr-run-section {
+  max-width: 44rem;
+  margin-inline: auto;
+  border-top: 0;
+  padding-top: 0.5rem;
+}
+.pr-run-section > :is(h2, .sl-heading-wrapper, p) {
+  text-align: center;
+}
+.pr-run-section .last-updated {
+  justify-content: center;
+  margin: 1.5rem 0 0;
+}
+
+.pr-steps {
+  display: grid;
+  gap: 1rem;
+  padding: 0 !important;
+  list-style: none;
+  counter-reset: step;
+}
+@media (min-width: 50rem) {
+  .pr-steps {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+.sl-markdown-content .pr-steps > li {
+  counter-increment: step;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 1.15rem 1.25rem;
+  border: 1px solid var(--pr-border);
+  border-radius: var(--pr-radius);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+.pr-steps > li::before {
+  content: counter(step);
+  display: inline-grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  margin-bottom: 0.4rem;
+  border-radius: 50%;
+  background: var(--pr-pill-bg);
+  color: var(--pr-pill-text);
+  font-size: 0.9375rem;
+  font-weight: 650;
+}
+.pr-steps strong {
+  font-size: 1.0625rem;
+}
+
+.pr-cards {
+  display: grid;
+  gap: 1rem;
+}
+@media (min-width: 40rem) {
+  .pr-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.sl-markdown-content .pr-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 1.25rem 1.35rem;
+  border: 1px solid var(--pr-border);
+  border-radius: var(--pr-radius);
+  color: var(--pr-text);
+  font-size: 1rem;
+  line-height: 1.5;
+  text-decoration: none;
+  transition: border-color 0.15s;
+}
+.sl-markdown-content .pr-card:hover {
+  border-color: var(--pr-border-strong);
+  background: var(--pr-surface);
+}
+.pr-card strong {
+  font-size: 1.125rem;
+}
+.pr-card strong::after {
+  content: ' \2192';
+  color: var(--pr-muted);
+}
+
+.pr-two {
+  display: grid;
+  gap: 2.5rem;
+}
+@media (min-width: 50rem) {
+  .pr-two {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.pr-two :is(h2, .sl-heading-wrapper) {
+  margin-top: 0 !important;
+}
+.pr-two > div > * + * {
+  margin-top: 1rem;
+}
+
+.pr-more ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 2rem;
+  padding: 0 !important;
+  list-style: none;
+}
+.sl-markdown-content .pr-more li {
+  margin: 0;
 }

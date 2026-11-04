@@ -1,0 +1,71 @@
+---
+// The page title, with a breadcrumb above it so a reader who arrived from a
+// search knows which part of the site they are in. The trail is the site's
+// own sections, taken from the first part of the page's address.
+const PAGE_TITLE_ID = '_top';
+const { entry } = Astro.locals.starlightRoute;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+
+const sections: Record<string, { label: string; href: string }> = {
+  'quick-start': { label: 'Quick start', href: '/quick-start/' },
+  campaign: { label: 'The campaign', href: '/campaign/what-it-is/' },
+  guides: { label: 'Cleaning up', href: '/guides/order/' },
+  news: { label: 'News', href: '/news/' },
+  releases: { label: 'Releases', href: '/releases/' },
+  'indicator-reviews': { label: 'Indicator reviews', href: '/indicator-reviews/' },
+  reference: { label: 'Reference', href: '/reference/exit-codes/' },
+  project: { label: 'The project', href: '/project/contributing/' },
+};
+
+const parts = entry.id.split('/');
+const section = sections[parts[0]];
+// A section's own index page shows only "Home" above its title.
+const crumbs = [{ label: 'Home', href: '/' }];
+if (section && parts.length > 1) crumbs.push(section);
+---
+
+<nav class="pr-crumbs" aria-label="Breadcrumb">
+  <ol>
+    {crumbs.map((c) => (
+      <li><a href={`${base}${c.href}`}>{c.label}</a></li>
+    ))}
+  </ol>
+</nav>
+<h1 id={PAGE_TITLE_ID}>{entry.data.title}</h1>
+
+<style>
+  .pr-crumbs ol {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.875rem;
+  }
+  .pr-crumbs li {
+    margin: 0;
+  }
+  .pr-crumbs li + li::before {
+    content: '/';
+    margin-inline: 0.5rem;
+    color: var(--pr-muted);
+  }
+  .pr-crumbs a {
+    color: var(--pr-muted);
+    text-decoration: none;
+  }
+  .pr-crumbs a:hover {
+    color: var(--pr-heading);
+    text-decoration: underline;
+  }
+  h1 {
+    margin-top: 0.75rem;
+    font-size: var(--sl-text-h1);
+    line-height: var(--sl-line-height-headings);
+    font-weight: 650;
+    letter-spacing: -0.025em;
+    color: var(--pr-heading);
+    text-wrap: balance;
+  }
+</style>

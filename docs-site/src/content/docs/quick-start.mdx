@@ -1,0 +1,80 @@
+---
+title: "Scan for PolinRider: quick start"
+description: Download, verify and run one program that checks this computer, a folder, a GitHub account or an organization for PolinRider.
+---
+
+import { Steps } from '@astrojs/starlight/components';
+import RunBlock from '../../components/RunBlock.astro';
+
+One program. Install it, run it and answer its questions.
+
+It changes nothing until you type `yes`. Everything else on this site can
+wait until it has told you what it found.
+
+## Install it and run it
+
+<RunBlock />
+
+The package managers put the program and its indicator set in place for you.
+
+## Or download it and verify it yourself
+
+<Steps>
+
+1. Download the archive for your computer from the
+   [latest release](https://github.com/meSingh/polinrider-cleaner/releases/latest):
+   macOS (Apple silicon or Intel), Linux (x86_64 or arm64) or Windows
+   (x86_64).
+
+2. Check that it is genuine:
+
+   ```bash
+   sha256sum -c SHA256SUMS --ignore-missing
+   gh attestation verify polinrider-v2.3.0-macos-arm64.tar.gz --repo meSingh/polinrider-cleaner
+   ```
+
+3. Unpack it and run it with no arguments:
+
+   ```bash
+   tar -xzf polinrider-v2.3.0-macos-arm64.tar.gz
+   cd polinrider-v2.3.0-macos-arm64
+   ./polinrider
+   ```
+
+</Steps>
+
+Keep the `ioc/` folder beside the program. It is the indicator set, and the
+program refuses to scan without it.
+
+On macOS, Gatekeeper stops the first run, because the program is not
+notarised. Once you have verified it, run
+`xattr -d com.apple.quarantine ./polinrider`.
+
+On Debian and Ubuntu, releases since 2.1.0 also carry a `.deb` for x86_64 and
+arm64. Verify it the same way, then run `sudo apt install ./` followed by its
+file name.
+
+## The first question
+
+It asks what to check. Answer with a word, never a number.
+
+| Answer | What it checks |
+|---|---|
+| `computer` | This computer: your whole home folder, what starts by itself, shell startup files, git and npm settings, running programs and open connections |
+| `folder` | One folder of code. It suggests the code folders it finds |
+| `organization` | Every repository, branch and tag of a GitHub organization |
+| `account` | The same for your own GitHub account |
+| `everything` | This computer first, then GitHub |
+
+Type `q` to leave at any point.
+
+## If it finds something
+
+:::danger[Start with this computer, not your repositories]
+Cleaning GitHub while an infected computer still holds a valid token puts you
+back where you started within minutes. That is how this campaign behaves, not
+bad luck. [Order matters](/polinrider-cleaner/guides/order/)
+:::
+
+Not sure what a result means?
+[Is it PolinRider or a false alarm?](/polinrider-cleaner/news/2026-11-04-polinrider-or-false-alarm/)

@@ -3,147 +3,122 @@ title: Find and remove PolinRider
 description: Check a machine, a GitHub account or a whole organization for the PolinRider supply-chain malware, and clean it up safely.
 template: splash
 hero:
-  tagline: |
-    The DPRK-linked campaign that backdates its own commits, so your history
-    looks untouched. Scan and clean up a machine, a GitHub account or a whole
-    organization.
-  layout: centered
+  title: Check for PolinRider.<br />Clean it up safely.
+  tagline: One program checks this computer, a GitHub account or a whole organization. It changes nothing until you type <code>yes</code>.
   actions:
-    - text: Start here
+    - text: Check my computer
       link: /polinrider-cleaner/quick-start/
-      icon: right-arrow
-      variant: primary
-    - text: What PolinRider is
+    - text: What is PolinRider?
       link: /polinrider-cleaner/campaign/what-it-is/
-      variant: secondary
-    - text: GitHub
-      link: https://github.com/meSingh/polinrider-cleaner
-      icon: external
-      variant: minimal
 ---
 
-import { Card, CardGrid } from '@astrojs/starlight/components';
-import { ContainerSection } from 'lucode-starlight/components';
+import RunBlock from '../../components/RunBlock.astro';
+import Verdict from '../../components/Verdict.astro';
 import LastUpdated from '../../components/LastUpdated.astro';
 
-<ContainerSection width="lg">
+<section class="pr-section pr-run-section">
+
+## Install it and run it
+
+<RunBlock />
+
+It asks what to check, one question at a time. Want to download and verify
+the program yourself instead? Use the [quick start](/polinrider-cleaner/quick-start/).
 
 <LastUpdated />
 
-![A rider inside a cyan lattice between two rows of servers, with purple flames held back on either side](../../assets/hero-lattice.jpg)
+</section>
 
-</ContainerSection>
+<section class="pr-section">
 
-<ContainerSection width="lg">
+## What the answer means
 
-<ul class="badges">
-<li><a href="https://github.com/meSingh/polinrider-cleaner/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/meSingh/polinrider-cleaner/actions/workflows/ci.yml/badge.svg" /></a></li>
-<li><a href="https://scorecard.dev/viewer/?uri=github.com/meSingh/polinrider-cleaner"><img alt="OpenSSF Scorecard" src="https://api.scorecard.dev/projects/github.com/meSingh/polinrider-cleaner/badge" /></a></li>
-<li><a href="https://github.com/meSingh/polinrider-cleaner/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://github.com/meSingh/polinrider-cleaner/actions/workflows/codeql.yml/badge.svg" /></a></li>
-<li><a href="https://github.com/meSingh/polinrider-cleaner/commits/main"><img alt="Commits are signed" src="https://img.shields.io/badge/commits-signed-0e7490" /></a></li>
-<li><a href="https://github.com/meSingh/polinrider-cleaner/releases/latest"><img alt="Attested provenance" src="https://img.shields.io/badge/releases-attested%20provenance-0e7490" /></a></li>
-<li><a href="/polinrider-cleaner/indicator-reviews/"><img alt="Indicators reviewed weekly" src="https://img.shields.io/badge/indicators-reviewed%20weekly-86307a" /></a></li>
-<li><img alt="Zero runtime dependencies" src="https://img.shields.io/badge/runtime%20deps-0-86307a" /></li>
-</ul>
+<div class="pr-verdicts">
+<Verdict kind="clean" code={0} title="Clean">
+None of today's indicators found. Not proof that nothing was ever there:
+rotate your credentials if you had a reason to check.
+</Verdict>
+<Verdict kind="review" code={1} title="Review">
+Something a normal project can also have. Read each `[review]` line and ask
+whether you put it there.
+</Verdict>
+<Verdict kind="compromised" code={2} title="Compromised">
+Something only the malware leaves. Follow the steps it prints, in the order
+below.
+</Verdict>
+</div>
 
-</ContainerSection>
+Exit code `3` means the check could not run. It says nothing either way.
+[Is it PolinRider or a false alarm?](/polinrider-cleaner/news/2026-11-04-polinrider-or-false-alarm/)
 
-<ContainerSection width="md">
+</section>
 
-## One program
-
-Download it for macOS, Linux or Windows, verify it, and run it. It asks what
-you need, one question at a time, and changes nothing until you type `yes`.
-
-```bash
-./polinrider
-```
-
-[Download and verify](/polinrider-cleaner/quick-start/)
-
-</ContainerSection>
-
-<ContainerSection width="md">
-
-## Why a tool rather than a checklist
-
-A script on the infected machine reads your last commit's timestamp, winds the
-system clock back to it, amends that commit with the payload, restores the
-clock, and force-pushes. What lands is a commit with an ordinary date and your
-name on it.
-
-Detection has to be content scanning of every ref, reconciled against push
-events. Nobody does that by eye across fifty repositories.
-
-</ContainerSection>
-
-<ContainerSection width="lg">
-
-<CardGrid>
-  <Card title="A machine" icon="laptop">
-    The related MicrosoftSystem64 implant, editor extensions, tasks that run
-    on folder open, build configs, fake fonts, persistence, credentials.
-    [Check a machine](/polinrider-cleaner/guides/machine/)
-  </Card>
-  <Card title="A GitHub account" icon="github">
-    Every repository, every branch and tag, read against GitHub's push record.
-    Restores branches where the evidence survived.
-    [Clean an account](/polinrider-cleaner/guides/account/)
-  </Card>
-  <Card title="An organization" icon="setting">
-    The same check across every repository an org owns, then one repository
-    at a time or one fix for all of them.
-    [Clean an organization](/polinrider-cleaner/guides/organization/)
-  </Card>
-  <Card title="Every future push" icon="approve-check">
-    A scanner you copy into your own repository. No third-party action, nothing
-    leaves your infrastructure.
-    [Set up CI](/polinrider-cleaner/guides/ci/)
-  </Card>
-</CardGrid>
-
-</ContainerSection>
-
-<ContainerSection width="md">
+<section class="pr-section">
 
 ## Clean up in this order
 
-![1 Check the machines, 2 Rotate credentials, 3 Restore branches, 4 Scan every push](../../assets/steps.jpg)
+<ol class="pr-steps">
+<li><strong>Check every computer</strong><span>that touched the affected repositories, before GitHub.</span></li>
+<li><strong>Rotate every credential</strong><span>from a computer you trust.</span></li>
+<li><strong>Clean the repositories</strong><span>restore where the evidence survived, clean where it did not.</span></li>
+<li><strong>Scan every future push</strong><span>so CI catches a reinfection.</span></li>
+</ol>
 
-Cleaning GitHub while an infected machine still holds a valid token undoes
+Cleaning GitHub while an infected computer still holds a valid token undoes
 the work within minutes. [Why the order is fixed](/polinrider-cleaner/guides/order/)
 
-</ContainerSection>
+</section>
 
-<ContainerSection width="md">
+<section class="pr-section">
+
+## What do you need to check?
+
+<div class="pr-cards">
+<a class="pr-card" href="/polinrider-cleaner/guides/machine/"><strong>This computer</strong><span>Editor tasks, build configs, fake fonts, what starts by itself and the related MicrosoftSystem64 malware.</span></a>
+<a class="pr-card" href="/polinrider-cleaner/guides/account/"><strong>A GitHub account</strong><span>Every repository, branch and tag, read against GitHub's push record.</span></a>
+<a class="pr-card" href="/polinrider-cleaner/guides/organization/"><strong>An organization</strong><span>The same check across every repository the organization owns.</span></a>
+<a class="pr-card" href="/polinrider-cleaner/guides/ci/"><strong>Every future push</strong><span>A scanner you copy into your own repository. Nothing leaves your infrastructure.</span></a>
+</div>
+
+</section>
+
+<section class="pr-section pr-two">
+
+<div>
 
 ## What it will not do
 
-A tool you run during an incident should be honest about its limits.
+- **Prove you are clean.** Signatures change. Rotate your credentials anyway.
+- **Make an infected computer safe again.** Quarantine contains it. A clean
+  reinstall recovers it.
+- **Change anything you did not agree to.** Every fix is a dry run first.
+  Nothing is deleted: confirmed files are moved to quarantine.
 
-- It **cannot prove you are clean.** A clean result means the current indicator
-  set is absent. Signatures rotate. Rotate your credentials regardless.
-- It **does not make a compromised machine trustworthy again.** Quarantining
-  files is containment; rebuilding from a clean OS install is recovery.
-- It **changes nothing unless you tell it to.** Every destructive step is a dry
-  run first. Nothing is deleted: a confirmed artifact is moved to quarantine,
-  and where a payload was appended to a build config, `clean` cuts it out in
-  place and keeps the infected original in quarantine. On GitHub, each fix
-  shows what it would change and pushes only when you type `yes`.
+</div>
 
-## Why you can run this
+<div>
 
-You are being asked to run unknown code on a machine you may believe is
-compromised. That deserves evidence rather than a promise.
+## Why you can run it
 
-| | |
-|---|---|
-| **Built during a real incident** | 57 repositories and 304 refs on the author's own account. Two of ten restore points turned out to be infected themselves |
-| **Indicators reviewed weekly** | Every review [logged, including the weeks nothing changed](/polinrider-cleaner/indicator-reviews/) |
-| **Every commit signed** | The direct counter to the campaign's own backdated-amend technique |
-| **Releases carry provenance** | A sigstore attestation proves each binary came from this repository's CI |
-| **It scans itself** | CI fails if the repository matches its own indicators once its detection code is excluded |
+- **Built during a real incident** on the author's own account: 57
+  repositories and 304 refs. Two of ten restore points were infected too.
+- **Indicators reviewed every week,** and [every review is published](/polinrider-cleaner/indicator-reviews/).
+- **Every commit is signed.** Every release carries build provenance.
+- **It scans itself** in CI, against its own indicators.
 
-[How to verify all of that yourself](/polinrider-cleaner/reference/verifying/)
+[Check all of this yourself](/polinrider-cleaner/reference/verifying/)
 
-</ContainerSection>
+</div>
+
+</section>
+
+<section class="pr-section pr-more">
+
+## Read more
+
+- [What PolinRider is](/polinrider-cleaner/campaign/what-it-is/)
+- [Why your Git history looks clean](/polinrider-cleaner/campaign/how-it-hides/)
+- [News](/polinrider-cleaner/news/)
+- Project status: [CI](https://github.com/meSingh/polinrider-cleaner/actions/workflows/ci.yml), [OpenSSF Scorecard](https://scorecard.dev/viewer/?uri=github.com/meSingh/polinrider-cleaner) and [CodeQL](https://github.com/meSingh/polinrider-cleaner/actions/workflows/codeql.yml)
+
+</section>
