@@ -1,0 +1,103 @@
+---
+title: "PolinRider Scanner 3.0: polinrider-cleaner has a new name and a new home"
+description: "The project is now polinrider-scanner, at polinriderscanner.com. The program is the same; the package names and how you verify old releases change."
+category: announcements
+date: "2026-11-04"
+sidebar:
+  label: "3.0: the new name"
+  order: -20261104
+---
+
+polinrider-cleaner is now PolinRider Scanner and Cleaner. The repository has moved to `meSingh/polinrider-scanner`, the documentation lives at polinriderscanner.com and every package has been renamed to
+`polinrider-scanner`. If you already use the tool, the program itself has not
+changed: it is still `polinrider`, with the same options, the same output and
+the same exit codes. What changes is how you install it, update it and check
+that a download is genuine. That is why this release is 3.0.0 rather than
+2.4.
+
+## If you installed 2.x
+
+Each package manager moves you across in its own way.
+
+With Homebrew, `brew upgrade` moves an existing `polinrider-cleaner` install
+to the new name by itself. With Scoop it does not: run
+`scoop uninstall polinrider-cleaner`, then `scoop install polinrider-scanner`.
+The old Scoop name stays at 2.3.0, and `scoop status` reports it as
+deprecated. On Debian and Ubuntu, installing the new `.deb` removes the old
+package. A winget package is being prepared as `meSingh.PolinRiderScanner`,
+but it is not in the winget repository yet.
+
+If you copied the CI scanner into one of your repositories, nothing needs to
+change. The `ioc/` folder has the same layout, and the scan you vendored never
+named the repository.
+
+Old links keep working. GitHub redirects the old repository's web, git and
+API addresses, and the site's old GitHub Pages address answers with redirect
+pages that point here.
+
+## Checking that a download is genuine
+
+Every release from 3.0.0 on is verified against the new name:
+
+```bash
+gh attestation verify polinrider-v3.0.0-macos-arm64.tar.gz --repo meSingh/polinrider-scanner
+```
+
+Releases up to 2.3.0 were built and attested while the repository was still
+called `polinrider-cleaner`, and their attestations record that name. So the
+new name fails for them, with an error that looks like a fake file but is not
+one. The command that worked before the rename still works, because GitHub
+follows the old name to the renamed repository. We tested every form on the
+day of the rename, and
+[verifying releases from before 3.0](/docs/reference/verifying-before-3/)
+lists them, including one command that checks a release of any version and a
+way to confirm the attestation came from this repository and not a later
+holder of the old name.
+
+## What else is new
+
+The documentation site has been rebuilt. Updates, where this post lives, carries news on the campaign and our own guides and analysis. It also points
+to articles by other researchers that are worth your time. Every weekly
+indicator review is still public. A new page,
+[What is PolinRider?](/what-is-polinrider/), explains the malware from the
+start for a developer who has never heard of it: how it gets in, what it
+takes, why your Git history looks clean and the signs to look for. The docs
+are now kept for each release line, so someone running an older version can
+still read instructions for the program they actually have.
+
+There is also a cleanup checklist and a longer guide to getting rid of
+PolinRider, written from what we learned cleaning up our own account and from
+what researchers have published since OpenSourceMalware's August guide.
+
+The repository itself now keeps a daily record of release
+downloads on its public `traffic` branch. GitHub keeps only a running total
+per file, so until now there was no way to tell whether anyone came after a
+release or a post. Our own test downloads are recorded and taken off, so the weekly figure leaves our own out.
+
+## What has not changed
+
+3.0.0 adds no new detection. It finds exactly what 2.3.0 found, and a clean
+result still means that today's known signs are absent, not that nothing was
+ever there. The indicators are still checked against published reports every
+week.
+
+The other limits are the same too. The macOS binaries are not notarised, so
+Gatekeeper stops the first run until you clear the quarantine flag on a
+binary you have verified. Restoring a branch on GitHub still depends on
+GitHub serving the commit from before the attack, which it does only until it
+clears out unreferenced data, so check early. And it is still one person's
+open source project, with no warranty and no support commitment.
+
+If you are here because something is wrong on your machine, start with the
+[cleanup checklist](/docs/guides/getting-rid-of-polinrider/).
+
+## Sources
+
+- [Release notes for 3.0.0](/releases/v3.0.0/) and the [README](https://github.com/meSingh/polinrider-scanner#run-it)
+- [ADR-0057][adr-0057], the rename, with the verification tests
+- [ADR-0056][adr-0056], docs kept per release line
+- [ADR-0053][adr-0053], the download history
+
+[adr-0057]: https://github.com/meSingh/polinrider-scanner/blob/main/docs/adr/0057-the-repository-is-polinrider-scanner-from-3-0-0.md
+[adr-0056]: https://github.com/meSingh/polinrider-scanner/blob/main/docs/adr/0056-the-docs-are-versioned-by-release-line.md
+[adr-0053]: https://github.com/meSingh/polinrider-scanner/blob/main/docs/adr/0053-release-downloads-are-counted-daily-with-our-own-kept-apart.md
