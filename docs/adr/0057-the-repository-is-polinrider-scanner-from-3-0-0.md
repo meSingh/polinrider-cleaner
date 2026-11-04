@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Proposed |
+| **Status** | Accepted |
 | **Date** | 2026-11-04 |
 
 ## Context
@@ -51,8 +51,7 @@ A rename is not free, and four parts of it reach past this repository.
   whichever command is shown to work right after the rename: the old name, or
   `--owner meSingh` with a `--cert-identity-regex` that accepts both names. If
   neither works, the site gets a page that says so and shows what does. The
-  result is recorded here when it is known, and this record moves to
-  Accepted.
+  result is recorded below, under "Verifying releases before 3.0.0, tried".
 - **The site moves to `https://polinriderscanner.com/`.** Pages publishes it
   with the domain set in the repository settings, and the domain is verified
   to the account so no one else can publish on it. Both domains are on
@@ -73,12 +72,43 @@ A rename is not free, and four parts of it reach past this repository.
 - **The old name is never reused.** That rule sits in `AGENTS.md` under
   "Outside this repository".
 
+## Verifying releases before 3.0.0, tried
+
+Tried on 2026-11-04, right after the rename, with `gh` 2.100.0. The archive
+was `polinrider-v2.3.0-linux-x86_64.tar.gz`, downloaded from
+`meSingh/polinrider-scanner`, with the SHA-256 its `SHA256SUMS` gives.
+
+| Command | Result |
+|---|---|
+| `gh attestation verify FILE --repo meSingh/polinrider-cleaner` | **passes** |
+| `gh attestation verify FILE --repo meSingh/polinrider-scanner` | **fails**: `Error: verifying with issuer "sigstore.dev"` |
+| `gh attestation verify FILE --owner meSingh --cert-identity-regex '^https://github\.com/meSingh/polinrider-(cleaner\|scanner)/\.github/workflows/release\.yml@refs/tags/v'` | **passes** |
+| `gh attestation verify FILE --bundle polinrider-v2.3.0.intoto.jsonl --repo meSingh/polinrider-cleaner` (offline, against the release's own bundle) | **passes** |
+
+- The first and third forms also pass for v2.0.0, the oldest attested
+  release.
+- The certificate that verified records:
+  - source repository `https://github.com/meSingh/polinrider-cleaner`;
+  - source repository ID `1358099890`, the renamed repository's ID today;
+  - SAN `https://github.com/meSingh/polinrider-cleaner/.github/workflows/release.yml@refs/tags/v2.3.0`.
+
+So a release before 3.0.0 is verified with the name it was built under,
+`--repo meSingh/polinrider-cleaner`. The attestation API follows GitHub's
+redirect to the renamed repository. The new name cannot verify those
+releases. The `--owner` form verifies every release, before and after.
+
+The old name keeps working only while no repository takes it, which this
+record forbids. A reader who wants to be sure the attestation came from this
+repository, and not from a later holder of the name, compares the ID: the
+`--format json` output's `sourceRepositoryIdentifier` must be `1358099890`.
+
 ## Consequences
 
-- People who verify an old release with the command printed beside it, which
-  names `polinrider-cleaner`, may find it fails after the rename. The README,
-  the release notes and the site point to the command that works, and this
-  record says which one that is once it has been tried.
+- The command printed beside a release before 3.0.0 still works after the
+  rename, because it names `polinrider-cleaner`, the name that release was
+  built under. Using the new name with an old release fails. The README and
+  the release notes link the site's page for releases before 3.0.0, which
+  says so.
 - The old site URLs answer with a meta refresh, not a 301. Search engines take
   that as a weaker signal, and the site starts its search history again under
   the new domain.

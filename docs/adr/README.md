@@ -71,7 +71,7 @@ If you disagree with one, open an issue and quote its number.
 | [0053](./0053-release-downloads-are-counted-daily-with-our-own-kept-apart.md) | Count release downloads daily, with our own kept apart | Accepted |
 | [0055](./0055-the-documentation-site-is-plain-astro.md) | Build the documentation site with plain Astro, not Starlight | Accepted |
 | [0056](./0056-the-docs-are-versioned-by-release-line.md) | Keep a frozen copy of the docs for each release line | Accepted |
-| [0057](./0057-the-repository-is-polinrider-scanner-from-3-0-0.md) | Rename the repository and its packages to polinrider-scanner, from 3.0.0 | Proposed |
+| [0057](./0057-the-repository-is-polinrider-scanner-from-3-0-0.md) | Rename the repository and its packages to polinrider-scanner, from 3.0.0 | Accepted |
 
 ## Adding one
 
