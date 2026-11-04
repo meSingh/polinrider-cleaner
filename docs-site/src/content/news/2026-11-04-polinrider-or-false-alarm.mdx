@@ -1,6 +1,6 @@
 ---
 title: "Is it PolinRider or a false alarm? Reading a scan result"
-description: "polinrider 2.3.0 reads more of your files, so a project it once called clean can now show review lines. What each answer means and which matches are harmless."
+description: "polinrider answers compromised, review or clean, and only the first means you are infected. What each answer means and which matches are harmless."
 category: guides
 date: "2026-11-01"
 sidebar:
@@ -8,12 +8,11 @@ sidebar:
   order: -20261101
 ---
 
-Since 2.3.0, polinrider reads every text file up to 1 MB in a folder or on a computer for
-strings that a normal project can also contain, and for file names that a
-legitimate tool might also write. So a project that 2.2.0 called clean can now
-come back with a few `[review]` lines and exit code 1. That is not a verdict of
-infection. It is the tool asking you a question. This is how to read each of
-its answers, and which of the usual matches are harmless.
+polinrider gives one of three answers, and only one of them means you are
+infected. The one that worries people most is a `[review]` line with exit code
+1, which says the tool found a string or a file name that a normal project can
+also contain. That is a question for you, not a verdict. This is how to read
+each answer, and which of the usual matches are harmless.
 
 ## The three answers
 
@@ -108,7 +107,7 @@ with the source you saw it in. If the result is real, the
 ## Sources
 
 - polinrider-scanner: [`src/scan.rs`][scan-rs] for the verdicts and next steps, [`src/checks.rs`][checks-rs] for the tasks.json, config and font checks, [ADR-0034][adr-0034], [ADR-0048][adr-0048] and [`ioc/weak.txt`][weak]
-- Our [release notes for 2.3.0](/releases/v2.3.0/) and [false positives reference](/docs/reference/false-positives/)
+- Our [false positives reference](/docs/reference/false-positives/)
 - OpenSourceMalware, [PolinRider is A/B Testing its Way Past Your Detections][osm-ab], 26 September 2026
 - OpenSourceMalware, [A Developer's Guide to Getting Rid of PolinRider][osm-guide], August 2026
 
