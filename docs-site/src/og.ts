@@ -1,4 +1,4 @@
-// One social image per News post, weekly indicator review and release, and
+// One social image per update, weekly indicator review and release, and
 // one for the threat page. Each card is an HTML page under /og/ (src/pages/
 // og) that the build turns into /og/<slug>.jpg and then deletes
 // (src/markdown/og-images.mjs). Pages point their og:image here. New posts,
@@ -11,7 +11,7 @@ import { SITE_URL } from './siteConfig.mjs';
 import { answer } from './threat-data';
 
 export interface Card {
-  slug: string; // news/2026-11-04-..., news/indicator-reviews/2026-11-02, releases/v3.0.0, threat
+  slug: string; // guides/temp-auto-push-bat, indicator-reviews/2026-11-02, releases/v3.0.0, what-is-polinrider
   kind: 'post' | 'review' | 'release' | 'threat';
   eyebrow: string;
   title: string;
@@ -28,12 +28,12 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 export async function cards(): Promise<Card[]> {
   const out: Card[] = [];
   for (const p of await newsPosts())
-    out.push({ slug: `news/${p.id}`, kind: 'post', eyebrow: `News · ${longDate(p.date)}`, title: p.title, subtitle: sentence(p.description) });
+    out.push({ slug: `${p.category}/${p.slug}`, kind: 'post', eyebrow: `${p.categoryLabel} · ${longDate(p.date)}`, title: p.title, subtitle: sentence(p.description) });
   const entries = await getCollection('reviews');
   for (const r of await reviews()) {
     const e = entries.find((x) => x.id === r.id);
     out.push({
-      slug: `news/indicator-reviews/${r.id}`,
+      slug: `indicator-reviews/${r.id}`,
       kind: 'review',
       eyebrow: `Weekly indicator review · ${longDate(r.date)}`,
       title: r.outcome ? cap(plain(r.outcome)) : humanDates(e?.data.title ?? r.label),
@@ -42,7 +42,7 @@ export async function cards(): Promise<Card[]> {
   }
   for (const r of await releases())
     out.push({ slug: `releases/${r.id}`, kind: 'release', eyebrow: `Release ${r.version} · ${longDate(r.date)}`, title: (await getCollection('releases')).find((x) => x.id === r.id)!.data.title, subtitle: sentence(r.description) });
-  out.push({ slug: 'threat', kind: 'threat', eyebrow: 'Threat briefing', title: 'PolinRider: the supply\u2011chain malware', subtitle: answer });
+  out.push({ slug: 'what-is-polinrider', kind: 'threat', eyebrow: 'What is PolinRider?', title: 'PolinRider: the supply\u2011chain malware', subtitle: answer });
   return out;
 }
 

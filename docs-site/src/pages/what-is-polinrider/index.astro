@@ -1,5 +1,6 @@
 ---
-// The threat page, designed as a page rather than a document: what
+// What is PolinRider? (/what-is-polinrider/), an explainer designed as a
+// page rather than a document. Was the threat page: what
 // PolinRider is, key figures, how it spreads, who is at risk, how it gets
 // in, what it does, why Git history looks clean, the signs, the related
 // malware, a timeline, what polinrider looks for and the sources. Written
@@ -10,13 +11,13 @@ import Crumbs from '../../components/Crumbs.astro';
 import Icon from '../../components/Icon.astro';
 import HistoryCompare from '../../components/HistoryCompare.astro';
 import PageFoot from '../../components/PageFoot.astro';
-import Faq from '../../components/Faq.astro';
-import { threatFaq } from '../../faq';
-import { abs, article, breadcrumbs, faqPage } from '../../schema';
+import { abs, article, breadcrumbs } from '../../schema';
 import { lastUpdated } from '../../git';
 import { firstCommitDay } from '../../sources.mjs';
 import { ogImage } from '../../og';
 import { answer } from '../../threat-data';
+import { newsPosts } from '../../news';
+const articleUrl = Object.fromEntries((await newsPosts()).map((p) => [p.id, p.href]));
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
@@ -57,20 +58,6 @@ const timeline = [
   { when: '30 September 2026', text: 'A loader that reads its server addresses from Ethereum, found in 35 GitHub repositories.', source: 'SafeDep', href: src.safedepEth },
 ];
 
-// The indicator files in ioc/, in plain words (src/content/threat/indicators.md).
-const indicators = [
-  { name: 'Text only the malware leaves', file: 'strong.txt', confirmed: true },
-  { name: 'Patterns in file contents, where a part rotates', file: 'strong-patterns.txt', confirmed: true },
-  { name: 'Malicious package names', file: 'bad-packages.txt', confirmed: true },
-  { name: 'File names and paths that are signs on their own', file: 'filenames.txt', confirmed: true },
-  { name: 'Hashes of known files, whatever they are named', file: 'hashes.txt', confirmed: true },
-  { name: 'Attacker SSH keys, removed by you', file: 'ssh-keys.txt', confirmed: true },
-  { name: 'Network addresses, if a live connection matches', file: 'network.txt', confirmed: true },
-  { name: 'Paths of the related implant, if they exist', file: 'implant-paths.txt', confirmed: true },
-  { name: 'Names of the implant program, on an exact match', file: 'implant-names.txt', confirmed: true },
-  { name: 'File names a normal project can also have', file: 'filenames-review.txt', confirmed: false },
-  { name: 'Text a normal project can also have', file: 'weak.txt', confirmed: false },
-];
 
 const sources = [
   ['OpenSourceMalware', "Hundreds of GitHub Repos Compromised By DPRK's PolinRider Campaign", src.osmMarch, '8 March 2026'],
@@ -94,48 +81,41 @@ const facts = [
   { text: 'Reports name the DEV#POPPER remote access tool and the OmniStealer password stealer as its payloads.', source: 'The Hacker News', href: src.thn },
 ];
 const ext = { target: '_blank', rel: 'noopener' };
-const pageFile = 'src/pages/threat/index.astro';
+const pageFile = 'src/pages/what-is-polinrider/index.astro';
 const url = abs(Astro.url.pathname);
 const schema = [
-  breadcrumbs([], 'The PolinRider threat', url),
+  breadcrumbs([], 'What is PolinRider?', url),
   article({
     type: 'TechArticle',
     url,
-    title: 'The PolinRider threat',
+    title: 'What is PolinRider malware?',
     description: 'PolinRider malware hides in developers\u2019 projects, steals their logins and spreads to everything they push.',
     published: firstCommitDay(pageFile),
     modified: lastUpdated(pageFile),
     citations: [...new Set(Object.values(src))],
-    section: 'Threat',
+    section: 'What is PolinRider?',
   }),
-  faqPage(url, threatFaq),
 ];
 ---
 
 <Base
-  title="The PolinRider threat"
-  titleTag="PolinRider malware: what it is, how it spreads, the signs"
-  image={ogImage('threat', `PolinRider: the supply-chain malware. ${answer}`)}
+  title="What is PolinRider malware?"
+  titleTag="What is PolinRider malware? | PolinRider Scanner"
+  image={ogImage('what-is-polinrider', `PolinRider: the supply-chain malware. ${answer}`)}
   schema={schema}
   description="PolinRider malware hides in developers' projects, steals their logins and spreads to everything they push. How it gets in, how it hides and the signs."
 >
-  <div data-pagefind-body data-pagefind-meta="section:Threat">
+  <div data-pagefind-body data-pagefind-meta="section:What is PolinRider?">
     <header class="hero">
       <div class="wrap">
         <Crumbs items={[]} />
-        <p class="eyebrow">Threat briefing</p>
-        <h1 data-pagefind-meta="title">The PolinRider threat</h1>
+        <h1 data-pagefind-meta="title">What is PolinRider malware?</h1>
         <p class="lead">
           PolinRider is malware that hides inside software projects. Once it runs on a developer's computer, it steals
           their passwords and tokens, adds itself to the code they work on and pushes that code with their own account,
-          so the next person who opens the project is hit too. Security researchers link it to North Korea
-          (<a href={src.osmMarch} {...ext}>OpenSourceMalware</a>; <a href={src.thn} {...ext}>The Hacker News</a>).
+          so the next person who opens the project is hit too.
         </p>
         <p class="goal">Its goal is not your code. The code is how it travels. The goal is your logins and your money.</p>
-        <div class="actions no-print">
-          <a class="pill" href={`${base}/#how`}>Check now <Icon name="arrow" size={18} /></a>
-          <a class="textlink" href="#signs-to-look-for">Signs to look for <Icon name="arrow" size={18} /></a>
-        </div>
       </div>
     </header>
 
@@ -151,33 +131,7 @@ const schema = [
       </ul>
     </section>
 
-    <section class="wrap sec" aria-labelledby="how-it-spreads">
-      <h2 id="how-it-spreads">How it spreads</h2>
-      <ol class="spread">
-        {spread.map((s, i) => (
-          <li>
-            <span class="snum">{i + 1}</span>
-            <span class="sicon"><Icon name={s.icon} size={26} /></span>
-            <strong>{s.title}</strong>
-            <span>{s.text}</span>
-          </li>
-        ))}
-      </ol>
-      <p class="loop"><Icon name="undo" size={18} /> And around again, from every new computer it reaches.</p>
-    </section>
-
-    <section class="wrap sec split" aria-labelledby="am-i-at-risk">
-      <div>
-        <h2 id="am-i-at-risk">Am I at risk?</h2>
-        <p>You could be if you write code and, in the last year or so, you did any of these:</p>
-        <ul class="checklist">
-          <li>installed an npm, Go or Composer package;</li>
-          <li>installed a VS Code or Cursor extension;</li>
-          <li>opened someone else's project in your editor, including one you cloned to review;</li>
-          <li>did a "take-home" coding test for a job interview.</li>
-        </ul>
-        <p>None of these is unusual, which is the point. A check takes a few minutes: <a href={`${base}/docs/quick-start/`}>install and run polinrider</a>.</p>
-      </div>
+    <section class="wrap sec split" aria-labelledby="how-it-gets-in">
       <div>
         <h2 id="how-it-gets-in">How it gets in</h2>
         <ul class="ways">
@@ -192,6 +146,17 @@ const schema = [
           <strong>Opening the folder is enough.</strong> You do not have to run the project, install anything or click
           anything (<a href={src.osmMarch} {...ext}>OpenSourceMalware</a>; <a href={src.osmAb} {...ext}>fake fonts</a>).
         </p>
+      </div>
+      <div>
+        <h2 id="am-i-at-risk">Am I at risk?</h2>
+        <p>You could be if you write code and, in the last year or so, you did any of these:</p>
+        <ul class="checklist">
+          <li>installed an npm, Go or Composer package;</li>
+          <li>installed a VS Code or Cursor extension;</li>
+          <li>opened someone else's project in your editor, including one you cloned to review;</li>
+          <li>did a "take-home" coding test for a job interview.</li>
+        </ul>
+        <p>None of these is unusual, which is the point. A check takes a few minutes: <a href={`${base}/docs/quick-start/`}>install and run polinrider</a>.</p>
       </div>
     </section>
 
@@ -223,6 +188,21 @@ const schema = [
       </div>
     </section>
 
+    <section class="wrap sec" aria-labelledby="how-it-spreads">
+      <h2 id="how-it-spreads">How it spreads to other people</h2>
+      <ol class="spread">
+        {spread.map((s, i) => (
+          <li>
+            <span class="snum">{i + 1}</span>
+            <span class="sicon"><Icon name={s.icon} size={26} /></span>
+            <strong>{s.title}</strong>
+            <span>{s.text}</span>
+          </li>
+        ))}
+      </ol>
+      <p class="loop"><Icon name="undo" size={18} /> And around again, from every new computer it reaches.</p>
+    </section>
+
     <section class="wrap sec" aria-labelledby="why-your-git-history-looks-clean">
       <h2 id="why-your-git-history-looks-clean">Why your Git history looks clean</h2>
       <p class="intro">
@@ -249,15 +229,14 @@ const schema = [
     </section>
 
     <section class="wrap sec" aria-labelledby="signs-to-look-for">
-      <h2 id="signs-to-look-for">Signs to look for</h2>
+      <h2 id="signs-to-look-for">Signs you might be infected</h2>
       <p class="intro">
-        Each of these is something you can see in a project or on your computer.{' '}
-        <a href={`${base}/news/2026-11-04-polinrider-or-false-alarm/`}>Found something? Is it PolinRider or a false alarm?</a>
+        Each of these is something you can see in a project or on your computer.
       </p>
       <ul class="signs">
         <li>
           <strong>A font file that is really code</strong>
-          <span>A file such as <code>public/fonts/fa-solid-400.woff2</code> that holds JavaScript instead of a font. A real <code>.woff2</code> font starts with the letters <code>wOF2</code>. The names keep changing (<a href={src.osmAb} {...ext}>fake fonts</a>; <a href={`${base}/news/2026-11-04-fake-font-javascript/`}>our post</a>).</span>
+          <span>A file such as <code>public/fonts/fa-solid-400.woff2</code> that holds JavaScript instead of a font. A real <code>.woff2</code> font starts with the letters <code>wOF2</code>. The names keep changing (<a href={src.osmAb} {...ext}>fake fonts</a>; <a href={articleUrl['2026-11-04-fake-font-javascript']}>our post</a>).</span>
         </li>
         <li>
           <strong>An editor task that runs when you open the folder</strong>
@@ -269,11 +248,11 @@ const schema = [
         </li>
         <li>
           <strong>temp_auto_push.bat</strong>
-          <span>In a project or listed in a <code>.gitignore</code> nobody on your team wrote. It means a computer that pushes to that project is infected (<a href={`${base}/news/2026-11-04-temp-auto-push-bat/`}>our post</a>).</span>
+          <span>In a project or listed in a <code>.gitignore</code> nobody on your team wrote. It means a computer that pushes to that project is infected (<a href={articleUrl['2026-11-04-temp-auto-push-bat']}>our post</a>).</span>
         </li>
         <li>
           <strong>It keeps coming back</strong>
-          <span>Your antivirus removes it and it is back the next time you run <code>npm run dev</code>. Something that starts it has not been found yet (<a href={`${base}/news/2026-11-04-polinrider-keeps-coming-back/`}>our post</a>).</span>
+          <span>Your antivirus removes it and it is back the next time you run <code>npm run dev</code>. Something that starts it has not been found yet (<a href={articleUrl['2026-11-04-polinrider-keeps-coming-back']}>our post</a>).</span>
         </li>
         <li>
           <strong>MicrosoftSystem64</strong>
@@ -282,39 +261,32 @@ const schema = [
       </ul>
     </section>
 
-    <section class="wrap sec split" aria-label="Related malware and reinfection">
+    <section class="wrap sec" aria-labelledby="related-malware-microsoftsystem64">
       <div class="panel">
         <h2 id="related-malware-microsoftsystem64">Related malware: MicrosoftSystem64</h2>
         <p>
           <code>MicrosoftSystem64</code> is a remote-access tool installed by malicious npm packages. It is related to
           PolinRider through the group behind it, not part of PolinRider itself. SafeDep places the packages that
           install it in a cluster that kmsec.uk and OX Security link to Famous Chollima, also called Contagious
-          Interview, a group tied to North Korea (<a href={src.safedepMs64} {...ext}>SafeDep</a>). OpenSourceMalware
-          considers PolinRider a parallel or sub-campaign of Contagious Interview
-          (<a href={src.osmBlast} {...ext}>OpenSourceMalware</a>). No report we have read calls{' '}
+          Interview, a group tied to North Korea (<a href={src.safedepMs64} {...ext}>SafeDep</a>). No report we have read calls{' '}
           <code>MicrosoftSystem64</code> a PolinRider payload.
         </p>
         <p>
           polinrider checks for it too, because it targets the same developers and needs the same response: a program
           or process named <code>MicrosoftSystem64</code>, and the folders <code>~/.pcl-data</code> and{' '}
-          <code>~/.pcl-state</code>. <a href={`${base}/news/2026-11-04-microsoftsystem64/`}>MicrosoftSystem64 on your computer</a> has the detail.
+          <code>~/.pcl-state</code>. <a href={articleUrl['2026-11-04-microsoftsystem64']}>MicrosoftSystem64 on your computer</a> has the detail.
         </p>
       </div>
-      <div class="panel warn">
-        <h2 id="why-cleaning-once-is-not-enough">Why cleaning once is not enough</h2>
-        <p>
-          If you clean GitHub while an infected computer still holds a valid token, the malware pushes itself back
-          within minutes. That is why the order is fixed:
-        </p>
-        <ol class="order">
-          <li>check every computer first;</li>
-          <li>change every password and token;</li>
-          <li>then clean the repositories;</li>
-          <li>then scan every future push.</li>
-        </ol>
-        <p><a href={`${base}/docs/guides/order/`}>Order matters</a></p>
-        <p><a href={`${base}/docs/guides/getting-rid-of-polinrider/`}>Read the developer's guide to getting rid of PolinRider</a></p>
-      </div>
+    </section>
+
+    <section class="wrap sec" aria-labelledby="who-is-behind-it">
+      <h2 id="who-is-behind-it">Who is behind it</h2>
+      <p class="intro">
+        Security researchers link PolinRider to North Korea
+        (<a href={src.osmMarch} {...ext}>OpenSourceMalware</a>; <a href={src.thn} {...ext}>The Hacker News</a>).
+        OpenSourceMalware considers it a parallel or sub-campaign of Contagious Interview
+        (<a href={src.osmBlast} {...ext}>OpenSourceMalware</a>).
+      </p>
     </section>
 
     <section class="wrap sec facts-sec" aria-labelledby="key-facts">
@@ -340,33 +312,6 @@ const schema = [
           </li>
         ))}
       </ol>
-      <p class="intro">Newer reports, and our weekly indicator reviews, are in <a href={`${base}/news/`}>News</a>.</p>
-    </section>
-
-    <section class="wrap sec" aria-labelledby="what-polinrider-looks-for">
-      <h2 id="what-polinrider-looks-for">What polinrider looks for</h2>
-      <p class="intro">
-        Every indicator traces to a public source. They sit in plain files anyone can read. A confirmed match means
-        infection; a match a normal project could also have is shown for you to review.
-      </p>
-      <ul class="ioc">
-        {indicators.map((i) => (
-          <li class:list={[i.confirmed ? 'verdict-compromised' : 'verdict-review']}>
-            <span class="ioc-kind">
-              <Icon name={i.confirmed ? 'compromised' : 'review'} size={16} />
-              {i.confirmed ? 'Confirmed' : 'Review'}
-            </span>
-            <strong>{i.name}</strong>
-            <code>ioc/{i.file}</code>
-          </li>
-        ))}
-      </ul>
-      <p class="intro"><a href={`${base}/threat/indicators/`}>The full indicator set</a>, with where each one came from.</p>
-    </section>
-
-    <section class="wrap sec" aria-labelledby="questions">
-      <h2 id="questions">Questions people ask</h2>
-      <Faq items={threatFaq} />
     </section>
 
     <section class="wrap sec" aria-labelledby="sources">
@@ -377,11 +322,30 @@ const schema = [
         ))}
       </ol>
     </section>
+
+
+
+
+
+
+
+
+
+
+
+
   </div>
 
-  <section class="wrap sec no-print">
+  <section class="wrap sec no-print" aria-labelledby="check-h">
     <div class="cta">
-      <p><strong>Worried?</strong> Check your computer, your GitHub account or your organisation. It takes a few minutes and changes nothing until you type <code>yes</code>.</p>
+      <div>
+        <h2 id="check-h">Check if you're affected</h2>
+        <p>Check your computer, your GitHub account or your organisation. It takes a few minutes and changes nothing until you type <code>yes</code>.</p>
+        <p class="more">
+          <a href={`${base}/docs/guides/getting-rid-of-polinrider/`}>The developer's guide to getting rid of PolinRider</a> ·{' '}
+          <a href={`${base}/what-is-polinrider/indicators/`}>The full indicator set</a>
+        </p>
+      </div>
       <a class="pill" href={`${base}/#how`}>Check now <Icon name="arrow" size={18} /></a>
     </div>
     <PageFoot file={pageFile} />
@@ -932,9 +896,19 @@ const schema = [
     border-radius: var(--pr-radius);
     background: var(--pr-surface);
   }
-  .cta p {
+  .cta > div {
     flex: 1 1 20rem;
+  }
+  .cta h2 {
+    margin: 0 0 0.4rem;
+    font-size: 1.375rem;
+  }
+  .cta p {
     margin: 0;
+  }
+  .cta .more {
+    margin-top: 0.6rem;
+    font-size: var(--text-sm);
   }
   .cta strong {
     color: var(--pr-heading);

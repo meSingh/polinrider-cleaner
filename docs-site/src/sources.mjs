@@ -3,7 +3,8 @@
 // from one file gets that file's last commit; a list gets the newest of the
 // files it lists. Paths are relative to docs-site/, without the base.
 import { execFileSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { articlePath, categorySlugs } from './categories.mjs';
 
 const one = (dir, id) => [`${dir}/${id}.md`, `${dir}/${id}.mdx`].filter((f) => existsSync(f));
 
@@ -15,14 +16,15 @@ export function sourcesOf(path) {
   const id = rest.join('/');
   if (section === 'docs' && !id) return ['src/content/docs', 'src/pages/docs'];
   if (section === 'docs') return one('src/content/docs', id);
-  if (section === 'news' && !id) return ['src/content/news', 'src/content/docs/indicator-reviews', 'src/content/elsewhere.yaml'];
-  if (section === 'news' && id === 'indicator-reviews') return ['src/content/docs/indicator-reviews'];
-  if (section === 'news' && rest[0] === 'indicator-reviews') return one('src/content/docs/indicator-reviews', rest[1]);
-  if (section === 'news') return one('src/content/news', id);
+  if (section === 'updates' && !id) return ['src/content/news', 'src/content/docs/indicator-reviews', 'src/content/elsewhere.yaml', 'src/content/status.md'];
+  if (section === 'indicator-reviews' && !id) return ['src/content/docs/indicator-reviews'];
+  if (section === 'indicator-reviews') return one('src/content/docs/indicator-reviews', id);
+  if (categorySlugs.includes(section) && !id) return ['src/content/news', 'src/content/elsewhere.yaml'];
+  if (categorySlugs.includes(section)) return articleFiles().get(path) ?? [];
   if (section === 'releases' && !id) return ['src/content/releases'];
   if (section === 'releases') return one('src/content/releases', id);
-  if (section === 'threat' && !id) return ['src/pages/threat/index.astro'];
-  if (section === 'threat') return one('src/content/threat', id);
+  if (section === 'what-is-polinrider' && !id) return ['src/pages/what-is-polinrider/index.astro'];
+  if (section === 'what-is-polinrider') return one('src/content/threat', id);
   if (section === 'about') return ['src/pages/about.astro'];
   return [];
 }
@@ -60,4 +62,32 @@ export function firstCommitDay(file) {
   } catch {
     return undefined;
   }
+}
+
+// Each article's address (/<category>/<slug>/) and its file, read from the
+// front matter: the same rule the site's routes use (src/categories.mjs).
+let files;
+function articleFiles() {
+  if (files) return files;
+  files = new Map();
+  for (const [id, path] of articlePaths()) {
+    const f = ['md', 'mdx'].map((x) => `src/content/news/${id}.${x}`).find((x) => existsSync(x));
+    if (f) files.set(path, [f]);
+  }
+  return files;
+}
+
+/** Every article's file id and its address, without the base, read from the
+ * front matter of content/news. */
+export function articlePaths(dir = 'src/content/news') {
+  const out = new Map();
+  for (const f of readdirSync(dir)) {
+    if (!/\.mdx?$/.test(f)) continue;
+    const text = readFileSync(`${dir}/${f}`, 'utf8');
+    const category = /^category:\s*["']?([\w-]+)/m.exec(text)?.[1];
+    const slug = /^slug:\s*["']?([\w-]+)/m.exec(text)?.[1];
+    const id = f.replace(/\.mdx?$/, '');
+    if (category) out.set(id, articlePath(id, { category, slug }));
+  }
+  return out;
 }

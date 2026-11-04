@@ -1,6 +1,6 @@
 ---
 // Every page: the <head> (title, description, canonical address, social
-// card, News feed, search engine verification and, once switched on,
+// card, Updates feed, search engine verification and, once switched on,
 // Cloudflare Web Analytics), the top bar, the page and the footer. The tags match what the
 // site carried under Starlight, so search results and shared links look the
 // same after the move.
@@ -77,7 +77,7 @@ const fullTitle = titleTag ?? (branded.length <= 60 ? branded : title);
     <meta name="description" content={description} />
     {hasCanonical && <link rel="canonical" href={url} />}
     <link rel="sitemap" href={`${base}/sitemap-index.xml`} />
-    <link rel="alternate" type="application/rss+xml" title={`${SITE_TITLE}: News`} href={`${SITE_URL}/news/rss.xml`} />
+    <link rel="alternate" type="application/rss+xml" title={`${SITE_TITLE}: Updates`} href={`${SITE_URL}/updates/rss.xml`} />
     <link rel="icon" href={`${base}/favicon.ico`} sizes="32x32" />
     <link rel="icon" href={`${base}/favicon.svg`} type="image/svg+xml" />
     <link rel="apple-touch-icon" href={`${base}/apple-touch-icon.png`} />

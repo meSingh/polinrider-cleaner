@@ -5,6 +5,7 @@
 import { defineCollection } from 'astro:content';
 import { file, glob } from 'astro/loaders';
 import { z } from 'astro/zod';
+import { categorySlugs } from './categories.mjs';
 
 const byPath = ({ entry }: { entry: string }) => entry.replace(/\.mdx?$/, '');
 const pages = (base: string, pattern: string | string[] = '**/*.{md,mdx}') =>
@@ -28,7 +29,7 @@ const page = z.object({
 export const collections = {
   // The documentation for the latest release, served at /docs/. The weekly
   // indicator reviews live in the same folder, because ioc/ cites each one
-  // by that path, but are their own collection, served under /news/.
+  // by that path, but are their own collection, served under /updates/.
   docs: defineCollection({
     loader: pages('./src/content/docs', ['**/*.{md,mdx}', '!indicator-reviews/**']),
     schema: page,
@@ -40,7 +41,16 @@ export const collections = {
   threat: defineCollection({ loader: pages('./src/content/threat'), schema: page }),
   news: defineCollection({
     loader: pages('./src/content/news'),
-    schema: page.extend({ description: z.string(), date: day, review: day.optional() }),
+    // Every article has one category (src/categories.mjs), which is the first
+    // part of its address; `slug` overrides the rest (the file name without
+    // its date).
+    schema: page.extend({
+      description: z.string(),
+      date: day,
+      review: day.optional(),
+      category: z.enum(categorySlugs as [string, ...string[]]),
+      slug: z.string().optional(),
+    }),
   }),
   reviews: defineCollection({ loader: pages('./src/content/docs/indicator-reviews'), schema: page }),
   releases: defineCollection({
@@ -52,6 +62,13 @@ export const collections = {
       breaking: z.string().optional(),
     }),
   }),
+  // "Where things stand" at the top of /updates/: two or three plain
+  // sentences and the day they were written. Changed without touching a
+  // layout (content/status.md).
+  status: defineCollection({
+    loader: glob({ pattern: 'status.md', base: './src/content' }),
+    schema: z.object({ updated: day, sources: z.string().optional() }),
+  }),
   // Articles about the campaign published elsewhere, each one read and
   // checked before it was added. See the file's header.
   elsewhere: defineCollection({
@@ -62,6 +79,9 @@ export const collections = {
       title: z.string(),
       date: day,
       summary: z.string(),
+      // Usually worth-reading; an outside article can be an announcement or
+      // analysis too. It links out either way.
+      category: z.enum(categorySlugs as [string, ...string[]]).default('worth-reading'),
     }),
   }),
 };

@@ -1,0 +1,43 @@
+---
+// One weekly indicator review, as a plain article. The text is never edited
+// after it merges; only the page around it changes. Its one related link is
+// the update written from it, when there is one.
+import { getCollection, render } from 'astro:content';
+import Update from '../../layouts/Update.astro';
+import { humanDates, newsPosts } from '../../news';
+import { longDate } from '../../releaseDate';
+import { citations } from '../../schema';
+import { ogImage } from '../../og';
+
+export async function getStaticPaths() {
+  return (await getCollection('reviews'))
+    .filter((e) => e.id !== 'index')
+    .map((entry) => ({ params: { slug: entry.id }, props: { entry } }));
+}
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+const day = entry.id.slice(0, 10);
+// Reviews written before they carried a description get one here, since
+// past reviews are never edited.
+const description =
+  entry.data.description ??
+  `Weekly PolinRider indicator review for ${longDate(day)}: the published sources checked again, and what changed in the scanner's indicator set and why.`;
+const title = humanDates(entry.data.title);
+const post = (await newsPosts()).find((p) => p.review === day);
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+
+<Update
+  kind="review"
+  label="Indicator review"
+  crumb={{ label: 'Indicator reviews', href: `${base}/indicator-reviews/` }}
+  title={title}
+  description={description}
+  date={day}
+  file={entry.filePath}
+  citations={citations(entry.body)}
+  image={ogImage(`indicator-reviews/${entry.id}`, `${title}. ${description}`)}
+  related={post ? { label: post.title, href: post.href } : undefined}
+>
+  <Content />
+</Update>

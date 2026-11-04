@@ -2,7 +2,7 @@
 // Not noreferrer: the sites we link to may see that the visit came from
 // here. Not nofollow: a link here is an endorsement. One rule, applied to
 // the built HTML once the build is done, so it covers Markdown, MDX, every
-// component (nav, footer, downloads, the News cards) and anything written
+// component (nav, footer, downloads, the Worth reading entries) and anything written
 // later, with nothing to remember per link. Links within the site, and to
 // the site's own domain, are left alone. (The dev server shows links as
 // written; the rule runs on `astro build`.)

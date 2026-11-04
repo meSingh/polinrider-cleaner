@@ -137,6 +137,12 @@ const uid = `run-${Math.random().toString(36).slice(2, 8)}`;
   [role='tab']:hover {
     color: var(--pr-heading);
   }
+  /* 320px phones: the three tabs fit without scrolling the page sideways. */
+  @media (max-width: 22rem) {
+    [role='tab'] {
+      padding: 0.4rem 0.7rem;
+    }
+  }
   [role='tab'][aria-selected='true'] {
     background: var(--pr-bg);
     color: var(--pr-heading);
