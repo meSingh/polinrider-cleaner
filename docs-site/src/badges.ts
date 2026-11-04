@@ -1,5 +1,5 @@
 // The project's trust badges, the same set as the README's, drawn by the
-// site itself so the page loads nothing from shields.io or anywhere else.
+// site itself, so the badges load nothing from shields.io or any other site.
 //
 // Three are live, read when the site is built: CI and Semgrep from the
 // GitHub API (the latest finished run of each workflow on main), and the

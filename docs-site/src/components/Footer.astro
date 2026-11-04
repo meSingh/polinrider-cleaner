@@ -1,10 +1,11 @@
 ---
 // Below every page: the brand and what the project is, a column of links for
 // each section, the project's own links and a row of trust badges. The
-// analytics line appears only while Plausible is switched on, so the footer
-// never claims analytics the page does not load.
+// analytics line appears only while Cloudflare Web Analytics is switched on,
+// so the footer never claims analytics the page does not load, and never
+// hides analytics it does.
 import Badges from './Badges.astro';
-import { PLAUSIBLE_SCRIPT_ID, REPO_URL } from '../siteConfig.mjs';
+import { CF_WEB_ANALYTICS_TOKEN, REPO_URL } from '../siteConfig.mjs';
 import { releases } from '../releases';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -87,9 +88,10 @@ const columns = [
     </div>
     <div class="bottom">
       <Badges size="md" />
-      {PLAUSIBLE_SCRIPT_ID && (
+      {CF_WEB_ANALYTICS_TOKEN && (
         <p class="privacy">
-          Visits are counted with <a href="https://plausible.io/data-policy">Plausible</a>, without cookies or personal data.
+          No cookies and no trackers. Anonymous page counts through{' '}
+          <a href="https://www.cloudflare.com/web-analytics/">Cloudflare Web Analytics</a>.
         </p>
       )}
     </div>

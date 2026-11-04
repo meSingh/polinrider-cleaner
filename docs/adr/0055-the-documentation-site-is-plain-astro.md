@@ -56,7 +56,8 @@ and `docs-site/src/pages/`, the design in `docs-site/src/styles/`.
 - The things that must not change are carried over unchanged in behaviour:
   release dates from the signed tag (`src/releaseDate.ts`), the RSS feed,
   the social card, per-page titles and descriptions, the sitemap, the
-  verification tags, the Plausible switch and `third-party-notices.txt`.
+  verification tags, the analytics switch (now Cloudflare Web Analytics, off
+  until its token is set) and `third-party-notices.txt`.
 
 ### The address is set in one place
 
@@ -104,7 +105,7 @@ When the move is decided, in one pull request and then in the settings:
    documentation and has not been tried here.
 5. **Elsewhere.** Add the new domain as a property in Google Search Console
    and Bing Webmaster Tools and put their values in `siteConfig.mjs`; add
-   the domain in Plausible if it is on; update the full addresses in the
+   the domain in Cloudflare Web Analytics if it is on; update the full addresses in the
    repository's own README files, which point at the live site and are not
    built from the config.
 

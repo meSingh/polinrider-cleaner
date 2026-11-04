@@ -1,7 +1,7 @@
 ---
 // Every page: the <head> (title, description, canonical address, social
 // card, News feed, search engine verification and, once switched on,
-// Plausible), the top bar, the page and the footer. The tags match what the
+// Cloudflare Web Analytics), the top bar, the page and the footer. The tags match what the
 // site carried under Starlight, so search results and shared links look the
 // same after the move.
 import '../styles/theme.css';
@@ -13,8 +13,7 @@ import ThemeScript from '../components/ThemeScript.astro';
 import {
   BING_SITE_VERIFICATION,
   GOOGLE_SITE_VERIFICATION,
-  PLAUSIBLE_OPTIONS,
-  PLAUSIBLE_SCRIPT_ID,
+  CF_WEB_ANALYTICS_TOKEN,
   SITE_DESCRIPTION,
   SITE_ORIGIN,
   SITE_TITLE,
@@ -37,10 +36,6 @@ const { title, description = SITE_DESCRIPTION, type = 'article', canonical, noin
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 const url = canonical ?? new URL(Astro.url.pathname, SITE_ORIGIN).href;
 const fullTitle = `${title} | ${SITE_TITLE}`;
-const plausibleInit =
-  'window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},' +
-  'plausible.init=plausible.init||function(i){plausible.o=i||{}};' +
-  `plausible.init(${JSON.stringify(PLAUSIBLE_OPTIONS)})`;
 ---
 
 <!doctype html>
@@ -72,8 +67,14 @@ const plausibleInit =
 
     {GOOGLE_SITE_VERIFICATION && <meta name="google-site-verification" content={GOOGLE_SITE_VERIFICATION} />}
     {BING_SITE_VERIFICATION && <meta name="msvalidate.01" content={BING_SITE_VERIFICATION} />}
-    {PLAUSIBLE_SCRIPT_ID && <script async src={`https://plausible.io/js/${PLAUSIBLE_SCRIPT_ID}.js`} />}
-    {PLAUSIBLE_SCRIPT_ID && <script is:inline set:html={plausibleInit} />}
+    {CF_WEB_ANALYTICS_TOKEN && (
+      <script
+        is:inline
+        defer
+        src="https://static.cloudflareinsights.com/beacon.min.js"
+        data-cf-beacon={JSON.stringify({ token: CF_WEB_ANALYTICS_TOKEN })}
+      />
+    )}
 
     <ThemeScript />
     <slot name="head" />

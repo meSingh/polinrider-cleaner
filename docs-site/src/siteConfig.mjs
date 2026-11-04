@@ -25,24 +25,16 @@ export const SITE_DESCRIPTION =
 export const REPO_URL = 'https://github.com/meSingh/polinrider-scanner';
 export const EDIT_URL = `${REPO_URL}/edit/main/docs-site/`;
 
-// Plausible analytics. Off until this holds the site's script ID from the
-// Plausible dashboard (Site settings, Site installation), which looks like
-// `pa-` followed by letters and digits. While it is empty, nothing is added to
-// any page and the footer says nothing about analytics. The ID is public: it
-// appears in every page that loads the script.
-export const PLAUSIBLE_SCRIPT_ID = '';
+// Cloudflare Web Analytics. Off until this holds the site's token from the
+// Cloudflare dashboard (Analytics & Logs, Web Analytics, the JS snippet's
+// "token" value). While it is empty, nothing is added to any page and the
+// footer says nothing about analytics. With it set, every page loads
+// Cloudflare's beacon script, which counts page views without cookies. The
+// token is public: it appears in every page that loads the beacon.
+export const CF_WEB_ANALYTICS_TOKEN = '';
 
-// Downloads are release assets: .tar.gz and .zip archives, .deb packages and
-// .intoto.jsonl attestations. Setting fileExtensions replaces Plausible's
-// default list rather than adding to it. The links point at github.com, so
-// outbound link clicks are counted as well.
-export const PLAUSIBLE_OPTIONS = {
-  fileDownloads: { fileExtensions: ['gz', 'zip', 'deb', 'jsonl'] },
-  outboundLinks: true,
-};
-
-if (PLAUSIBLE_SCRIPT_ID && !/^pa-[A-Za-z0-9_-]+$/.test(PLAUSIBLE_SCRIPT_ID)) {
-  throw new Error(`PLAUSIBLE_SCRIPT_ID is not a Plausible script ID: ${PLAUSIBLE_SCRIPT_ID}`);
+if (CF_WEB_ANALYTICS_TOKEN && !/^[A-Za-z0-9]+$/.test(CF_WEB_ANALYTICS_TOKEN)) {
+  throw new Error(`CF_WEB_ANALYTICS_TOKEN is not a Cloudflare Web Analytics token: ${CF_WEB_ANALYTICS_TOKEN}`);
 }
 
 // Search engine ownership checks. Each is the `content` value of the meta tag
