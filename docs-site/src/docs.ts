@@ -35,6 +35,7 @@ export const groups: { label: string; items: [string, string][] }[] = [
     label: 'Clean up, in this order',
     items: [
       ['guides/order', 'Order matters'],
+      ['guides/getting-rid-of-polinrider', 'Getting rid of PolinRider'],
       ['guides/machine', 'A machine'],
       ['guides/account', 'A personal GitHub account'],
       ['guides/organization', 'An organization'],
