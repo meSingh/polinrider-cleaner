@@ -54,8 +54,11 @@ A rename is not free, and four parts of it reach past this repository.
   result is recorded here when it is known, and this record moves to
   Accepted.
 - **The site moves to `https://polinriderscanner.com/`.** Pages publishes it
-  with the domain set in the repository settings. `polinrider.com` forwards to
-  it with a 301 at the registrar, because Pages serves one domain per site. A
+  with the domain set in the repository settings, and the domain is verified
+  to the account so no one else can publish on it. Both domains are on
+  Cloudflare. `polinrider.com` answers every path with a 301 to the threat
+  page, `https://polinriderscanner.com/threat/`, from a Cloudflare redirect
+  rule, because Pages serves one domain per site. A
   new user site, `meSingh/meSingh.github.io`, holds redirect pages at
   `/polinrider-cleaner/...`, which is where the old links point.
 - **Every package is renamed, each with a path from the old name:**

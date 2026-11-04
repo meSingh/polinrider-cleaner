@@ -361,7 +361,7 @@ descending. That was the six-hour scan ([ADR-0025](./docs/adr/0025-walk-the-file
 | Beta binaries | `.github/workflows/beta-build.yml` | Builds and exercises every platform on each push to `main`. The only place the macOS and Windows live checks run |
 | Documentation site | GitHub Pages, from `main`, at `polinriderscanner.com` | `docs-site/`, including the indicator reviews. The domain is set in the repository's Pages settings, not in a `CNAME` file |
 | Old site links | `meSingh/meSingh.github.io` | Redirect pages for `mesingh.github.io/polinrider-cleaner/...`, the site's address before 3.0.0. Keep it while old links get traffic |
-| `polinrider.com` | the registrar | A 301 to `polinriderscanner.com`. Pages serves one domain per site |
+| DNS for both domains | Cloudflare | `polinriderscanner.com`: GitHub Pages records, DNS only, plus the TXT records that verify it to GitHub, Google and Bing. `polinrider.com`: a proxied placeholder (`AAAA 100::`) and a Single Redirect rule, a 301 from every path on the apex and `www` to `https://polinriderscanner.com/threat/` |
 | The old name | `meSingh/polinrider-cleaner` | The repository's name until 3.0.0; GitHub redirects it here. **Never create a repository with that name.** Doing so ends every redirect, including the links in releases before 3.0.0 and in the commits, pull requests and issues the tool has opened on other people's repositories (ADR-0055) |
 | Traffic log | `traffic` branch, from `.github/workflows/traffic.yml` | Views, clones, referrers, paths and stars, daily, kept past GitHub's 14 days. Needs the `TRAFFIC_TOKEN` secret: a fine-grained token on this repository with Administration: read only |
 
