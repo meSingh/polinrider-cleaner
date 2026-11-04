@@ -12,9 +12,9 @@ interface Props {
   install?: boolean;
 }
 const run = Astro.props.install ? '' : '\npolinrider';
-const brew = `brew install meSingh/tap/polinrider-cleaner${run}`;
+const brew = `brew install meSingh/tap/polinrider-scanner${run}`;
 const scoop =
-  'scoop bucket add mesingh https://github.com/meSingh/scoop-bucket\n' + `scoop install polinrider-cleaner${run}`;
+  'scoop bucket add mesingh https://github.com/meSingh/scoop-bucket\n' + `scoop install polinrider-scanner${run}`;
 
 const systems = [
   { id: 'macos', label: 'macOS', code: brew },
