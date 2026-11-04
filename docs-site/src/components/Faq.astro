@@ -1,0 +1,47 @@
+---
+// Questions and answers, from src/faq.ts. The page writes the section's
+// heading; this lists the questions under it. The same items are the
+// page's FAQPage structured data.
+import type { Faq } from '../faq';
+interface Props {
+  items: Faq[];
+}
+const { items } = Astro.props;
+const slug = (q: string) => q.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+---
+
+<div class="faq not-prose">
+  {
+    items.map((i) => (
+      <div class="qa">
+        <h3 id={slug(i.q)}>{i.q}</h3>
+        <p set:html={i.a} />
+      </div>
+    ))
+  }
+</div>
+
+<style>
+  .faq {
+    display: grid;
+    gap: 1rem;
+    margin-top: 1.25rem;
+  }
+  .qa {
+    padding: 1rem 1.15rem;
+    border: 1px solid var(--pr-border);
+    border-radius: var(--pr-radius);
+    background: var(--pr-surface);
+  }
+  h3 {
+    margin: 0;
+    color: var(--pr-heading);
+    font-size: 1.0625rem;
+    line-height: 1.35;
+  }
+  p {
+    margin: 0.45rem 0 0;
+    color: var(--pr-text);
+    line-height: 1.6;
+  }
+</style>

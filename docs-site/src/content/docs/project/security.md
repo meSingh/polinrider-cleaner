@@ -1,6 +1,6 @@
 ---
 title: Reporting a vulnerability
-description: How to report a security problem in polinrider-cleaner privately.
+description: How to report a vulnerability in the PolinRider scanner privately through GitHub Security Advisories, and where to report an infection instead.
 ---
 
 If you find a vulnerability **in this tool**, report it privately through

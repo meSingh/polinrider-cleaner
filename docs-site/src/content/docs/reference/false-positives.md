@@ -1,6 +1,6 @@
 ---
 title: PolinRider scanner false positives
-description: Matches that look alarming and are harmless, each confirmed during a real cleanup, and what to do about them.
+description: Scanner matches that look alarming but are harmless, each one confirmed during a real PolinRider cleanup, why they match and what to do about them.
 ---
 
 Each of these is harmless, and each was met during a real cleanup or while

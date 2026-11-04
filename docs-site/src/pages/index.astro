@@ -13,10 +13,13 @@ import NewsTimeline from '../components/NewsTimeline.astro';
 import Badges from '../components/Badges.astro';
 import { Code } from 'astro:components';
 import { timeline } from '../news';
+import { releases } from '../releases';
+import { software, sourceCode } from '../schema';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 const d = `${base}/docs`;
 const latest = (await timeline()).slice(0, 4);
+const newest = (await releases())[0];
 const themes = { light: 'github-light-default', dark: 'github-dark-default' } as const;
 
 // The answer to type at "What should I check?" for each button.
@@ -102,15 +105,18 @@ const trust = [
 
 <Base
   title="Find and remove PolinRider"
-  description="Check your computer, a GitHub account or a whole organization for the PolinRider supply-chain malware, and clean it up safely."
+  titleTag="PolinRider Scanner: find and remove PolinRider malware"
+  description="Free, open source scanner for the PolinRider malware: check your computer, a GitHub account or an organization, then clean up infected repositories safely."
   type="website"
+  schema={[software(newest), sourceCode]}
 >
   <section class="hero wrap">
     <p class="badge"><span class="dot" aria-hidden="true"></span>Open source PolinRider malware scanner and cleaner</p>
     <h1>Under attack by PolinRider?<br /><span class="accent">Find the malware and remove it safely.</span></h1>
     <p class="tagline">
       One open source program checks your computer, your GitHub account and your organisation for PolinRider malware,
-      and helps you remove it safely.
+      and helps you remove it safely. It is free, runs on macOS, Linux and Windows, and changes nothing until you type
+      yes.
     </p>
     <div class="checks">
       {checks.map((c) => (

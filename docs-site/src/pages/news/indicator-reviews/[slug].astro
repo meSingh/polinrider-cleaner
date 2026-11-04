@@ -3,7 +3,9 @@
 // only the page around it changes.
 import { getCollection, render } from 'astro:content';
 import Article from '../../../layouts/Article.astro';
-import { humanDates, reviews } from '../../../news';
+import { humanDates, newsPosts, reviews } from '../../../news';
+import { longDate } from '../../../releaseDate';
+import { citations } from '../../../schema';
 
 export async function getStaticPaths() {
   return (await getCollection('reviews'))
@@ -15,11 +17,20 @@ const { Content, headings } = await render(entry);
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 const all = await reviews();
 const day = entry.id.slice(0, 10);
+// Related reading under the review: the posts written from it, then the
+// pages that say what the indicators mean for a reader.
+const fromThis = (await newsPosts()).filter((p) => p.review === day);
+const related = [
+  ...fromThis.map((p) => ({ label: p.title, href: p.href })),
+  { label: 'The PolinRider threat', href: `${base}/threat/` },
+  { label: 'Is it PolinRider or a false alarm?', href: `${base}/news/2026-11-04-polinrider-or-false-alarm/` },
+  { label: 'The indicator set', href: `${base}/threat/indicators/` },
+];
 // Reviews written before they carried a description get one here, since
 // past reviews are never edited.
 const description =
   entry.data.description ??
-  `Weekly PolinRider indicator review for ${day}: what changed in the indicator set and why.`;
+  `Weekly PolinRider indicator review for ${longDate(day)}: the published sources checked again, and what changed in the scanner's indicator set and why.`;
 ---
 
 <Article
@@ -32,6 +43,8 @@ const description =
   headings={headings}
   section="Indicator review"
   file={entry.filePath}
+  published={day}
+  citations={citations(entry.body)}
   side={{
     title: 'Indicator reviews',
     items: [
@@ -41,4 +54,27 @@ const description =
   }}
 >
   <Content />
+  <nav slot="after" class="related" aria-labelledby="related-reading">
+    <h2 id="related-reading">Related reading</h2>
+    <ul>
+      {related.map((r) => <li><a href={r.href}>{r.label}</a></li>)}
+    </ul>
+  </nav>
 </Article>
+
+<style>
+  .related {
+    margin-top: 2.5rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--pr-border);
+  }
+  .related h2 {
+    margin: 0 0 0.6rem;
+    font-size: var(--text-lg, 1.125rem);
+  }
+  .related ul {
+    margin: 0;
+    padding-inline-start: 1.1rem;
+    line-height: 1.8;
+  }
+</style>

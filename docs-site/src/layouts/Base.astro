@@ -10,11 +10,14 @@ import '../styles/prose.css';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import ThemeScript from '../components/ThemeScript.astro';
+import geist from '../assets/fonts/geist-variable.woff2?url';
+import { jsonLd, person, website } from '../schema';
 import {
   BING_SITE_VERIFICATION,
   GOOGLE_SITE_VERIFICATION,
   ANALYTICS_ON,
   CF_WEB_ANALYTICS_TOKEN,
+  SHORT_TITLE,
   SITE_DESCRIPTION,
   SITE_ORIGIN,
   SITE_TITLE,
@@ -32,11 +35,29 @@ interface Props {
   noindex?: boolean;
   /** false on a page with no address of its own, such as the 404. */
   hasCanonical?: boolean;
+  /** The <title>, when it should differ from the page's heading. */
+  titleTag?: string;
+  /** Structured data for this page (src/schema.ts). The site's author and
+   * the site itself are added, so every @id a node names is on the page. */
+  schema?: Record<string, unknown>[];
 }
-const { title, description = SITE_DESCRIPTION, type = 'article', canonical, noindex = false, hasCanonical = true } = Astro.props;
+const {
+  title,
+  description = SITE_DESCRIPTION,
+  type = 'article',
+  canonical,
+  noindex = false,
+  hasCanonical = true,
+  titleTag,
+  schema = [],
+} = Astro.props;
+const graph = schema.length ? [...schema, website, person] : [];
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 const url = canonical ?? new URL(Astro.url.pathname, SITE_ORIGIN).href;
-const fullTitle = `${title} | ${SITE_TITLE}`;
+// "<page> | PolinRider Scanner" while that fits the 60 or so characters a
+// search result shows; a longer page title stands alone rather than be cut.
+const branded = `${title} | ${SHORT_TITLE}`;
+const fullTitle = titleTag ?? (branded.length <= 60 ? branded : title);
 ---
 
 <!doctype html>
@@ -45,6 +66,7 @@ const fullTitle = `${title} | ${SITE_TITLE}`;
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{fullTitle}</title>
+    <link rel="preload" href={geist} as="font" type="font/woff2" crossorigin />
     <meta name="description" content={description} />
     {hasCanonical && <link rel="canonical" href={url} />}
     <link rel="sitemap" href={`${base}/sitemap-index.xml`} />
@@ -67,7 +89,10 @@ const fullTitle = `${title} | ${SITE_TITLE}`;
     <meta property="og:image:height" content={String(SOCIAL_IMAGE.height)} />
     <meta property="og:image:alt" content={SOCIAL_IMAGE.alt} />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={SOCIAL_IMAGE.url} />
+    <meta name="twitter:image:alt" content={SOCIAL_IMAGE.alt} />
 
     {GOOGLE_SITE_VERIFICATION && <meta name="google-site-verification" content={GOOGLE_SITE_VERIFICATION} />}
     {BING_SITE_VERIFICATION && <meta name="msvalidate.01" content={BING_SITE_VERIFICATION} />}
@@ -78,7 +103,9 @@ const fullTitle = `${title} | ${SITE_TITLE}`;
         src="https://static.cloudflareinsights.com/beacon.min.js"
         data-cf-beacon={JSON.stringify({ token: CF_WEB_ANALYTICS_TOKEN })}
       />
-    )}    <ThemeScript />
+    )}
+    <ThemeScript />
+    {graph.length > 0 && <script type="application/ld+json" is:inline set:html={jsonLd(graph)} />}
     <slot name="head" />
   </head>
   <body>

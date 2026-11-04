@@ -10,9 +10,14 @@ tableOfContents:
 ---
 
 import Verdict from '~/components/Verdict.astro';
+import Faq from '~/components/Faq.astro';
+import { falseAlarmFaq } from '~/faq';
 
-polinrider gives one of three answers, and they mean different things. Here
-is what each one means and what to do next.
+polinrider gives one of three answers. `COMPROMISED` means it found something
+only the malware leaves. A `[review]` line means nothing is confirmed, but a
+person has to decide. Clean means none of today's indicators is present, which
+is not proof that nothing was ever there. Here is what each one means and what
+to do next.
 
 ## The three answers
 
@@ -186,6 +191,10 @@ Download `polinrider` from the [quick start](/docs/quick-start/)
 and run it with no arguments. It asks what to check (this computer, a GitHub
 account or an organization) and changes nothing until you type `yes`.
 :::
+
+## Questions people ask
+
+<Faq items={falseAlarmFaq} />
 
 ## Sources
 

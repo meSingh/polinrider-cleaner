@@ -1,6 +1,6 @@
 ---
 title: Contributing
-description: How to report a missed detection or a false positive, and how to change the code or the indicator set.
+description: How to report a missed PolinRider detection or a false positive, and how to propose a change to the scanner's code or to its indicator set.
 ---
 
 The most valuable contributions to this project are not code.

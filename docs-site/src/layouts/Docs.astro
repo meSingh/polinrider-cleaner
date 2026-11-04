@@ -10,6 +10,10 @@ import VersionSwitch from '../components/VersionSwitch.astro';
 import Icon from '../components/Icon.astro';
 import type { MarkdownHeading } from 'astro';
 import type { DocsVersion, NavGroup } from '../docs';
+import { abs, article, breadcrumbs } from '../schema';
+import { lastUpdated } from '../git';
+import { firstCommitDay } from '../sources.mjs';
+import { longDate } from '../releaseDate';
 
 interface Props {
   title: string;
@@ -21,10 +25,15 @@ interface Props {
   id: string;
   headings?: MarkdownHeading[];
   file?: string;
-  /** The same page in the latest docs, when this is a frozen copy. */
+  /** The same page in the latest docs, when this is a frozen copy. A frozen
+   * copy is not marked noindex: its canonical link names the live page,
+   * and the two signals together would contradict each other. */
   canonical?: string;
+  titleTag?: string;
+  /** More structured data, such as the quick start's HowTo. */
+  extraSchema?: Record<string, unknown>[];
 }
-const { title, description, version, versions, nav, id, headings = [], file, canonical } = Astro.props;
+const { title, description, version, versions, nav, id, headings = [], file, canonical, titleTag, extraSchema = [] } = Astro.props;
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
 const flat = nav.flatMap((g) => g.items.map((i) => ({ ...i, group: g.label })));
@@ -35,9 +44,23 @@ const group = flat[at]?.group;
 
 const crumbs = [{ label: version.latest ? 'Docs' : `Docs ${version.line}.x`, href: version.root }];
 if (group) crumbs.push({ label: group, href: flat.find((i) => i.group === group)!.href });
+
+// Who wrote it and when it last changed, shown under the title of the live
+// docs and given as structured data. A frozen copy points at the live page.
+const updated = file ? lastUpdated(file) : undefined;
+const url = abs(Astro.url.pathname);
+const schema = version.latest
+  ? [
+      breadcrumbs(crumbs, title, url),
+      ...(id
+        ? [article({ type: 'TechArticle', url, title, description, published: file ? firstCommitDay(file) : undefined, modified: updated, section: group ?? 'Documentation' })]
+        : []),
+      ...extraSchema,
+    ]
+  : [];
 ---
 
-<Base title={title} description={description} canonical={canonical} noindex={!version.latest}>
+<Base title={title} description={description} canonical={canonical} titleTag={titleTag} schema={schema}>
   <div class="docs frame">
     <aside class="sidebar no-print" aria-label="Documentation">
       <details class="nav-fold" open>
@@ -64,7 +87,13 @@ if (group) crumbs.push({ label: group, href: flat.find((i) => i.group === group)
       <h1>{title}</h1>
       <p class="for-version" data-pagefind-ignore>
         {version.latest ? (
-          <>For polinrider {version.line}.x <span class="tag tag-accent">latest</span></>
+          <>
+            For polinrider {version.line}.x <span class="tag tag-accent">latest</span>
+            <span class="byline">
+              By <a href={`${base}/about/`}>Mandeep Singh</a>
+              {updated && <> · Updated <time datetime={updated}>{longDate(updated)}</time></>}
+            </span>
+          </>
         ) : (
           <>
             For polinrider {version.line}.x.{' '}
@@ -127,6 +156,13 @@ if (group) crumbs.push({ label: group, href: flat.find((i) => i.group === group)
     margin: 0.9rem 0 2rem;
     color: var(--pr-muted);
     font-size: var(--text-sm);
+  }
+  .byline::before {
+    content: '·';
+    margin-inline-end: 0.5rem;
+  }
+  .byline a {
+    color: var(--pr-text);
   }
   .toc-col {
     display: none;
