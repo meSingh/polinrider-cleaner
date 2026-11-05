@@ -47,13 +47,40 @@ const frozen = versions.frozen.map((v) => `/docs/${v.version}/`);
 // The site's origin and base path come from src/siteConfig.mjs. Every
 // internal link is built with the base, or the whole thing 404s once it
 // leaves localhost.
+// Development only: an address without its trailing slash (/docs/quick-start)
+// is sent on to the one with it, as GitHub Pages does, instead of Astro's
+// own "trailingSlash" notice page interrupting a review. Files (anything
+// with an extension) and Vite's own paths are left alone.
+const devTrailingSlash = () => ({
+  name: 'polinrider-dev-trailing-slash',
+  hooks: {
+    'astro:server:setup': ({ server }) => {
+      server.middlewares.use((req, res, next) => {
+        const [path, query = ''] = (req.url ?? '').split('?');
+        const last = path.split('/').pop() ?? '';
+        if (req.method === 'GET' && path && !path.endsWith('/') && !last.includes('.') && !path.startsWith('/@') && !path.startsWith('/__') && !path.startsWith('/node_modules/')) {
+          res.statusCode = 301;
+          res.setHeader('Location', `${path}/${query ? `?${query}` : ''}`);
+          res.end();
+          return;
+        }
+        next();
+      });
+    },
+  },
+});
+
 export default defineConfig({
   site: SITE_ORIGIN,
   base: BASE || '/',
   trailingSlash: 'always',
+  // Astro's floating dev toolbar is not part of the site; keep reviews of
+  // the dev server looking like the real thing.
+  devToolbar: { enabled: false },
   redirects: Object.fromEntries(Object.entries(redirects).map(([from, to]) => [from, `${BASE}${to}`])),
 
   integrations: [
+    devTrailingSlash(),
     mdx(),
     sitemap({
       filter: (page) => {
