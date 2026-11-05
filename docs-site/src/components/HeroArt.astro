@@ -1,13 +1,12 @@
 ---
 // The picture beside the What is PolinRider? intro: a skeleton in a peaked
-// cap on a rearing horse, on a dark navy ground. Generated with Google
-// Gemini (credited in /third-party-notices.txt). Served as WebP, with a PNG
-// for browsers without WebP, at 1x and 2x of its displayed width.
-// Decorative: empty alt and hidden from assistive technology. Width and
-// height are set and it loads eagerly, as it is above the fold, so nothing
-// moves while it arrives. On the light band the dark square is framed as a
-// card (the site's radius and a soft shadow); in dark mode the same card
-// with a hairline border.
+// cap on a rearing horse, cut out on a transparent ground so it sits
+// straight on the grey band in light mode and on the page in dark mode.
+// Generated with Google Gemini (credited in /third-party-notices.txt).
+// Served as WebP with its transparency, with a PNG for browsers without
+// WebP, at 1x and 2x of its displayed width. Decorative: empty alt and
+// hidden from assistive technology. Width and height are set and it loads
+// eagerly, as it is above the fold, so nothing moves while it arrives.
 import { Picture } from 'astro:assets';
 import rider from '../assets/polinrider-rider.png';
 ---
@@ -31,18 +30,11 @@ import rider from '../assets/polinrider-rider.png';
   :global(picture:has(> .hero-pic)) {
     display: block;
   }
+  /* A cutout: it sits straight on the band, with no frame of its own. */
   :global(.hero-pic) {
     display: block;
     width: 100%;
     height: auto;
     aspect-ratio: 1;
-    border-radius: var(--pr-radius);
-    background: #0b1530;
-    box-shadow:
-      0 1px 2px rgb(15 18 32 / 0.08),
-      0 12px 28px -12px rgb(15 18 32 / 0.45);
-  }
-  :global([data-theme='dark'] .hero-pic) {
-    box-shadow: 0 0 0 1px var(--pr-border);
   }
 </style>
