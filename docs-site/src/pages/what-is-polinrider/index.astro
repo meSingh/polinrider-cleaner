@@ -149,7 +149,7 @@ const schema = [
       </div>
       <div>
         <h2 id="am-i-at-risk">Am I at risk?</h2>
-        <p>You could be if you write code and, in the last year or so, you did any of these:</p>
+        <p class="risk-intro">You could be if you write code and, in the last year or so, you did any of these:</p>
         <ul class="checklist">
           <li>installed an npm, Go or Composer package;</li>
           <li>installed a VS Code or Cursor extension;</li>
@@ -576,53 +576,65 @@ const schema = [
     font-size: var(--text-sm);
   }
 
-  /* Risk and ways in */
+  /* How it gets in and Am I at risk?: two lists built the same way, so
+   * their rows share padding, corners and gaps. In each row the marker (an
+   * icon tile, a check box) has a fixed size and sits against the first
+   * line of text, so every row's text starts at the same place. */
+  .ways,
   .checklist {
-    display: grid;
-    gap: 0.6rem;
-    margin: 1rem 0;
-    padding: 0;
-    list-style: none;
-  }
-  .checklist li {
-    position: relative;
-    padding: 0.75rem 1rem 0.75rem 2.6rem;
-    border: 1px solid var(--pr-border);
-    border-radius: var(--pr-radius-sm);
-  }
-  .checklist li::before {
-    content: '';
-    position: absolute;
-    top: 0.95rem;
-    left: 1rem;
-    width: 0.9rem;
-    height: 0.9rem;
-    border: 2px solid var(--pr-review);
-    border-radius: 4px;
-  }
-  .ways {
     display: grid;
     gap: 0.75rem;
     margin: 0;
     padding: 0;
     list-style: none;
   }
-  .ways li {
+  .ways li,
+  .checklist li {
     display: flex;
+    align-items: flex-start;
     gap: 1rem;
-    padding: 1rem 1.1rem;
+    padding: 1rem 1.15rem;
     border: 1px solid var(--pr-border);
     border-radius: var(--pr-radius);
-    font-size: 0.9375rem;
     line-height: 1.5;
+  }
+  .ways li {
+    font-size: 0.9375rem;
+  }
+  .ways .wicon {
+    flex: none;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 10px;
   }
   .ways strong {
     display: block;
+    margin-bottom: 0.15rem;
     color: var(--pr-heading);
     font-size: 1.0625rem;
+    line-height: 1.35;
+  }
+  .checklist {
+    margin-bottom: 1.25rem;
+  }
+  .checklist li {
+    align-items: baseline;
+    font-size: 1rem;
+  }
+  .checklist li::before {
+    content: '';
+    flex: none;
+    width: 0.95rem;
+    height: 0.95rem;
+    border: 2px solid var(--pr-review);
+    border-radius: 4px;
+    transform: translateY(0.12em);
+  }
+  .risk-intro {
+    margin: 0 0 1rem;
   }
   .callout {
-    margin: 1rem 0 0;
+    margin: 1.25rem 0 0;
     padding: 0.9rem 1.1rem;
     border-inline-start: 3px solid var(--pr-bad);
     border-radius: var(--pr-radius-sm);
