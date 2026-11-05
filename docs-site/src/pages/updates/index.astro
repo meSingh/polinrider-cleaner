@@ -53,7 +53,7 @@ const tabs = [
       </p>
     </section>
 
-    <div class="tabs no-print" role="group" aria-label="Show">
+    <div class="tabs no-print needs-js" role="group" aria-label="Show">
       {tabs.map(([kind, label], i) => (
         <button type="button" data-filter={kind} aria-pressed={i === 0 ? 'true' : 'false'}>{label}</button>
       ))}

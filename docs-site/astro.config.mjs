@@ -47,10 +47,19 @@ const frozen = versions.frozen.map((v) => `/docs/${v.version}/`);
 // The site's origin and base path come from src/siteConfig.mjs. Every
 // internal link is built with the base, or the whole thing 404s once it
 // leaves localhost.
+// The dev server accepts an address with or without its trailing slash, so
+// a review never lands on Astro's own "trailingSlash" notice page; the build
+// keeps "always", which is what GitHub Pages serves. Links are always
+// written with the slash either way.
+const isDev = process.argv.includes('dev');
+
 export default defineConfig({
   site: SITE_ORIGIN,
   base: BASE || '/',
-  trailingSlash: 'always',
+  trailingSlash: isDev ? 'ignore' : 'always',
+  // Astro's floating dev toolbar is not part of the site; keep reviews of
+  // the dev server looking like the real thing.
+  devToolbar: { enabled: false },
   redirects: Object.fromEntries(Object.entries(redirects).map(([from, to]) => [from, `${BASE}${to}`])),
 
   integrations: [

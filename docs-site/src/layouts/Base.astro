@@ -1,9 +1,8 @@
 ---
 // Every page: the <head> (title, description, canonical address, social
-// card, Updates feed, search engine verification and, once switched on,
-// Cloudflare Web Analytics), the top bar, the page and the footer. The tags match what the
-// site carried under Starlight, so search results and shared links look the
-// same after the move.
+// card, theme colours, Updates feed, search engine verification and, once
+// switched on, Cloudflare Web Analytics), the top bar, the page and the
+// footer.
 import '../styles/theme.css';
 import '../styles/base.css';
 import '../styles/prose.css';
@@ -68,7 +67,7 @@ const fullTitle = titleTag ?? (branded.length <= 60 ? branded : title);
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="en-IN">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -82,7 +81,13 @@ const fullTitle = titleTag ?? (branded.length <= 60 ? branded : title);
     <link rel="icon" href={`${base}/favicon.svg`} type="image/svg+xml" />
     <link rel="apple-touch-icon" href={`${base}/apple-touch-icon.png`} />
     <link rel="manifest" href={`${base}/site.webmanifest`} />
-    <meta name="generator" content={Astro.generator} />
+    <!-- The site's theme is the reader's choice (light unless they pick
+         dark), not the system's; ThemeScript and the theme button keep
+         these two in step with it. -->
+    <meta name="color-scheme" content="light" />
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="apple-mobile-web-app-title" content={SHORT_TITLE} />
+    <meta name="application-name" content={SHORT_TITLE} />
     {noindex && <meta name="robots" content="noindex, follow" />}
 
     <meta property="og:title" content={title} />
