@@ -11,6 +11,7 @@ import Crumbs from '../../components/Crumbs.astro';
 import Icon from '../../components/Icon.astro';
 import HistoryCompare from '../../components/HistoryCompare.astro';
 import RiderIllustration from '../../components/RiderIllustration.astro';
+import PathCode from '../../components/PathCode.astro';
 import PageFoot from '../../components/PageFoot.astro';
 import { abs, article, breadcrumbs } from '../../schema';
 import { lastUpdated } from '../../git';
@@ -106,7 +107,7 @@ const schema = [
   schema={schema}
   description="PolinRider malware hides in developers' projects, steals their logins and spreads to everything they push. How it gets in, how it hides and the signs."
 >
-  <div data-pagefind-body data-pagefind-meta="section:What is PolinRider?">
+  <div class="explainer" data-pagefind-body data-pagefind-meta="section:What is PolinRider?">
     <header class="hero">
       <div class="wrap hero-text">
         <Crumbs items={[]} />
@@ -139,7 +140,7 @@ const schema = [
         <ul class="ways">
           {waysIn.map((w) => (
             <li>
-              <span class="wicon"><Icon name={w.icon} size={22} /></span>
+              <span class="chip"><Icon name={w.icon} size={20} /></span>
               <span><strong>{w.title}</strong>{w.text}</span>
             </li>
           ))}
@@ -182,7 +183,7 @@ const schema = [
           </p>
         </div>
         <div>
-          <p class="takes-title">What it goes after</p>
+          <h3 class="takes-title">What it goes after</h3>
           <ul class="takes">
             {takes.map((t) => <li><Icon name="key" size={18} />{t}</li>)}
           </ul>
@@ -195,8 +196,8 @@ const schema = [
       <ol class="spread">
         {spread.map((s, i) => (
           <li>
-            <span class="snum">{i + 1}</span>
-            <span class="sicon"><Icon name={s.icon} size={26} /></span>
+            <span class="num snum">{i + 1}</span>
+            <span class="chip"><Icon name={s.icon} size={20} /></span>
             <strong>{s.title}</strong>
             <span>{s.text}</span>
           </li>
@@ -212,10 +213,10 @@ const schema = [
         your last commit and pushes it again (<a href={src.osmMarch} {...ext}>OpenSourceMalware</a>):
       </p>
       <ol class="rewrite">
-        <li><span>1</span>It reads your last commit: its date, message and author.</li>
-        <li><span>2</span>It <strong>winds the computer's clock back</strong> to that commit's date.</li>
-        <li><span>3</span>It adds the malware to that commit, keeping your name and message.</li>
-        <li><span>4</span>It puts the clock right and force-pushes the branch.</li>
+        <li><span class="num">1</span>It reads your last commit: its date, message and author.</li>
+        <li><span class="num">2</span>It winds the computer's clock back to that commit's date.</li>
+        <li><span class="num">3</span>It adds the malware to that commit, keeping your name and message.</li>
+        <li><span class="num">4</span>It puts the clock right and force-pushes the branch.</li>
       </ol>
       <p class="intro">
         So the commit looks exactly as it did before. Your name, your message, the original date. Reading{' '}
@@ -237,28 +238,50 @@ const schema = [
       </p>
       <ul class="signs">
         <li>
-          <strong>A font file that is really code</strong>
-          <span>A file such as <code>public/fonts/fa-solid-400.woff2</code> that holds JavaScript instead of a font. A real <code>.woff2</code> font starts with the letters <code>wOF2</code>. The names keep changing (<a href={src.osmAb} {...ext}>fake fonts</a>; <a href={articleUrl['2026-11-04-fake-font-javascript']}>our post</a>).</span>
+          <span class="chip"><Icon name="font" size={20} /></span>
+          <div>
+            <h3>A font file that is really code</h3>
+            <p>A file such as <PathCode path="public/fonts/fa-solid-400.woff2" /> that holds JavaScript instead of a font. A real <code>.woff2</code> font starts with the letters <code>wOF2</code>. The names keep changing.</p>
+            <a class="more" href={articleUrl['2026-11-04-fake-font-javascript']}>Read more<span class="sr-only">: fake font files</span> <Icon name="arrow" size={15} /></a>
+          </div>
         </li>
         <li>
-          <strong>An editor task that runs when you open the folder</strong>
-          <span>A <code>.vscode/tasks.json</code> with <code>"runOn": "folderOpen"</code>, often labelled like a normal tool such as <code>eslint-check</code>, with its output hidden (<a href={src.osmAb} {...ext}>fake fonts</a>).</span>
+          <span class="chip"><Icon name="folder" size={20} /></span>
+          <div>
+            <h3>An editor task that runs when you open the folder</h3>
+            <p>A <PathCode path=".vscode/tasks.json" /> with <code>"runOn": "folderOpen"</code>, often labelled like a normal tool such as <code>eslint-check</code>, with its output hidden.</p>
+          </div>
         </li>
         <li>
-          <strong>Code after the end of a config file</strong>
-          <span>In <code>postcss.config.mjs</code>, <code>tailwind.config.js</code>, <code>eslint.config.mjs</code> and similar, extra code after the real end of the file, often pushed far to the right by a long run of spaces (<a href={src.osmMarch} {...ext}>OpenSourceMalware</a>).</span>
+          <span class="chip"><Icon name="codefile" size={20} /></span>
+          <div>
+            <h3>Code after the end of a config file</h3>
+            <p>In <code>postcss.config.mjs</code>, <code>tailwind.config.js</code>, <code>eslint.config.mjs</code> and similar, extra code after the real end of the file, often pushed far to the right by a long run of spaces.</p>
+          </div>
         </li>
         <li>
-          <strong>temp_auto_push.bat</strong>
-          <span>In a project or listed in a <code>.gitignore</code> nobody on your team wrote. It means a computer that pushes to that project is infected (<a href={articleUrl['2026-11-04-temp-auto-push-bat']}>our post</a>).</span>
+          <span class="chip"><Icon name="terminal" size={20} /></span>
+          <div>
+            <h3>temp_auto_push.bat</h3>
+            <p>In a project or listed in a <code>.gitignore</code> nobody on your team wrote. It means a computer that pushes to that project is infected.</p>
+            <a class="more" href={articleUrl['2026-11-04-temp-auto-push-bat']}>Read more<span class="sr-only">: temp_auto_push.bat</span> <Icon name="arrow" size={15} /></a>
+          </div>
         </li>
         <li>
-          <strong>It keeps coming back</strong>
-          <span>Your antivirus removes it and it is back the next time you run <code>npm run dev</code>. Something that starts it has not been found yet (<a href={articleUrl['2026-11-04-polinrider-keeps-coming-back']}>our post</a>).</span>
+          <span class="chip"><Icon name="undo" size={20} /></span>
+          <div>
+            <h3>It keeps coming back</h3>
+            <p>Your antivirus removes it and it is back the next time you run <code>npm run dev</code>. Something that starts it has not been found yet.</p>
+            <a class="more" href={articleUrl['2026-11-04-polinrider-keeps-coming-back']}>Read more<span class="sr-only">: when it keeps coming back</span> <Icon name="arrow" size={15} /></a>
+          </div>
         </li>
         <li>
-          <strong>MicrosoftSystem64</strong>
-          <span>Running on your computer, or folders named <code>.pcl-data</code> and <code>.pcl-state</code> in your home folder. That is related malware, below.</span>
+          <span class="chip"><Icon name="computer" size={20} /></span>
+          <div>
+            <h3>MicrosoftSystem64</h3>
+            <p>Running on your computer, or folders named <code>.pcl-data</code> and <code>.pcl-state</code> in your home folder. That is related malware, below.</p>
+            <a class="more" href={articleUrl['2026-11-04-microsoftsystem64']}>Read more<span class="sr-only">: MicrosoftSystem64</span> <Icon name="arrow" size={15} /></a>
+          </div>
         </li>
       </ul>
     </section>
@@ -338,7 +361,7 @@ const schema = [
 
   </div>
 
-  <section class="wrap sec no-print" aria-labelledby="check-h">
+  <section class="wrap sec no-print explainer" aria-labelledby="check-h">
     <div class="cta">
       <div>
         <h2 id="check-h">Check if you're affected</h2>
@@ -355,14 +378,74 @@ const schema = [
 </Base>
 
 <style>
-  code {
-    padding: 0.05em 0.35em;
-    border: 1px solid var(--pr-border);
-    border-radius: 6px;
-    background: var(--pr-surface);
+  /* Inline code: the same accent wash as in articles (prose.css), no
+   * border. A name never breaks across lines; a long path is a PathCode,
+   * which may wrap only after a slash. */
+  .explainer :global(:not(pre) > code) {
+    padding: 0.08em 0.4em;
+    border-radius: 5px;
+    background: color-mix(in srgb, var(--pr-accent) 8%, transparent);
     color: var(--pr-heading);
-    font-size: 0.88em;
-    overflow-wrap: anywhere;
+    font-size: 0.875em;
+    white-space: nowrap;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+  }
+  :global([data-theme='dark']) .explainer :global(:not(pre) > code) {
+    background: color-mix(in srgb, var(--pr-accent) 15%, transparent);
+    color: color-mix(in srgb, var(--pr-accent) 40%, var(--pr-heading));
+  }
+
+  /* One card, one icon chip and one step badge for the whole page. */
+  .ways li,
+  .checklist li,
+  .spread li,
+  .rewrite li,
+  .signs li,
+  .stats li,
+  .facts li {
+    padding: 1.15rem 1.25rem;
+    border: 1px solid var(--pr-border);
+    border-radius: var(--pr-radius);
+    background: var(--pr-bg);
+    font-size: 0.9375rem;
+    line-height: 1.55;
+  }
+  .chip {
+    display: inline-grid;
+    flex: none;
+    place-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border: 1px solid var(--pr-bad-border);
+    border-radius: 10px;
+    background: var(--pr-bad-bg);
+    color: var(--pr-bad);
+  }
+  .num {
+    display: inline-grid;
+    place-items: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border: 1px solid var(--pr-border-strong);
+    border-radius: 50%;
+    color: var(--pr-heading);
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    font-weight: 600;
+  }
+  /* A card's own title: one size everywhere. */
+  .ways strong,
+  .spread strong,
+  .signs h3,
+  .takes-title {
+    display: block;
+    margin: 0;
+    color: var(--pr-heading);
+    font-size: 1.0625rem;
+    font-weight: 650;
+    line-height: 1.35;
+    letter-spacing: normal;
   }
   a:not(.pill):not(.textlink) {
     text-decoration: underline;
@@ -380,6 +463,21 @@ const schema = [
   .intro {
     max-width: 48rem;
     margin: 0 0 1rem;
+  }
+  .stats,
+  .ways,
+  .checklist,
+  .takes,
+  .spread,
+  .rewrite,
+  .signs,
+  .facts,
+  .tl {
+    display: grid;
+    gap: 0.75rem;
+    margin: 1.25rem 0 0;
+    padding: 0;
+    list-style: none;
   }
   .split {
     display: grid;
@@ -424,10 +522,6 @@ const schema = [
       pointer-events: none;
     }
   }
-  .hero .eyebrow {
-    margin-top: 1.5rem;
-    color: var(--pr-bad);
-  }
   h1 {
     margin: 0;
     font-size: clamp(2.25rem, 1.2rem + 4vw, 3.75rem);
@@ -446,34 +540,10 @@ const schema = [
     margin: 1rem 0 0;
     font-size: 1.125rem;
   }
-  .actions {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 1rem 1.75rem;
-    margin-top: 1.75rem;
-  }
 
-  /* Key figures */
-  .facts-sec {
-    padding-bottom: 0;
-  }
-  .facts-sec + .sec {
-    padding-top: 2rem;
-  }
+  /* Key facts */
   .facts {
-    display: grid;
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
-    gap: 0.6rem 1.5rem;
-    margin: 1rem 0 0;
-    padding: 0;
-    list-style: none;
-  }
-  .facts li {
-    padding: 0.7rem 0 0.7rem 0.9rem;
-    border-inline-start: 3px solid var(--pr-accent);
-    color: var(--pr-text);
-    line-height: 1.55;
   }
   .facts .source {
     color: var(--pr-muted);
@@ -484,11 +554,7 @@ const schema = [
     margin-top: 2.5rem;
   }
   .stats {
-    display: grid;
-    gap: 1rem;
     margin: 0;
-    padding: 0;
-    list-style: none;
   }
   @media (min-width: 44rem) {
     .stats {
@@ -504,9 +570,6 @@ const schema = [
     display: grid;
     align-content: start;
     gap: 0.4rem;
-    padding: 1.3rem 1.4rem;
-    border: 1px solid var(--pr-border);
-    border-radius: var(--pr-radius);
   }
   .figure {
     color: var(--pr-heading);
@@ -515,28 +578,17 @@ const schema = [
     letter-spacing: -0.03em;
     line-height: 1.1;
   }
-  .stats .what {
-    font-size: 0.9375rem;
-    line-height: 1.5;
-  }
   .stats .source {
     color: var(--pr-muted);
     font-size: var(--text-xs);
   }
 
   /* How it spreads */
-  .spread {
-    display: grid;
-    gap: 1rem;
-    margin: 1.5rem 0 0;
-    padding: 0;
-    list-style: none;
-    counter-reset: none;
-  }
+
   @media (min-width: 56rem) {
     .spread {
       grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 2.25rem;
+      column-gap: 2.25rem;
     }
     .spread li:not(:last-child)::after {
       content: '';
@@ -563,37 +615,16 @@ const schema = [
     position: relative;
     display: grid;
     align-content: start;
-    gap: 0.45rem;
-    padding: 1.3rem;
-    border: 1px solid var(--pr-border);
-    border-radius: var(--pr-radius);
-    background: var(--pr-surface);
-    font-size: 0.9375rem;
-    line-height: 1.5;
+    justify-items: start;
+    gap: 0.5rem;
   }
   .snum {
     position: absolute;
-    top: 0.9rem;
-    right: 1rem;
-    color: var(--pr-muted);
-    font-family: var(--font-mono);
-    font-size: 0.8125rem;
-  }
-  .sicon,
-  .wicon {
-    display: inline-grid;
-    place-items: center;
-    width: 2.75rem;
-    height: 2.75rem;
-    border: 1px solid var(--pr-bad-border);
-    border-radius: 12px;
-    background: var(--pr-bad-bg);
-    color: var(--pr-bad);
+    top: 1.15rem;
+    right: 1.25rem;
   }
   .spread strong {
-    margin-top: 0.4rem;
-    color: var(--pr-heading);
-    font-size: 1.0625rem;
+    margin-top: 0.25rem;
   }
   .loop {
     display: flex;
@@ -608,46 +639,21 @@ const schema = [
    * their rows share padding, corners and gaps. In each row the marker (an
    * icon tile, a check box) has a fixed size and sits against the first
    * line of text, so every row's text starts at the same place. */
-  .ways,
-  .checklist {
-    display: grid;
-    gap: 0.75rem;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
   .ways li,
-  .checklist li {
+  .checklist li,
+  .signs li {
     display: flex;
     align-items: flex-start;
     gap: 1rem;
-    padding: 1rem 1.15rem;
-    border: 1px solid var(--pr-border);
-    border-radius: var(--pr-radius);
-    line-height: 1.5;
-  }
-  .ways li {
-    font-size: 0.9375rem;
-  }
-  .ways .wicon {
-    flex: none;
-    width: 2.5rem;
-    height: 2.5rem;
-    border-radius: 10px;
   }
   .ways strong {
-    display: block;
-    margin-bottom: 0.15rem;
-    color: var(--pr-heading);
-    font-size: 1.0625rem;
-    line-height: 1.35;
+    margin-bottom: 0.2rem;
   }
   .checklist {
-    margin-bottom: 1.25rem;
+    margin: 0 0 1.25rem;
   }
   .checklist li {
     align-items: baseline;
-    font-size: 1rem;
   }
   .checklist li::before {
     content: '';
@@ -684,24 +690,18 @@ const schema = [
     max-width: 40rem;
   }
   .takes-title {
-    margin: 0 0 1rem;
-    color: var(--pr-heading);
-    font-weight: 650;
+    margin-bottom: 1rem;
   }
   .takes {
-    display: grid;
-    gap: 0.6rem;
     margin: 0;
-    padding: 0;
-    list-style: none;
   }
   .takes li {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    padding: 0.8rem 1rem;
+    padding: 0.8rem 1.25rem;
     border: 1px solid var(--pr-border);
-    border-radius: var(--pr-radius-sm);
+    border-radius: var(--pr-radius);
     background: var(--pr-bg);
     color: var(--pr-heading);
     font-size: 0.9375rem;
@@ -713,48 +713,20 @@ const schema = [
 
   /* History */
   .rewrite {
-    display: grid;
-    gap: 0.75rem;
-    margin: 1.25rem 0 1.5rem;
-    padding: 0;
-    list-style: none;
+    margin-bottom: 1.5rem;
   }
   @media (min-width: 50rem) {
     .rewrite {
       grid-template-columns: repeat(4, minmax(0, 1fr));
     }
   }
-  .rewrite li {
-    padding: 1rem;
-    border: 1px solid var(--pr-border);
-    border-radius: var(--pr-radius);
-    font-size: 0.9375rem;
-    line-height: 1.5;
-  }
-  .rewrite li > span {
+  .rewrite .num {
     display: grid;
-    place-items: center;
-    width: 1.8rem;
-    height: 1.8rem;
     margin-bottom: 0.6rem;
-    border-radius: 50%;
-    background: var(--pr-pill-bg);
-    color: var(--pr-pill-text);
-    font-size: 0.875rem;
-    font-weight: 650;
-  }
-  .rewrite strong {
-    color: var(--pr-heading);
   }
 
   /* Signs */
-  .signs {
-    display: grid;
-    gap: 1rem;
-    margin: 1.25rem 0 0;
-    padding: 0;
-    list-style: none;
-  }
+
   @media (min-width: 44rem) {
     .signs {
       grid-template-columns: 1fr 1fr;
@@ -765,55 +737,46 @@ const schema = [
       grid-template-columns: repeat(3, minmax(0, 1fr));
     }
   }
-  .signs li {
-    display: grid;
-    align-content: start;
-    gap: 0.5rem;
-    padding: 1.2rem 1.3rem;
-    border: 1px solid var(--pr-border);
-    border-top: 3px solid var(--pr-review);
-    border-radius: var(--pr-radius);
-    background: var(--pr-surface);
-    font-size: 0.9375rem;
-    line-height: 1.55;
+  .signs li > div {
+    display: flex;
+    flex-direction: column;
+    align-self: stretch;
+    min-width: 0;
   }
-  .signs strong {
-    color: var(--pr-heading);
-    font-size: 1.0625rem;
+  .signs p {
+    margin: 0.3rem 0 0;
+  }
+  .signs .more {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    align-self: flex-start;
+    margin-top: auto;
+    padding-top: 0.75rem;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    text-decoration: none !important;
+  }
+  .signs .more:hover {
+    text-decoration: underline !important;
   }
 
   /* Related malware and order */
   .panel {
-    padding: 1.6rem;
+    padding: 1.6rem 1.8rem;
     border: 1px solid var(--pr-border);
     border-radius: var(--pr-radius);
-    font-size: 1rem;
-  }
-  .panel h2 {
-    font-size: 1.375rem;
   }
   .panel p {
+    max-width: 48rem;
     margin: 0.75rem 0 0;
-  }
-  .warn {
-    border-color: var(--pr-review-border);
-    background: var(--pr-review-bg);
-  }
-  .order {
-    margin: 0.75rem 0 0;
-    padding-inline-start: 1.3rem;
-  }
-  .order li + li {
-    margin-top: 0.3rem;
   }
 
   /* Timeline */
   .tl {
     position: relative;
     max-width: 52rem;
-    margin: 1.5rem 0 1.5rem;
-    padding: 0;
-    list-style: none;
+    gap: 0;
   }
   .tl li {
     position: relative;
@@ -870,51 +833,6 @@ const schema = [
     font-size: var(--text-sm);
   }
 
-  /* Indicators */
-  .ioc {
-    display: grid;
-    gap: 0.75rem;
-    margin: 1.25rem 0 1rem;
-    padding: 0;
-    list-style: none;
-  }
-  @media (min-width: 44rem) {
-    .ioc {
-      grid-template-columns: 1fr 1fr;
-    }
-  }
-  @media (min-width: 66rem) {
-    .ioc {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-  }
-  .ioc li {
-    display: grid;
-    gap: 0.4rem;
-    padding: 1rem 1.1rem;
-    border: 1px solid var(--b);
-    border-radius: var(--pr-radius);
-    background: var(--bg);
-    font-size: 0.9375rem;
-  }
-  .ioc-kind {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    color: var(--c);
-    font-size: var(--text-xs);
-    font-weight: 650;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-  }
-  .ioc strong {
-    color: var(--pr-heading);
-  }
-  .ioc code {
-    justify-self: start;
-    background: var(--pr-bg);
-    font-size: 0.8125rem;
-  }
 
   /* Sources and the end */
   .sources {
