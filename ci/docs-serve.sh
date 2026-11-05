@@ -18,7 +18,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PORT="${1:-3000}"
 
 if ! command -v npm >/dev/null 2>&1; then
-  echo "docs-serve: npm is not installed. The site is built with Astro + Starlight." >&2
+  echo "docs-serve: npm is not installed. The site is built with Astro." >&2
   echo "  macOS    brew install node" >&2
   exit 3
 fi
@@ -39,13 +39,12 @@ cat <<EOS
 
   Live reload is on. Edit these and the browser follows:
 
-    docs-site/src/content/docs/**/*.md   the words
-    docs-site/src/styles/custom.css      small style additions
-    docs-site/astro.config.mjs           the sidebar, title and theme options
+    docs-site/src/content/**             the words, one folder per section
+    docs-site/src/styles/theme.css       colours and type, both themes
+    docs-site/src/pages, src/layouts     every page's HTML
+    docs-site/src/docs.ts                the docs sidebar
 
-  The look comes from the Lucode theme, a shadcn/ui-styled Starlight theme.
-  Most appearance changes belong in astro.config.mjs or in the theme's own
-  options rather than in custom.css.
+  Search needs a built site: npm run build, then npm run preview.
 
   Ctrl-C to stop.
 

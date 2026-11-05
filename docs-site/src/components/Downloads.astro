@@ -1,41 +1,130 @@
 ---
-// The download table on a release page. Every link points at an asset of that
-// GitHub release, so the names here must match what release.yml publishes.
+// The downloads on a release page: one row per system, each file a button
+// that says what it is. Every link points at an asset of that GitHub
+// release, so the names here must match what release.yml publishes.
 // `packages` is true from 2.1.0, the first release with the Windows zip and
 // the .deb files.
+import Icon from './Icon.astro';
+
 interface Props { version: string; packages?: boolean }
 const { version, packages = false } = Astro.props;
 const tag = `v${version}`;
 const dl = (file: string) =>
-  `https://github.com/meSingh/polinrider-cleaner/releases/download/${tag}/polinrider-${tag}-${file}`;
+  `https://github.com/meSingh/polinrider-scanner/releases/download/${tag}/polinrider-${tag}-${file}`;
 
-const rows: [string, [string, string][]][] = [
-  ['macOS, Apple silicon', [['.tar.gz', dl('macos-arm64.tar.gz')]]],
-  ['macOS, Intel', [['.tar.gz', dl('macos-x86_64.tar.gz')]]],
-  ['Linux, x86_64', [['.tar.gz', dl('linux-x86_64.tar.gz')], ...(packages ? [['.deb (Debian, Ubuntu)', dl('linux-x86_64.deb')] as [string, string]] : [])]],
-  ['Linux, arm64', [['.tar.gz', dl('linux-arm64.tar.gz')], ...(packages ? [['.deb (Debian, Ubuntu)', dl('linux-arm64.deb')] as [string, string]] : [])]],
-  ['Windows, x86_64', [...(packages ? [['.zip', dl('windows-x86_64.zip')] as [string, string]] : []), ['.tar.gz', dl('windows-x86_64.tar.gz')]]],
+type File = { label: string; note?: string; href: string };
+const rows: { system: string; detail: string; files: File[] }[] = [
+  { system: 'macOS', detail: 'Apple silicon', files: [{ label: 'Download .tar.gz', href: dl('macos-arm64.tar.gz') }] },
+  { system: 'macOS', detail: 'Intel', files: [{ label: 'Download .tar.gz', href: dl('macos-x86_64.tar.gz') }] },
+  {
+    system: 'Linux',
+    detail: 'x86_64',
+    files: [
+      ...(packages ? [{ label: 'Download .deb', note: 'Debian, Ubuntu', href: dl('linux-x86_64.deb') }] : []),
+      { label: 'Download .tar.gz', href: dl('linux-x86_64.tar.gz') },
+    ],
+  },
+  {
+    system: 'Linux',
+    detail: 'arm64',
+    files: [
+      ...(packages ? [{ label: 'Download .deb', note: 'Debian, Ubuntu', href: dl('linux-arm64.deb') }] : []),
+      { label: 'Download .tar.gz', href: dl('linux-arm64.tar.gz') },
+    ],
+  },
+  {
+    system: 'Windows',
+    detail: 'x86_64',
+    files: [
+      ...(packages ? [{ label: 'Download .zip', href: dl('windows-x86_64.zip') }] : []),
+      { label: 'Download .tar.gz', href: dl('windows-x86_64.tar.gz') },
+    ],
+  },
 ];
-const release = `https://github.com/meSingh/polinrider-cleaner/releases/tag/${tag}`;
-const sums = `https://github.com/meSingh/polinrider-cleaner/releases/download/${tag}/SHA256SUMS`;
+const release = `https://github.com/meSingh/polinrider-scanner/releases/tag/${tag}`;
+const sums = `https://github.com/meSingh/polinrider-scanner/releases/download/${tag}/SHA256SUMS`;
 ---
 
-<table class="downloads">
-  <thead><tr><th>System</th><th>Download</th></tr></thead>
-  <tbody>
-    {rows.map(([system, files]) => (
-      <tr>
-        <td>{system}</td>
-        <td>{files.map(([label, href], i) => (<>{i > 0 && ' · '}<a href={href}>{label}</a></>))}</td>
-      </tr>
-    ))}
-  </tbody>
-</table>
+<ul class="downloads not-prose">
+  {rows.map((r) => (
+    <li>
+      <span class="sys"><strong>{r.system}</strong> {r.detail}</span>
+      <span class="files">
+        {r.files.map((f, i) => (
+          <a class:list={['dl', { primary: i === 0 }]} href={f.href}>
+            <Icon name="download" size={17} />
+            {f.label}
+            {f.note && <span class="note">{f.note}</span>}
+          </a>
+        ))}
+      </span>
+    </li>
+  ))}
+</ul>
 
-<p class="download-extras">
+<p class="extras">
   <a href={sums}>SHA256SUMS</a> · <a href={release}>All files, the source archive and the provenance bundle on GitHub</a>
 </p>
 
 <style>
-  .download-extras { font-size: 0.875rem; color: var(--muted-foreground); }
+  .downloads {
+    display: grid;
+    gap: 0;
+    margin: 0 0 1rem;
+    padding: 0;
+    list-style: none;
+    border-top: 1px solid var(--pr-border);
+  }
+  li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem 1rem;
+    margin: 0 !important;
+    padding: 0.85rem 0;
+    border-bottom: 1px solid var(--pr-border);
+  }
+  .sys {
+    font-size: 1rem;
+  }
+  .files {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .dl {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.5rem 0.95rem;
+    border: 1px solid var(--pr-border-strong);
+    border-radius: 999px;
+    background: var(--pr-bg);
+    color: var(--pr-heading) !important;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    text-decoration: none !important;
+    white-space: nowrap;
+  }
+  .dl:hover {
+    border-color: var(--pr-heading);
+  }
+  .dl.primary {
+    border-color: var(--pr-pill-bg);
+    background: var(--pr-pill-bg);
+    color: var(--pr-pill-text) !important;
+  }
+  .dl.primary:hover {
+    opacity: 0.88;
+  }
+  .note {
+    color: inherit;
+    font-weight: 400;
+    opacity: 0.8;
+  }
+  .extras {
+    color: var(--pr-muted);
+    font-size: var(--text-sm);
+  }
 </style>

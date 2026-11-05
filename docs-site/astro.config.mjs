@@ -1,102 +1,108 @@
 // @ts-check
+// The site is plain Astro: every page's HTML comes from src/layouts and
+// src/pages, and the design from src/styles. ADR-0055 says why it left
+// Starlight; ADR-0056 how the documentation is versioned.
 import { defineConfig } from 'astro/config';
-import starlight from '@astrojs/starlight';
-import lucode from 'lucode-starlight';
+import mdx from '@astrojs/mdx';
+import sitemap from '@astrojs/sitemap';
+import { satteri } from '@astrojs/markdown-satteri';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { asides } from './src/markdown/asides.mjs';
+import { baseLinks } from './src/markdown/base-links.mjs';
+import { BASE, SITE_ORIGIN } from './src/siteConfig.mjs';
+import { pagefindIndex } from './src/markdown/pagefind.mjs';
+import { outboundLinks } from './src/markdown/outbound-links.mjs';
+import { ogImages } from './src/markdown/og-images.mjs';
+import { articlePaths, lastCommitDay, sourcesOf } from './src/sources.mjs';
 
-// The site is published to GitHub Pages at /polinrider-cleaner/, so every
-// internal link has to be built with that base or the whole thing 404s once
-// it leaves localhost.
+const src = fileURLToPath(new URL('./src', import.meta.url));
+
+// Every address the site has ever published keeps working (ADR-0055). Each
+// old page becomes a small HTML page that sends the reader on, with a
+// canonical link to the new address for search engines. GitHub Pages serves
+// files only, so these are the redirects there can be.
+const moved = (from, to) => [from, to];
+const redirects = Object.fromEntries([
+  moved('/quick-start/', '/docs/quick-start/'),
+  // Only the pages the old site actually had (as of v2.3.0). /guides/ is
+  // now also an article category, so a docs page added later must not get
+  // a redirect there that could collide with an article's address.
+  ...['account', 'ci', 'machine', 'order', 'organization'].map((p) => moved(`/guides/${p}/`, `/docs/guides/${p}/`)),
+  ...['exit-codes', 'false-positives', 'verifying'].map((p) => moved(`/reference/${p}/`, `/docs/reference/${p}/`)),
+  ...['contributing', 'disclaimer', 'security'].map((p) => moved(`/project/${p}/`, `/docs/project/${p}/`)),
+  // The campaign pages became one explainer, What is PolinRider?, in
+  // November 2026.
+  moved('/campaign/', '/what-is-polinrider/'),
+  moved('/campaign/what-it-is/', '/what-is-polinrider/'),
+  moved('/campaign/how-it-hides/', '/what-is-polinrider/#why-your-git-history-looks-clean'),
+  moved('/campaign/indicators/', '/what-is-polinrider/indicators/'),
+]);
+
+// Frozen copies of the documentation (src/content/docs-versions) are kept
+// out of the sitemap: /docs/ is the page to find.
+const versions = JSON.parse(readFileSync(new URL('./src/docs-versions.json', import.meta.url), 'utf8'));
+const frozen = versions.frozen.map((v) => `/docs/${v.version}/`);
+
+// The site's origin and base path come from src/siteConfig.mjs. Every
+// internal link is built with the base, or the whole thing 404s once it
+// leaves localhost.
+// The dev server accepts an address with or without its trailing slash, so
+// a review never lands on Astro's own "trailingSlash" notice page; the build
+// keeps "always", which is what GitHub Pages serves. Links are always
+// written with the slash either way.
+const isDev = process.argv.includes('dev');
+
 export default defineConfig({
-  site: 'https://mesingh.github.io',
-  base: '/polinrider-cleaner',
-  trailingSlash: 'always',
+  site: SITE_ORIGIN,
+  base: BASE || '/',
+  trailingSlash: isDev ? 'ignore' : 'always',
+  // Astro's floating dev toolbar is not part of the site; keep reviews of
+  // the dev server looking like the real thing.
+  devToolbar: { enabled: false },
+  redirects: Object.fromEntries(Object.entries(redirects).map(([from, to]) => [from, `${BASE}${to}`])),
 
   integrations: [
-    starlight({
-      title: 'polinrider-cleaner',
-      favicon: '/favicon.svg',
-      description:
-        'Detect and clean up after the PolinRider supply-chain campaign, on a machine, a GitHub account, or a whole organization.',
-
-      // Lucode: a shadcn/ui-styled Starlight theme. It supplies the component
-      // overrides, tokens and Expressive Code config; everything below is
-      // ordinary Starlight configuration on top of it.
-      plugins: [
-        lucode({
-          // Attribution, and where the site came from. Shown on every page.
-          footerText:
-            'Built by [Mandeep Singh](https://github.com/meSingh) after cleaning up a real ' +
-            'PolinRider incident. Source and documentation are [MIT licensed]' +
-            '(https://github.com/meSingh/polinrider-cleaner/blob/main/LICENSE). ' +
-            'Theme: [Lucode](https://github.com/lucas-labs/lucode-starlight-theme) for ' +
-            '[Starlight](https://starlight.astro.build).',
-          navLinks: [
-            { label: 'Quick start', link: '/quick-start/' },
-            { label: 'The campaign', link: '/campaign/what-it-is/' },
-            { label: 'Releases', link: '/releases/' },
-          ],
-        }),
-      ],
-
-      social: [
-        { icon: 'github', label: 'GitHub', href: 'https://github.com/meSingh/polinrider-cleaner' },
-      ],
-
-      // A correction should be a pull request, not an issue somebody has to
-      // translate into one.
-      editLink: {
-        baseUrl: 'https://github.com/meSingh/polinrider-cleaner/edit/main/docs-site/',
+    mdx(),
+    sitemap({
+      filter: (page) => {
+        const path = new URL(page).pathname.slice(BASE.length);
+        // The /og/ cards become images; they are not pages.
+        return !(path in redirects) && !frozen.some((f) => path.startsWith(f)) && !path.startsWith('/og/');
       },
-
-      lastUpdated: true,
-
-      customCss: ['./src/styles/custom.css'],
-
-      // Releases and indicator reviews each show their own list in the
-      // sidebar. See src/routeData.ts.
-      routeMiddleware: './src/routeData.ts',
-
-      sidebar: [
-        { label: 'Quick start', link: '/quick-start/' },
-        {
-          label: 'The campaign',
-          items: [
-            { label: 'What PolinRider is', link: '/campaign/what-it-is/' },
-            { label: 'Why your history looks clean', link: '/campaign/how-it-hides/' },
-            { label: 'The indicator set', link: '/campaign/indicators/' },
-          ],
-        },
-        {
-          label: 'Cleaning up',
-          items: [
-            { label: 'Order matters', link: '/guides/order/' },
-            { label: 'A machine', link: '/guides/machine/' },
-            { label: 'A personal GitHub account', link: '/guides/account/' },
-            { label: 'An organization', link: '/guides/organization/' },
-            { label: 'Every future push', link: '/guides/ci/' },
-          ],
-        },
-        // Two growing lists, each with its own index page rather than a
-        // sidebar group that would grow by one entry a week.
-        { label: 'Indicator reviews', link: '/indicator-reviews/' },
-        { label: 'Releases', link: '/releases/' },
-        {
-          label: 'Reference',
-          items: [
-            { label: 'Exit codes', link: '/reference/exit-codes/' },
-            { label: 'False positives you will see', link: '/reference/false-positives/' },
-            { label: 'Verifying this repository', link: '/reference/verifying/' },
-          ],
-        },
-        {
-          label: 'The project',
-          items: [
-            { label: 'Contributing', link: '/project/contributing/' },
-            { label: 'Reporting a vulnerability', link: '/project/security/' },
-            { label: 'What this does not promise', link: '/project/disclaimer/' },
-          ],
-        },
-      ],
+      // lastmod from git: the last commit to the files the page is made of.
+      serialize: (item) => {
+        const lastmod = lastCommitDay(sourcesOf(new URL(item.url).pathname.slice(BASE.length)));
+        return lastmod ? { ...item, lastmod } : item;
+      },
     }),
+    ogImages({ base: BASE }),
+    // Links that leave the site: new tab, noopener, the referrer meta and,
+    // on editorial links, ref=polinriderscanner.com (src/markdown/outbound-links.mjs).
+    outboundLinks({ origin: SITE_ORIGIN, base: BASE }),
+    pagefindIndex(),
   ],
+
+  markdown: {
+    processor: satteri({
+      features: { directive: true },
+      mdastPlugins: [asides()],
+      // Pages link to each other from the site root, /docs/guides/order/,
+      // and the base is added here, so content never names it.
+      hastPlugins: [baseLinks(BASE, articlePaths())],
+    }),
+    // Both themes are written into every code block as CSS variables, and
+    // the page's theme picks one (src/styles/prose.css). Both pass WCAG AA
+    // on the code background.
+    shikiConfig: {
+      themes: { light: 'github-light-default', dark: 'github-dark-default' },
+      defaultColor: false,
+    },
+  },
+
+  vite: {
+    // `~/components/RunBlock.astro` from any page at any depth, so a frozen
+    // copy of the docs imports the same way as the original.
+    resolve: { alias: { '~': src } },
+  },
 });

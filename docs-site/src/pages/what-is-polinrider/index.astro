@@ -1,0 +1,835 @@
+---
+// What is PolinRider? (/what-is-polinrider/), an explainer designed as a
+// page rather than a document. Was the threat page: what
+// PolinRider is, key figures, how it spreads, who is at risk, how it gets
+// in, what it does, why Git history looks clean, the signs, the related
+// malware, a timeline, what polinrider looks for and the sources. Written
+// for a person, not a researcher. Every figure and claim keeps its source
+// and its qualifier ("about", "reports name", "researchers link").
+import Base from '../../layouts/Base.astro';
+import Crumbs from '../../components/Crumbs.astro';
+import Icon from '../../components/Icon.astro';
+import HistoryCompare from '../../components/HistoryCompare.astro';
+import PathCode from '../../components/PathCode.astro';
+import PageFoot from '../../components/PageFoot.astro';
+import { abs, article, breadcrumbs } from '../../schema';
+import { lastUpdated } from '../../git';
+import { firstCommitDay } from '../../sources.mjs';
+import { ogImage } from '../../og';
+import { answer } from '../../threat-data';
+import { newsPosts } from '../../news';
+const articleUrl = Object.fromEntries((await newsPosts()).map((p) => [p.id, p.href]));
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+
+// The sources and the four key figures live in src/threat-data.ts, which the
+// page's social image (src/pages/og) reads too.
+import { src, stats } from '../../threat-data';
+
+const spread = [
+  { icon: 'computer', title: 'Your computer runs it', text: 'You install a package or an extension, or simply open an infected project in your editor.' },
+  { icon: 'key', title: 'It steals and hides', text: 'It takes your passwords and tokens, and adds itself to the code you work on.' },
+  { icon: 'repo', title: 'It pushes with your account', text: 'It rewrites your last commit, keeps your name and the old date, and force-pushes it.' },
+  { icon: 'user', title: 'The next person opens it', text: 'Anyone who opens or installs that project is hit too, and it starts again.' },
+] as const;
+
+const waysIn = [
+  { icon: 'box', title: 'A package', text: 'From npm, Go or Composer. It runs when the package is installed, or when your build loads it.' },
+  { icon: 'puzzle', title: 'An editor extension', text: 'For VS Code or Cursor. It runs as soon as the editor loads the extension.' },
+  { icon: 'folder', title: 'A project you open', text: 'A cloned repository or a job-interview test. A hidden editor task runs a command the moment the folder opens.' },
+] as const;
+
+const takes = [
+  'Passwords and logged-in sessions saved in your browser',
+  'GitHub tokens and SSH keys, and the login of the gh command',
+  'npm, cloud, database and CI tokens',
+  'Every secret in every .env file it can read',
+  'Cryptocurrency wallets and their recovery phrases',
+];
+
+const timeline = [
+  { when: 'May 2025', text: 'The earliest known PolinRider code, found later in nine npm versions published after an account takeover.', source: 'OpenSourceMalware, 30 October 2026', href: src.osm2025 },
+  { when: '8 March 2026', text: 'First public report: hidden JavaScript added to config files in hundreds of GitHub repositories.', source: 'OpenSourceMalware', href: src.osmMarch },
+  { when: '31 March 2026', text: 'The editor task that runs on folder open, and the history rewriting, described as part of the same operation.', source: 'OpenSourceMalware', href: src.osmTasks },
+  { when: '12 April 2026', text: 'About 1,951 infected repositories across 1,047 owners. Fake font files become part of the kit.', source: 'OpenSourceMalware', href: src.osmApril },
+  { when: '4 July 2026', text: '108 malicious packages and extensions across npm, Packagist, Go and Chrome.', source: 'The Hacker News', href: src.thn },
+  { when: '15 July 2026', text: 'About 4,367 infected repositories across 2,152 owners.', source: 'OpenSourceMalware', href: src.osmBlast },
+  { when: '9 September 2026', text: 'An operator seen working by hand on a decoy network, installing a stealer and a clipboard monitor.', source: 'Deception.Pro', href: src.dp },
+  { when: '26 September 2026', text: 'Fake font files renamed and moved, to get past detection.', source: 'OpenSourceMalware', href: src.osmAb },
+  { when: '30 September 2026', text: 'A loader that reads its server addresses from Ethereum, found in 35 GitHub repositories.', source: 'SafeDep', href: src.safedepEth },
+];
+
+
+const sources = [
+  ['OpenSourceMalware', "Hundreds of GitHub Repos Compromised By DPRK's PolinRider Campaign", src.osmMarch, '8 March 2026'],
+  ['OpenSourceMalware', 'PolinRider Confirmed Footprint Grows 6.5x Since March', src.osmBlast, '15 July 2026'],
+  ['OpenSourceMalware', 'PolinRider is A/B Testing its Way Past Your Detections', src.osmAb, '26 September 2026'],
+  ['OpenSourceMalware', "How to Investigate a GitHub Repo's Real History", src.osmHistory, '6 October 2026'],
+  ['The Hacker News', 'North Korean Hackers Publish 108 Malicious Packages and Extensions in PolinRider Campaign', src.thn, '4 July 2026'],
+  ['SafeDep', 'PolinRider Switches to Ethereum C2 in 30+ Repositories', src.safedepEth, '30 September 2026'],
+  ['SafeDep', 'Inside MicrosoftSystem64: A Supply Chain RAT Exfiltrating to HuggingFace', src.safedepMs64, '28 May 2026'],
+  ['Deception.Pro', 'Hands-on-Keyboard Activity from the DPRK "PolinRider" Supply Chain Attack', src.dp, '9 September 2026'],
+] as const;
+
+// Key facts: short statements a reader (or an answer engine) can quote,
+// each with the source that says it. Restated from the sections below.
+const facts = [
+  { text: 'PolinRider is malware that hides inside software projects, steals developers\u2019 logins and spreads by pushing infected code with their own accounts.', source: 'OpenSourceMalware', href: src.osmMarch },
+  { text: 'Security researchers link it to North Korea.', source: 'The Hacker News', href: src.thn },
+  { text: 'Opening an infected folder in the editor is enough to run it.', source: 'OpenSourceMalware', href: src.osmMarch },
+  { text: 'It hides its loader in fake .woff2 font files and in code added after the end of config files.', source: 'OpenSourceMalware', href: src.osmAb },
+  { text: 'temp_auto_push.bat rewrites your last commit with the original date, so git log looks clean; GitHub\u2019s push record does not.', source: 'OpenSourceMalware', href: src.osmHistory },
+  { text: 'Reports name the DEV#POPPER remote access tool and the OmniStealer password stealer as its payloads.', source: 'The Hacker News', href: src.thn },
+];
+const ext = { target: '_blank', rel: 'noopener' };
+const pageFile = 'src/pages/what-is-polinrider/index.astro';
+const url = abs(Astro.url.pathname);
+const schema = [
+  breadcrumbs([], 'What is PolinRider?', url),
+  article({
+    type: 'TechArticle',
+    url,
+    title: 'What is PolinRider malware?',
+    description: 'PolinRider malware hides in developers\u2019 projects, steals their logins and spreads to everything they push.',
+    published: firstCommitDay(pageFile),
+    modified: lastUpdated(pageFile),
+    citations: [...new Set(Object.values(src))],
+    section: 'What is PolinRider?',
+  }),
+];
+---
+
+<Base
+  title="What is PolinRider malware?"
+  titleTag="What is PolinRider malware? | PolinRider Scanner"
+  image={ogImage('what-is-polinrider', `PolinRider: the supply-chain malware. ${answer}`)}
+  schema={schema}
+  description="PolinRider malware hides in developers' projects, steals their logins and spreads to everything they push. How it gets in, how it hides and the signs."
+>
+  <div class="explainer" data-pagefind-body data-pagefind-meta="section:What is PolinRider?">
+    <header class="hero">
+      <div class="wrap hero-text">
+        <Crumbs items={[]} />
+        <h1 data-pagefind-meta="title">What is PolinRider malware?</h1>
+        <p class="lead">
+          PolinRider is malware that hides inside software projects. Once it runs on a developer's computer, it steals
+          their passwords and tokens, adds itself to the code they work on and pushes that code with their own account,
+          so the next person who opens the project is hit too.
+        </p>
+        <p class="goal">Its goal is not your code. The code is how it travels. The goal is your logins and your money.</p>
+      </div>
+    </header>
+
+    <section class="wrap stats-sec" aria-label="Key figures">
+      <ul class="stats">
+        {stats.map((s) => (
+          <li>
+            <span class="figure">{s.figure}</span>
+            <span class="what">{s.what}</span>
+            <a class="source" href={s.href} {...ext}>{s.source}<span class="sr-only"> (opens in a new tab)</span></a>
+          </li>
+        ))}
+      </ul>
+    </section>
+
+    <section class="wrap sec split" aria-labelledby="how-it-gets-in">
+      <div>
+        <h2 id="how-it-gets-in">How it gets in</h2>
+        <ul class="ways">
+          {waysIn.map((w) => (
+            <li>
+              <span class="chip"><Icon name={w.icon} size={20} /></span>
+              <span><strong>{w.title}</strong>{w.text}</span>
+            </li>
+          ))}
+        </ul>
+        <p class="callout">
+          <strong>Opening the folder is enough.</strong> You do not have to run the project, install anything or click
+          anything (<a href={src.osmMarch} {...ext}>OpenSourceMalware</a>; <a href={src.osmAb} {...ext}>fake fonts</a>).
+        </p>
+      </div>
+      <div>
+        <h2 id="am-i-at-risk">Am I at risk?</h2>
+        <p class="risk-intro">You could be if you write code and, in the last year or so, you did any of these:</p>
+        <ul class="checklist">
+          <li>installed an npm, Go or Composer package;</li>
+          <li>installed a VS Code or Cursor extension;</li>
+          <li>opened someone else's project in your editor, including one you cloned to review;</li>
+          <li>did a "take-home" coding test for a job interview.</li>
+        </ul>
+        <p>None of these is unusual, which is the point. A check takes a few minutes: <a href={`${base}/docs/quick-start/`}>install and run polinrider</a>.</p>
+      </div>
+    </section>
+
+    <section class="band" aria-labelledby="what-it-does">
+      <div class="wrap split">
+        <div>
+          <h2 id="what-it-does">What it does on your computer</h2>
+          <p>
+            First a small piece of hidden JavaScript runs. It fetches the real malware from records stored on public
+            blockchains, which means there is no single website to block or take down
+            (<a href={src.osmMarch} {...ext}>OpenSourceMalware</a>; <a href={src.safedepEth} {...ext}>SafeDep</a>).
+          </p>
+          <p>
+            That second part is built to steal. Reports name the DEV#POPPER remote access tool and the OmniStealer
+            password stealer (<a href={src.thn} {...ext}>The Hacker News</a>).
+          </p>
+          <p>
+            Then it spreads. It adds itself to the projects on your computer and pushes them to GitHub with your
+            account. In one case researchers watched an operator at the keyboard, installing a stealer and a
+            clipboard monitor by hand (<a href={src.dp} {...ext}>Deception.Pro</a>).
+          </p>
+        </div>
+        <div>
+          <h3 class="takes-title">What it goes after</h3>
+          <ul class="takes">
+            {takes.map((t) => <li><Icon name="key" size={18} />{t}</li>)}
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="wrap sec" aria-labelledby="how-it-spreads">
+      <h2 id="how-it-spreads">How it spreads to other people</h2>
+      <ol class="spread">
+        {spread.map((s, i) => (
+          <li>
+            <span class="num snum">{i + 1}</span>
+            <span class="chip"><Icon name={s.icon} size={20} /></span>
+            <strong>{s.title}</strong>
+            <span>{s.text}</span>
+          </li>
+        ))}
+      </ol>
+      <p class="loop"><Icon name="undo" size={18} /> And around again, from every new computer it reaches.</p>
+    </section>
+
+    <section class="wrap sec" aria-labelledby="why-your-git-history-looks-clean">
+      <h2 id="why-your-git-history-looks-clean">Why your Git history looks clean</h2>
+      <p class="intro">
+        This is why people miss it. A small script on the infected computer, <code>temp_auto_push.bat</code>, rewrites
+        your last commit and pushes it again (<a href={src.osmMarch} {...ext}>OpenSourceMalware</a>):
+      </p>
+      <ol class="rewrite">
+        <li><span class="num">1</span>It reads your last commit: its date, message and author.</li>
+        <li><span class="num">2</span>It winds the computer's clock back to that commit's date.</li>
+        <li><span class="num">3</span>It adds the malware to that commit, keeping your name and message.</li>
+        <li><span class="num">4</span>It puts the clock right and force-pushes the branch.</li>
+      </ol>
+      <p class="intro">
+        So the commit looks exactly as it did before. Your name, your message, the original date. Reading{' '}
+        <code>git log</code> will not show you anything wrong. What it cannot change is GitHub's own record of the
+        push. GitHub writes down every push and force-push with the account that made it and the real time, and none
+        of that comes from the commit (<a href={src.osmHistory} {...ext}>How to investigate a repo's real history</a>).
+      </p>
+      <HistoryCompare />
+      <p class="intro">
+        That record is how polinrider finds the clean version to go back to. GitHub keeps it for a limited time, so
+        check early. Once the record is gone, the infected commit can only be cleaned, not undone.
+      </p>
+    </section>
+
+    <section class="wrap sec" aria-labelledby="signs-to-look-for">
+      <h2 id="signs-to-look-for">Signs you might be infected</h2>
+      <p class="intro">
+        Each of these is something you can see in a project or on your computer.
+      </p>
+      <ul class="signs">
+        <li>
+          <span class="chip"><Icon name="font" size={20} /></span>
+          <div>
+            <h3>A font file that is really code</h3>
+            <p>A file such as <PathCode path="public/fonts/fa-solid-400.woff2" /> that holds JavaScript instead of a font. A real <code>.woff2</code> font starts with the letters <code>wOF2</code>. The names keep changing.</p>
+            <a class="more" href={articleUrl['2026-11-04-fake-font-javascript']}>Read more<span class="sr-only">: fake font files</span> <Icon name="arrow" size={15} /></a>
+          </div>
+        </li>
+        <li>
+          <span class="chip"><Icon name="folder" size={20} /></span>
+          <div>
+            <h3>An editor task that runs when you open the folder</h3>
+            <p>A <PathCode path=".vscode/tasks.json" /> with <code>"runOn": "folderOpen"</code>, often labelled like a normal tool such as <code>eslint-check</code>, with its output hidden.</p>
+          </div>
+        </li>
+        <li>
+          <span class="chip"><Icon name="codefile" size={20} /></span>
+          <div>
+            <h3>Code after the end of a config file</h3>
+            <p>In <code>postcss.config.mjs</code>, <code>tailwind.config.js</code>, <code>eslint.config.mjs</code> and similar, extra code after the real end of the file, often pushed far to the right by a long run of spaces.</p>
+          </div>
+        </li>
+        <li>
+          <span class="chip"><Icon name="terminal" size={20} /></span>
+          <div>
+            <h3>temp_auto_push.bat</h3>
+            <p>In a project or listed in a <code>.gitignore</code> nobody on your team wrote. It means a computer that pushes to that project is infected.</p>
+            <a class="more" href={articleUrl['2026-11-04-temp-auto-push-bat']}>Read more<span class="sr-only">: temp_auto_push.bat</span> <Icon name="arrow" size={15} /></a>
+          </div>
+        </li>
+        <li>
+          <span class="chip"><Icon name="undo" size={20} /></span>
+          <div>
+            <h3>It keeps coming back</h3>
+            <p>Your antivirus removes it and it is back the next time you run <code>npm run dev</code>. Something that starts it has not been found yet.</p>
+            <a class="more" href={articleUrl['2026-11-04-polinrider-keeps-coming-back']}>Read more<span class="sr-only">: when it keeps coming back</span> <Icon name="arrow" size={15} /></a>
+          </div>
+        </li>
+        <li>
+          <span class="chip"><Icon name="computer" size={20} /></span>
+          <div>
+            <h3>MicrosoftSystem64</h3>
+            <p>Running on your computer, or folders named <code>.pcl-data</code> and <code>.pcl-state</code> in your home folder. That is related malware, below.</p>
+            <a class="more" href={articleUrl['2026-11-04-microsoftsystem64']}>Read more<span class="sr-only">: MicrosoftSystem64</span> <Icon name="arrow" size={15} /></a>
+          </div>
+        </li>
+      </ul>
+    </section>
+
+    <section class="wrap sec" aria-labelledby="related-malware-microsoftsystem64">
+      <div class="panel">
+        <h2 id="related-malware-microsoftsystem64">Related malware: MicrosoftSystem64</h2>
+        <p>
+          <code>MicrosoftSystem64</code> is a remote-access tool installed by malicious npm packages. It is related to
+          PolinRider through the group behind it, not part of PolinRider itself. SafeDep places the packages that
+          install it in a cluster that kmsec.uk and OX Security link to Famous Chollima, also called Contagious
+          Interview, a group tied to North Korea (<a href={src.safedepMs64} {...ext}>SafeDep</a>). No report we have read calls{' '}
+          <code>MicrosoftSystem64</code> a PolinRider payload.
+        </p>
+        <p>
+          polinrider checks for it too, because it targets the same developers and needs the same response: a program
+          or process named <code>MicrosoftSystem64</code>, and the folders <code>~/.pcl-data</code> and{' '}
+          <code>~/.pcl-state</code>. <a href={articleUrl['2026-11-04-microsoftsystem64']}>MicrosoftSystem64 on your computer</a> has the detail.
+        </p>
+      </div>
+    </section>
+
+    <section class="wrap sec" aria-labelledby="who-is-behind-it">
+      <h2 id="who-is-behind-it">Who is behind it</h2>
+      <p class="intro">
+        Security researchers link PolinRider to North Korea
+        (<a href={src.osmMarch} {...ext}>OpenSourceMalware</a>; <a href={src.thn} {...ext}>The Hacker News</a>).
+        OpenSourceMalware considers it a parallel or sub-campaign of Contagious Interview
+        (<a href={src.osmBlast} {...ext}>OpenSourceMalware</a>).
+      </p>
+    </section>
+
+    <section class="wrap sec facts-sec" aria-labelledby="key-facts">
+      <h2 id="key-facts">Key facts</h2>
+      <ul class="facts">
+        {facts.map((f) => (
+          <li>
+            {f.text}{' '}
+            <a class="source" href={f.href} {...ext}>{f.source}<span class="sr-only"> (opens in a new tab)</span></a>
+          </li>
+        ))}
+      </ul>
+    </section>
+
+    <section class="wrap sec" aria-labelledby="timeline">
+      <h2 id="timeline">Timeline</h2>
+      <ol class="tl">
+        {timeline.map((t) => (
+          <li>
+            <span class="when">{t.when}</span>
+            <span class="dot" aria-hidden="true"></span>
+            <span class="what">{t.text} <a href={t.href} {...ext}>{t.source}<span class="sr-only"> (opens in a new tab)</span></a></span>
+          </li>
+        ))}
+      </ol>
+    </section>
+
+    <section class="wrap sec" aria-labelledby="sources">
+      <h2 id="sources">Sources</h2>
+      <ol class="sources">
+        {sources.map(([pub, title, href, date]) => (
+          <li>{pub}, <a href={href} {...ext}>{title}</a>, {date}</li>
+        ))}
+      </ol>
+    </section>
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+  <section class="wrap sec no-print explainer" aria-labelledby="check-h">
+    <div class="cta">
+      <div>
+        <h2 id="check-h">Check if you're affected</h2>
+        <p>Check your computer, your GitHub account or your organisation. It takes a few minutes and changes nothing until you type <code>yes</code>.</p>
+        <p class="more">
+          <a href={`${base}/docs/guides/getting-rid-of-polinrider/`}>The developer's guide to getting rid of PolinRider</a> ·{' '}
+          <a href={`${base}/what-is-polinrider/indicators/`}>The full indicator set</a>
+        </p>
+      </div>
+      <a class="pill" href={`${base}/#how`}>Check now <Icon name="arrow" size={18} /></a>
+    </div>
+    <PageFoot file={pageFile} />
+  </section>
+</Base>
+
+<style>
+  /* Inline code looks as it does everywhere (base.css). Here a name never
+   * breaks across lines; a long path is a PathCode, which may wrap only
+   * after a slash. */
+  .explainer :global(:not(pre) > code:not(.path)) {
+    white-space: nowrap;
+  }
+
+  /* One card, one icon chip and one step badge for the whole page. */
+  .ways li,
+  .checklist li,
+  .spread li,
+  .rewrite li,
+  .signs li,
+  .stats li,
+  .facts li {
+    padding: 1.15rem 1.25rem;
+    border: 1px solid var(--pr-border);
+    border-radius: var(--pr-radius);
+    background: var(--pr-bg);
+    font-size: 0.9375rem;
+    line-height: 1.55;
+  }
+  .chip {
+    display: inline-grid;
+    flex: none;
+    place-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border: 1px solid var(--pr-bad-border);
+    border-radius: 10px;
+    background: var(--pr-bad-bg);
+    color: var(--pr-bad);
+  }
+  .num {
+    display: inline-grid;
+    place-items: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border: 1px solid var(--pr-border-strong);
+    border-radius: 50%;
+    color: var(--pr-heading);
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    font-weight: 600;
+  }
+  /* A card's own title: one size everywhere. */
+  .ways strong,
+  .spread strong,
+  .signs h3,
+  .takes-title {
+    display: block;
+    margin: 0;
+    color: var(--pr-heading);
+    font-size: 1.0625rem;
+    font-weight: 650;
+    line-height: 1.35;
+    letter-spacing: normal;
+  }
+  a:not(.pill):not(.textlink) {
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+  h2 {
+    margin: 0 0 1rem;
+    font-size: clamp(1.5rem, 1.1rem + 1.2vw, 2rem);
+    letter-spacing: -0.025em;
+    scroll-margin-top: calc(var(--nav-height) + 1rem);
+  }
+  .sec {
+    margin-top: clamp(3rem, 7vw, 5rem);
+  }
+  .intro {
+    max-width: 48rem;
+    margin: 0 0 1rem;
+  }
+  .stats,
+  .ways,
+  .checklist,
+  .takes,
+  .spread,
+  .rewrite,
+  .signs,
+  .facts,
+  .tl {
+    display: grid;
+    gap: 0.75rem;
+    margin: 1.25rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .split {
+    display: grid;
+    gap: 2.5rem;
+  }
+  @media (min-width: 60rem) {
+    .split {
+      grid-template-columns: 1fr 1fr;
+      gap: 3.5rem;
+    }
+  }
+
+  /* Hero */
+  .hero {
+    position: relative;
+    padding-block: 2.5rem 3rem;
+    border-bottom: 1px solid var(--pr-border);
+    background: var(--pr-surface);
+  }
+  h1 {
+    margin: 0;
+    font-size: clamp(2.25rem, 1.2rem + 4vw, 3.75rem);
+    line-height: 1.05;
+    letter-spacing: -0.035em;
+  }
+  .lead {
+    max-width: 50rem;
+    margin: 1.25rem 0 0;
+    color: var(--pr-heading);
+    font-size: clamp(1.125rem, 1rem + 0.4vw, 1.3125rem);
+    line-height: 1.55;
+  }
+  .goal {
+    max-width: 50rem;
+    margin: 1rem 0 0;
+    font-size: 1.125rem;
+  }
+
+  /* Key facts */
+  .facts {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+  }
+  .facts .source {
+    color: var(--pr-muted);
+    font-size: var(--text-sm);
+    white-space: nowrap;
+  }
+  .stats-sec {
+    margin-top: 2.5rem;
+  }
+  .stats {
+    margin: 0;
+  }
+  @media (min-width: 44rem) {
+    .stats {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+  @media (min-width: 66rem) {
+    .stats {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+  .stats li {
+    display: grid;
+    align-content: start;
+    gap: 0.4rem;
+  }
+  .figure {
+    color: var(--pr-heading);
+    font-size: clamp(1.75rem, 1.4rem + 1vw, 2.25rem);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+  }
+  .stats .source {
+    color: var(--pr-muted);
+    font-size: var(--text-xs);
+  }
+
+  /* How it spreads */
+
+  @media (min-width: 56rem) {
+    .spread {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      column-gap: 2.25rem;
+    }
+    .spread li:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      top: 2.6rem;
+      right: -1.85rem;
+      width: 1.4rem;
+      height: 2px;
+      background: var(--pr-border-strong);
+    }
+    .spread li:not(:last-child)::before {
+      content: '';
+      position: absolute;
+      top: calc(2.6rem - 4px);
+      right: -1.9rem;
+      width: 8px;
+      height: 8px;
+      border-top: 2px solid var(--pr-border-strong);
+      border-right: 2px solid var(--pr-border-strong);
+      transform: rotate(45deg);
+    }
+  }
+  .spread li {
+    position: relative;
+    display: grid;
+    align-content: start;
+    justify-items: start;
+    gap: 0.5rem;
+  }
+  .snum {
+    position: absolute;
+    top: 1.15rem;
+    right: 1.25rem;
+  }
+  .spread strong {
+    margin-top: 0.25rem;
+  }
+  .loop {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 1rem 0 0;
+    color: var(--pr-muted);
+    font-size: var(--text-sm);
+  }
+
+  /* How it gets in and Am I at risk?: two lists built the same way, so
+   * their rows share padding, corners and gaps. In each row the marker (an
+   * icon tile, a check box) has a fixed size and sits against the first
+   * line of text, so every row's text starts at the same place. */
+  .ways li,
+  .checklist li,
+  .signs li {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  .ways strong {
+    margin-bottom: 0.2rem;
+  }
+  .checklist {
+    margin: 0 0 1.25rem;
+  }
+  .checklist li {
+    align-items: baseline;
+  }
+  .checklist li::before {
+    content: '';
+    flex: none;
+    width: 0.95rem;
+    height: 0.95rem;
+    border: 2px solid var(--pr-review);
+    border-radius: 4px;
+    transform: translateY(0.12em);
+  }
+  .risk-intro {
+    margin: 0 0 1rem;
+  }
+  .callout {
+    margin: 1.25rem 0 0;
+    padding: 0.9rem 1.1rem;
+    border-inline-start: 3px solid var(--pr-bad);
+    border-radius: var(--pr-radius-sm);
+    background: var(--pr-bad-bg);
+    font-size: 0.9375rem;
+  }
+  .callout strong {
+    color: var(--pr-heading);
+  }
+
+  /* What it does */
+  .band {
+    margin-top: clamp(3rem, 7vw, 5rem);
+    padding-block: clamp(2.5rem, 6vw, 4rem);
+    border-block: 1px solid var(--pr-border);
+    background: var(--pr-surface);
+  }
+  .band p {
+    max-width: 40rem;
+  }
+  .takes-title {
+    margin-bottom: 1rem;
+  }
+  .takes {
+    margin: 0;
+  }
+  .takes li {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.8rem 1.25rem;
+    border: 1px solid var(--pr-border);
+    border-radius: var(--pr-radius);
+    background: var(--pr-bg);
+    color: var(--pr-heading);
+    font-size: 0.9375rem;
+  }
+  .takes :global(svg) {
+    flex: none;
+    color: var(--pr-bad);
+  }
+
+  /* History */
+  .rewrite {
+    margin-bottom: 1.5rem;
+  }
+  @media (min-width: 50rem) {
+    .rewrite {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+  .rewrite .num {
+    display: grid;
+    margin-bottom: 0.6rem;
+  }
+
+  /* Signs */
+
+  @media (min-width: 44rem) {
+    .signs {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+  @media (min-width: 66rem) {
+    .signs {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+  .signs li > div {
+    display: flex;
+    flex-direction: column;
+    align-self: stretch;
+    min-width: 0;
+  }
+  .signs p {
+    margin: 0.3rem 0 0;
+  }
+  .signs .more {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    align-self: flex-start;
+    margin-top: auto;
+    padding-top: 0.75rem;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    text-decoration: none !important;
+  }
+  .signs .more:hover {
+    text-decoration: underline !important;
+  }
+
+  /* Related malware and order */
+  .panel {
+    padding: 1.6rem 1.8rem;
+    border: 1px solid var(--pr-border);
+    border-radius: var(--pr-radius);
+  }
+  .panel p {
+    margin: 0.75rem 0 0;
+  }
+
+  /* Timeline */
+  .tl {
+    position: relative;
+    max-width: 52rem;
+    gap: 0;
+  }
+  .tl li {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.2rem;
+    padding: 0 0 1.4rem 1.9rem;
+  }
+  .tl::before {
+    content: '';
+    position: absolute;
+    top: 0.4rem;
+    bottom: 0.4rem;
+    left: 0.4rem;
+    width: 2px;
+    background: var(--pr-border);
+  }
+  .tl .dot {
+    position: absolute;
+    top: 0.35rem;
+    left: 0;
+    width: 0.85rem;
+    height: 0.85rem;
+    border: 2px solid var(--pr-accent);
+    border-radius: 50%;
+    background: var(--pr-bg);
+  }
+  @media (min-width: 50rem) {
+    .tl::before {
+      left: 10.4rem;
+    }
+    .tl li {
+      grid-template-columns: 9rem minmax(0, 1fr);
+      gap: 0 2.4rem;
+      padding-left: 0;
+    }
+    .tl .dot {
+      left: 10rem;
+    }
+    .tl .when {
+      text-align: end;
+    }
+  }
+  .when {
+    color: var(--pr-heading);
+    font-size: var(--text-sm);
+    font-weight: 650;
+  }
+  .tl .what {
+    font-size: 1rem;
+  }
+  .tl .what a {
+    color: var(--pr-muted);
+    font-size: var(--text-sm);
+  }
+
+
+  /* Sources and the end */
+  .sources {
+    max-width: 52rem;
+    padding-inline-start: 1.4rem;
+    font-size: 0.9375rem;
+  }
+  .sources li + li {
+    margin-top: 0.4rem;
+  }
+  .cta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem 2rem;
+    padding: 1.6rem 1.8rem;
+    border: 1px solid var(--pr-border);
+    border-radius: var(--pr-radius);
+    background: var(--pr-surface);
+  }
+  .cta > div {
+    flex: 1 1 20rem;
+  }
+  .cta h2 {
+    margin: 0 0 0.4rem;
+    font-size: 1.375rem;
+  }
+  .cta p {
+    margin: 0;
+  }
+  .cta .more {
+    margin-top: 0.6rem;
+    font-size: var(--text-sm);
+  }
+  .cta strong {
+    color: var(--pr-heading);
+  }
+</style>

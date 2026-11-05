@@ -1,0 +1,60 @@
+---
+// The right-hand rail beside an article or the Updates list: it fills the
+// space the reading column leaves on a wide screen and stays in view as
+// you scroll. Hidden below the width where it would squeeze the text: 72rem
+// beside a 46rem article, 76rem beside the 52rem Updates column. The page
+// lays out the two columns; this is the rail itself.
+interface Props {
+  /** Which page it sits on, for the width it shows from. */
+  on: 'article' | 'updates';
+}
+const { on } = Astro.props;
+---
+
+<aside class:list={['rail', 'no-print', on]} aria-label="More on this site">
+  <slot />
+</aside>
+
+<style>
+  .rail {
+    display: none;
+  }
+  @media (min-width: 72rem) {
+    .article {
+      display: flex;
+    }
+  }
+  @media (min-width: 76rem) {
+    .updates {
+      display: flex;
+    }
+  }
+  .rail {
+    position: sticky;
+    top: calc(var(--nav-height) + 2rem);
+    flex-direction: column;
+    gap: 1.5rem;
+    align-self: start;
+    max-height: calc(100vh - var(--nav-height) - 4rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    font-size: var(--text-sm);
+  }
+  /* Section titles in the rail look like the contents list's own title. */
+  .rail :global(.rail-title) {
+    margin: 0 0 0.75rem;
+    color: var(--pr-heading);
+    font-size: var(--text-sm);
+    font-weight: 650;
+  }
+  /* The contents list inside the rail does not stick on its own, and its
+   * rows sit a little closer so the whole rail fits a laptop screen. */
+  .rail :global(.toc) {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+  .rail :global(.toc a) {
+    padding-block: 0.22rem;
+  }
+</style>

@@ -142,8 +142,9 @@ the sandbox and the test harness.
 | `ioc/` | the indicator set, single source of truth, read at runtime |
 | `conformance/` | the specification: fixture trees as data with the verdict each must produce |
 | `docs/adr/` | one record per design decision, with its reasoning and its cost |
-| `docs-site/` | the documentation site, Astro Starlight, including the weekly indicator reviews |
+| `docs-site/` | the documentation site, plain Astro (ADR-0055), including the weekly indicator reviews |
 | `ci/` | the vendorable CI scanner, its workflow template and installer, and the sandbox demo |
+| `.github/scripts/` | scripts the workflows run that are not part of the tool: `downloads.py`, the release download history |
 | `packaging/` | the `.deb` builder, the tap, bucket and winget manifest writers and the bump pull request script, all used by `release.yml` |
 | `polinrider-sandbox`, `.devcontainer/` | the container every test runs in |
 
@@ -356,11 +357,14 @@ descending. That was the six-hour scan ([ADR-0025](./docs/adr/0025-walk-the-file
 | Releases | GitHub Releases | Per tag, from `release.yml`: five binary archives, a Windows zip, two `.deb` packages and the source, all attested and in `SHA256SUMS` |
 | Homebrew tap | `meSingh/homebrew-tap` | Installs the binary and `ioc/`. `release.yml` opens the bump pull request; the maintainer merges it |
 | Scoop bucket | `meSingh/scoop-bucket` | Same, from the Windows zip |
-| winget | `microsoft/winget-pkgs` | Not submitted yet. `release.yml` writes the manifests as the `winget-manifests` artifact; submitting them is by hand |
+| winget | `microsoft/winget-pkgs` | Package `meSingh.PolinRiderScanner`, not merged yet. The first submission, `meSingh.PolinRiderCleaner`, was withdrawn with the rename (ADR-0057). `release.yml` writes the manifests as the `winget-manifests` artifact; submitting them is by hand |
 | Weekly indicator review | claude.ai routine "PolinRider indicator watch (2.0)" | Mondays 08:00 IST. Opens a draft `ioc/YYYY-MM-DD` pull request every week with signed commits, change or no change |
 | Beta binaries | `.github/workflows/beta-build.yml` | Builds and exercises every platform on each push to `main`. The only place the macOS and Windows live checks run |
-| Documentation site | GitHub Pages, from `main` | `docs-site/`, including the indicator reviews |
-| Traffic log | `traffic` branch, from `.github/workflows/traffic.yml` | Views, clones, referrers, paths and stars, daily, kept past GitHub's 14 days. Needs the `TRAFFIC_TOKEN` secret: a fine-grained token on this repository with Administration: read only |
+| Documentation site | GitHub Pages, from `main`, at `polinriderscanner.com` | `docs-site/`, including the indicator reviews. The domain is set in the repository's Pages settings, not in a `CNAME` file |
+| Old site links | `meSingh/meSingh.github.io` | Redirect pages for `mesingh.github.io/polinrider-cleaner/...`, the site's address before 3.0.0. Keep it while old links get traffic |
+| DNS for both domains | Cloudflare | `polinriderscanner.com`: GitHub Pages records, DNS only, plus the TXT records that verify it to GitHub, Google and Bing. `polinrider.com`: a proxied placeholder (`AAAA 100::`) and a Single Redirect rule, a 301 from every path on the apex and `www` to `https://polinriderscanner.com/what-is-polinrider/` |
+| The old name | `meSingh/polinrider-cleaner` | The repository's name until 3.0.0; GitHub redirects it here. **Never create a repository with that name.** Doing so ends every redirect, including the links in releases before 3.0.0 and in the commits, pull requests and issues the tool has opened on other people's repositories (ADR-0057) |
+| Traffic log | `traffic` branch, from `.github/workflows/traffic.yml` | Views, clones, referrers, paths and stars, daily, kept past GitHub's 14 days. Needs the `TRAFFIC_TOKEN` secret: a fine-grained token on this repository with Administration: read only. Release downloads per week, with our own taken off, under `downloads/` on the same branch; that part needs only the workflow token. See "The download history" below |
 
 ### Cutting a release
 
@@ -375,13 +379,31 @@ grep -n '^version' Cargo.toml; grep -n 'v[0-9]\+\.[0-9]\+\.[0-9]\+' README.md
 
 **1a. Write the release page, in the same pull request.** Copy
 `docs-site/release-page-template.mdx` to
-`docs-site/src/content/docs/releases/vX.Y.Z.mdx` and fill it in: what is new,
+`docs-site/src/content/releases/vX.Y.Z.mdx` and fill it in: what is new,
 what changed, and breaking changes (say "None" when there are none). Quote
-`version` and `date` in the frontmatter and keep `slug: releases/vX.Y.Z`, or
-the dots are dropped from the URL. The Releases page lists it by itself, and
-the download links point at the assets the tag will publish. Write it for
+`version` and `date` in the frontmatter. The address comes from the file
+name, dots kept (`/releases/vX.Y.Z/`). The Releases page lists it by itself.
+The page reads New, Changed, Breaking changes and then Download, so a reader
+knows what is at stake before downloading; the download buttons point at the
+assets the tag will publish. Write it for
 someone running the tool, not for a reviewer of the code; the tag message
 below can reuse it.
+
+**1b. For a new minor or major release, freeze its docs, in the same pull
+request.** Docs are kept per release line (2.3.x): a patch release shares
+its line's docs and needs no freeze. Once the docs describe the release, run:
+
+```bash
+npm run freeze-docs --prefix docs-site -- X.Y.Z
+```
+
+It copies `docs-site/src/content/docs/` to
+`docs-site/src/content/docs-versions/X.Y/`, which the site serves at
+`/docs/X.Y/`, and records it in `docs-site/src/docs-versions.json`. Run for
+a patch release, it says so and changes nothing. It only writes files. The
+Docs build fails while the newest release line has no frozen copy, so a
+forgotten freeze stops the pull request, not the release. Never edit a frozen copy by hand; to
+correct one, fix `src/content/docs/` and freeze again (ADR-0056).
 
 **The release date comes from the tag, never from a hand edit.** Put the day
 you expect to tag in `date` and in the `<Released version date />` line the
@@ -400,7 +422,7 @@ request.
 ```bash
 git checkout main && git pull
 VERSION=v2.1.0   # the release you are cutting
-git tag -s "$VERSION" -m "polinrider-cleaner $VERSION
+git tag -s "$VERSION" -m "PolinRider Scanner and Cleaner $VERSION
 
 Summarise what changed and why it matters to someone running this."
 git push origin "$VERSION"
@@ -464,10 +486,22 @@ link, which cannot be resolved the way a symbolic link can, so whether `ioc/`
 is found would depend on where winget puts it. The exe is already called
 `polinrider`.
 
+**7. Record your own check of the release.** Downloading the files from the
+release page to check them counts as downloads; record it the same day (see
+"The download history" below), or the week reads as more people than it had.
+A check done with `gh release download` is not counted and needs no record.
+
 > Tags matching `refs/tags/v*` are protected by a repository ruleset with no
 > bypass actors: they cannot be updated, force-pushed or deleted by anyone,
 > including the maintainer. A published tag is permanent. If you tagged the wrong
 > commit, cut the next patch version; do not try to move the tag.
+
+**Attestations name the repository.** A release's certificate records the
+repository's name when it was built, and `gh attestation verify --repo`
+compares against that name. Releases from 3.0.0 on name
+`meSingh/polinrider-scanner`; those before it name `meSingh/polinrider-cleaner`
+(ADR-0057). Every place that prints the verify command uses the new name and
+links the site's page for older releases.
 
 ### Maintaining SCORECARD_TOKEN
 
@@ -506,7 +540,7 @@ settings, Fine-grained tokens, Generate new token:
    the commit) and **Pull requests: Read and write** (the pull request).
    Metadata: Read-only is added by GitHub and is required. Nothing else.
 4. Store it in this repository only:
-   `gh secret set PACKAGING_TOKEN --repo meSingh/polinrider-cleaner`, which
+   `gh secret set PACKAGING_TOKEN --repo meSingh/polinrider-scanner`, which
    prompts for the value.
 
 It can write to the tap and the bucket, so it lives as a repository secret
@@ -520,6 +554,43 @@ secret is deleted, the job prints a notice and passes. Either way the packages
 fall behind quietly. If a release's tap or bucket pull request did not appear,
 check the token first. Do not replace it with a classic token,
 which would need `repo` scope over every repository the owner can reach.
+
+### The download history
+
+GitHub keeps one running total per release file and nothing else. The Traffic
+log workflow records the totals daily under `downloads/` on the `traffic`
+branch and works out downloads per week, binaries and checksums apart
+(`.github/scripts/downloads.py`, ADR-0053). `downloads/README.md` there says
+what each file holds; the run's summary page shows the last eight weeks.
+
+**Our own downloads are kept apart by recording them.** Whoever downloads a
+release file for a reason other than using it (a release check, a test
+machine, a package manager's validation) records it, the same day if
+possible, by running the workflow by hand:
+
+```bash
+gh workflow run traffic.yml --repo meSingh/polinrider-scanner -f own_tag=v2.3.0 -f own_files=all -f own_count=1 -f own_date=2026-11-03 -f own_note="release check"
+```
+
+`own_files` is `all` or file names separated by commas, `*` matching anything
+(`-f own_files='SHA256SUMS,*windows-x86_64.zip'`). `own_date` defaults to
+today in UTC and `own_count` to 1. Each downloaded file gets a row in
+`downloads/ours.csv`; the run fails and records nothing if a name matches no
+file, the date is before the release or after today, or the same rows were
+recorded already. To correct a row, edit `ours.csv` on the branch.
+
+**Record only what GitHub counts.** A download from a
+`github.com/<owner>/<repo>/releases/download/...` link counts, after about ten
+minutes: a browser, `curl` on that link, and Homebrew, Scoop and winget, whose
+manifests use those links. A download through the API does not count:
+`gh release download`, or anything fetching the asset's API URL. So the
+`packages` job's fetch of `SHA256SUMS` is not recorded, and a release check
+done with `gh release download` needs no row. Tested on 2026-11-04 (ADR-0053).
+
+Our counted downloads from before the log began, three `curl` test downloads
+on 2026-11-04, are in `.github/scripts/downloads-ours-start.csv`, which seeds
+`ours.csv` on the first run and is not read again. The earlier release checks
+and the winget manifest check used `gh release download` and are not in it.
 
 ### Signing
 

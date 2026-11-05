@@ -1,27 +1,32 @@
 <p align="center">
-  <img src="docs/img/hero-lattice.jpg" alt="polinrider-cleaner" width="100%">
+  <img src="docs/img/hero-lattice.jpg" alt="PolinRider Scanner and Cleaner" width="100%">
 </p>
 
-<h1 align="center">polinrider-cleaner</h1>
+<h1 align="center">PolinRider Scanner and Cleaner</h1>
 
 <p align="center">
-  Detect and clean up after the <strong>PolinRider</strong> supply-chain campaign,
-  on a developer machine, in a folder of code, on a GitHub organization or on a
-  personal account.
+  <strong>Find out whether PolinRider reached you, and clean it up.</strong>
 </p>
 
 <p align="center">
-  <a href="https://github.com/meSingh/polinrider-cleaner/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/meSingh/polinrider-cleaner/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="https://scorecard.dev/viewer/?uri=github.com/meSingh/polinrider-cleaner"><img alt="OpenSSF Scorecard" src="https://api.scorecard.dev/projects/github.com/meSingh/polinrider-cleaner/badge"></a>
-  <a href="https://github.com/meSingh/polinrider-cleaner/actions/workflows/semgrep.yml"><img alt="Semgrep" src="https://github.com/meSingh/polinrider-cleaner/actions/workflows/semgrep.yml/badge.svg"></a>
+  A scanner and cleaner for the DPRK-linked supply-chain campaign that spreads
+  through npm packages, VS Code extensions and fake interview projects. It
+  checks a developer machine, a folder of code, a personal GitHub account or a
+  whole organization.
+</p>
+
+<p align="center">
+  <a href="https://github.com/meSingh/polinrider-scanner/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/meSingh/polinrider-scanner/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://scorecard.dev/viewer/?uri=github.com/meSingh/polinrider-scanner"><img alt="OpenSSF Scorecard" src="https://api.scorecard.dev/projects/github.com/meSingh/polinrider-scanner/badge"></a>
+  <a href="https://github.com/meSingh/polinrider-scanner/actions/workflows/semgrep.yml"><img alt="Semgrep" src="https://github.com/meSingh/polinrider-scanner/actions/workflows/semgrep.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
   <img alt="One binary, written in Rust" src="https://img.shields.io/badge/built%20with-rust-dea584.svg">
   <img alt="Zero runtime dependencies" src="https://img.shields.io/badge/runtime%20deps-0-brightgreen.svg">
   <img alt="macOS, Linux, Windows" src="https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey.svg">
   <a href="AGENTS.md"><img alt="AGENTS.md" src="https://img.shields.io/badge/AGENTS.md-supported-6f42c1.svg"></a>
   <br>
-  <a href="https://github.com/meSingh/polinrider-cleaner/commits/main"><img alt="Commits are signed" src="https://img.shields.io/badge/commits-signed-success.svg"></a>
-  <a href="https://github.com/meSingh/polinrider-cleaner/releases/latest"><img alt="Releases carry build provenance" src="https://img.shields.io/badge/releases-attested%20provenance-success.svg"></a>
+  <a href="https://github.com/meSingh/polinrider-scanner/commits/main"><img alt="Commits are signed" src="https://img.shields.io/badge/commits-signed-success.svg"></a>
+  <a href="https://github.com/meSingh/polinrider-scanner/releases/latest"><img alt="Releases carry build provenance" src="https://img.shields.io/badge/releases-attested%20provenance-success.svg"></a>
 </p>
 
 <p align="center">
@@ -38,21 +43,25 @@
 ## Run it
 
 1. **Download** the archive for your machine from the
-   [latest release](https://github.com/meSingh/polinrider-cleaner/releases/latest):
+   [latest release](https://github.com/meSingh/polinrider-scanner/releases/latest):
    macOS (Apple silicon or Intel), Linux (x86_64 or arm64) or Windows (x86_64).
 2. **Verify it** before running it. This is a tool for recovering from
    tampered code, so take it at its word about nothing:
 
    ```bash
    sha256sum -c SHA256SUMS --ignore-missing
-   gh attestation verify polinrider-v2.3.0-macos-arm64.tar.gz --repo meSingh/polinrider-cleaner
+   gh attestation verify polinrider-v3.0.0-macos-arm64.tar.gz --repo meSingh/polinrider-scanner
    ```
+
+   Releases before 3.0.0 were built when this repository was called
+   `meSingh/polinrider-cleaner`: see
+   [verifying a release before 3.0.0](https://polinriderscanner.com/docs/reference/verifying-before-3/).
 
 3. **Unpack and run it**, with no arguments:
 
    ```bash
-   tar -xzf polinrider-v2.3.0-macos-arm64.tar.gz
-   cd polinrider-v2.3.0-macos-arm64
+   tar -xzf polinrider-v3.0.0-macos-arm64.tar.gz
+   cd polinrider-v3.0.0-macos-arm64
    ./polinrider
    ```
 
@@ -65,10 +74,15 @@ binary refuses to scan without it.
 Or through a package manager, which puts the binary and `ioc/` in place:
 
 ```bash
-brew install meSingh/tap/polinrider-cleaner    # macOS and Linux
+brew install meSingh/tap/polinrider-scanner    # macOS and Linux
 scoop bucket add mesingh https://github.com/meSingh/scoop-bucket
-scoop install polinrider-cleaner               # Windows
+scoop install polinrider-scanner               # Windows
 ```
+
+Up to 2.3.0 the packages were called `polinrider-cleaner`. Homebrew moves an
+existing install to the new name on `brew upgrade`. With Scoop, run
+`scoop uninstall polinrider-cleaner`, then the install line above. The new
+`.deb` removes the old package when it is installed.
 
 Since 2.1.0, releases also carry a `.deb` for Debian and Ubuntu, x86_64 and
 arm64, attested like the archives. Verify it as above, then:
@@ -80,10 +94,10 @@ sudo apt install ./polinrider-vX.Y.Z-linux-x86_64.deb
 A winget package is being prepared and is not in the winget repository yet.
 
 Every release since 2.0, with what it changes and downloads for each system, is on the
-[Releases page](https://mesingh.github.io/polinrider-cleaner/releases/).
+[Releases page](https://polinriderscanner.com/releases/).
 
 1.x, the shell tool, is frozen and still available from
-[v1.0.9](https://github.com/meSingh/polinrider-cleaner/releases/tag/v1.0.9).
+[v1.0.9](https://github.com/meSingh/polinrider-scanner/releases/tag/v1.0.9).
 
 ## What it asks
 
@@ -166,7 +180,7 @@ affected repositories. The verdict is followed by what to do on that machine.
 Sources disagree, so here is the rule this repository uses.
 
 - **Persistence found**, meaning a login item, systemd unit, Run key, scheduled
-  task, git hook, shell profile, an infected editor extension or a copy of the
+  task, git hook, shell profile, an infected editor extension or a known
   implant: **rebuild**. Something is configured to run again.
 - **Files in projects only, no persistence, and you can account for what ran**:
   quarantine, delete every local clone, rotate everything, keep scanning weekly.
@@ -303,7 +317,7 @@ documented behaviour, so a one-off scan is not enough.
 
 # Understand the threat
 
-The [documentation site](https://mesingh.github.io/polinrider-cleaner/) covers
+The [documentation site](https://polinriderscanner.com/) covers
 what the campaign is, how it hides and every indicator this tool carries, with
 a guide for each kind of cleanup.
 
@@ -319,12 +333,16 @@ git log --show-signature -1
 
 # a release archive matches its checksum and its provenance attestation
 sha256sum -c SHA256SUMS --ignore-missing
-gh attestation verify polinrider-vX.Y.Z-linux-x86_64.tar.gz --repo meSingh/polinrider-cleaner
+gh attestation verify polinrider-vX.Y.Z-linux-x86_64.tar.gz --repo meSingh/polinrider-scanner
 ```
+
+This repository was `meSingh/polinrider-cleaner` until 3.0.0, and releases
+before 3.0.0 carry that name in their attestations:
+[verifying a release before 3.0.0](https://polinriderscanner.com/docs/reference/verifying-before-3/).
 
 | Signal | What it actually proves |
 |---|---|
-| [OpenSSF Scorecard](https://scorecard.dev/viewer/?uri=github.com/meSingh/polinrider-cleaner) | 18 automated checks: branch protection, pinned dependencies, token permissions, dangerous workflow patterns, release signing |
+| [OpenSSF Scorecard](https://scorecard.dev/viewer/?uri=github.com/meSingh/polinrider-scanner) | 18 automated checks: branch protection, pinned dependencies, token permissions, dangerous workflow patterns, release signing |
 | Signed commits | Every commit was made by the key holder. This is the direct counter to the campaign's backdated-amend technique |
 | Build provenance on releases | Each binary came from this repository's CI at that tag, unmodified |
 | Protected `main` | No force pushes, no deletions, even by the owner |
@@ -379,9 +397,9 @@ This campaign rotates its signatures, so the indicator set is reviewed weekly
 against the published sources and every review is written down, including the
 weeks that found nothing. Each review keeps its own dated entry, and entries are
 never edited or removed:
-[the indicator reviews](https://mesingh.github.io/polinrider-cleaner/indicator-reviews/).
+[the indicator reviews](https://polinriderscanner.com/indicator-reviews/).
 
-**Last reviewed: [2 November 2026](https://mesingh.github.io/polinrider-cleaner/indicator-reviews/2026-11-02/).**
+**Last reviewed: [2 November 2026](https://polinriderscanner.com/indicator-reviews/2026-11-02/).**
 
 Island's report on the `MicrosoftSystem64` npm cluster behind 88 GitHub repositories
 added eight package names, a C2 address and six hashes. Two of the names, `oracle-redis` and `ioredis-xyz`, are still live on npm.

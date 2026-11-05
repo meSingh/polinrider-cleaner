@@ -1,0 +1,290 @@
+---
+// The top bar on every page: the mark and "PolinRider Scanner" (never the
+// bare name, which reads as the malware), the four sections, search, the theme
+// button and one obvious button, "Download", which goes to the install page.
+// On a phone the sections move into a Menu panel; search, the theme button
+// and the menu stay in the bar. The menu is a <details>, so it works without
+// JavaScript.
+import BrandMark from './BrandMark.astro';
+import Icon from './Icon.astro';
+import GitHubMark from './GitHubMark.astro';
+import Search from './Search.astro';
+import ThemeToggle from './ThemeToggle.astro';
+import { REPO_URL, SHORT_TITLE, SITE_TITLE } from '../siteConfig.mjs';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+// On pages with a sidebar the content sits in the wider .frame; the bar
+// takes the same width there, so the logo lines up with the content's
+// left edge on every layout.
+const { frame = false } = Astro.props as { frame?: boolean };
+const links = [
+  { label: 'What is PolinRider?', href: `${base}/what-is-polinrider/`, match: '/what-is-polinrider/' },
+  { label: 'Docs', href: `${base}/docs/`, match: '/docs/' },
+  { label: 'Updates', href: `${base}/updates/`, match: '/updates/' },
+];
+// Releases live in the footer.
+// The repository, the last item in the nav, with the GitHub mark.
+const path = Astro.url.pathname;
+const current = (match: string) => (path.startsWith(`${base}${match}`) ? 'page' : undefined);
+---
+
+<header class="site-header no-print">
+  <div class:list={['bar', frame ? 'frame' : 'wrap']}>
+    <div class="id">
+      <a href={`${base}/`} class="brand" aria-label={`${SITE_TITLE}, home`}>
+        <BrandMark />
+        <span translate="no">{SHORT_TITLE}</span>
+      </a>
+    </div>
+
+    <div class="find"><Search /></div>
+
+    <nav class="nav" aria-label="Main">
+      {links.map((l) => <a href={l.href} aria-current={current(l.match)}>{l.label}</a>)}
+      <a class="gh" href={REPO_URL}><GitHubMark size={16} />GitHub</a>
+    </nav>
+
+    <div class="tools">
+      <ThemeToggle />
+      <a class="pill dl" href={`${base}/docs/quick-start/`}>Download</a>
+      <details class="menu">
+        <summary aria-label="Menu"><Icon name="menu" size={22} /></summary>
+        <div class="panel">
+          <nav aria-label="Main">
+            {links.map((l) => <a href={l.href} aria-current={current(l.match)}>{l.label}</a>)}
+            <a href={REPO_URL} class="gh"><GitHubMark size={16} />GitHub</a>
+            <a href={`${base}/docs/quick-start/`}>Download</a>
+          </nav>
+        </div>
+      </details>
+    </div>
+  </div>
+</header>
+
+<style>
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    border-bottom: 1px solid var(--pr-border);
+    background: color-mix(in srgb, var(--pr-bg) 92%, transparent);
+    backdrop-filter: blur(8px);
+  }
+  /* Left to right: the brand, a search bar that takes the free space, the nav, the theme button and
+   * Download. The nav, the theme button and Download sit the same distance
+   * apart (--gap). Below 66rem the nav moves into the menu; below 50rem
+   * search becomes an icon beside the theme button and the menu. */
+  .bar {
+    --gap: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: var(--gap);
+    height: var(--nav-height);
+  }
+  @media (min-width: 80rem) {
+    .bar {
+      --gap: 1.5rem;
+    }
+  }
+  .id {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 0.3rem;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    color: var(--pr-heading);
+    font-size: 1.125rem;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .find {
+    margin-inline-start: auto;
+  }
+  .nav {
+    display: none;
+    flex: none;
+    align-items: center;
+    gap: var(--gap);
+  }
+  .nav a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--pr-text);
+    font-size: 0.9375rem;
+    font-weight: 550;
+    line-height: 1;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .nav a:hover,
+  .nav a[aria-current='page'] {
+    color: var(--pr-heading);
+  }
+  .nav a[aria-current='page'] {
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 0.5em;
+  }
+  .gh :global(svg) {
+    flex: none;
+  }
+  .tools {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: var(--gap);
+  }
+  .dl {
+    display: none;
+    padding: 0.5rem 1.05rem;
+    font-size: 0.9375rem;
+  }
+  .menu {
+    position: relative;
+  }
+  .menu summary {
+    display: grid;
+    place-items: center;
+    width: 2.4rem;
+    height: 2.4rem;
+    border: 1px solid var(--pr-border);
+    border-radius: 999px;
+    color: var(--pr-heading);
+    cursor: pointer;
+    list-style: none;
+  }
+  .menu summary::-webkit-details-marker {
+    display: none;
+  }
+  .panel {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 0.6rem);
+    width: min(18rem, calc(100vw - 2rem));
+    padding: 0.5rem;
+    border: 1px solid var(--pr-border-strong);
+    border-radius: var(--pr-radius);
+    background: var(--pr-bg);
+    box-shadow: 0 18px 40px rgb(0 0 0 / 0.25);
+  }
+  .panel nav {
+    display: grid;
+  }
+  .panel nav a {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.65rem 0.8rem;
+    border-radius: var(--pr-radius-sm);
+    color: var(--pr-heading);
+    font-weight: 550;
+    text-decoration: none;
+  }
+  .panel nav a:hover,
+  .panel nav a[aria-current='page'] {
+    background: var(--pr-surface);
+  }
+  /* From 50rem: Download shows and search is a bar that grows into the
+   * free space, up to a comfortable width, with ⌘K at its right end. */
+  @media (min-width: 50rem) {
+    .dl {
+      display: inline-flex;
+    }
+    .find {
+      flex: 1 1 auto;
+      min-width: 9rem;
+      max-width: 26rem;
+      margin-inline-start: 0.25rem;
+    }
+    .find :global(.open) {
+      width: 100%;
+    }
+    .find :global(.open .kbd) {
+      margin-inline-start: auto;
+    }
+    .tools {
+      margin-inline-start: auto;
+    }
+  }
+  @media (min-width: 66rem) {
+    .nav {
+      display: flex;
+      margin-inline-start: auto;
+    }
+    .tools {
+      margin-inline-start: 0;
+    }
+    .menu {
+      display: none;
+    }
+  }
+  /* Below 50rem: tighter gaps and slightly smaller round buttons, so the
+   * brand and search, theme and menu fit on one row. */
+  @media (max-width: 50rem) {
+    .bar {
+      --gap: 0.5rem;
+    }
+    .tools {
+      gap: 0.35rem;
+    }
+    .find :global(.open),
+    .tools :global(.theme-toggle),
+    .menu summary {
+      width: 2.25rem;
+      height: 2.25rem;
+    }
+    /* Search is an icon here: no label or shortcut squeezed into it. */
+    .find :global(.open) {
+      justify-content: center;
+      padding: 0;
+    }
+    .find :global(.open .label),
+    .find :global(.open .kbd) {
+      display: none;
+    }
+  }
+  /* Phones: a smaller wordmark. */
+  @media (max-width: 25rem) {
+    .brand {
+      gap: 0.5rem;
+      font-size: 1rem;
+    }
+  }
+  /* Just above the width the nav appears at, search drops its shortcut
+   * hint so the bar keeps its room. */
+  @media (min-width: 66rem) and (max-width: 74rem) {
+    .find :global(.open .kbd) {
+      display: none;
+    }
+  }
+  /* The smallest phones (320px): everything a little smaller again. */
+  @media (max-width: 22rem) {
+    .bar {
+      --gap: 0.25rem;
+    }
+    .brand {
+      gap: 0.4rem;
+      font-size: 0.9375rem;
+    }
+    .brand :global(svg) {
+      width: 24px;
+      height: 24px;
+    }
+    .tools {
+      gap: 0.25rem;
+    }
+    .find :global(.open),
+    .tools :global(.theme-toggle),
+    .menu summary {
+      width: 2.1rem;
+      height: 2.1rem;
+    }
+  }
+</style>

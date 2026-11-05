@@ -3,12 +3,12 @@
 | If you want to | Read |
 |---|---|
 | clean up an incident, start to finish | [`../README.md`](../README.md) |
-| recover a personal GitHub account | [the account guide](https://mesingh.github.io/polinrider-cleaner/guides/account/) |
-| recover an organization | [the organization guide](https://mesingh.github.io/polinrider-cleaner/guides/organization/) |
-| check or clean one computer | [the machine guide](https://mesingh.github.io/polinrider-cleaner/guides/machine/) |
+| recover a personal GitHub account | [the account guide](https://polinriderscanner.com/docs/guides/account/) |
+| recover an organization | [the organization guide](https://polinriderscanner.com/docs/guides/organization/) |
+| check or clean one computer | [the machine guide](https://polinriderscanner.com/docs/guides/machine/) |
 | run the scanner in CI | [`../ci/README.md`](../ci/README.md) |
 | understand the indicator set | [`../ioc/README.md`](../ioc/README.md) |
-| know when the indicator set was last reviewed | [the indicator reviews](https://mesingh.github.io/polinrider-cleaner/indicator-reviews/) |
+| know when the indicator set was last reviewed | [the indicator reviews](https://polinriderscanner.com/indicator-reviews/) |
 | change this repository, or point an agent at it | [`../AGENTS.md`](../AGENTS.md) |
 | test a change, or try the tool safely | [`../CONTRIBUTING.md`](../CONTRIBUTING.md) |
 | know **why** it works the way it does | [`adr/`](./adr/) |

@@ -1,0 +1,121 @@
+---
+title: "Is it PolinRider or a false alarm? Reading a scan result"
+description: "polinrider 2.3.0 reads more of your files, so a project it once called clean can now show review lines. What each answer means and which matches are harmless."
+category: guides
+date: "2026-11-03"
+sidebar:
+  label: "False alarm?"
+  order: -20261103
+---
+
+Since 2.3.0, polinrider reads every text file up to 1 MB in a folder or on a
+computer for strings that a normal project can also contain, and for file
+names that a legitimate tool might also write. So a project that 2.2.0 called
+clean can now come back with a few `[review]` lines and exit code 1. That is
+not a verdict of infection. It is the tool asking you a question. This is how
+to read each of its answers, and which of the usual matches are harmless.
+
+## The three answers
+
+`VERDICT: COMPROMISED`, with `[HIT]` lines, means it found at least one thing
+that only the malware leaves. Under the verdict, a box says one of two things.
+"This machine cannot be trusted until it is rebuilt" means something proves
+the payload ran on this computer: the implant, a login item, a git hook, an
+editor extension, a startup file, a running process or a live connection. "The
+payload is in your project files" means everything it found sits inside your
+projects. The payload runs when an infected project is built or opened in an
+editor, so if that happened, or you are not sure, treat the computer as
+compromised anyway. Below the box, a list called WHAT TO DO NEXT gives a step
+for each finding with the exact command. Follow it in order, and check the
+computer before you touch GitHub.
+
+`VERDICT: no confirmed indicator.`, with `[review]` lines, means nothing is
+confirmed but a person has to decide about each line. The tool prints three
+steps in its own words. Read each line and ask whether you put that file,
+process or setting there. Treat a line that says a check could not run, or was
+skipped, as a part that was not looked at, and fix whatever stopped it. If any
+line turns out not to be yours, treat it as confirmed: disconnect from the
+network and change your credentials from a different machine.
+
+`VERDICT: clean against the current indicator set.` means none of today's
+indicators is on what was checked. It is not proof that nothing was ever
+there, because the campaign changes its signatures. If you had a reason to
+check in the first place, change your credentials anyway.
+
+A fourth outcome, exit code 3, means the check could not run, for example
+because a path does not exist or `gh` is not signed in. It says nothing either
+way.
+
+## How it decides what to confirm
+
+There is one rule. A match may confirm an infection only if it has no
+plausible innocent explanation. Anything a legitimate project could also
+contain stays at review, and when the two are close, it goes to review. A
+false confirmation costs every user a panic, while keeping a real indicator at
+review costs one line of output. So take a `[HIT]` at its word and read a `[review]`.
+
+## Matches that are usually harmless
+
+A `.vscode/tasks.json` that runs on folder open is the most common review line.
+Teams use folder-open tasks for real work, so the tool asks you to check the
+command by hand. It is real if the command runs `node` on a font file, or
+downloads something and runs it. If the task carries a known indicator, you
+will see a `[HIT]` instead.
+
+`folderOpen` or `allowAutomaticTasks` in another file, such as
+`.vscode/settings.json`, is harmless on its own, because only `tasks.json`
+runs commands.
+
+A long build config can match too: a tail after `export default` or a line longer than 4,000 characters. Some configs legitimately run long, and a flat
+ESLint config opens with `export default [`. It is real if there is code you
+did not write after the end of the config, often after a long run of spaces.
+
+`public/fonts/fa-solid-900.woff2` is a genuine Font Awesome file name, so the
+name alone proves nothing. OpenSourceMalware has seen a fake use it, and the
+tool settles it by reading the first bytes: a fake font is a `[HIT]` whatever
+it is called.
+
+`spellright.dict` belongs to a real VS Code extension, and
+`branch_structure.json` or `clr_init.vbs` are names a legitimate tool could
+write. They matter if nobody on the team uses the tool that writes them, or if
+they sit beside other campaign files.
+
+Two things the tool never reports are a Git LFS pointer standing in for a font
+and an empty font file. Neither has font bytes, and neither is malware.
+
+## Two that are not false alarms
+
+`temp_auto_push.bat` listed in a committed `.gitignore` can look harmless,
+since the repository itself may hold no payload. It means a contributor's
+computer is infected; we explain why in
+[Found temp_auto_push.bat?](/analysis/temp-auto-push-bat-polinrider/)
+
+An antivirus detection named for PolinRider, such as Windows Defender's
+`Trojan:NPM/PolinRider.SF`, means something ran on that computer. The other
+direction does not hold. A clean result from another scanner is a first pass,
+which OpenSourceMalware says plainly of its own scanner, built against the
+campaign's original signature.
+
+## If it got it wrong
+
+Both directions are worth reporting. A harmless file reported as `[HIT]` or a review line that should never fire goes in a
+[false-positive issue](https://github.com/meSingh/polinrider-scanner/issues/new?template=false-positive.md).
+Something real that was missed goes in a
+[missed-detection issue](https://github.com/meSingh/polinrider-scanner/issues/new?template=missed-detection.md),
+with the source you saw it in. If the result is real, the
+[cleanup checklist](/docs/guides/getting-rid-of-polinrider/) has every step.
+
+## Sources
+
+- polinrider-scanner: [`src/scan.rs`][scan-rs] for the verdicts and next steps, [`src/checks.rs`][checks-rs] for the tasks.json, config and font checks, [ADR-0034][adr-0034], [ADR-0048][adr-0048] and [`ioc/weak.txt`][weak]
+- Our [release notes for 2.3.0](/releases/v2.3.0/) and [false positives reference](/docs/reference/false-positives/)
+- OpenSourceMalware, [PolinRider is A/B Testing its Way Past Your Detections][osm-ab], 26 September 2026
+- OpenSourceMalware, [A Developer's Guide to Getting Rid of PolinRider][osm-guide], August 2026
+
+[scan-rs]: https://github.com/meSingh/polinrider-scanner/blob/main/src/scan.rs
+[checks-rs]: https://github.com/meSingh/polinrider-scanner/blob/main/src/checks.rs
+[adr-0034]: https://github.com/meSingh/polinrider-scanner/blob/main/docs/adr/0034-the-verdict-is-followed-by-what-to-do-and-rebuild-is-said-only-on-proof.md
+[adr-0048]: https://github.com/meSingh/polinrider-scanner/blob/main/docs/adr/0048-a-review-level-filename-list.md
+[weak]: https://github.com/meSingh/polinrider-scanner/blob/main/ioc/weak.txt
+[osm-ab]: https://opensourcemalware.com/blog/polinrider-is-a-b-testing-its-way-past-your-detections
+[osm-guide]: https://opensourcemalware.com/blog/developer-guide-getting-over-polinrider

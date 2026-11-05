@@ -1,0 +1,274 @@
+---
+// Site search, in the top bar and on ⌘K, Ctrl+K or "/". Pagefind's index is
+// built with the site (src/markdown/pagefind.mjs) and searched in the
+// reader's browser; no query leaves the page. The index and its script load
+// only when search is first opened.
+import Icon from './Icon.astro';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+
+<pr-search class="needs-js" data-bundle={`${base}/pagefind/`}>
+  <button type="button" class="open" aria-haspopup="dialog" aria-label="Search the site">
+    <Icon name="search" size={17} />
+    <span class="label">Search</span>
+    <kbd class="kbd" aria-hidden="true"><span class="mod">Ctrl</span>K</kbd>
+  </button>
+  <dialog aria-label="Search">
+    <div class="box">
+      <form role="search" class="field" onsubmit="return false">
+        <Icon name="search" size={20} />
+        <label class="sr-only" for="pr-search-input">Search the site</label>
+        <input id="pr-search-input" type="search" placeholder="Search docs, news and releases" autocomplete="off" spellcheck="false" />
+        <button type="button" class="close" aria-label="Close search"><kbd>Esc</kbd></button>
+      </form>
+      <p class="status" role="status" aria-live="polite"></p>
+      <ol class="results"></ol>
+    </div>
+  </dialog>
+</pr-search>
+
+<script>
+  type Result = { url: string; meta: { title?: string; section?: string }; excerpt: string };
+  type Pagefind = {
+    init: () => Promise<void>;
+    debouncedSearch: (q: string, o?: object, ms?: number) => Promise<{ results: { data: () => Promise<Result> }[] } | null>;
+  };
+
+  // Pagefind's script exists only in the built site, so it is loaded by
+  // address at run time. Written this way so the bundler leaves the import
+  // alone: it rewrites a plain import() into a helper that does not exist in
+  // an inlined script.
+  const load = new Function('url', 'return import(url)') as (url: string) => Promise<Pagefind>;
+
+  class Search extends HTMLElement {
+    pagefind?: Promise<Pagefind | null>;
+    dialog!: HTMLDialogElement;
+    input!: HTMLInputElement;
+    list!: HTMLOListElement;
+    status!: HTMLElement;
+
+    connectedCallback() {
+      this.dialog = this.querySelector('dialog')!;
+      this.input = this.querySelector('input')!;
+      this.list = this.querySelector('.results')!;
+      this.status = this.querySelector('.status')!;
+      if (/mac|iphone|ipad/i.test(navigator.platform)) this.querySelector('.mod')!.textContent = '⌘';
+
+      this.querySelector('.open')!.addEventListener('click', () => this.show());
+      this.querySelector('.close')!.addEventListener('click', () => this.dialog.close());
+      this.dialog.addEventListener('click', (e) => {
+        if (e.target === this.dialog) this.dialog.close();
+      });
+      this.input.addEventListener('input', () => this.search());
+      this.input.addEventListener('keydown', (e) => this.move(e));
+      this.list.addEventListener('keydown', (e) => this.move(e));
+      document.addEventListener('keydown', (e) => {
+        const typing = (e.target as HTMLElement).closest('input, textarea, [contenteditable]');
+        if ((e.key === 'k' && (e.metaKey || e.ctrlKey)) || (e.key === '/' && !typing)) {
+          e.preventDefault();
+          this.dialog.open ? this.dialog.close() : this.show();
+        }
+      });
+    }
+
+    show() {
+      this.dialog.showModal();
+      this.input.focus();
+      this.input.select();
+      this.pagefind ??= load(`${this.dataset.bundle}pagefind.js`)
+        .then(async (pf: Pagefind) => {
+          await pf.init();
+          return pf;
+        })
+        .catch(() => null);
+    }
+
+    async search() {
+      const q = this.input.value.trim();
+      const pf = await this.pagefind;
+      if (!pf) {
+        this.status.textContent = 'Search is available on the published site.';
+        return;
+      }
+      if (!q) {
+        this.list.replaceChildren();
+        this.status.textContent = '';
+        return;
+      }
+      const found = await pf.debouncedSearch(q, {}, 150);
+      if (!found || this.input.value.trim() !== q) return;
+      const top = await Promise.all(found.results.slice(0, 8).map((r) => r.data()));
+      this.status.textContent = found.results.length
+        ? `${found.results.length} ${found.results.length === 1 ? 'page' : 'pages'} found`
+        : `Nothing found for “${q}”`;
+      this.list.replaceChildren(
+        ...top.map((r) => {
+          const li = document.createElement('li');
+          const a = document.createElement('a');
+          a.href = r.url;
+          const meta = document.createElement('span');
+          meta.className = 'section';
+          meta.textContent = r.meta.section ?? '';
+          const title = document.createElement('span');
+          title.className = 'title';
+          title.textContent = r.meta.title ?? r.url;
+          const excerpt = document.createElement('span');
+          excerpt.className = 'excerpt';
+          // Pagefind escapes the page text and adds only <mark>.
+          excerpt.innerHTML = r.excerpt;
+          a.append(meta, title, excerpt);
+          li.append(a);
+          return li;
+        }),
+      );
+    }
+
+    move(e: KeyboardEvent) {
+      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+      const links = [...this.list.querySelectorAll('a')];
+      if (!links.length) return;
+      e.preventDefault();
+      const i = links.indexOf(document.activeElement as HTMLAnchorElement);
+      if (e.key === 'ArrowDown') links[Math.min(i + 1, links.length - 1)].focus();
+      else if (i <= 0) this.input.focus();
+      else links[i - 1].focus();
+    }
+  }
+  customElements.define('pr-search', Search);
+</script>
+
+<style>
+  .open {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    height: 2.4rem;
+    padding: 0 0.6rem 0 0.8rem;
+    border: 1px solid var(--pr-border);
+    border-radius: 999px;
+    background: var(--pr-bg);
+    color: var(--pr-muted);
+    font: 500 0.9375rem/1 var(--font);
+    cursor: pointer;
+  }
+  .open:hover {
+    border-color: var(--pr-border-strong);
+    color: var(--pr-heading);
+  }
+  .label {
+    min-width: 6rem;
+    text-align: start;
+  }
+  kbd {
+    padding: 0.15rem 0.4rem;
+    border: 1px solid var(--pr-border);
+    border-radius: 6px;
+    background: var(--pr-surface);
+    color: var(--pr-muted);
+    font: 500 0.75rem/1.2 var(--font);
+  }
+  @media (max-width: 42rem) {
+    .open {
+      width: 2.4rem;
+      padding: 0;
+      justify-content: center;
+    }
+    .label,
+    .kbd {
+      display: none;
+    }
+  }
+  dialog {
+    width: min(40rem, calc(100vw - 2rem));
+    max-height: min(36rem, calc(100vh - 6rem));
+    margin: 5rem auto auto;
+    padding: 0;
+    border: 1px solid var(--pr-border-strong);
+    border-radius: var(--pr-radius);
+    background: var(--pr-bg);
+    color: var(--pr-text);
+    box-shadow: 0 24px 60px rgb(0 0 0 / 0.35);
+  }
+  dialog::backdrop {
+    background: rgb(5 8 12 / 0.55);
+    backdrop-filter: blur(2px);
+  }
+  .box {
+    display: flex;
+    flex-direction: column;
+    max-height: inherit;
+  }
+  .field {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.9rem 1rem;
+    border-bottom: 1px solid var(--pr-border);
+    color: var(--pr-muted);
+  }
+  input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    color: var(--pr-heading);
+    font: 500 1.125rem/1.4 var(--font);
+    outline: none;
+  }
+  input::-webkit-search-cancel-button {
+    display: none;
+  }
+  .close {
+    border: 0;
+    background: none;
+    cursor: pointer;
+  }
+  .status {
+    margin: 0;
+    padding: 0.6rem 1.1rem 0;
+    color: var(--pr-muted);
+    font-size: var(--text-xs);
+  }
+  .status:empty {
+    display: none;
+  }
+  .results {
+    margin: 0;
+    padding: 0.5rem;
+    overflow-y: auto;
+    list-style: none;
+  }
+  .results :global(a) {
+    display: grid;
+    gap: 0.15rem;
+    padding: 0.7rem 0.8rem;
+    border-radius: var(--pr-radius-sm);
+    color: var(--pr-text);
+    text-decoration: none;
+  }
+  .results :global(a:is(:hover, :focus-visible)) {
+    background: var(--pr-surface);
+    outline-offset: -2px;
+  }
+  .results :global(.section) {
+    color: var(--pr-accent);
+    font-size: 0.75rem;
+    font-weight: 650;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .results :global(.title) {
+    color: var(--pr-heading);
+    font-weight: 650;
+  }
+  .results :global(.excerpt) {
+    font-size: var(--text-sm);
+    line-height: 1.5;
+  }
+  .results :global(mark) {
+    background: var(--pr-accent-bg);
+    color: var(--pr-heading);
+    font-weight: 600;
+  }
+</style>

@@ -1,0 +1,135 @@
+---
+// The same rewritten commit as git log shows it and as GitHub's push record
+// shows it, side by side. The two panels look different on purpose: the
+// left is what fools you (neutral grey, an eye: "looks fine"), the right is
+// what happened (the accent, a check, the telling words marked). An
+// illustration with made-up IDs and times; the caption says so.
+import Icon from './Icon.astro';
+---
+
+<figure class="compare not-prose">
+  <div class="side seen">
+    <p class="tag"><Icon name="eye" size={16} /> Looks fine</p>
+    <h3 class="label">What <code>git log</code> shows you</h3>
+    <pre>a41c9e2  Fix navbar spacing
+         You · 12 Oct, 10:42</pre>
+    <p class="note">Looks normal: your name, your message, the old date.</p>
+  </div>
+  <div class="side real">
+    <p class="tag"><Icon name="clean" size={16} /> What happened</p>
+    <h3 class="label">What GitHub's push record shows</h3>
+    <pre><mark>force-pushed</mark> main
+from 7d03b18 to a41c9e2
+by your account · <mark>3 Nov, 02:13</mark></pre>
+    <p class="note">The real push: when it happened and that it replaced a commit.</p>
+  </div>
+  <figcaption>An example, with made-up commit IDs and times.</figcaption>
+</figure>
+
+<style>
+  .compare {
+    display: grid;
+    gap: 0.75rem;
+    margin: 1.5rem 0 2rem;
+  }
+  /* Side by side, the two panels share rows (subgrid): tag, title, record
+   * and note line up across both, and the panels are the same height. */
+  @media (min-width: 40rem) {
+    .compare {
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: auto auto 1fr auto;
+      column-gap: 1rem;
+      row-gap: 0;
+    }
+    .side {
+      grid-row: span 4;
+      grid-template-rows: subgrid;
+    }
+    figcaption {
+      margin-top: 0.75rem;
+    }
+  }
+  .side {
+    display: grid;
+    row-gap: 0.75rem;
+    padding: 1.15rem 1.25rem;
+    border: 1px solid var(--pr-border);
+    border-radius: var(--pr-radius);
+    background: var(--pr-surface);
+  }
+  .real {
+    border-color: color-mix(in srgb, var(--pr-accent) 40%, var(--pr-border));
+    background: var(--pr-accent-bg);
+  }
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    justify-self: start;
+    margin: 0;
+    padding: 0.2rem 0.6rem 0.2rem 0.5rem;
+    border-radius: 999px;
+    font-size: var(--text-xs);
+    font-weight: 650;
+    letter-spacing: 0.02em;
+  }
+  .seen .tag {
+    background: var(--pr-bg);
+    color: var(--pr-muted);
+    box-shadow: inset 0 0 0 1px var(--pr-border);
+  }
+  .real .tag {
+    background: var(--pr-accent);
+    color: var(--pr-bg);
+  }
+  .label {
+    margin: 0;
+    color: var(--pr-heading);
+    font-size: 1.0625rem;
+    font-weight: 650;
+    line-height: 1.35;
+    letter-spacing: normal;
+  }
+  pre {
+    margin: 0;
+    padding: 0.8rem 1rem;
+    border: 1px solid var(--pr-border);
+    border-radius: var(--pr-radius-sm);
+    background: var(--pr-bg);
+    color: var(--pr-heading);
+    font-size: 0.875rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+  }
+  .real pre {
+    border-color: color-mix(in srgb, var(--pr-accent) 30%, var(--pr-border));
+  }
+  mark {
+    padding: 0 0.15em;
+    border-radius: 3px;
+    background: color-mix(in srgb, var(--pr-accent) 18%, transparent);
+    color: var(--pr-accent);
+    font-weight: 700;
+  }
+  /* The two notes: the same box, padding and type; only the colour says
+   * which one to believe. */
+  .note {
+    margin: 0;
+    padding: 0.7rem 0.9rem;
+    border: 1px solid var(--pr-border);
+    border-radius: var(--pr-radius-sm);
+    background: var(--pr-bg);
+    color: var(--pr-text);
+    font-size: 0.9375rem;
+    line-height: 1.5;
+  }
+  .real .note {
+    border-color: color-mix(in srgb, var(--pr-accent) 30%, var(--pr-border));
+    color: var(--pr-heading);
+  }
+  figcaption {
+    grid-column: 1 / -1;
+    color: var(--pr-muted);
+    font-size: var(--text-xs);
+  }
+</style>

@@ -1,0 +1,157 @@
+---
+// Not found. GitHub Pages (and the domain behind it) serves this page for
+// any missing address, with or without a trailing slash. A calm line, the
+// site's search front and centre (it opens the same search as the top bar),
+// and four places to go. Not indexed, no canonical address.
+import Base from '../layouts/Base.astro';
+import Icon from '../components/Icon.astro';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const places = [
+  { icon: 'computer', title: 'Check your computer', text: 'Install the scanner and run it. It changes nothing until you say yes.', href: `${base}/docs/quick-start/` },
+  { icon: 'eye', title: 'What is PolinRider?', text: 'What it is, how it gets in and the signs you might be infected.', href: `${base}/what-is-polinrider/` },
+  { icon: 'doc', title: 'Docs', text: 'Every guide and reference, in the order you will need them.', href: `${base}/docs/` },
+  { icon: 'news', title: 'Updates', text: 'What is happening with PolinRider, and the weekly indicator reviews.', href: `${base}/updates/` },
+] as const;
+---
+
+<Base title="Page not found" description="This page doesn't exist, or it moved. Search the site or start from one of these pages." noindex hasCanonical={false}>
+  <div class="wrap nf">
+    <p class="code">404</p>
+    <h1>This page doesn't exist, or it moved</h1>
+    <p class="lead">Search for what you were looking for, or start from one of these.</p>
+
+    <button type="button" class="find needs-js" aria-label="Search the site">
+      <Icon name="search" size={20} />
+      <span>Search the site</span>
+      <kbd><span class="mod">Ctrl</span>K</kbd>
+    </button>
+
+    <ul class="places">
+      {
+        places.map((p) => (
+          <li>
+            <a href={p.href}>
+              <span class="picon">
+                <Icon name={p.icon} size={20} />
+              </span>
+              <span>
+                <strong>{p.title}</strong>
+                <small>{p.text}</small>
+              </span>
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</Base>
+
+<script>
+  // The big search button opens the search in the top bar.
+  const open = () => document.querySelector<HTMLButtonElement>('.site-header pr-search .open')?.click();
+  document.querySelector('.nf .find')?.addEventListener('click', open);
+  if (/Mac|iPhone|iPad/.test(navigator.platform)) {
+    const mod = document.querySelector('.nf .find .mod');
+    if (mod) mod.textContent = '⌘';
+  }
+</script>
+
+<style>
+  .nf {
+    max-width: calc(46rem + 2 * var(--gutter));
+    padding-block: clamp(3rem, 8vw, 5rem) 5rem;
+    text-align: center;
+  }
+  .code {
+    margin: 0;
+    color: var(--pr-accent);
+    font-family: var(--font-mono);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+  }
+  h1 {
+    margin: 0.6rem 0 0;
+    font-size: var(--text-h1);
+    letter-spacing: -0.025em;
+  }
+  .lead {
+    margin: 0.75rem 0 0;
+    color: var(--pr-text);
+    font-size: 1.125rem;
+  }
+  .find {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: min(100%, 32rem);
+    height: 3.25rem;
+    margin: 2rem auto 0;
+    padding: 0 0.75rem 0 1.1rem;
+    border: 1px solid var(--pr-border-strong);
+    border-radius: 999px;
+    background: var(--pr-bg);
+    color: var(--pr-muted);
+    font: 500 1.0625rem/1 var(--font);
+    cursor: pointer;
+  }
+  .find:hover {
+    border-color: var(--pr-heading);
+    color: var(--pr-heading);
+  }
+  .find kbd {
+    margin-inline-start: auto;
+    padding: 0.2rem 0.45rem;
+    border: 1px solid var(--pr-border);
+    border-radius: 6px;
+    background: var(--pr-surface);
+    font-size: 0.8125rem;
+  }
+  .places {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
+    gap: 0.75rem;
+    margin: 2.5rem 0 0;
+    padding: 0;
+    list-style: none;
+    text-align: start;
+  }
+  .places a {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.9rem;
+    height: 100%;
+    padding: 1rem 1.15rem;
+    border: 1px solid var(--pr-border);
+    border-radius: var(--pr-radius);
+    color: var(--pr-text);
+    text-decoration: none;
+  }
+  .places a:hover {
+    border-color: var(--pr-border-strong);
+    background: var(--pr-surface);
+  }
+  .picon {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 10px;
+    background: var(--pr-accent-bg);
+    color: var(--pr-accent);
+  }
+  .places strong {
+    display: block;
+    color: var(--pr-heading);
+    font-size: 1.0625rem;
+    line-height: 1.35;
+  }
+  .places small {
+    display: block;
+    margin-top: 0.2rem;
+    font-size: 0.9375rem;
+    line-height: 1.5;
+  }
+</style>

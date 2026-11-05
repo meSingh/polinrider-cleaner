@@ -1,0 +1,29 @@
+---
+// The mark, inline: the Scanline P (drawn by scripts/brand/mark.py). The
+// tile is always ink, so in the dark theme a faint edge keeps it from
+// melting into the page.
+import mark from '../assets/brand/mark.svg?raw';
+
+interface Props {
+  size?: number;
+}
+const { size = 28 } = Astro.props;
+const svg = mark
+  .replace(' role="img" aria-label="PolinRider Scanner and Cleaner"', ` width="${size}" height="${size}" aria-hidden="true" focusable="false"`)
+  .replace('</svg>', '<rect class="edge" x="16" y="16" width="224" height="224" rx="60" fill="none" stroke-width="6"/></svg>');
+---
+
+<span class="brand-mark" set:html={svg} />
+
+<style>
+  .brand-mark {
+    display: inline-flex;
+    flex: none;
+  }
+  .brand-mark :global(.edge) {
+    stroke: transparent;
+  }
+  :global(:root[data-theme='dark']) .brand-mark :global(.edge) {
+    stroke: rgb(255 255 255 / 0.2);
+  }
+</style>

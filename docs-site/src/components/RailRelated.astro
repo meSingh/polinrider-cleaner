@@ -1,0 +1,74 @@
+---
+// "Related" in the rail: two other pieces, each with its kind and date
+// (left out when the title already is the date, as a review's is).
+import { longDate } from '../releaseDate';
+
+export interface RailItem {
+  kicker: string;
+  title: string;
+  href: string;
+  date: string;
+}
+interface Props {
+  items: RailItem[];
+}
+const { items } = Astro.props;
+---
+
+{
+  items.length > 0 && (
+    <nav class="related" aria-labelledby="rail-related">
+      <p class="rail-title" id="rail-related">Related</p>
+      <ul>
+        {items.map((i) => (
+          <li>
+            <a href={i.href}>
+              <span class="kicker">{i.kicker}</span>
+              <span class="title">{i.title}</span>
+              {!i.title.includes(longDate(i.date)) && <time datetime={i.date}>{longDate(i.date)}</time>}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  )
+}
+
+<style>
+  ul {
+    display: grid;
+    gap: 0.6rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  a {
+    display: grid;
+    gap: 0.2rem;
+    padding: 0.75rem 0.95rem;
+    border: 1px solid var(--pr-border);
+    border-radius: var(--pr-radius);
+    color: var(--pr-text);
+    text-decoration: none;
+  }
+  a:hover {
+    border-color: var(--pr-border-strong);
+    background: var(--pr-surface);
+  }
+  .kicker {
+    color: var(--pr-accent);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .title {
+    color: var(--pr-heading);
+    font-weight: 600;
+    line-height: 1.35;
+  }
+  time {
+    color: var(--pr-muted);
+    font-size: var(--text-xs);
+  }
+</style>

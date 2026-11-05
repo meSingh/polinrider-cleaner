@@ -1,0 +1,124 @@
+---
+title: "MicrosoftSystem64: what it is and how to remove it"
+description: "MicrosoftSystem64 is not part of Windows. It is a remote-access trojan that malicious npm packages install, now found inside working GitHub projects too."
+category: analysis
+date: "2026-11-03"
+sidebar:
+  label: "MicrosoftSystem64"
+  order: -20261103
+---
+
+A program, process or folder called `MicrosoftSystem64` has nothing to do with
+Windows or any Microsoft product. It is a remote-access trojan and information
+stealer that malicious npm packages install, and it runs on Windows, macOS and
+Linux. [SafeDep][safedep], which took the program apart in May, says the name
+is chosen to look like a system service in a process list, and that a
+computer running it should be treated as fully compromised. In October Island
+found it being pulled into working open source projects as well, so you do
+not need to have picked a suspicious package to end up with it.
+
+## What it does
+
+It is a Node.js single executable: the runtime and the malicious JavaScript
+packed into one native file, so it runs on computers without Node.js
+installed. The Linux build SafeDep analysed is 81 MB, and JFrog found the
+Windows, Mac and Linux builds all carry the same JavaScript.
+
+Its job is to collect. SafeDep lists credentials from 15 browser families, data
+from more than 80 cryptocurrency wallet extensions, Telegram Desktop sessions
+and SSH keys. It also logs keystrokes, watches the clipboard, takes a
+screenshot every 60 seconds, runs commands it is sent and updates itself. What
+it takes goes to private datasets on Hugging Face, so the traffic looks like ordinary HTTPS to a well-known site.
+
+## How it gets onto a computer
+
+Through npm, at install time. The first packages SafeDep and JFrog described
+were fake logging libraries. `js-logger-pack` appeared in April 2026, and after
+npm took it down on 22 April the same dropper came back as
+`terminal-logger-utils` and several packages around it. In `js-logger-pack` a
+`postinstall` script downloads the build for your system and leaves it running
+in the background, so `npm install` finishes as normal.
+
+Later packages copied real libraries. The OpenSSF malicious-packages database
+records `void-ulid`, a copy of the legitimate `ulid` package down to its
+repository link, which installs the agent as a JavaScript file rather than the
+packed program. A later one, `pino-ulid`, sets up the same kind of agent under
+another name.
+
+[Island][island] has since followed this cluster to at least 88 public GitHub
+repositories, many of them presented as AI and agent tools. They contained
+real, working code and pulled the dropper in through a dependency such as `ioredis-xyz`, later
+`oscar-redis` or `oracle-redis`. Their histories were copied or generated and
+forks arrived almost exactly every three minutes. One of them came up unprompted in both ChatGPT and Google's AI Overview. A project
+you cloned because an assistant recommended it can bring the trojan in the
+first time you run `npm install`.
+
+## Where it hides
+
+On Windows the program sits in your local application data folder as
+`MicrosoftSystem64.exe`, started by a scheduled task and a small script of the
+same name, with a registry Run value as a fallback. On macOS it lives under
+Application Support and starts from a LaunchAgent with `com.launchkeeper` in
+its name. On Linux it sits under `~/.local/share` and starts from a systemd
+user service or an autostart entry. On every system it keeps its upload queue
+in folders called `.pcl-data` and `.pcl-state` and leaves a `.registered`
+file, as JFrog describes.
+
+One build also leaves a way back in. According to the OpenSSF record for the
+`eo-terminal` package, it appends the attacker's own SSH key, with the comment
+`bink@DESKTOP-N8JGD6T`, to `~/.ssh/authorized_keys`. Removing the program does
+not remove that line, and until you do, the computer can still be entered
+over SSH.
+
+## Is it PolinRider?
+
+Not by name, as far as the published reports go. None of the reports on
+`MicrosoftSystem64` mentions PolinRider, and none of the PolinRider reports we
+have read mentions `MicrosoftSystem64`. They are related through the group
+behind them. SafeDep places these packages in a cluster that kmsec.uk and OX
+Security attribute to Famous Chollima, also tracked as Contagious Interview, a
+DPRK-linked group. OpenSourceMalware describes PolinRider as a parallel or
+sub-campaign of Contagious Interview. We check for both because they target
+the same developers and need the same response.
+
+A different Microsoft-looking name, `MicrosoftCLROptimization`, has been seen
+starting malware at logon on Windows. It is not this program; we wrote about
+it in [why PolinRider came back after Defender removed it](/guides/polinrider-keeps-coming-back/).
+
+## What to do
+
+Assume everything on the computer has been taken. Stop it from starting again first: remove the scheduled task and
+Run value, the LaunchAgent or the systemd unit and autostart entry, then the
+program and its folders. Read `~/.ssh/authorized_keys` and remove any line you
+did not add. Then remove the package: delete `node_modules` and the lockfile,
+clear the npm cache and take the package out of `package.json` before you
+install anything again.
+
+From a clean computer, change everything: browser-saved passwords, SSH keys,
+API and cloud keys, npm tokens and database passwords. If a wallet was on the
+computer, its seed phrase is exposed, which means moving the funds to a new
+wallet. Consider reinstalling the operating system too: removing files contains the
+problem, and only a clean install recovers from it.
+
+polinrider looks for the program by its names, its install and startup paths
+and its published file hashes, so a renamed copy is still caught. It reads the process table too, and since 2.3.0 it also catches the JavaScript version running under `node`
+and names the attacker's key in `authorized_keys` without editing the file.
+The [cleanup checklist](/docs/guides/getting-rid-of-polinrider/) covers the
+rest of the cleanup in order.
+
+## Sources
+
+- SafeDep, [Inside MicrosoftSystem64: A Supply Chain RAT Exfiltrating to HuggingFace][safedep], 28 May 2026
+- JFrog Security Research, [js-logger-pack Operator Turns Hugging Face into a Malware CDN and Exfiltration Backend][jfrog], 23 April 2026
+- Island, [How Attackers Built Software an AI Would Recommend][island], 13 October 2026
+- OpenSSF malicious-packages: [MAL-2026-4345][mal-4345] (`eo-terminal`), [MAL-2026-5341][mal-5341] (`void-ulid`) and [MAL-2026-16154][mal-16154] (`pino-ulid`)
+- OpenSourceMalware, [PolinRider Blast Radius Grows][osm-blast], 15 July 2026
+- Our indicator reviews of [12 October](/indicator-reviews/2026-10-12/) and [2 November](/indicator-reviews/2026-11-02/)
+
+[safedep]: https://safedep.io/microsoftsystem64-binary-payload-analysis/
+[jfrog]: https://research.jfrog.com/post/hugging-face-exfil/
+[island]: https://www.island.io/blog/how-attackers-built-software-an-ai-would-recommend
+[mal-4345]: https://github.com/ossf/malicious-packages/blob/main/osv/malicious/npm/eo-terminal/MAL-2026-4345.json
+[mal-5341]: https://github.com/ossf/malicious-packages/blob/main/osv/malicious/npm/void-ulid/MAL-2026-5341.json
+[mal-16154]: https://github.com/ossf/malicious-packages/blob/main/osv/malicious/npm/pino-ulid/MAL-2026-16154.json
+[osm-blast]: https://opensourcemalware.com/blog/polinrider-blast-radius-grows

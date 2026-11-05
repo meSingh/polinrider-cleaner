@@ -56,8 +56,8 @@ git, and no Rust: the build happens in the container.
   tried yet.
 
 ```bash
-git clone https://github.com/meSingh/polinrider-cleaner.git
-cd polinrider-cleaner
+git clone https://github.com/meSingh/polinrider-scanner.git
+cd polinrider-scanner
 ./polinrider-sandbox --beta
 ```
 
@@ -166,7 +166,7 @@ full check of each runner, cleans the sample and verifies the original was
 kept. Its builds are downloadable for any other disposable container:
 
 ```bash
-gh run download --repo meSingh/polinrider-cleaner --name polinrider-beta-linux-x86_64 --dir /tmp/prc-beta
+gh run download --repo meSingh/polinrider-scanner --name polinrider-beta-linux-x86_64 --dir /tmp/prc-beta
 ```
 
 What that leaves untested is a real developer's Mac or Windows PC, with years
@@ -177,7 +177,7 @@ of login items and editor extensions.
 See [`ioc/README.md`](ioc/README.md). Link a public source. Do not commit live
 payload code, obfuscated or not. An indicator string, a hash, a package name or
 a hostname is enough. The weekly review, and how to add an entry, is on the
-[indicator reviews page](https://mesingh.github.io/polinrider-cleaner/indicator-reviews/).
+[indicator reviews page](https://polinriderscanner.com/indicator-reviews/).
 
 ## Conduct
 

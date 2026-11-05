@@ -1,0 +1,54 @@
+---
+// A category's own page, /<category>/: its articles, ours and those
+// published elsewhere, newest first. One page per category in use.
+import Base from '../../layouts/Base.astro';
+import Crumbs from '../../components/Crumbs.astro';
+import UpdatesTimeline from '../../components/UpdatesTimeline.astro';
+import { timeline, type TimelineItem } from '../../news';
+import { abs, breadcrumbs } from '../../schema';
+import { categories } from '../../categories.mjs';
+
+export async function getStaticPaths() {
+  const all = await timeline();
+  return categories
+    .map((c) => ({ c, items: all.filter((i) => i.category === c.slug) }))
+    .filter(({ items }) => items.length)
+    .map(({ c, items }) => ({ params: { category: c.slug }, props: { c, items } }));
+}
+const { c, items } = Astro.props as { c: (typeof categories)[number]; items: TimelineItem[] };
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+
+<Base
+  title={c.title}
+  titleTag={`${c.pageTitle} | PolinRider Scanner`}
+  description={`${c.description} Part of PolinRider updates.`}
+  type="website"
+  schema={[breadcrumbs([{ label: 'Updates', href: `${base}/updates/` }], c.title, abs(Astro.url.pathname))]}
+>
+  <div class="wrap page">
+    <Crumbs items={[{ label: 'Updates', href: `${base}/updates/` }]} />
+    <h1>{c.title}</h1>
+    <p class="lead">{c.description}</p>
+    <UpdatesTimeline items={items} months />
+  </div>
+</Base>
+
+<style>
+  .page {
+    padding-block: 2.5rem 4rem;
+  }
+  .page > :global(*) {
+    max-width: 52rem;
+  }
+  h1 {
+    margin: 0.75rem 0 0;
+    font-size: var(--text-h1);
+    letter-spacing: -0.025em;
+  }
+  .lead {
+    margin: 0.5rem 0 1.25rem;
+    color: var(--pr-text);
+    font-size: 1.125rem;
+  }
+</style>

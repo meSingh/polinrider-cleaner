@@ -1,0 +1,132 @@
+---
+title: "Remove PolinRider: the full cleanup checklist"
+description: "Every step of a PolinRider cleanup on one checklist: infected computers, credentials, GitHub repositories and npm, and the checks still done by hand."
+sidebar:
+  label: "The full checklist"
+---
+
+The whole cleanup on one page, in the order from
+[Order matters](/docs/guides/order/). Each step links the guide with the
+detail. What has moved since OpenSourceMalware's August cleanup guide is in
+[Cleaning up PolinRider: what has changed since August](/guides/developers-guide-getting-rid-of-polinrider/).
+
+## Before you start
+
+From a computer you trust, before the long work:
+
+1. Turn off automatic tasks in VS Code for every folder: search the settings
+   for "task" and set *Allow Automatic Tasks* to off.
+2. On every repository the account can reach, block force-pushes, require
+   signed commits and pause automatic deploys.
+3. Suspend any OAuth App or GitHub App you do not recognise.
+4. Tell your collaborators and anyone who installs your package.
+5. Do not open, build or `git pull` any affected project until it is checked.
+
+These come from OpenSourceMalware's
+[developer's guide](https://opensourcemalware.com/blog/developer-guide-getting-over-polinrider).
+
+## 1. Every computer
+
+On every computer that has pushed to the affected repositories:
+
+1. Run `polinrider` and answer `computer`. It reads and reports; nothing
+   changes yet. [A machine](/docs/guides/machine/)
+2. Read each `[HIT]` and `[review]` line.
+   [Is it PolinRider or a false alarm?](/guides/polinrider-or-false-alarm/)
+3. Type `yes` to move confirmed files into quarantine.
+4. Run each command it prints for what it does not change itself: a startup
+   entry, a crontab line, a shell startup file, a line in
+   `~/.ssh/authorized_keys`, a process still running.
+5. If npm's own program files were confirmed, reinstall Node.js before you
+   run `npm` again.
+6. Decide whether to rebuild (below).
+
+What `yes` does and does not do:
+
+| It does | It does not |
+|---|---|
+| Moves confirmed files into a new folder in your home directory, with a manifest and `RESTORE.txt` | Delete anything |
+| Cuts a payload appended to a build config, keeping the infected original | Stage, commit or reset anything in git |
+| Prints the command for each startup entry and SSH key | Edit a startup entry, a crontab, a profile or `authorized_keys` |
+
+### Checks by hand
+
+| Check | Why |
+|---|---|
+| Every line of `~/.ssh/authorized_keys` | The tool names a published key; the next build can use another ([ADR-0049](https://github.com/meSingh/polinrider-scanner/blob/main/docs/adr/0049-the-computer-check-reads-authorized-keys.md)) |
+| Windows Run values and scheduled tasks named `MicrosoftCLROptimization`, including under the SYSTEM profile | Seen starting the malware at logon; the tool knows the script by its file name ([2026-10-05 review](/indicator-reviews/2026-10-05/)) |
+| Repeated macOS Keychain prompts for GitHub access | A detached process retrying ([OpenSourceMalware](https://opensourcemalware.com/blog/developer-guide-getting-over-polinrider)) |
+| The Windows side of a WSL2 setup | The loader starts `node.exe` from inside the Linux guest ([2026-10-05 review](/indicator-reviews/2026-10-05/)) |
+| `git reflog` in each project | Amended commits you do not remember ([OpenSourceMalware](https://opensourcemalware.com/blog/developer-guide-getting-over-polinrider)) |
+
+### Rebuild or not
+
+| Found | Do |
+|---|---|
+| Proof the payload ran here: a login item, startup file, git hook, editor extension, implant, process or connection. The tool says "This machine cannot be trusted until it is rebuilt" | Rebuild |
+| Files inside projects only, and you know nothing infected was built or opened | Quarantine, delete every clone, rotate, keep scanning |
+| Files inside projects only, and you are not sure | Rebuild |
+
+A rebuild is still the safer choice on a computer with production or
+financial access.
+([ADR-0034](https://github.com/meSingh/polinrider-scanner/blob/main/docs/adr/0034-the-verdict-is-followed-by-what-to-do-and-rebuild-is-said-only-on-proof.md);
+[README](https://github.com/meSingh/polinrider-scanner#step-1-check-the-machines))
+
+## 2. Every credential
+
+Yours to do, from a computer you trust, after step 1 and before step 3. In
+this order:
+
+1. **Repository write:** personal access tokens, SSH and signing keys,
+   deploy keys on every repository, OAuth and GitHub App grants, Actions
+   secrets and variables, self-hosted runner tokens.
+2. **Publish rights:** npm tokens with a 2FA reset, then Packagist, PyPI,
+   Docker Hub and Chrome Web Store.
+3. **Everything else the stealer could read:** cloud keys, every `.env`,
+   database passwords, connected platforms such as Vercel and Netlify,
+   browser-saved passwords and a password manager vault that was unlocked
+   on the computer.
+4. **Cached Git credentials**, which survive a password change.
+5. **A wallet or seed phrase** on that computer: move the funds first.
+
+The full list, with the commands to clear cached credentials, is in the
+[README](https://github.com/meSingh/polinrider-scanner#step-2-rotate-every-credential).
+
+## 3. Every repository
+
+1. Run `polinrider` and answer `account` or `organization`. It needs `gh`,
+   signed in. [A personal GitHub account](/docs/guides/account/) ·
+   [An organization](/docs/guides/organization/)
+2. Read the summary. A familiar name in the push record means that person's
+   computer needs step 1 too.
+3. Pick a fix for each repository:
+
+   | The branch was | Fix |
+   |---|---|
+   | Force-pushed to a rewritten history | `restore`, offered only after the earlier commit is fetched and checked clean |
+   | Committed to normally | `remove` (one new commit) or `erase` (rewrite history) |
+   | Not in use | `archive` |
+
+4. Type `yes` after reading each dry run.
+5. Delete every local clone and clone again.
+6. Check forks. If you publish a Go module, release a fixed version: the
+   module proxy keeps the infected one
+   ([OpenSourceMalware](https://opensourcemalware.com/blog/developer-guide-getting-over-polinrider)).
+7. When every restore is done, run `polinrider --purge-evidence` to delete
+   the copies it made.
+
+Run this step early. GitHub serves the commit a branch was moved off only
+until it collects its garbage.
+
+## 4. Every future push
+
+1. Vendor the CI scanner into each repository.
+   [Block PolinRider in CI](/docs/guides/ci/)
+
+   ```bash
+   ./ci/install-workflow.sh /path/to/your/repo
+   ```
+
+2. Keep force-pushes blocked and signed commits required.
+3. Scan weekly for a month, then monthly.
+   ([README](https://github.com/meSingh/polinrider-scanner#keep-scanning))

@@ -31,7 +31,7 @@ repo=$1 file=$2 version=$3 sums=$4 renderer=$5
 command -v jq >/dev/null || die "jq is needed"
 
 owner=${repo%%/*}
-branch="polinrider-cleaner-${version}"
+branch="polinrider-scanner-${version}"
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
@@ -61,7 +61,7 @@ diff -u "${work}/current" "${work}/new" || true
 
 gh api -X POST "repos/${repo}/git/refs" -f "ref=refs/heads/${branch}" -f "sha=${head}" >/dev/null
 
-headline="polinrider-cleaner ${version}"
+headline="polinrider-scanner ${version}"
 body="Moves the package to v${version}. Every checksum is taken from the release's SHA256SUMS, which is covered by the release's build-provenance attestation."
 jq -n \
   --arg query 'mutation($input: CreateCommitOnBranchInput!) { createCommitOnBranch(input: $input) { commit { oid } } }' \
@@ -83,7 +83,7 @@ echo "commit ${oid}: verification ${verified}"
 [[ "$verified" == "true "* ]] \
   || die "GitHub did not verify commit ${oid} on ${repo} (${verified}). The branch ${branch} is left for inspection and no pull request was opened."
 
-release="https://github.com/meSingh/polinrider-cleaner/releases/tag/v${version}"
+release="https://github.com/meSingh/polinrider-scanner/releases/tag/v${version}"
 case "$(basename "$renderer")" in
   scoop.sh) asset="polinrider-v${version}-windows-x86_64.zip" ;;
   *) asset="polinrider-v${version}-macos-arm64.tar.gz" ;;
@@ -94,12 +94,12 @@ Moves \`${file}\` to [v${version}](${release}).
 Every URL points at an asset of that release, and every checksum is the one in its \`SHA256SUMS\`. To check one by hand:
 
 \`\`\`bash
-gh release download v${version} --repo meSingh/polinrider-cleaner --pattern SHA256SUMS --pattern ${asset}
+gh release download v${version} --repo meSingh/polinrider-scanner --pattern SHA256SUMS --pattern ${asset}
 sha256sum -c SHA256SUMS --ignore-missing
-gh attestation verify ${asset} --repo meSingh/polinrider-cleaner
+gh attestation verify ${asset} --repo meSingh/polinrider-scanner
 \`\`\`
 
-Opened by the release workflow of meSingh/polinrider-cleaner. The commit was made through GitHub's API and is signed by GitHub.
+Opened by the release workflow of meSingh/polinrider-scanner. The commit was made through GitHub's API and is signed by GitHub.
 EOF
 )" '{title: $title, head: $head, base: $base, body: $body}' > "${work}/pull.json"
 

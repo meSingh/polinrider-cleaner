@@ -1,5 +1,6 @@
 ---
-title: Order matters
+title: "Removing PolinRider: do it in this order"
+description: "Why PolinRider comes back after a cleanup, and the order that stops it: machines, credentials, repositories, then every future push."
 ---
 
 If more than one of these applies to you, the order is fixed and it is not a
@@ -24,8 +25,10 @@ campaign, and it is the single most common way a cleanup fails.
 
 Cleaning the remote while an infected machine still holds a valid token puts you
 back where you started within minutes. The payload's whole purpose is to
-propagate: it force-pushes to every remote the machine can write to. A clean
-repository plus an infected laptop is a clean repository for about as long as it
+propagate: it amends your latest commit and force-pushes the current branch to
+`origin` with `-uf --no-verify`
+([why your history looks clean](/threat/#why-your-git-history-looks-clean)). A
+clean repository plus an infected laptop is a clean repository for about as long as it
 takes the next commit to land.
 
 This is documented behaviour of the campaign, and it is the single most common
@@ -35,4 +38,8 @@ way a cleanup fails.
 
 Running `polinrider` and answering `everything` walks the sequence: this
 computer first, then GitHub. Rotating credentials is yours to do between the
-two. The per-track guides are next.
+two. The per-track guides are next, and
+[Remove PolinRider: the full cleanup checklist](/docs/guides/getting-rid-of-polinrider/)
+puts every step on one page, with the checks still done by hand and when to
+rebuild. What has moved since OpenSourceMalware's August cleanup guide is in
+[Cleaning up PolinRider: what has changed since August](/guides/developers-guide-getting-rid-of-polinrider/).

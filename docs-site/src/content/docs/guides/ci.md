@@ -1,9 +1,10 @@
 ---
-title: Every future push
+title: Block PolinRider in CI
+description: A PolinRider scanner you copy into your own repository, so every push and pull request is checked in CI, with no third-party action to trust.
 ---
 
 > **Being migrated.** The full guide currently lives in
-> [`ci/README.md`](https://github.com/meSingh/polinrider-cleaner/blob/main/ci/README.md) and is authoritative until this page
+> [`ci/README.md`](https://github.com/meSingh/polinrider-scanner/blob/main/ci/README.md) and is authoritative until this page
 > replaces it.
 
 A scanner you copy into your own repository, so every push is checked with no
@@ -35,4 +36,4 @@ on a longer package as infected. Re-run the installer with `--force`:
 
 Because the scanner contains the indicator strings it searches for, it will
 match itself. The triage filter separates those matches by path; see
-[false positives](/reference/false-positives/).
+[false positives](/docs/reference/false-positives/).

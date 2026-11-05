@@ -1,0 +1,190 @@
+---
+// Below every page: the brand and what the project is, a column of links for
+// each section, the project's own links and a row of trust badges. The
+// analytics line appears only while Cloudflare Web Analytics is switched on,
+// so the footer never claims analytics the page does not load, and never
+// hides analytics it does.
+import Badges from './Badges.astro';
+import { ANALYTICS_ON, REPO_URL, SITE_TITLE } from '../siteConfig.mjs';
+import { releases } from '../releases';
+import { timeline } from '../news';
+import { categories } from '../categories.mjs';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const latest = (await releases())[0];
+// Each category page in use, so every one is reachable from every page.
+const used = new Set((await timeline()).map((i) => i.category));
+const categoryLinks = categories.filter((c) => used.has(c.slug)).map((c) => [c.title, `${base}/${c.slug}/`]);
+
+const columns = [
+  {
+    title: 'Docs',
+    links: [
+      ['Quick start', `${base}/docs/quick-start/`],
+      ['Order matters', `${base}/docs/guides/order/`],
+      ['Check a computer', `${base}/docs/guides/machine/`],
+      ['Check a GitHub account', `${base}/docs/guides/account/`],
+      ['Check an organisation', `${base}/docs/guides/organization/`],
+    ],
+  },
+  {
+    title: 'PolinRider',
+    links: [
+      ['What is PolinRider?', `${base}/what-is-polinrider/`],
+      ['Signs you might be infected', `${base}/what-is-polinrider/#signs-to-look-for`],
+      ['The indicator set', `${base}/what-is-polinrider/indicators/`],
+    ],
+  },
+  {
+    title: 'Updates',
+    links: [
+      ['All updates', `${base}/updates/`],
+      ...categoryLinks,
+      ['Indicator reviews', `${base}/indicator-reviews/`],
+      ['RSS', `${base}/updates/rss.xml`],
+    ],
+  },
+  {
+    title: 'Releases',
+    links: [
+      [`Latest: ${latest.version}`, latest.href],
+      ['All releases', `${base}/releases/`],
+      ['Verify a download', `${base}/docs/reference/verifying/`],
+    ],
+  },
+  {
+    title: 'Project',
+    links: [
+      ['About', `${base}/about/`],
+      ['GitHub', REPO_URL],
+      ['Report a vulnerability', `${base}/docs/project/security/`],
+      ['Contributing', `${base}/docs/project/contributing/`],
+      ['Disclaimer', `${base}/docs/project/disclaimer/`],
+      ['Third-party notices', `${base}/third-party-notices.txt`],
+    ],
+  },
+] as const;
+import BrandMark from './BrandMark.astro';
+---
+
+<footer class="site-footer no-print">
+  <div class="wrap">
+    <div class="top">
+      <div class="brand">
+        <a href={`${base}/`} class="name" aria-label={`${SITE_TITLE}, home`}>
+          <BrandMark />
+          <span translate="no">{SITE_TITLE}</span>
+        </a>
+        <p>
+          It checks a computer, a GitHub account or an organisation for PolinRider, and cleans it up.
+          Free and open source.
+        </p>
+        <p class="built">
+          Built by <a href="https://msingh.com/">Mandeep Singh</a> after cleaning up a real PolinRider incident.
+        </p>
+      </div>
+      <nav class="cols" aria-label="Footer">
+        {columns.map((c) => (
+          <div>
+            <p class="col-title">{c.title}</p>
+            <ul>
+              {c.links.map(([label, href]) => <li><a href={href}>{label}</a></li>)}
+            </ul>
+          </div>
+        ))}
+      </nav>
+    </div>
+    <div class="bottom">
+      <Badges size="md" />
+      {ANALYTICS_ON && (
+        <p class="privacy">
+          No cookies and no trackers. Anonymous page counts through{' '}
+          <a href="https://www.cloudflare.com/web-analytics/">Cloudflare Web Analytics</a>.
+        </p>
+      )}
+    </div>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    margin-top: 6rem;
+    padding-block: 3.5rem 2.5rem;
+    border-top: 1px solid var(--pr-border);
+    background: var(--pr-surface);
+    color: var(--pr-text);
+    font-size: var(--text-sm);
+  }
+  .top {
+    display: grid;
+    gap: 2.5rem;
+  }
+  @media (min-width: 66rem) {
+    .top {
+      grid-template-columns: 20rem minmax(0, 1fr);
+      gap: 4rem;
+    }
+  }
+  .name {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    color: var(--pr-heading);
+    font-size: 1rem;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .brand p {
+    margin: 0.9rem 0 0;
+    line-height: 1.55;
+  }
+  .built {
+    color: var(--pr-muted);
+  }
+  .built a {
+    color: var(--pr-text);
+  }
+  .cols {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 2rem 1.5rem;
+  }
+  @media (min-width: 44rem) {
+    .cols {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+  }
+  .col-title {
+    margin: 0 0 0.75rem;
+    color: var(--pr-heading);
+    font-weight: 650;
+  }
+  ul {
+    display: grid;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .cols a {
+    color: var(--pr-text);
+    text-decoration: none;
+  }
+  .cols a:hover {
+    color: var(--pr-heading);
+    text-decoration: underline;
+  }
+  .bottom {
+    display: grid;
+    gap: 1rem;
+    margin-top: 2.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--pr-border);
+  }
+  .privacy {
+    margin: 0;
+    color: var(--pr-muted);
+  }
+</style>

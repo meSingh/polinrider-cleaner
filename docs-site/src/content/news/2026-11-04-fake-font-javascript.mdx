@@ -1,0 +1,130 @@
+---
+title: "PolinRider's fake woff2 font that is really JavaScript"
+description: "PolinRider hides its loader in files named like Font Awesome fonts, and it has gone by four names this year. The first four bytes give it away."
+category: analysis
+date: "2026-10-23"
+slug: fake-woff2-font-javascript
+sidebar:
+  label: "The fake font"
+  order: -20261023
+---
+
+One of PolinRider's ways in is a file such as `public/fonts/fa-solid-400.woff2`
+that is not a font at all. It holds JavaScript, and a VS Code task runs it
+with Node.js the moment someone opens the folder and trusts it. This year the
+file has turned up under at least four names, so searching for one name will
+miss it. The first four bytes of a real font never change, though, and you can
+check them without opening the project. If you find a fake, treat every
+computer that opened the project as infected.
+
+## How the trick works
+
+It takes two files. The "font" sits where web fonts usually live, under
+`public/fonts/`, named like a Font Awesome file. Next to it, `.vscode/tasks.json`
+holds a task, usually labelled `eslint-check`, set to run when the folder opens
+with its output hidden. The task's command runs the font with Node.js, and
+Node does not care what a file is called.
+
+It works on people as well as editors. A fonts folder looks normal in a web
+project, and a font reads as a binary file, which most scanners and most
+reviewers skip.
+
+[OpenSourceMalware][osm-jan] first described the trick in January 2026, in
+fake job-interview repositories handed to developers as coding tests. In April
+the same researchers found the PolinRider loader inside
+`public/fonts/fa-solid-400.woff2` in a repository with no `tasks.json` at all,
+and concluded that the fake font was now part of PolinRider's standard kit. It
+has since turned up in packages too. As OpenSourceMalware reports it, JFrog
+found two npm packages with a task that ran a file of that name, and Nextron
+found 16 Go modules carrying the same file. Neither of those reports named
+PolinRider; linking them to the campaign is OpenSourceMalware's own reading.
+
+## The name keeps changing
+
+In September OpenSourceMalware followed the fake through three repositories of
+one organization across 2026. It started as `fa-solid-400.woff2` in April,
+became `fa-solid-500.woff2` in early September and `fa-solid-900.woff2` on 25
+September, and three days later appeared as `fa-solid-300.llf`. The variants
+did not neatly replace each other: at one point the 500 and 900 versions were
+running side by side.
+
+Three details make a name search even less reliable. `fa-solid-900.woff2` is a
+genuine Font Awesome file name, and a real one sat in the same folder as the
+earlier fakes, so the name alone proves nothing either way. `.llf` is not a
+font extension, so a check that only reads `.woff2` files misses it. And on 25
+September the fake moved several levels deep into existing folders, under a
+different path in each repository.
+
+The contents vary as well. Many builds start with a long run of whitespace,
+421 tab characters in one case, so a quick look at the file shows nothing.
+
+## Copied by another group
+
+In October OpenSourceMalware found the GhostAction campaign using a copy of
+the same launcher to run a credential stealer. It keeps the `eslint-check`
+label, the folder-open trigger and a Font Awesome name under `public/fonts/`,
+but the "font" is 38 lines of plain Node.js. The researchers found no shared
+indicators with any DPRK malware they had seen and, for now, call it a
+copycat. The same check finds both, and both need the same response.
+
+## Telling a real font from a fake
+
+Do this from a terminal, without opening the project in an editor. The WOFF
+2.0 specification requires every font file to begin with the signature `wOF2`,
+and WOFF 1.0 with `wOFF`:
+
+```bash
+head -c 4 public/fonts/fa-solid-400.woff2; echo
+```
+
+Anything else in a `.woff2` or `.woff` file means it is not that font. Running
+`file public/fonts/*` helps too: on the January sample it reported JavaScript
+source text with very long lines. Then read `.vscode/tasks.json` as text.
+A task that runs `node` on a font file, or anything set to run on folder open
+that you did not write, is the launcher. Finally, search the whole tree for `fa-solid-*` and `.llf` files.
+
+Two harmless cases look like fakes. A Git LFS pointer is a short text stub
+standing in for a font, and some projects ship an empty placeholder. Neither
+is malware. Never run the file to see what it does: running it is the
+infection.
+
+## If you find one
+
+Do not open the folder in VS Code. If it asks whether to trust the folder, say
+no, and if it asks about the folder's automatic tasks, choose Disallow. Treat
+any computer that opened the project as infected and check it before anything
+else.
+
+Then look for the rest. The same repository can also carry a payload appended
+to a config file such as `eslint.config.mjs`, which runs without VS Code at
+all, whenever a lint run, a commit hook or a CI job loads it. Remove the fake
+font, the task and the appended payload together, then clean up in order:
+computers, credentials, repositories. The
+[cleanup checklist](/docs/guides/getting-rid-of-polinrider/) has each step.
+
+polinrider reads every `.woff` and `.woff2` file and confirms one whose first
+bytes are not a font's, skipping LFS pointers and empty files. It also knows
+published fakes by their hash, confirms `.llf` files by name and confirms a
+task that runs `node` on one of these fonts. A Font Awesome name it cannot
+confirm, such as a weight Font Awesome does not ship, is listed for you to
+review, because a name alone is not proof. If a result is unclear, the
+[false positives reference](/docs/reference/false-positives/) explains the
+usual harmless matches.
+
+## Sources
+
+- OpenSourceMalware, [DPRK Contagious Interview "Fake Font" Abuses VS Code Tasks][osm-jan], 28 January 2026
+- OpenSourceMalware, [PolinRider DPRK Attack Expands Across GitHub][osm-april], 12 April 2026
+- OpenSourceMalware, [PolinRider Caused Dozens of npm, Go, PHP Compromises][osm-go], 31 July 2026
+- OpenSourceMalware, [PolinRider is A/B Testing its Way Past Your Detections][osm-ab], 26 September 2026
+- OpenSourceMalware, [GhostAction Copycats PolinRider by Hiding a Stealer in a Fake Font File][osm-ghostaction], October 2026
+- W3C, [WOFF File Format 2.0][w3c-woff2] and [WOFF File Format 1.0][w3c-woff]
+- Our indicator reviews of [28 September](/indicator-reviews/2026-09-28/) and [5 October](/indicator-reviews/2026-10-05/)
+
+[osm-jan]: https://opensourcemalware.com/blog/contagious-code-fake-font
+[osm-april]: https://opensourcemalware.com/blog/polinrider-rides-again-north-korean-attack-expands-across-github
+[osm-go]: https://opensourcemalware.com/blog/polinrider-caused-dozens-of-npm-and-go-compromises
+[osm-ab]: https://opensourcemalware.com/blog/polinrider-is-a-b-testing-its-way-past-your-detections
+[osm-ghostaction]: https://opensourcemalware.com/blog/ghostaction-copycats-polinrider-by-hiding-a-stealer-in-a-fake-font-file
+[w3c-woff2]: https://www.w3.org/TR/WOFF2/
+[w3c-woff]: https://www.w3.org/TR/WOFF/

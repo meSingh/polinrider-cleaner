@@ -4,8 +4,8 @@
     {
       "name": "docs-site",
       "runtimeExecutable": "./ci/docs-serve.sh",
-      "runtimeArgs": ["4321"],
-      "port": 4321
+      "runtimeArgs": ["4326"],
+      "port": 4326
     }
   ]
 }

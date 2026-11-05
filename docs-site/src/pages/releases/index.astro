@@ -1,0 +1,143 @@
+---
+// Every release since 2.0, newest first: version, date and one line. The
+// whole entry is the link to the release, where Download comes last. Built from the release pages, so a new release only needs
+// its own page.
+import Base from '../../layouts/Base.astro';
+import Crumbs from '../../components/Crumbs.astro';
+import Icon from '../../components/Icon.astro';
+import { releases } from '../../releases';
+import { longDate } from '../../releaseDate';
+import { abs, breadcrumbs, software } from '../../schema';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const all = await releases();
+---
+
+<Base
+  title="Releases"
+  description="Every release of the PolinRider scanner since 2.0: what each one changes, anything that breaks, and downloads for macOS, Linux and Windows."
+  type="website"
+  schema={[breadcrumbs([], 'Releases', abs(Astro.url.pathname)), software(all[0])]}
+>
+  <div class="wrap page" data-pagefind-body data-pagefind-meta="section:Releases">
+    <Crumbs items={[]} />
+    <h1>Releases</h1>
+    <p class="lead">
+      One page per release: downloads for your system, what it adds, what changes in what you will see and
+      anything that breaks. The full history is on{' '}
+      <a href="https://github.com/meSingh/polinrider-scanner/commits/main">GitHub</a>.
+    </p>
+    <p class="note">
+      Indicators are updated every week between releases. Those changes are in the{' '}
+      <a href={`${base}/indicator-reviews/`}>indicator reviews</a>, and a release carries every indicator
+      merged before it.
+    </p>
+
+    <ol class="list">
+      {all.map((r, i) => (
+        <li>
+          <a class="item" href={r.href}>
+            <span class="head">
+              <span class="version">{r.version}</span>
+              {i === 0 && <span class="tag tag-accent">latest</span>}
+              <time datetime={r.date}>{longDate(r.date)}</time>
+            </span>
+            <span class="desc">{r.description}</span>
+            {r.breaking && (
+              <span class="breaking"><Icon name="review" size={18} /><span><strong>Breaking:</strong> {r.breaking}</span></span>
+            )}
+            <span class="go">What changed and downloads <Icon name="arrow" size={16} /></span>
+          </a>
+        </li>
+      ))}
+    </ol>
+
+    <p class="note">
+      1.x, the shell tool, is frozen at{' '}
+      <a href="https://github.com/meSingh/polinrider-scanner/releases/tag/v1.0.9">v1.0.9</a> and is not listed here.
+    </p>
+  </div>
+</Base>
+
+<style>
+  /* The same width as the top bar, so the title lines up under the logo;
+   * the reading column keeps its measure from the left edge. */
+  .page {
+    padding-top: 2.5rem;
+  }
+  .page > :global(*) {
+    max-width: 64rem;
+  }
+  h1 {
+    margin: 0.75rem 0 0;
+    font-size: var(--text-h1);
+  }
+  .lead {
+    margin: 1rem 0 0;
+    font-size: 1.1875rem;
+  }
+  .note {
+    color: var(--pr-muted);
+    font-size: var(--text-sm);
+  }
+  .list {
+    display: grid;
+    gap: 1rem;
+    margin: 2.5rem 0;
+    padding: 0;
+    list-style: none;
+  }
+  .item {
+    display: grid;
+    gap: 0.6rem;
+    padding: 1.4rem 1.6rem;
+    border: 1px solid var(--pr-border);
+    border-radius: var(--pr-radius);
+    background: var(--pr-surface);
+    color: var(--pr-text);
+    text-decoration: none;
+  }
+  .item:hover {
+    border-color: var(--pr-border-strong);
+    color: var(--pr-text);
+  }
+  .item:hover .version {
+    text-decoration: underline;
+  }
+  .head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.9rem;
+  }
+  .version {
+    color: var(--pr-heading);
+    font-size: 1.5rem;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+  }
+  time {
+    color: var(--pr-muted);
+    font-size: var(--text-sm);
+  }
+  .breaking {
+    display: flex;
+    gap: 0.5rem;
+    color: var(--pr-review);
+  }
+  .breaking strong {
+    color: var(--pr-review);
+  }
+  .breaking :global(svg) {
+    flex: none;
+    margin-top: 0.2rem;
+  }
+  .go {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--pr-heading);
+    font-size: var(--text-sm);
+    font-weight: 600;
+  }
+</style>

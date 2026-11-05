@@ -1,18 +1,87 @@
+// The site's content, one collection per section. Each file is a page; its
+// address comes from its path (dots kept, so releases/v2.3.0.mdx is
+// /releases/v2.3.0/). Unknown front matter, such as the `sidebar` and `slug`
+// fields older pages carry, is ignored rather than refused.
 import { defineCollection } from 'astro:content';
-import { docsLoader, i18nLoader } from '@astrojs/starlight/loaders';
-import { docsSchema, i18nSchema } from '@astrojs/starlight/schema';
-import { ExtendDocsSchema } from 'lucode-starlight/schema';
+import { file, glob } from 'astro/loaders';
+import { z } from 'astro/zod';
+import { categorySlugs } from './categories.mjs';
 
-// ExtendDocsSchema is required by the Lucode theme: without it Starlight
-// strips the theme's own hero frontmatter (layout, announcement, button
-// styles) before the theme ever sees it.
+const byPath = ({ entry }: { entry: string }) => entry.replace(/\.mdx?$/, '');
+const pages = (base: string, pattern: string | string[] = '**/*.{md,mdx}') =>
+  glob({ pattern, base, generateId: byPath });
+
+// YAML reads an unquoted date as a Date; accept either and keep YYYY-MM-DD.
+const day = z
+  .union([z.string(), z.date()])
+  .transform((d) => (d instanceof Date ? d.toISOString().slice(0, 10) : d));
+
+const page = z.object({
+  title: z.string(),
+  description: z.string().optional(),
+  // A shorter name for lists and the sidebar, where the title is too long.
+  sidebar: z.object({ label: z.string().optional() }).optional(),
+  // A page written ahead of a fact it depends on: kept in the repository,
+  // never built, until the line is removed.
+  draft: z.boolean().optional(),
+});
+
 export const collections = {
+  // The documentation for the latest release, served at /docs/. The weekly
+  // indicator reviews live in the same folder, because ioc/ cites each one
+  // by that path, but are their own collection, served under /updates/.
   docs: defineCollection({
-    loader: docsLoader(),
-    schema: docsSchema({ extend: ExtendDocsSchema }),
+    loader: pages('./src/content/docs', ['**/*.{md,mdx}', '!indicator-reviews/**']),
+    schema: page,
   }),
-  // Declared but empty. The theme reads this collection, and without it every
-  // dev-server start logs "the collection i18n does not exist or is empty".
-  // The site is English-only; this exists to stop a warning that is not one.
-  i18n: defineCollection({ loader: i18nLoader(), schema: i18nSchema() }),
+  // Frozen copies, one folder per release line, served at /docs/X.Y/.
+  // Written by scripts/freeze-docs.mjs at a release, never by hand.
+  docsVersions: defineCollection({ loader: pages('./src/content/docs-versions'), schema: page }),
+  // The threat page (index.mdx) and the full indicator set.
+  threat: defineCollection({ loader: pages('./src/content/threat'), schema: page }),
+  news: defineCollection({
+    loader: pages('./src/content/news'),
+    // Every article has one category (src/categories.mjs), which is the first
+    // part of its address; `slug` overrides the rest (the file name without
+    // its date).
+    schema: page.extend({
+      description: z.string(),
+      date: day,
+      review: day.optional(),
+      category: z.enum(categorySlugs as [string, ...string[]]),
+      slug: z.string().optional(),
+    }),
+  }),
+  reviews: defineCollection({ loader: pages('./src/content/docs/indicator-reviews'), schema: page }),
+  releases: defineCollection({
+    loader: pages('./src/content/releases'),
+    schema: page.extend({
+      description: z.string(),
+      version: z.coerce.string(),
+      date: day,
+      breaking: z.string().optional(),
+    }),
+  }),
+  // "Where things stand" at the top of /updates/: two or three plain
+  // sentences and the day they were written. Changed without touching a
+  // layout (content/status.md).
+  status: defineCollection({
+    loader: glob({ pattern: 'status.md', base: './src/content' }),
+    schema: z.object({ updated: day, sources: z.string().optional() }),
+  }),
+  // Articles about the campaign published elsewhere, each one read and
+  // checked before it was added. See the file's header.
+  elsewhere: defineCollection({
+    loader: file('./src/content/elsewhere.yaml'),
+    schema: z.object({
+      url: z.url(),
+      source: z.string(),
+      title: z.string(),
+      date: day,
+      summary: z.string(),
+      // Usually worth-reading; an outside article can be an announcement or
+      // analysis too. It links out either way.
+      category: z.enum(categorySlugs as [string, ...string[]]).default('worth-reading'),
+    }),
+  }),
 };

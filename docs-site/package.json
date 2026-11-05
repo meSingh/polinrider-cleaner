@@ -1,17 +1,20 @@
 {
-  "name": "polinrider-cleaner-docs",
+  "name": "polinrider-scanner-docs",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build",
+    "build": "node scripts/check-base.mjs && astro build && node scripts/check-links.mjs && node scripts/check-external.mjs",
     "preview": "astro preview",
-    "check": "astro check"
+    "check": "astro check",
+    "freeze-docs": "node scripts/freeze-docs.mjs"
   },
   "dependencies": {
-    "@astrojs/starlight": "0.42.2",
+    "@astrojs/markdown-satteri": "0.4.1",
+    "@astrojs/mdx": "8.0.1",
+    "@astrojs/sitemap": "3.7.4",
     "astro": "7.3.3",
-    "lucode-starlight": "1.0.0",
+    "pagefind": "1.5.2",
     "sharp": "^0.35.5"
   }
 }

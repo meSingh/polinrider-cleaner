@@ -1,0 +1,29 @@
+---
+// One of the tool's answers, shown the same way everywhere on the site:
+// its colour, an icon and its word, so the colour never carries the meaning
+// alone. The words are the tool's own. Styles: src/styles/prose.css.
+//
+//   <Verdict kind="compromised" code={2} title="Compromised">What it means.</Verdict>
+//
+// kind: clean (exit 0), review (exit 1), compromised (exit 2) or none
+// (exit 3, the check could not run).
+import Icon from './Icon.astro';
+
+interface Props {
+  kind: 'clean' | 'review' | 'compromised' | 'none';
+  title: string;
+  code?: number;
+  class?: string;
+}
+const { kind, title, code, class: extra } = Astro.props;
+const icon = { clean: 'clean', review: 'review', compromised: 'compromised', none: 'none' }[kind];
+---
+
+<div class:list={['verdict', `verdict-${kind}`, extra]}>
+  <p class="verdict-head">
+    <Icon name={icon} size={22} />
+    <strong>{title}</strong>
+    {code !== undefined && <span class="verdict-code">exit {code}</span>}
+  </p>
+  <div class="verdict-body"><slot /></div>
+</div>

@@ -1,5 +1,6 @@
 ---
-title: Verifying this repository
+title: Verify polinrider before you run it
+description: "How to check that polinrider came from this repository: signed commits, attested releases and SHA256SUMS on every release."
 ---
 
 You are being asked to run unknown code on a machine you may believe is
@@ -19,11 +20,28 @@ The same two checks for any asset: an archive, the Windows zip or a `.deb`.
 
 ```bash
 sha256sum -c SHA256SUMS --ignore-missing
-gh attestation verify polinrider-v2.3.0-macos-arm64.tar.gz --repo meSingh/polinrider-cleaner
+gh attestation verify polinrider-v3.0.0-macos-arm64.tar.gz --repo meSingh/polinrider-scanner
 ```
 
 The Homebrew formula and the Scoop manifest carry the checksums from that same
 `SHA256SUMS`, so a package manager install is checked against it too.
+
+## Releases before 3.0.0
+
+In 3.0.0 the repository was renamed from `meSingh/polinrider-cleaner` to
+`meSingh/polinrider-scanner`. Releases up to 2.3.0 were built and attested
+under the old name. Their `SHA256SUMS` and their signed tags check exactly as
+before. For their build attestation, `--repo meSingh/polinrider-scanner` does
+not work, but this one command checks a release from any version:
+
+```bash
+gh attestation verify polinrider-v2.3.0-macos-arm64.tar.gz \
+  --owner meSingh \
+  --cert-identity-regex '^https://github\.com/meSingh/polinrider-(cleaner|scanner)/\.github/workflows/release\.yml@refs/tags/v'
+```
+
+The old name, the offline check and how to prove an attestation came from
+this repository: [Verifying releases from before 3.0](/docs/reference/verifying-before-3/).
 
 ## Verify the commits
 
