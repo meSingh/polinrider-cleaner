@@ -3,7 +3,7 @@ title: Every future push
 ---
 
 > **Being migrated.** The full guide currently lives in
-> [`ci/README.md`](https://github.com/meSingh/polinrider-cleaner/blob/main/ci/README.md) and is authoritative until this page
+> [`ci/README.md`](https://github.com/meSingh/polinrider-scanner/blob/main/ci/README.md) and is authoritative until this page
 > replaces it. Tracked in [ADR-0026](/docs/2.0/project/decisions/).
 
 A scanner you copy into your own repository, so every push is checked with no

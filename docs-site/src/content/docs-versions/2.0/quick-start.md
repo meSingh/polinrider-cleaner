@@ -7,7 +7,7 @@ question at a time, and tells you what it found before it offers to change
 anything.
 
 1. Download the archive for your machine from the
-   [latest release](https://github.com/meSingh/polinrider-cleaner/releases/latest):
+   [latest release](https://github.com/meSingh/polinrider-scanner/releases/latest):
    macOS (Apple silicon or Intel), Linux (x86_64 or arm64) or Windows (x86_64).
 2. Verify it:
 

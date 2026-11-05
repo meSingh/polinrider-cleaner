@@ -19,7 +19,7 @@ no review of this code by them.
 
 The software is provided "as is", without warranty of any kind, express or
 implied, including but not limited to the warranties of merchantability, fitness
-for a particular purpose and non-infringement. See [LICENSE](https://github.com/meSingh/polinrider-cleaner/blob/main/LICENSE).
+for a particular purpose and non-infringement. See [LICENSE](https://github.com/meSingh/polinrider-scanner/blob/main/LICENSE).
 
 There is no support commitment and no service level. Issues and pull requests
 are read when time allows.
@@ -50,7 +50,7 @@ repositories, service interruption, and business or financial loss.
 
 ## What a result does and does not mean
 
-A clean result means the indicators in [`ioc/`](https://github.com/meSingh/polinrider-cleaner/tree/main/ioc/) were not found. It is not a
+A clean result means the indicators in [`ioc/`](https://github.com/meSingh/polinrider-scanner/tree/main/ioc/) were not found. It is not a
 certificate, an audit, or an assurance that a system is uncompromised. Signatures
 for this campaign rotate, and a variant this tool does not yet recognise will not
 be reported.
@@ -67,5 +67,5 @@ involve your own counsel and your own incident response people.
 
 ## Reporting
 
-Security issues in this tool: see [SECURITY.md](https://github.com/meSingh/polinrider-cleaner/blob/main/SECURITY.md). Findings about the
+Security issues in this tool: see [SECURITY.md](https://github.com/meSingh/polinrider-scanner/blob/main/SECURITY.md). Findings about the
 campaign itself belong with the researchers tracking it, linked in the README.

@@ -40,6 +40,6 @@ None of these exemptions covers `.mdx`, HTML or other formats. A page in one
 of those that quotes a confirmed indicator can be reported as one.
 
 Found a new one?
-[Open an issue](https://github.com/meSingh/polinrider-cleaner/issues/new?template=false-positive.md).
-A missed detection is [a different template](https://github.com/meSingh/polinrider-cleaner/issues/new?template=missed-detection.md),
+[Open an issue](https://github.com/meSingh/polinrider-scanner/issues/new?template=false-positive.md).
+A missed detection is [a different template](https://github.com/meSingh/polinrider-scanner/issues/new?template=missed-detection.md),
 and both are worth filing.
