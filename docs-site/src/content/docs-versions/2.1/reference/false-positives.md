@@ -16,6 +16,6 @@ costs everyone real time.
 | Rendered documentation (HTML, a built docs site) flagged `review` | Same reason, but the `.md` exemption keys off the extension, which the rendered output no longer has | Exclude your build output: `--exclude '(^\|/)site/'`. This repository excludes its own `docs-site/book/` |
 
 Found a new one?
-[Open an issue](https://github.com/meSingh/polinrider-cleaner/issues/new?template=false-positive.md).
-A missed detection is [a different template](https://github.com/meSingh/polinrider-cleaner/issues/new?template=missed-detection.md),
+[Open an issue](https://github.com/meSingh/polinrider-scanner/issues/new?template=false-positive.md).
+A missed detection is [a different template](https://github.com/meSingh/polinrider-scanner/issues/new?template=missed-detection.md),
 and both are worth filing.
