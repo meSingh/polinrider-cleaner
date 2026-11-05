@@ -1,0 +1,25 @@
+{
+  "why": "Reading every JavaScript file for confirmed indicators also reads code that detects PolinRider, which holds the same strings by design. The machine check sets aside the paths the GitHub check sets aside, judged from the scanned folder, so a scanner kept under docs/ or .github/polinrider/ is not called the payload (ADR-0058). A folder that happens to sit under a directory called docs is still read: the rule is applied below the root, never above it.",
+  "roots": [
+    "docs/code"
+  ],
+  "files": {
+    "docs/code/proj/docs/scanner.js": "const SIGNS = ['{{STRONG}}'];\n",
+    "docs/code/proj/.github/polinrider/check.js": "module.exports = ['{{STRONG}}'];\n",
+    "docs/code/proj/src/server.js": "module.exports = app;{{PAD}}{{STRONG}}\n"
+  },
+  "expect": {
+    "exit": 2,
+    "findings": [
+      {
+        "level": "HIT",
+        "match": "source file contains an indicator",
+        "path": "src/server.js"
+      }
+    ],
+    "must_not_report": [
+      "scanner.js",
+      "check.js"
+    ]
+  }
+}

@@ -204,17 +204,30 @@ impl Indicators {
     /// places, so a long payload line cannot make the backtracking matcher
     /// slow. ADR-0052.
     pub fn pattern_match(&self, haystack: &str) -> bool {
+        self.pattern_at(haystack).is_some()
+    }
+
+    /// Where the first content pattern match is anchored: the byte offset of
+    /// the fixed part whose window matched. For a cut, which is made at the
+    /// padding before it. Every campaign pattern has its fixed part at or
+    /// after the start of the payload, so the padding comes before it.
+    /// ADR-0058.
+    fn pattern_at(&self, haystack: &str) -> Option<usize> {
         const AROUND: usize = 512;
-        self.strong_patterns.iter().any(|(pattern, literal)| {
-            haystack
-                .match_indices(literal.as_str())
-                .take(1000)
-                .any(|(at, _)| {
-                    let from = haystack.floor_char_boundary(at.saturating_sub(AROUND));
-                    let to = haystack.ceil_char_boundary(at + literal.len() + AROUND);
-                    haystack.get(from..to).is_some_and(|w| pattern.is_match(w))
-                })
-        })
+        self.strong_patterns
+            .iter()
+            .filter_map(|(pattern, literal)| {
+                haystack
+                    .match_indices(literal.as_str())
+                    .take(1000)
+                    .find(|(at, _)| {
+                        let from = haystack.floor_char_boundary(at.saturating_sub(AROUND));
+                        let to = haystack.ceil_char_boundary(at + literal.len() + AROUND);
+                        haystack.get(from..to).is_some_and(|w| pattern.is_match(w))
+                    })
+                    .map(|(at, _)| at)
+            })
+            .min()
     }
 
     /// Does this text name a campaign package as a whole name? Bounded on both
@@ -264,7 +277,10 @@ impl Indicators {
             .iter()
             .filter(|_| lossless)
             .filter_map(|name| whole_name_at(&text, name));
-        strong.chain(packages).min()
+        // The same for a content pattern: placed only in valid UTF-8, so a
+        // file that is not still refuses with PatternOnly. ADR-0058.
+        let pattern = lossless.then(|| self.pattern_at(&text)).flatten();
+        strong.chain(packages).chain(pattern).min()
     }
 
     /// Does this text name a campaign package anywhere, as a fixed string,
@@ -589,6 +605,66 @@ mod tests {
                 "{bad}"
             );
         }
+    }
+
+    /// The two campaign tags of ADR-0058, against the shipped `ioc/`. The
+    /// samples are built here, not written out, so this file holds no match.
+    #[test]
+    fn the_var_z_and_global_i_tags_are_confirmed_and_their_near_misses_are_not() {
+        let ind = Indicators::load(&Path::new(env!("CARGO_MANIFEST_DIR")).join("ioc"))
+            .expect("the shipped indicator set loads");
+        let pad = " ".repeat(149);
+        let tag =
+            |t: &str| format!("export default {{}};{pad}{t}(function(){{}})(global,require);");
+        let gi = concat!("glob", "al.i");
+
+        for confirmed in [
+            tag("var z = '-859-1';"),
+            tag("var z = '-5946-2';var NX=[1,2];"),
+            tag("var z = '-12';"),
+            // The var NX build pads with tabs, not spaces.
+            format!(
+                "module.exports = {{}};{}var z = '-2728-1';var NX=[1];",
+                "\t".repeat(266)
+            ),
+            format!("{pad}{gi} = 'A11--#';"),
+            format!("{pad}{gi} = 'A10-*12180';"),
+            format!("{gi}=\"A10-3292-1\";"),
+            format!("{gi} = 'A8';"),
+        ] {
+            assert!(ind.has_strong(&confirmed), "{confirmed}");
+        }
+        for not_confirmed in [
+            // No padding: minified code may say this.
+            "export default {};var z = '-1';".to_string(),
+            format!("{}var z = '-1';", " ".repeat(63)),
+            tag("var z = '1-2';"),
+            format!("{gi} = 'Alpha';"),
+            format!("{gi} = 'A';"),
+            format!("{gi} = 'A123';"),
+            format!("{gi} = 'B11';"),
+        ] {
+            assert!(!ind.has_strong(&not_confirmed), "{not_confirmed}");
+        }
+    }
+
+    #[test]
+    fn a_content_pattern_is_placed_at_its_fixed_part_for_a_cut() {
+        let ind = Indicators {
+            strong: vec!["MARKER-ALPHA".into()],
+            strong_patterns: vec![content_pattern("[ ]{64,}TAG-[0-9]+;").expect("parses")],
+            ..Indicators::default()
+        };
+        let text = format!("export default {{}};{}TAG-42;", " ".repeat(70));
+        assert_eq!(
+            ind.first_at(text.as_bytes()),
+            Some("export default {};".len() + 70)
+        );
+        // A fixed string earlier in the file still comes first.
+        let text = format!("MARKER-ALPHA {text}");
+        assert_eq!(ind.first_at(text.as_bytes()), Some(0));
+        // The fixed part without the padding is not a match and has no place.
+        assert_eq!(ind.first_at(b"export default {};TAG-42;"), None);
     }
 
     fn with(network: &[&str], implants: &[&str]) -> Indicators {

@@ -67,11 +67,12 @@ If you disagree with one, open an issue and quote its number.
 | [0049](./0049-the-computer-check-reads-authorized-keys.md) | The computer check reads `~/.ssh/authorized_keys` | Accepted |
 | [0050](./0050-a-node-process-running-the-implants-script-is-the-implant.md) | A `node` process running a script from the implant's folder is the implant | Accepted |
 | [0051](./0051-the-github-check-compares-known-hashes.md) | The GitHub check compares the small files against the known hashes | Accepted |
-| [0052](./0052-content-patterns-at-the-confirmed-tier.md) | Match campaign patterns in file contents | Accepted |
+| [0052](./0052-content-patterns-at-the-confirmed-tier.md) | Match campaign patterns in file contents | Accepted; its rule that a pattern match is not stripped is superseded by [ADR-0058](./0058-the-var-z-and-global-i-tags-and-every-javascript-file.md) |
 | [0053](./0053-release-downloads-are-counted-daily-with-our-own-kept-apart.md) | Count release downloads daily, with our own kept apart | Accepted |
 | [0055](./0055-the-documentation-site-is-plain-astro.md) | Build the documentation site with plain Astro, not Starlight | Accepted |
 | [0056](./0056-the-docs-are-versioned-by-release-line.md) | Keep a frozen copy of the docs for each release line | Accepted |
 | [0057](./0057-the-repository-is-polinrider-scanner-from-3-0-0.md) | Rename the repository and its packages to polinrider-scanner, from 3.0.0 | Accepted |
+| [0058](./0058-the-var-z-and-global-i-tags-and-every-javascript-file.md) | Confirm the var z and global.i tags, and read every JavaScript file | Accepted |
 
 ## Adding one
 

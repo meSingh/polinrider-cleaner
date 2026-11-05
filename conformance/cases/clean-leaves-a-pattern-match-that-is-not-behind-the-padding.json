@@ -1,0 +1,27 @@
+{
+  "why": "From 3.0.1 a content pattern is placed at its fixed part and cut like a fixed string (ADR-0058), so the reason clean gives is the one any indicator outside the campaign's shape gets: it is not behind the padding. A font command in a comment is not an appended payload, and editing source on a guess is how a cleanup tool breaks a build. The config is confirmed and left exactly as it was, with the reason said.",
+  "command": "clean",
+  "roots": [
+    "code/proj"
+  ],
+  "files": {
+    "code/proj/vite.config.js": "export default { plugins: [] }\n// node ./public/fonts/fa-solid-500.woff2\n"
+  },
+  "expect": {
+    "exit": 2,
+    "tree_may_change": false,
+    "findings": [
+      {
+        "level": "HIT",
+        "match": "config file contains an indicator",
+        "path": "vite.config.js"
+      }
+    ],
+    "must_print": [
+      "the indicator is not behind the padding this campaign uses"
+    ],
+    "must_not_print": [
+      "only a campaign pattern matched"
+    ]
+  }
+}

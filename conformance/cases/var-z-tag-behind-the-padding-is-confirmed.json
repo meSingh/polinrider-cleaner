@@ -1,0 +1,29 @@
+{
+  "why": "The hex blob and var NX table payloads open with a var z campaign tag whose number rotates per build, appended behind the padding. 265 of the 310 infected files at OpenSourceMalware-listed paths that 3.0.0 called review or clean carry it (gap study, 2026-11-05). It is in strong-patterns.txt from 3.0.1, padding required, so it is confirmed in a config and in an ordinary source file alike (ADR-0058). Before, the config got a review line at best and the server file nothing.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/postcss.config.mjs": "export default { plugins: {} }\n{{PAD}}var z = '-859-1';(function(){})(global,require);\n",
+    "code/proj/src/server.js": "module.exports = app;{{PAD}}var z = '-5946-2';var NX=[6912,1];\n",
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "expect": {
+    "exit": 2,
+    "findings": [
+      {
+        "level": "HIT",
+        "match": "config file contains an indicator",
+        "path": "postcss.config.mjs"
+      },
+      {
+        "level": "HIT",
+        "match": "source file contains an indicator",
+        "path": "src/server.js"
+      }
+    ],
+    "must_not_report": [
+      "src/index.js"
+    ]
+  }
+}

@@ -49,8 +49,10 @@ pub enum Refusal {
     /// The indicator is only there once escape codes are decoded, so it has
     /// no position in the bytes of the file to cut from. See ADR-0040.
     Escaped,
-    /// Only a content pattern matched, which gives no fixed point to cut
-    /// from. See ADR-0052.
+    /// Only a content pattern matched, in a file that is not valid UTF-8, so
+    /// the place it matched is not a place in the bytes. A pattern match in
+    /// valid UTF-8 is placed at its fixed part and cut like a fixed string.
+    /// See ADR-0052 and ADR-0058.
     PatternOnly,
 }
 
@@ -330,6 +332,37 @@ mod tests {
             pad()
         );
         assert_eq!(kept(&text), "export default {}\n");
+    }
+
+    #[test]
+    fn a_payload_matched_only_by_a_pattern_is_cut_at_the_padding() {
+        // The var z shape: no fixed string, a pattern that takes the padding
+        // in. The cut is at the padding, so the config stays. ADR-0058.
+        let ind = Indicators {
+            strong_patterns: vec![(
+                crate::pattern::Pattern::parse("[ ]{64,}TAG-[0-9]+;").expect("parses"),
+                "TAG-".to_string(),
+            )],
+            ..Indicators::default()
+        };
+        let text = format!(
+            "export default {{ plugins: {{}} }};{}TAG-859;(function(){{}})(global,require);",
+            " ".repeat(149)
+        );
+        let p = plan(text.as_bytes(), &ind)
+            .expect("the file carries an indicator")
+            .expect("a plan");
+        assert_eq!(
+            String::from_utf8(p.keep).expect("utf-8"),
+            "export default { plugins: {} };\n"
+        );
+        assert!(p.preview.starts_with("TAG-859;"));
+
+        // Not valid UTF-8: the match has no place in the bytes, so it is
+        // still refused rather than cut at a guess.
+        let mut bytes = text.into_bytes();
+        bytes.insert(0, 0xff);
+        assert_eq!(plan(&bytes, &ind), Some(Err(Refusal::PatternOnly)));
     }
 
     /// Every character as a `\uXXXX` escape.

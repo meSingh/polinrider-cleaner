@@ -1,0 +1,28 @@
+{
+  "why": "A route file is the project's own code, so a payload appended to it is cut out and the file stays, under the same rules as a config: padding before it, a module end above it and nothing of the project's after it. The original, payload included, is kept in quarantine. Moving the whole file would take the project's routes with it (ADR-0058).",
+  "command": "clean",
+  "apply": true,
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/routes/admin.js": "const router = require('express').Router();\nmodule.exports = router;{{PAD}}{{STRONG}}\n"
+  },
+  "expect": {
+    "exit": 2,
+    "tree_may_change": true,
+    "findings": [
+      {
+        "level": "HIT",
+        "match": "source file contains an indicator",
+        "path": "routes/admin.js"
+      }
+    ],
+    "stripped": [
+      "code/proj/routes/admin.js"
+    ],
+    "file_after": {
+      "code/proj/routes/admin.js": "const router = require('express').Router();\nmodule.exports = router;\n"
+    }
+  }
+}
