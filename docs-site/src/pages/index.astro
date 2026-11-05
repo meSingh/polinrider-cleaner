@@ -150,7 +150,7 @@ const trust = [
           next person who opens the project is hit too.
         </p>
       </div>
-      <a class="btn intro-btn" href={`${base}/what-is-polinrider/`}>Read what PolinRider is and how it spreads <Icon name="arrow" size={18} /></a>
+      <a class="btn intro-btn" href={`${base}/what-is-polinrider/`}>Read more about PolinRider <Icon name="arrow" size={18} /></a>
     </div>
   </section>
 
@@ -572,12 +572,12 @@ const trust = [
     line-height: 1.6;
   }
   .intro-btn {
-    max-width: 15rem;
     border-radius: var(--pr-radius-sm);
+    white-space: nowrap;
   }
-  /* On a phone: the mark and heading on one row, the text and a full-width
-   * button below them. */
-  @media (max-width: 44rem) {
+  /* On a phone or a narrow tablet: the mark and heading on one row, the
+   * text and a full-width button below them. */
+  @media (max-width: 52rem) {
     .intro-card {
       grid-template-columns: auto minmax(0, 1fr);
       gap: 0.875rem;
@@ -599,7 +599,7 @@ const trust = [
       margin: 0;
     }
     .intro-btn {
-      max-width: none;
+      white-space: normal;
       justify-content: center;
       margin-top: 0.375rem;
     }
