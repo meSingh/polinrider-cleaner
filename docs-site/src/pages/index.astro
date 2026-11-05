@@ -32,7 +32,7 @@ const themes = { light: 'github-light-default', dark: 'github-dark-default' } as
 
 // The answer to type at "What should I check?" for each button.
 const checks = [
-  { answer: 'computer', icon: 'computer', label: 'Check my computer', note: 'macOS · Linux · Windows' },
+  { answer: 'computer', icon: 'computer', label: 'Check my computer' },
   { answer: 'account', icon: 'user', label: 'Check my GitHub account' },
   { answer: 'organization', icon: 'org', label: 'Check my GitHub organisation' },
 ] as const;
@@ -119,7 +119,6 @@ const trust = [
   schema={[software(newest), sourceCode]}
 >
   <section class="hero wrap">
-    <p class="badge"><span class="dot" aria-hidden="true"></span>Open source PolinRider malware scanner and cleaner</p>
     <h1>Under attack by PolinRider?<br /><span class="accent">Find the malware and remove it safely.</span></h1>
     <p class="tagline">
       One open source program checks your computer, your GitHub account and your organisation for PolinRider malware,
@@ -128,12 +127,9 @@ const trust = [
     </p>
     <div class="checks">
       {checks.map((c) => (
-        <a class="check" href="#how" data-answer={c.answer}>
-          <Icon name={c.icon} size={20} />
-          <span>
-            {c.label}
-            {'note' in c && <small>{c.note}</small>}
-          </span>
+        <a class="btn check" href="#how" data-answer={c.answer}>
+          <Icon name={c.icon} size={18} />
+          {c.label}
         </a>
       ))}
     </div>
@@ -143,14 +139,14 @@ const trust = [
   </section>
 
   <section class="wrap intro" aria-labelledby="intro-h">
-    <div class="intro-inner">
+    <div class="intro-card">
       <h2 id="intro-h">What is PolinRider?</h2>
       <p>
         PolinRider is malware that hides inside software projects. Once it runs on a developer's computer, it steals their
         passwords and tokens, adds itself to the code they work on and pushes that code with their own account, so the
         next person who opens the project is hit too.
       </p>
-      <a class="textlink" href={`${base}/what-is-polinrider/`}>Read what PolinRider is and how it spreads <Icon name="arrow" size={18} /></a>
+      <a class="btn" href={`${base}/what-is-polinrider/`}>Read what PolinRider is and how it spreads <Icon name="arrow" size={18} /></a>
     </div>
   </section>
 
@@ -417,22 +413,6 @@ const trust = [
     background: radial-gradient(ellipse at 50% 35%, var(--pr-glow), transparent 65%);
     pointer-events: none;
   }
-  .badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.55rem;
-    margin: 0 0 1.75rem;
-    padding: 0.35rem 0.9rem;
-    border: 1px solid var(--pr-border);
-    border-radius: 999px;
-    font-size: var(--text-xs);
-  }
-  .dot {
-    width: 0.45rem;
-    height: 0.45rem;
-    border-radius: 50%;
-    background: var(--pr-accent);
-  }
   h1 {
     max-width: 22ch;
     margin: 0;
@@ -454,41 +434,52 @@ const trust = [
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 0.75rem;
-    margin-top: 2.25rem;
+    gap: 0.625rem;
+    margin-top: 2rem;
   }
-  .check {
+  /* The home page's buttons: quiet by default, the first check filled.
+   * 44px tall at least, for a finger. */
+  .btn {
     display: inline-flex;
     align-items: center;
-    gap: 0.6rem;
-    padding: 0.8rem 1.3rem;
+    gap: 0.5rem;
+    min-height: 2.75rem;
+    padding: 0.5rem 1.05rem;
     border: 1px solid var(--pr-border-strong);
     border-radius: 999px;
     background: var(--pr-bg);
     color: var(--pr-heading);
-    font-size: 1rem;
+    font-size: 0.9375rem;
     font-weight: 600;
+    line-height: 1.3;
     text-align: start;
     text-decoration: none;
+  }
+  .btn :global(svg) {
+    flex: none;
+  }
+  .btn:hover {
+    border-color: var(--pr-heading);
+    color: var(--pr-heading);
+  }
+  /* On a phone the three stack at one width, so they read as a list. */
+  @media (max-width: 40rem) {
+    .checks {
+      flex-direction: column;
+      width: min(100%, 20rem);
+    }
+    .check {
+      justify-content: center;
+    }
   }
   .check:first-child {
     border-color: var(--pr-pill-bg);
     background: var(--pr-pill-bg);
     color: var(--pr-pill-text);
   }
-  .check:hover {
-    border-color: var(--pr-heading);
-    color: var(--pr-heading);
-  }
   .check:first-child:hover {
     color: var(--pr-pill-text);
     opacity: 0.88;
-  }
-  .check small {
-    display: block;
-    font-size: 0.75rem;
-    font-weight: 500;
-    opacity: 0.8;
   }
   .hero-foot {
     display: flex;
@@ -503,35 +494,30 @@ const trust = [
   }
 
   /* What is PolinRider?, in short: the page's opening answer word for word,
-   * in the same column as How it works, with one link to the full page. */
+   * in a soft teal card the width of How it works, with one button to the
+   * full page. */
   .intro {
-    margin-top: clamp(3rem, 7vw, 5rem);
+    margin-top: clamp(2.75rem, 6vw, 4rem);
   }
-  .intro-inner {
+  .intro-card {
     max-width: 56rem;
     margin-inline: auto;
-    padding-inline-start: 1.25rem;
-    border-inline-start: 3px solid var(--pr-accent);
+    padding: clamp(1.5rem, 4vw, 2.25rem) clamp(1.25rem, 4vw, 2.5rem);
+    border: 1px solid var(--pr-border);
+    border-radius: calc(var(--pr-radius) + 6px);
+    background: var(--pr-accent-bg);
   }
   .intro h2 {
     margin: 0;
-    font-size: 1.375rem;
-    letter-spacing: -0.015em;
+    font-size: clamp(1.375rem, 1.2rem + 0.6vw, 1.625rem);
+    letter-spacing: -0.02em;
   }
   .intro p {
-    margin: 0.6rem 0 0.9rem;
+    max-width: 46rem;
+    margin: 0.75rem 0 1.375rem;
     color: var(--pr-text);
     font-size: 1.125rem;
     line-height: 1.6;
-  }
-  /* Text, not a flex row, so the arrow follows the last word when the link
-   * wraps on a phone. */
-  .intro .textlink {
-    display: inline;
-  }
-  .intro .textlink :global(svg) {
-    display: inline;
-    vertical-align: -0.2em;
   }
 
   /* How it works */
@@ -540,7 +526,7 @@ const trust = [
     margin-inline: auto;
   }
   .how {
-    margin-top: clamp(3.5rem, 8vw, 6rem);
+    margin-top: clamp(3rem, 7vw, 5rem);
     scroll-margin-top: calc(var(--nav-height) + 1rem);
   }
   .steps {
