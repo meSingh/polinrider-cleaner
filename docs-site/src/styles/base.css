@@ -44,6 +44,25 @@ a:hover {
   outline-offset: 3px;
   border-radius: 4px;
 }
+/* The browser's own colours for selected text, scrollbars and form
+ * controls, replaced with the site's. */
+::selection {
+  background: color-mix(in srgb, var(--pr-accent) 22%, transparent);
+  color: var(--pr-heading);
+}
+html {
+  accent-color: var(--pr-accent);
+  scrollbar-color: color-mix(in srgb, var(--pr-muted) 45%, transparent) transparent;
+}
+summary {
+  cursor: pointer;
+}
+/* Controls that only work with JavaScript (search, the theme button, the
+ * Updates tabs) are hidden when it is off. ThemeScript sets data-theme on
+ * <html>, so its absence means no script ran. */
+html:not([data-theme]) .needs-js {
+  display: none !important;
+}
 code,
 kbd,
 pre {
@@ -191,9 +210,39 @@ a.card:hover .card-title {
   font-size: 1rem;
 }
 
+/* Print: the page's text on white, the full address after each outside
+ * link, code blocks wrapped, and nothing that only works on screen. */
 @media print {
-  .no-print {
+  .no-print,
+  .needs-js,
+  .site-header,
+  .site-footer,
+  .skip-link {
     display: none !important;
+  }
+  html,
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    break-after: avoid;
+    color: #000 !important;
+  }
+  a {
+    color: #000 !important;
+  }
+  .prose a[href^='http']::after {
+    content: ' (' attr(href) ')';
+    font-size: 0.85em;
+    overflow-wrap: anywhere;
+  }
+  pre {
+    white-space: pre-wrap !important;
+    break-inside: avoid;
   }
 }
 

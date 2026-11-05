@@ -28,6 +28,8 @@ const forFeed = (html: string) =>
     .replace(/(href|src)="\/(?!\/)/g, `$1="${SITE_ORIGIN}/`)
     .replaceAll(']]>', ']]]]><![CDATA[>');
 
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+
 export const GET: APIRoute = async () => {
   const container = await AstroContainer.create({ renderers: await loadRenderers([mdxRenderer()]) });
   const html = async (entry: Parameters<typeof render>[0]) => {
@@ -78,6 +80,7 @@ export const GET: APIRoute = async () => {
   items.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
 
   const body = `<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="${base}/updates/rss.xsl"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
     <title>${escape(SITE_TITLE)}: Updates</title>

@@ -8,8 +8,15 @@
   (() => {
     let t = 'light';
     try {
-      if (localStorage.getItem('starlight-theme') === 'dark') t = 'dark';
+      // pr-theme is the reader's choice; starlight-theme is where the old
+      // site (before November 2026) kept it.
+      const saved = localStorage.getItem('pr-theme') ?? localStorage.getItem('starlight-theme');
+      if (saved === 'dark') t = 'dark';
     } catch {}
     document.documentElement.dataset.theme = t;
+    if (t === 'dark') {
+      document.querySelector('meta[name="color-scheme"]')?.setAttribute('content', 'dark');
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#0c0f15');
+    }
   })();
 </script>
