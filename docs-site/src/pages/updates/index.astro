@@ -3,11 +3,15 @@
 // stand" at the top (content/status.md), then one line of time: our
 // articles, articles published elsewhere and the weekly indicator reviews
 // (one line each). The tabs filter by category; without JavaScript every
-// entry shows.
+// entry shows. On a wide screen the filters, the RSS link and a small
+// "Check your computer" box sit in a rail at the right; below that width
+// the filters stay above the list, so they work on phones too.
 import { getEntry, render } from 'astro:content';
 import Base from '../../layouts/Base.astro';
 import Crumbs from '../../components/Crumbs.astro';
 import Icon from '../../components/Icon.astro';
+import Rail from '../../components/Rail.astro';
+import RailCheck from '../../components/RailCheck.astro';
 import UpdatesTimeline from '../../components/UpdatesTimeline.astro';
 import { timeline } from '../../news';
 import { categories } from '../../categories.mjs';
@@ -35,6 +39,7 @@ const tabs = [
   schema={[breadcrumbs([], 'Updates', abs(Astro.url.pathname))]}
 >
   <div class="wrap page">
+    <div class="main">
     <Crumbs items={[]} />
     <div class="head">
       <div>
@@ -60,12 +65,30 @@ const tabs = [
     </div>
 
     <UpdatesTimeline items={items} months />
+    </div>
+    <Rail on="updates">
+      <nav class="filters needs-js" aria-labelledby="filters-h">
+        <p class="rail-title" id="filters-h">Show</p>
+        <ul>
+          {tabs.map(([kind, label], i) => (
+            <li><button type="button" data-filter={kind} aria-pressed={i === 0 ? 'true' : 'false'}>{label}</button></li>
+          ))}
+        </ul>
+      </nav>
+      <div>
+        <p class="rail-title">Follow updates</p>
+        <a class="feed" href={`${base}/updates/rss.xml`}><Icon name="rss" size={16} /> Subscribe with RSS</a>
+      </div>
+      <RailCheck />
+    </Rail>
   </div>
 </Base>
 
 <script>
   // Filter by kind. A month with nothing left in it hides too.
-  const buttons = [...document.querySelectorAll<HTMLButtonElement>('.tabs button')];
+  // The tabs above the list and the filters in the rail are the same
+  // control at two widths; both stay in step.
+  const buttons = [...document.querySelectorAll<HTMLButtonElement>('button[data-filter]')];
   const show = (kind: string) => {
     for (const b of buttons) b.setAttribute('aria-pressed', String(b.dataset.filter === kind));
     for (const li of document.querySelectorAll<HTMLElement>('.updates-timeline .item'))
@@ -82,8 +105,64 @@ const tabs = [
   .page {
     padding-block: 2.5rem 4rem;
   }
-  .page > :global(*) {
+  .main > :global(*) {
     max-width: 52rem;
+  }
+  /* Wide: the list keeps its 52rem column, the rail sits at the right edge
+   * of the page width, and the filters and RSS move into it. */
+  @media (min-width: 76rem) {
+    .page {
+      display: grid;
+      grid-template-columns: minmax(0, 52rem) 16rem;
+      justify-content: space-between;
+      column-gap: 3.5rem;
+    }
+    .main .tabs,
+    .head .rss {
+      display: none;
+    }
+    .main > :global(.updates-timeline) {
+      margin-top: 1.75rem;
+    }
+  }
+  .filters ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-inline-start: 1px solid var(--pr-border);
+  }
+  .filters button {
+    display: block;
+    width: 100%;
+    margin-inline-start: -1px;
+    padding: 0.22rem 0 0.22rem 0.9rem;
+    border: 0;
+    border-inline-start: 2px solid transparent;
+    background: none;
+    color: var(--pr-muted);
+    font: inherit;
+    line-height: 1.4;
+    text-align: start;
+    cursor: pointer;
+  }
+  .filters button:hover {
+    color: var(--pr-heading);
+  }
+  .filters button[aria-pressed='true'] {
+    border-color: var(--pr-heading);
+    color: var(--pr-heading);
+    font-weight: 600;
+  }
+  .feed {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--pr-text);
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .feed:hover {
+    color: var(--pr-heading);
   }
   .head {
     display: flex;

@@ -4,7 +4,7 @@
 // the update written from it, when there is one.
 import { getCollection, render } from 'astro:content';
 import Update from '../../layouts/Update.astro';
-import { humanDates, newsPosts } from '../../news';
+import { humanDates, newsPosts, reviews } from '../../news';
 import { longDate } from '../../releaseDate';
 import { citations } from '../../schema';
 import { ogImage } from '../../og';
@@ -15,7 +15,7 @@ export async function getStaticPaths() {
     .map((entry) => ({ params: { slug: entry.id }, props: { entry } }));
 }
 const { entry } = Astro.props;
-const { Content } = await render(entry);
+const { Content, headings } = await render(entry);
 const day = entry.id.slice(0, 10);
 // Reviews written before they carried a description get one here, since
 // past reviews are never edited.
@@ -25,6 +25,14 @@ const description =
 const title = humanDates(entry.data.title);
 const post = (await newsPosts()).find((p) => p.review === day);
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+// Two related pieces for the rail: the article written from this review,
+// when there is one, then the newest other reviews.
+const more = [
+  ...(post ? [{ kicker: post.categoryLabel, title: post.title, href: post.href, date: post.date }] : []),
+  ...(await reviews())
+    .filter((r) => r.id !== entry.id)
+    .map((r) => ({ kicker: 'Indicator review', title: r.label, href: r.href, date: r.date })),
+].slice(0, 2);
 ---
 
 <Update
@@ -37,6 +45,8 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
   file={entry.filePath}
   citations={citations(entry.body)}
   image={ogImage(`indicator-reviews/${entry.id}`, `${title}. ${description}`)}
+  headings={headings}
+  more={more}
   related={post ? { label: post.title, href: post.href } : undefined}
 >
   <Content />

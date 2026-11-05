@@ -1,0 +1,42 @@
+---
+// The rail's small "Check your computer" box: one line and the Download
+// button, which goes where the top bar's Download goes.
+import Icon from './Icon.astro';
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+
+<div class="check">
+  <p class="rail-title">Check your computer</p>
+  <p class="text">Free. It changes nothing until you type <code>yes</code>.</p>
+  <a class="dl" href={`${base}/docs/quick-start/`}><Icon name="download" size={16} /> Download</a>
+</div>
+
+<style>
+  .check {
+    padding: 1rem 1.1rem;
+    border: 1px solid var(--pr-border);
+    border-radius: var(--pr-radius);
+    background: var(--pr-surface);
+  }
+  .text {
+    margin: 0;
+    color: var(--pr-text);
+    line-height: 1.5;
+  }
+  .dl {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.75rem;
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+    background: var(--pr-pill-bg);
+    color: var(--pr-pill-text);
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .dl:hover {
+    color: var(--pr-pill-text);
+    opacity: 0.88;
+  }
+</style>

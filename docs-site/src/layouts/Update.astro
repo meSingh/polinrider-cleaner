@@ -1,8 +1,10 @@
 ---
 // One update or one weekly indicator review, as a plain article: its label,
 // title, date and reading time, the text, its Sources (part of the text)
-// and at most one related link. No sidebars, no table of contents, no
-// boxes. Structured data stays in the page's metadata only.
+// and at most one related link. On a wide screen a rail fills the space to
+// the right without widening the text: "On this page", a small "Check your
+// computer" box and two related pieces. Structured data stays in the
+// page's metadata only.
 //
 // Older articles carry a "Check yours" box and, in one case, a questions
 // section in their Markdown. Neither is shown here: the box is cut from the
@@ -10,6 +12,11 @@
 // article (Astro.locals.plainArticle), so the files need no edit.
 import Base from './Base.astro';
 import Crumbs from '../components/Crumbs.astro';
+import Toc from '../components/Toc.astro';
+import Rail from '../components/Rail.astro';
+import RailCheck from '../components/RailCheck.astro';
+import RailRelated, { type RailItem } from '../components/RailRelated.astro';
+import type { MarkdownHeading } from 'astro';
 import { abs, article, breadcrumbs } from '../schema';
 import { lastUpdated } from '../git';
 import { longDate } from '../releaseDate';
@@ -29,8 +36,12 @@ interface Props {
   citations?: string[];
   image?: { url: string; width: number; height: number; alt: string };
   related?: { label: string; href: string };
+  /** The article's headings, for "On this page" in the rail. */
+  headings?: MarkdownHeading[];
+  /** Two related pieces for the rail. */
+  more?: RailItem[];
 }
-const { kind, label, crumb, title, description, date, minutes, file, citations, image, related } = Astro.props;
+const { kind, label, crumb, title, description, date, minutes, file, citations, image, related, headings = [], more = [] } = Astro.props;
 const crumbs = [crumb];
 const url = abs(Astro.url.pathname);
 const schema = [
@@ -49,10 +60,13 @@ const schema = [
 ];
 (Astro.locals as { plainArticle?: boolean }).plainArticle = true;
 const body = plainArticle(await Astro.slots.render('default'));
+// Only headings still in the text: the cut parts take theirs with them.
+const shown = headings.filter((h) => body.includes(`id="${h.slug}"`));
 ---
 
 <Base title={title} description={description} schema={schema} image={image}>
-  <article class="wrap update" data-pagefind-body data-pagefind-meta={`section:${crumb.label}`}>
+  <div class="wrap reading">
+  <article class="update" data-pagefind-body data-pagefind-meta={`section:${crumb.label}`}>
     <Crumbs items={crumbs} />
     <p class="kicker">{label}</p>
     <h1 data-pagefind-meta="title">{title}</h1>
@@ -69,11 +83,27 @@ const body = plainArticle(await Astro.slots.render('default'));
       )
     }
   </article>
+  <Rail on="article">
+    <Toc headings={shown} />
+    <RailCheck />
+    <RailRelated items={more} />
+  </Rail>
+  </div>
 </Base>
 
 <style>
-  .update {
+  .reading {
     padding-block: 2.5rem 4rem;
+  }
+  /* Wide: the article keeps its 46rem column at the left, the rail sits at
+   * the right edge of the page width. */
+  @media (min-width: 72rem) {
+    .reading {
+      display: grid;
+      grid-template-columns: minmax(0, 46rem) 16rem;
+      justify-content: space-between;
+      column-gap: 4rem;
+    }
   }
   .update > :global(*) {
     max-width: 46rem;
