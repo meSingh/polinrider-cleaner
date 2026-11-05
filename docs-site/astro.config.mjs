@@ -12,7 +12,7 @@ import { asides } from './src/markdown/asides.mjs';
 import { baseLinks } from './src/markdown/base-links.mjs';
 import { BASE, SITE_ORIGIN } from './src/siteConfig.mjs';
 import { pagefindIndex } from './src/markdown/pagefind.mjs';
-import { externalLinks } from './src/markdown/external-links.mjs';
+import { outboundLinks } from './src/markdown/outbound-links.mjs';
 import { ogImages } from './src/markdown/og-images.mjs';
 import { articlePaths, lastCommitDay, sourcesOf } from './src/sources.mjs';
 
@@ -77,7 +77,9 @@ export default defineConfig({
       },
     }),
     ogImages({ base: BASE }),
-    externalLinks({ origin: SITE_ORIGIN, base: BASE }),
+    // Links that leave the site: new tab, noopener, the referrer meta and,
+    // on editorial links, ref=polinriderscanner.com (src/markdown/outbound-links.mjs).
+    outboundLinks({ origin: SITE_ORIGIN, base: BASE }),
     pagefindIndex(),
   ],
 
