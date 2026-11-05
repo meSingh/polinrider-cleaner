@@ -68,6 +68,38 @@ kbd,
 pre {
   font-family: var(--font-mono);
 }
+/* Inline code, everywhere a code span sits in running text: articles,
+ * docs, pages and components alike. A light wash of the accent with a
+ * slightly darker accent border, so each span stands out and reads easily.
+ * Padding is horizontal only, so lines keep their spacing; a span that
+ * wraps keeps its padding and corners on both lines. :root lifts it above
+ * a component's own scoped code rule; a deliberate variant (a class on the
+ * span) still wins. Code blocks (pre > code) are not touched. */
+:root :not(pre) > code {
+  padding: 0.08em 0.4em;
+  border: 1px solid color-mix(in srgb, var(--pr-accent) 22%, transparent);
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--pr-accent) 8%, transparent);
+  color: var(--pr-heading);
+  font-size: 0.875em;
+  line-height: 1;
+  overflow-wrap: break-word;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+/* :where keeps this at the light rule's weight, so a component's own
+ * variant (a class on the span) still wins in dark too. */
+:root:where([data-theme='dark']) :not(pre) > code {
+  border-color: color-mix(in srgb, var(--pr-accent) 32%, transparent);
+  background: color-mix(in srgb, var(--pr-accent) 14%, transparent);
+  color: color-mix(in srgb, var(--pr-accent) 40%, var(--pr-heading));
+}
+/* Code inside a link is still the link: its colour and underline. */
+:root a > code {
+  color: inherit;
+  text-decoration: inherit;
+}
+
 /* Code in a heading is part of the title: the heading's own size, weight
  * and colour in the monospace face, with no chip behind it. Wins over the
  * inline-code styles of prose and of single pages. */
@@ -259,14 +291,6 @@ a.card:hover .card-title {
   }
 }
 
-.card code {
-  padding: 0.05em 0.3em;
-  border: 1px solid var(--pr-border);
-  border-radius: 5px;
-  background: var(--pr-bg);
-  color: var(--pr-heading);
-  font-size: 0.88em;
-}
 
 /* The frame for pages with a sidebar and "On this page" (docs, releases,
  * reviews, posts): wider than .wrap, so the text column gets the room. */

@@ -67,32 +67,6 @@
   border-radius: var(--pr-radius);
 }
 
-/* Inline code: a light wash of the accent and no border, so a paragraph
- * with many file names reads as text with a few marked words, not a row of
- * grey chips. Ink text in light mode, a pale accent in dark. The padding is
- * horizontal only, so lines keep their spacing; a span that wraps keeps
- * its padding and corners on both lines. */
-.prose :not(pre) > code {
-  padding: 0.08em 0.4em;
-  border-radius: 5px;
-  background: color-mix(in srgb, var(--pr-accent) 8%, transparent);
-  color: var(--pr-heading);
-  font-size: 0.875em;
-  line-height: 1;
-  overflow-wrap: anywhere;
-  -webkit-box-decoration-break: clone;
-  box-decoration-break: clone;
-}
-:root[data-theme='dark'] .prose :not(pre) > code {
-  background: color-mix(in srgb, var(--pr-accent) 15%, transparent);
-  color: color-mix(in srgb, var(--pr-accent) 40%, var(--pr-heading));
-}
-/* Code inside a link is still the link: its colour and underline. */
-.prose a > code {
-  color: inherit !important;
-  text-decoration: inherit;
-}
-
 /* Code blocks. Shiki writes both themes' colours into each token as
  * --shiki-light and --shiki-dark; the page's theme picks one. */
 .prose pre,

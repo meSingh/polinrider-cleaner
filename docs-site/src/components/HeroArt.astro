@@ -1,0 +1,49 @@
+---
+// The picture beside the What is PolinRider? intro. With no image it shows
+// the drawn rider (RiderIllustration). Given a raster image (imported from
+// src/assets, so Astro knows its size), it shows that instead: decorative
+// (empty alt), loaded eagerly as it is above the fold, with its width and
+// height set so nothing moves while it loads. A thin border and rounded
+// corners frame it, so a photo with its own background sits well on the
+// grey band in both themes.
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+import RiderIllustration from './RiderIllustration.astro';
+
+interface Props {
+  image?: ImageMetadata;
+}
+const { image } = Astro.props;
+---
+
+{
+  image ? (
+    <Image
+      class="photo"
+      src={image}
+      alt=""
+      loading="eager"
+      decoding="async"
+      fetchpriority="high"
+      widths={[360, 720]}
+      sizes="(min-width: 48rem) 22rem, 0px"
+    />
+  ) : (
+    <RiderIllustration />
+  )
+}
+
+<style>
+  .photo {
+    display: block;
+    width: 100%;
+    height: auto;
+    border: 1px solid var(--pr-border);
+    border-radius: var(--pr-radius);
+    background: var(--pr-bg);
+    box-shadow: 0 6px 18px -10px rgb(15 18 32 / 0.35);
+  }
+  :global([data-theme='dark']) .photo {
+    box-shadow: 0 6px 18px -10px rgb(0 0 0 / 0.7);
+  }
+</style>

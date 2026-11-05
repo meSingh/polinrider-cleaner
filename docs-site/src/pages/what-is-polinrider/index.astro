@@ -10,7 +10,11 @@ import Base from '../../layouts/Base.astro';
 import Crumbs from '../../components/Crumbs.astro';
 import Icon from '../../components/Icon.astro';
 import HistoryCompare from '../../components/HistoryCompare.astro';
-import RiderIllustration from '../../components/RiderIllustration.astro';
+import HeroArt from '../../components/HeroArt.astro';
+// The picture beside the intro. To use a raster image instead of the drawn
+// rider, put it in src/assets and import it here, for example:
+//   import heroImage from '../../assets/polinrider-rider.jpg';
+const heroImage = undefined;
 import PathCode from '../../components/PathCode.astro';
 import PageFoot from '../../components/PageFoot.astro';
 import { abs, article, breadcrumbs } from '../../schema';
@@ -119,7 +123,7 @@ const schema = [
         </p>
         <p class="goal">Its goal is not your code. The code is how it travels. The goal is your logins and your money.</p>
       </div>
-      <div class="hero-art" data-pagefind-ignore><RiderIllustration /></div>
+      <div class="hero-art" data-pagefind-ignore><HeroArt image={heroImage} /></div>
     </header>
 
     <section class="wrap stats-sec" aria-label="Key figures">
@@ -378,22 +382,11 @@ const schema = [
 </Base>
 
 <style>
-  /* Inline code: the same accent wash as in articles (prose.css), no
-   * border. A name never breaks across lines; a long path is a PathCode,
-   * which may wrap only after a slash. */
-  .explainer :global(:not(pre) > code) {
-    padding: 0.08em 0.4em;
-    border-radius: 5px;
-    background: color-mix(in srgb, var(--pr-accent) 8%, transparent);
-    color: var(--pr-heading);
-    font-size: 0.875em;
+  /* Inline code looks as it does everywhere (base.css). Here a name never
+   * breaks across lines; a long path is a PathCode, which may wrap only
+   * after a slash. */
+  .explainer :global(:not(pre) > code:not(.path)) {
     white-space: nowrap;
-    -webkit-box-decoration-break: clone;
-    box-decoration-break: clone;
-  }
-  :global([data-theme='dark']) .explainer :global(:not(pre) > code) {
-    background: color-mix(in srgb, var(--pr-accent) 15%, transparent);
-    color: color-mix(in srgb, var(--pr-accent) 40%, var(--pr-heading));
   }
 
   /* One card, one icon chip and one step badge for the whole page. */
