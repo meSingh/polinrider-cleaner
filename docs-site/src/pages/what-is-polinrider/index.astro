@@ -10,6 +10,7 @@ import Base from '../../layouts/Base.astro';
 import Crumbs from '../../components/Crumbs.astro';
 import Icon from '../../components/Icon.astro';
 import HistoryCompare from '../../components/HistoryCompare.astro';
+import RiderIllustration from '../../components/RiderIllustration.astro';
 import PageFoot from '../../components/PageFoot.astro';
 import { abs, article, breadcrumbs } from '../../schema';
 import { lastUpdated } from '../../git';
@@ -107,7 +108,7 @@ const schema = [
 >
   <div data-pagefind-body data-pagefind-meta="section:What is PolinRider?">
     <header class="hero">
-      <div class="wrap">
+      <div class="wrap hero-text">
         <Crumbs items={[]} />
         <h1 data-pagefind-meta="title">What is PolinRider malware?</h1>
         <p class="lead">
@@ -117,6 +118,7 @@ const schema = [
         </p>
         <p class="goal">Its goal is not your code. The code is how it travels. The goal is your logins and your money.</p>
       </div>
+      <div class="hero-art" data-pagefind-ignore><RiderIllustration /></div>
     </header>
 
     <section class="wrap stats-sec" aria-label="Key figures">
@@ -392,9 +394,35 @@ const schema = [
 
   /* Hero */
   .hero {
+    position: relative;
     padding-block: 2.5rem 3rem;
     border-bottom: 1px solid var(--pr-border);
     background: var(--pr-surface);
+  }
+  /* The illustration sits in the free right-hand space of the band,
+   * vertically centred on the intro. It never takes width from the text:
+   * the text column keeps its measure and the picture only shows where
+   * there is room for it. Hidden on phones, where it would crowd the intro. */
+  .hero-art {
+    display: none;
+  }
+  @media (min-width: 48rem) {
+    .hero {
+      --art: clamp(11rem, 26vw, 22rem);
+    }
+    .hero-text {
+      padding-inline-end: calc(var(--gutter) + var(--art) + 1.5rem);
+    }
+    .hero-art {
+      display: block;
+      position: absolute;
+      inset-block: 0;
+      inset-inline-end: max(var(--gutter), calc((100% - var(--wide-width)) / 2));
+      width: var(--art);
+      margin-block: auto;
+      height: fit-content;
+      pointer-events: none;
+    }
   }
   .hero .eyebrow {
     margin-top: 1.5rem;
