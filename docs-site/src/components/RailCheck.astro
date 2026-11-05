@@ -1,34 +1,53 @@
 ---
-// The rail's small "Check your computer" box: one line and the Download
-// button, which goes where the top bar's Download goes.
+// The rail's small call to check your computer: a label, one sentence, a
+// full-width Download button (the top bar's dark style; it goes where the
+// top bar's Download goes) and the systems it runs on. A soft teal wash
+// with a teal left edge, dimmer in dark mode.
 import Icon from './Icon.astro';
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 ---
 
 <div class="check">
-  <p class="rail-title">Check your computer</p>
-  <p class="text">Free. It changes nothing until you type <code>yes</code>.</p>
-  <a class="dl" href={`${base}/docs/quick-start/`}><Icon name="download" size={16} /> Download</a>
+  <p class="label"><Icon name="shield" size={14} /> Worried about your machine?</p>
+  <p class="text">Scan it for the known signs of PolinRider.</p>
+  <a class="dl" href={`${base}/docs/quick-start/`}><Icon name="download" size={16} /> Download free</a>
+  <p class="systems">macOS · Windows · Linux</p>
 </div>
 
 <style>
   .check {
     padding: 1rem 1.1rem;
-    border: 1px solid var(--pr-border);
+    border-inline-start: 3px solid var(--pr-accent);
     border-radius: var(--pr-radius);
-    background: var(--pr-surface);
+    background: color-mix(in srgb, var(--pr-accent) 7%, var(--pr-bg));
   }
-  .text {
-    margin: 0;
-    color: var(--pr-text);
-    line-height: 1.5;
+  :global([data-theme='dark']) .check {
+    background: color-mix(in srgb, var(--pr-accent) 8%, var(--pr-bg));
   }
-  .dl {
-    display: inline-flex;
+  .label {
+    display: flex;
     align-items: center;
     gap: 0.4rem;
-    margin-top: 0.75rem;
-    padding: 0.5rem 1rem;
+    margin: 0;
+    color: color-mix(in srgb, var(--pr-accent) 80%, var(--pr-muted));
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .text {
+    margin: 0.5rem 0 0;
+    color: var(--pr-heading);
+    line-height: 1.45;
+  }
+  .dl {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    width: 100%;
+    margin-top: 0.9rem;
+    padding: 0.6rem 1rem;
     border-radius: 999px;
     background: var(--pr-pill-bg);
     color: var(--pr-pill-text);
@@ -38,5 +57,11 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
   .dl:hover {
     color: var(--pr-pill-text);
     opacity: 0.88;
+  }
+  .systems {
+    margin: 0.55rem 0 0;
+    color: var(--pr-muted);
+    font-size: var(--text-xs);
+    text-align: center;
   }
 </style>
