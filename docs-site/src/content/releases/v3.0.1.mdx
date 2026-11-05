@@ -1,0 +1,56 @@
+---
+title: PolinRider Scanner and Cleaner 3.0.1
+description: Confirms two newer forms of the payload that 3.0.0 listed for review or missed, and checks every JavaScript and TypeScript file in a folder.
+version: "3.0.1"
+# The expected release day. Once the tag exists the site shows the tag's date
+# instead, so this never needs correcting after the release.
+date: "2026-11-05"
+---
+
+import Downloads from '~/components/Downloads.astro';
+import Released from '~/components/Released.astro';
+import RunBlock from '~/components/RunBlock.astro';
+
+<Released version="3.0.1" date="2026-11-05" /> No breaking changes.
+
+## New
+
+- **Two newer forms of the payload are confirmed.** One opens with a `var z`
+  campaign number and the other with a later `global.i` campaign number than
+  the one 3.0.0 knew. Both sit at the end of the last line, pushed off screen
+  by a long run of spaces or tabs. 3.0.0 listed most of these files for
+  review and missed some entirely. We checked 310 such files from repositories
+  on OpenSourceMalware's lists. The folder check in 3.0.1 confirms 302 of
+  them, and the GitHub check confirms the same tags. The other 8 are one
+  build with neither tag and are still listed for review.
+- **Every JavaScript and TypeScript file in a folder is checked for the
+  payload,** not only the build configs. The campaign also appends to route
+  files, `App.js`, `jest.config.js` and `truffle-config.js`, which the folder
+  check used to call clean. A hit there reads "source file contains an
+  indicator". The GitHub check always read every file, so the two now agree.
+
+## Changed
+
+- **`polinrider clean` and the GitHub fix cut these payloads out and keep the
+  file.** The cut is made at the padding, under the same rules as before: it
+  is refused, and the file left as it was, unless the payload was simply
+  appended. The GitHub fix used to delete a file matched only by a campaign
+  pattern; it now cuts it like any other.
+- A folder that 3.0.0 called clean, or listed for review, can now come back
+  as infected, with exit code 2. That is these files being found, not a
+  change to what the exit codes mean.
+
+## Breaking changes
+
+None. Exit codes, commands and flags are as in the previous release.
+
+## Download
+
+<Downloads version="3.0.1" packages />
+
+Or use a package manager. Choose your system, then run only its commands:
+
+<RunBlock />
+
+[Verify what you downloaded](/docs/reference/verifying/) before
+you run it.

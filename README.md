@@ -50,7 +50,7 @@
 
    ```bash
    sha256sum -c SHA256SUMS --ignore-missing
-   gh attestation verify polinrider-v3.0.0-macos-arm64.tar.gz --repo meSingh/polinrider-scanner
+   gh attestation verify polinrider-v3.0.1-macos-arm64.tar.gz --repo meSingh/polinrider-scanner
    ```
 
    Releases before 3.0.0 were built when this repository was called
@@ -60,8 +60,8 @@
 3. **Unpack and run it**, with no arguments:
 
    ```bash
-   tar -xzf polinrider-v3.0.0-macos-arm64.tar.gz
-   cd polinrider-v3.0.0-macos-arm64
+   tar -xzf polinrider-v3.0.1-macos-arm64.tar.gz
+   cd polinrider-v3.0.1-macos-arm64
    ./polinrider
    ```
 
