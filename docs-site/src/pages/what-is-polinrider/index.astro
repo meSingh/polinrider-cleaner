@@ -10,7 +10,6 @@ import Base from '../../layouts/Base.astro';
 import Crumbs from '../../components/Crumbs.astro';
 import Icon from '../../components/Icon.astro';
 import HistoryCompare from '../../components/HistoryCompare.astro';
-import HeroArt from '../../components/HeroArt.astro';
 import PathCode from '../../components/PathCode.astro';
 import PageFoot from '../../components/PageFoot.astro';
 import { abs, article, breadcrumbs } from '../../schema';
@@ -119,7 +118,6 @@ const schema = [
         </p>
         <p class="goal">Its goal is not your code. The code is how it travels. The goal is your logins and your money.</p>
       </div>
-      <div class="hero-art" data-pagefind-ignore><HeroArt /></div>
     </header>
 
     <section class="wrap stats-sec" aria-label="Key figures">
@@ -485,31 +483,6 @@ const schema = [
     padding-block: 2.5rem 3rem;
     border-bottom: 1px solid var(--pr-border);
     background: var(--pr-surface);
-  }
-  /* The picture sits in the free right-hand space of the band,
-   * vertically centred on the intro. It never takes width from the text:
-   * the text column keeps its measure and the picture only shows where
-   * there is room for it. Hidden on phones, where it would crowd the intro. */
-  .hero-art {
-    display: none;
-  }
-  @media (min-width: 48rem) {
-    .hero {
-      --art: clamp(10rem, 18vw, 15rem);
-    }
-    .hero-text {
-      padding-inline-end: calc(var(--gutter) + var(--art) + 1.5rem);
-    }
-    .hero-art {
-      display: block;
-      position: absolute;
-      inset-block: 0;
-      inset-inline-end: max(var(--gutter), calc((100% - var(--wide-width)) / 2));
-      width: var(--art);
-      margin-block: auto;
-      height: fit-content;
-      pointer-events: none;
-    }
   }
   h1 {
     margin: 0;

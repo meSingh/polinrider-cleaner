@@ -1,8 +1,7 @@
 // The licence notices of what this site ships to a browser: Astro's page
 // scripts, Pagefind's search (its script, WebAssembly and index format),
 // Shiki's code colours, the GitHub mark from Primer Octicons and the Geist
-// typeface, then a credit for the generated illustration on What is
-// PolinRider?. The code is MIT licensed, and the
+// typeface. The code is MIT licensed, and the
 // MIT licence asks that its notice travel with copies of the software. Geist
 // is under the SIL Open Font License 1.1, which asks the same of its notice
 // and licence. This page is that copy, served at
@@ -45,12 +44,6 @@ const geist = () => {
   return `${head}\n${'-'.repeat(head.length)}\n\n${text}`;
 };
 
-// Images made with a tool, said plainly.
-const images = (() => {
-  const head = 'Images';
-  return `${head}\n${'-'.repeat(head.length)}\n\nThe illustration on What is PolinRider? was generated with Google Gemini (Nano Banana 2).`;
-})();
-
 export const GET: APIRoute = () =>
   new Response(
     'Third-party software in this site\n' +
@@ -58,8 +51,6 @@ export const GET: APIRoute = () =>
       'This site is built with the following open source software, parts of which\n' +
       'are served with every page. Their licence notices follow.\n\n' +
       [...packages.map(notice), geist(), octicons()].join('\n\n\n') +
-      '\n\n\n' +
-      images +
       '\n',
     { headers: { 'Content-Type': 'text/plain; charset=utf-8' } },
   );
