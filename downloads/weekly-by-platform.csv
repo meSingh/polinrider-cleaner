@@ -1,0 +1,12 @@
+week,platform,downloads,ours,people
+before 2026-11-05,1.x shell,64,0,64
+before 2026-11-05,checksums and attestations,115,3,112
+before 2026-11-05,linux-arm64.deb,10,0,10
+before 2026-11-05,linux-arm64.tar.gz,12,0,12
+before 2026-11-05,linux-x86_64.deb,12,0,12
+before 2026-11-05,linux-x86_64.tar.gz,13,0,13
+before 2026-11-05,macos-arm64.tar.gz,17,0,17
+before 2026-11-05,macos-x86_64.tar.gz,12,0,12
+before 2026-11-05,source.tar.gz,10,0,10
+before 2026-11-05,windows-x86_64.tar.gz,14,0,14
+before 2026-11-05,windows-x86_64.zip,25,0,25

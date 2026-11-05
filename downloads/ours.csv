@@ -1,0 +1,4 @@
+date,tag,file,count,note
+2026-11-04,v2.2.0,polinrider-v2.2.0.intoto.jsonl,1,"count-lag test, browser link control"
+2026-11-04,v2.3.0,SHA256SUMS,1,"count-lag test, browser link"
+2026-11-04,v2.3.0,SHA256SUMS,1,"count-lag test, browser link, second"
