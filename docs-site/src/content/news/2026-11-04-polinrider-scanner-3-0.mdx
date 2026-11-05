@@ -8,51 +8,137 @@ sidebar:
   order: -20261104
 ---
 
-polinrider-cleaner is now PolinRider Scanner and Cleaner. The repository has moved to `meSingh/polinrider-scanner`, the documentation lives at polinriderscanner.com and every package has been renamed to
-`polinrider-scanner`. If you already use the tool, the program itself has not
-changed: it is still `polinrider`, with the same options, the same output and
-the same exit codes. What changes is how you install it, update it and check
-that a download is genuine. That is why this release is 3.0.0 rather than
-2.4.
+polinrider-cleaner is now PolinRider Scanner and Cleaner. The program itself
+has not changed: it is still `polinrider`, with the same options, the same
+output and the same exit codes. What changes is where it lives, what the
+packages are called and how you check that a download is genuine. That is why
+this release is 3.0.0 rather than 2.4.
 
-## If you installed 2.x
+## Where everything is now
 
-Each package manager moves you across in its own way.
+Bookmark these, and check any link you are sent against them.
 
-With Homebrew, `brew upgrade` moves an existing `polinrider-cleaner` install
-to the new name by itself. With Scoop it does not: run
-`scoop uninstall polinrider-cleaner`, then `scoop install polinrider-scanner`.
-The old Scoop name stays at 2.3.0, and `scoop status` reports it as
-deprecated. On Debian and Ubuntu, installing the new `.deb` removes the old
-package. A winget package is being prepared as `meSingh.PolinRiderScanner`,
-but it is not in the winget repository yet.
+| What | Address |
+| --- | --- |
+| Website | [polinriderscanner.com](https://polinriderscanner.com/) |
+| Source code | [github.com/meSingh/polinrider-scanner](https://github.com/meSingh/polinrider-scanner) |
+| Downloads | [github.com/meSingh/polinrider-scanner/releases](https://github.com/meSingh/polinrider-scanner/releases) |
+| Homebrew tap | [github.com/meSingh/homebrew-tap](https://github.com/meSingh/homebrew-tap) |
+| Scoop bucket | [github.com/meSingh/scoop-bucket](https://github.com/meSingh/scoop-bucket) |
 
-If you copied the CI scanner into one of your repositories, nothing needs to
-change. The `ioc/` folder has the same layout, and the scan you vendored never
-named the repository.
+The old addresses still work. GitHub redirects
+`github.com/meSingh/polinrider-cleaner` to the new repository, for the web,
+for git and for the API, and the old site at
+`mesingh.github.io/polinrider-cleaner` sends you here.
 
-Old links keep working. GitHub redirects the old repository's web, git and
-API addresses, and the site's old GitHub Pages address answers with redirect
-pages that point here.
+## Upgrade from 2.x
 
-## Checking that a download is genuine
+Pick the way you installed it.
 
-Every release from 3.0.0 on is verified against the new name:
+### Homebrew (macOS and Linux)
+
+`brew upgrade` moves an existing `polinrider-cleaner` install to the new name
+by itself:
+
+```bash
+brew update
+brew upgrade
+```
+
+### Scoop (Windows)
+
+Scoop does not move you across. Remove the old package and install the new
+one:
+
+```powershell
+scoop uninstall polinrider-cleaner
+scoop update
+scoop install polinrider-scanner
+```
+
+The old name stays at 2.3.0 and `scoop status` reports it as deprecated.
+
+### Debian and Ubuntu
+
+Download the new `.deb`, check it and install it. Installing it removes the
+old `polinrider-cleaner` package. On ARM, use `linux-arm64` in place of
+`linux-x86_64`.
+
+```bash
+gh release download v3.0.0 --repo meSingh/polinrider-scanner --pattern 'polinrider-v3.0.0-linux-x86_64.deb'
+gh attestation verify polinrider-v3.0.0-linux-x86_64.deb --repo meSingh/polinrider-scanner
+sudo apt install ./polinrider-v3.0.0-linux-x86_64.deb
+```
+
+### A downloaded archive
+
+Download the archive for your system from the
+[releases page](https://github.com/meSingh/polinrider-scanner/releases),
+check it as shown below and replace your old folder with the new one. Keep
+the `ioc/` folder beside the binary.
+
+### winget
+
+A winget package is being prepared as `meSingh.PolinRiderScanner`. It is not
+in the winget repository yet.
+
+### The CI scanner in your repositories
+
+Nothing to do. The `ioc/` folder has the same layout, and the scan you
+vendored never named the repository.
+
+### Check the upgrade
+
+```bash
+polinrider --version
+```
+
+The version it shows should be 3.0.0.
+
+## New to it? Install 3.0
+
+```bash
+brew install meSingh/tap/polinrider-scanner
+```
+
+```powershell
+scoop bucket add mesingh https://github.com/meSingh/scoop-bucket
+scoop install polinrider-scanner
+```
+
+Every other way to install it is in the
+[README](https://github.com/meSingh/polinrider-scanner#run-it).
+
+## Check that a download is genuine
+
+Every release from 3.0.0 on is checked against the new name:
 
 ```bash
 gh attestation verify polinrider-v3.0.0-macos-arm64.tar.gz --repo meSingh/polinrider-scanner
 ```
 
-Releases up to 2.3.0 were built and attested while the repository was still
-called `polinrider-cleaner`, and their attestations record that name. So the
-new name fails for them, with an error that looks like a fake file but is not
-one. The command that worked before the rename still works, because GitHub
-follows the old name to the renamed repository. We tested every form on the
-day of the rename, and
-[verifying releases from before 3.0](/docs/reference/verifying-before-3/)
-lists them, including one command that checks a release of any version and a
-way to confirm the attestation came from this repository and not a later
-holder of the old name.
+Releases up to 2.3.0 were attested while the repository was still called
+`polinrider-cleaner`, and their attestations record that name. The new name
+fails for them, with an error that looks like a fake file but is not one. Use
+the old name, which GitHub still follows:
+
+```bash
+gh attestation verify polinrider-v2.3.0-macos-arm64.tar.gz --repo meSingh/polinrider-cleaner
+```
+
+Or use one command that works for a release of any version, and also proves
+the file was built by this repository's release workflow:
+
+```bash
+gh attestation verify polinrider-v2.3.0-macos-arm64.tar.gz \
+  --owner meSingh \
+  --cert-identity-regex '^https://github\.com/meSingh/polinrider-(cleaner|scanner)/\.github/workflows/release\.yml@refs/tags/v'
+```
+
+We tested every form on the day of the rename.
+[Verifying releases from before 3.0](/docs/reference/verifying-before-3/)
+has the rest, including how to confirm the attestation came from this
+repository and not a later holder of the old name.
 
 ## What else is new
 
