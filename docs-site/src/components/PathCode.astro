@@ -1,0 +1,20 @@
+---
+// A file path as inline code that only wraps after a slash, never inside a
+// name ("fa-solid-" / "400.woff2" read as two things). Each segment keeps
+// together; a <wbr> after every slash is the only place a line may break.
+interface Props {
+  path: string;
+}
+const parts = Astro.props.path.split(/(?<=\/)/);
+---
+
+<code class="path">{parts.map((part, i) => <><span>{part}</span>{i < parts.length - 1 && <wbr />}</>)}</code>
+
+<style>
+  .path {
+    white-space: normal;
+  }
+  .path span {
+    white-space: nowrap;
+  }
+</style>
