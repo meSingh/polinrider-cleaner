@@ -16,3 +16,30 @@
 # Detections", September 2026; recorded in the 2026-09-14 and 2026-09-28
 # indicator reviews.
 node +[^ "']*fa-solid-[0-9]{3}\.woff2
+
+# The var z campaign tag, behind the padding: the first statement of the hex
+# blob and var NX table payloads, appended to the last line of a config or
+# source file after 149 spaces (hex blob) or 266 tabs (var NX). The number
+# rotates per build, as the global['!'] tag does. The padding is required, so
+# a minified var z='-1' does not match. The brackets hold a space and a real
+# tab character: in a bracket expression \t is a backslash and a t, here and
+# in grep -E. A unit test fails if the tab becomes a space. Derived from the
+# infected files at the paths OpenSourceMalware's PolinRider lists name (July
+# and April 2026 lists, 265 of the 310 files the 2026-11-05 gap study
+# fetched); no publication states the string. ADR-0058.
+# Source: OpenSourceMalware, PolinRider dossier,
+# https://github.com/OpenSourceMalware/PolinRider
+[ 	]{64,}var z = '-[0-9]+(-[0-9]+)?';
+
+# The global.i campaign tag, either quote style, any campaign number. The
+# pinned A8 forms in strong.txt are two of its matches; A10 and A11 are the
+# later builds. The number must be followed by - or a closing quote, so
+# global.i = 'Alpha' does not match, and weak.txt keeps the looser
+# global.i = 'A at review. The A10 and A11 values are derived from the
+# infected files at the paths OpenSourceMalware's lists name (37 of the 310
+# files of the 2026-11-05 gap study); the shape is SafeDep's.
+# Source: OpenSourceMalware, PolinRider dossier,
+# https://github.com/OpenSourceMalware/PolinRider; SafeDep, "PolinRider
+# Switches to Ethereum C2 in 30+ Repositories", September 2026, whose hunt
+# includes global\.i="A. ADR-0058.
+global\.i ?= ?['"]A[0-9]{1,2}(-|'|")

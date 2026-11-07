@@ -192,7 +192,7 @@ fn machine(
     watch.stage("editor tasks", v);
     checks::tasks_json(w, ind, v, sink);
     watch.stage("build configs", v);
-    checks::build_configs(w, ind, scope.on_infected_config, v, sink);
+    checks::build_configs(w, scope.roots, ind, scope.on_infected_config, v, sink);
     watch.stage("fonts", v);
     checks::fonts(w, ind, v, sink);
 
@@ -271,7 +271,7 @@ fn directories(w: &walk::Walk, scope: &Scope, v: &mut Verdict, sink: &mut Sink, 
     watch.stage("editor tasks", v);
     checks::tasks_json(w, ind, v, sink);
     watch.stage("build configs", v);
-    checks::build_configs(w, ind, scope.on_infected_config, v, sink);
+    checks::build_configs(w, scope.roots, ind, scope.on_infected_config, v, sink);
     watch.stage("fonts", v);
     checks::fonts(w, ind, v, sink);
     watch.stage("the scripts the payload spreads with", v);

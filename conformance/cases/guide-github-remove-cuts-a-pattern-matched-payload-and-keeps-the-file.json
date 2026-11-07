@@ -1,0 +1,69 @@
+{
+  "why": "The GitHub check confirms the var z and global.i tags through strong-patterns.txt, and remove cuts each payload out at the padding and keeps the file. In 3.0.0 remove deleted any file whose only match was a pattern, which for these tags would have deleted the project's eslint config and its App.js (ADR-0058). The files after the commit are checked byte for byte.",
+  "command": "guide",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/src/index.js": "export const hello = () => 'world'\n"
+  },
+  "stdin": [
+    "organization",
+    "acme",
+    "fix",
+    "remove",
+    "yes",
+    ""
+  ],
+  "forge_files": {
+    "whoami": "tester\n",
+    "orgs": "acme\t2\nacme-labs\t7\n"
+  },
+  "forge": {
+    "acme": {
+      "shop": {
+        "branches": {
+          "main": {
+            "eslint.config.mjs": "export default [];\n",
+            "src/App.js": "export default App;\n",
+            "README.md": "# Shop\n\nnpm install, then npm start.\n"
+          }
+        },
+        "attacks": [
+          {
+            "branch": "main",
+            "force": true,
+            "date": "2019-03-01T12:00:00Z",
+            "actor": "alice",
+            "at": "2026-09-11T09:14:00Z",
+            "files": {
+              "eslint.config.mjs": "export default [];{{PAD}}var z = '-859-1';(function(){})(global,require);\n",
+              "src/App.js": "export default App;{{PAD}}global.i = 'A11--#';eval('1');\n"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "tree_may_change": false,
+    "must_print": [
+      "cuts the payload out of eslint.config.mjs",
+      "cuts the payload out of src/App.js",
+      "Done. The payload is out of 1 branch of acme/shop."
+    ],
+    "must_not_print": [
+      "deletes eslint.config.mjs",
+      "deletes src/App.js"
+    ],
+    "forge_after": {
+      "acme/shop": {
+        "file": {
+          "refs/heads/main:eslint.config.mjs": "export default [];\n",
+          "refs/heads/main:src/App.js": "export default App;\n"
+        }
+      }
+    }
+  }
+}

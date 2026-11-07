@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Accepted |
+| **Status** | Accepted; its rule that a pattern match is not stripped is superseded by [ADR-0058](./0058-the-var-z-and-global-i-tags-and-every-javascript-file.md) |
 | **Date** | 2026-10-26 |
 
 ## Context

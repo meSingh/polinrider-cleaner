@@ -1,0 +1,25 @@
+{
+  "why": "strong.txt pins the global.i tag at campaign number A8, in two spellings. The later builds write A10 and A11, in single or double quotes, with or without spaces: 37 of the 310 gap files (2026-11-05). One pattern covers every number of one or two digits followed by a dash or the closing quote, so these are confirmed where 3.0.0 gave the weak global.i signal a review line (ADR-0058).",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/tailwind.config.js": "module.exports = { content: [] };{{PAD}}global.i = 'A11--#';eval('1');\n",
+    "code/proj/src/App.js": "export default App;{{PAD}}global.i=\"A10-*12180\";eval('1');\n"
+  },
+  "expect": {
+    "exit": 2,
+    "findings": [
+      {
+        "level": "HIT",
+        "match": "config file contains an indicator",
+        "path": "tailwind.config.js"
+      },
+      {
+        "level": "HIT",
+        "match": "source file contains an indicator",
+        "path": "src/App.js"
+      }
+    ]
+  }
+}

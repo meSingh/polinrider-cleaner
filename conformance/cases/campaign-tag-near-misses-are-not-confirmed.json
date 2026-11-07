@@ -1,0 +1,28 @@
+{
+  "why": "A pattern at the confirmed tier that matches ordinary code costs every user a false alarm. Minified code can say var z = '-1' with no padding before it, and a project can set global.i to a word, a lone letter, three digits or another letter. None of these is the campaign's tag, so none is confirmed (ADR-0058). Where weak.txt's looser global.i signal matches, the file gets its review line, as before.",
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/dist/app.min.js": "var a=1;var z = '-1';function f(){return a}\n",
+    "code/proj/src/flags.js": "global.i = 'Alpha';\n",
+    "code/proj/src/letter.js": "global.i = 'A';\n",
+    "code/proj/src/digits.js": "global.i = 'A123';\n",
+    "code/proj/src/other.js": "global.i = \"B11\";\n"
+  },
+  "expect": {
+    "exit": 1,
+    "findings": [
+      {
+        "level": "review",
+        "match": "mentions something the campaign also uses",
+        "path": "src/flags.js"
+      }
+    ],
+    "must_not_report": [
+      "[HIT]",
+      "app.min.js",
+      "src/other.js"
+    ]
+  }
+}

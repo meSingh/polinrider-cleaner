@@ -1,0 +1,21 @@
+{
+  "why": "In 3.0.0 a config matched only by a content pattern was confirmed and never cut, and the GitHub fix deleted it whole. With the var z tag a pattern, that would have made clean leave, and remove delete, the commonest config the campaign infects. A pattern match is now placed at its fixed part and cut at the padding before it like a fixed string, under the same refusals (ADR-0058). The config stays, with only the payload gone.",
+  "command": "clean",
+  "apply": true,
+  "roots": [
+    "code"
+  ],
+  "files": {
+    "code/proj/postcss.config.mjs": "export default { plugins: {} };{{PAD}}var z = '-859-1';(function(){})(global,require);\n"
+  },
+  "expect": {
+    "exit": 2,
+    "tree_may_change": true,
+    "must_print": [
+      "bytes appended after line 1"
+    ],
+    "file_after": {
+      "code/proj/postcss.config.mjs": "export default { plugins: {} };\n"
+    }
+  }
+}

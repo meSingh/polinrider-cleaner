@@ -57,11 +57,12 @@ campaign uses.
 so it stays fixed. A tool that cries wolf during an incident wastes the one
 thing nobody has.
 
-**What it deliberately misses.** `node-modules-is-not-scanned` and
-`payload-in-an-ordinary-source-file-is-not-found` both assert a limitation.
-They exist so the limitation is explicit and survives the rewrite in both
-directions: the port should not silently start catching these, and should not
-silently stop.
+**What it deliberately misses.** `node-modules-is-not-scanned` asserts a
+limitation. It exists so the limitation is explicit and survives a rewrite in
+both directions: the tool should not silently start catching this, and should
+not silently stop. A limitation that is lifted gets its case turned round, as
+`payload-in-an-ordinary-source-file-is-not-found` became
+`payload-in-any-javascript-source-is-found` in 3.0.1 (ADR-0058).
 
 ## What it cannot tell you
 

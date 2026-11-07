@@ -32,6 +32,15 @@ export const groups: { label: string; items: [string, string][] }[] = [
     ],
   },
   {
+    label: 'Found something?',
+    items: [
+      ['found/is-my-repository-infected', 'Is my repository infected?'],
+      ['found/code-after-export-default', 'Code after export default'],
+      ['found/tasks-json-folder-open', 'A task that runs on folder open'],
+      ['found/trojan-npm-polinrider', 'Trojan:NPM/PolinRider'],
+    ],
+  },
+  {
     label: 'Clean up, in this order',
     items: [
       ['guides/order', 'Order matters'],

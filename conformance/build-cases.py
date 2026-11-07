@@ -374,17 +374,39 @@ case(
 )
 
 case(
-    "payload-in-an-ordinary-source-file-is-not-found",
-    why="The machine check is targeted by filename, not a general content grep. "
-        "A payload in an arbitrary .js is out of scope here and is caught by the "
-        "repository scan instead. Recorded so the port does not silently change "
-        "the contract in either direction.",
+    "payload-in-any-javascript-source-is-found",
+    why="The campaign appends the same payload, behind the same padding, to "
+        "JavaScript that is not a build config: route files, App.jsx, "
+        "jest.config.js, truffle-config.js. The GitHub check always found "
+        "these, because git grep reads every file; the machine check read "
+        "build configs only and called these folders clean (exit 0), which "
+        "is the wrong answer for a confirmed indicator. From 3.0.1 every "
+        ".js, .mjs, .cjs, .ts, .jsx and .tsx file is read for a confirmed "
+        "indicator, so both checks agree (ADR-0058). The ordinary source "
+        "file beside them stays silent.",
     roots=["code"],
     files={
         "code/proj/src/vendor.js": "{{PAD}}{{STRONG}}\n",
+        "code/proj/routes/adminRouter.js":
+            "module.exports = router;{{PAD}}{{STRONG}}\n",
+        "code/proj/src/App.jsx": "export default App;{{PAD}}{{STRONG}}\n",
+        "code/proj/api/jest.config.js":
+            "module.exports = { testEnvironment: 'node' };{{PAD}}{{STRONG}}\n",
+        "code/proj/web3/truffle-config.js":
+            "module.exports = { networks: {} };{{PAD}}{{STRONG}}\n",
+        "code/proj/src/index.js": "export const hello = () => 'world'\n",
         "code/proj/postcss.config.mjs": "export default { plugins: {} }\n",
     },
-    expect={"exit": 0, "must_not_report": ["[HIT]"]},
+    expect={
+        "exit": 2,
+        "findings": [
+            {"level": "HIT", "match": "source file contains an indicator",
+             "path": p}
+            for p in ["src/vendor.js", "routes/adminRouter.js", "src/App.jsx",
+                      "api/jest.config.js", "web3/truffle-config.js"]
+        ],
+        "must_not_report": ["src/index.js"],
+    },
 )
 
 case(
